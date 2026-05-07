@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings
+  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -16,6 +16,7 @@ const modules = [
   { name: 'Marketing', path: '/marketing', icon: Megaphone, color: 'text-pink-400' },
   { name: 'Financials', path: '/finstream', icon: Wallet, color: 'text-cyan-400' },
   { name: 'KDP Optimizer', path: '/kdp-optimizer', icon: Search, color: 'text-rose-400' },
+  { name: 'Link Shortener', path: '/links', icon: Link2, color: 'text-indigo-400' },
   { name: 'Settings', path: '/settings', icon: Settings, color: 'text-slate-300' },
 ];
 
