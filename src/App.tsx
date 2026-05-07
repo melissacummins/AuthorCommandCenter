@@ -11,6 +11,7 @@ import AdAlchemyModule from './modules/ad-alchemy/AdAlchemyModule';
 import MarketingModule from './modules/marketing/MarketingModule';
 import FinStreamModule from './modules/finstream/FinStreamModule';
 import KDPOptimizerModule from './modules/kdp-optimizer/KDPOptimizerModule';
+import LinkShortenerModule from './modules/link-shortener/LinkShortenerModule';
 import SettingsModule from './modules/settings/SettingsModule';
 import ShopifyCallback from './modules/orders/components/ShopifyCallback';
 
@@ -44,6 +45,7 @@ function ProtectedRoutes() {
         <Route path="marketing" element={<MarketingModule />} />
         <Route path="finstream" element={<FinStreamModule />} />
         <Route path="kdp-optimizer" element={<KDPOptimizerModule />} />
+        <Route path="links" element={<LinkShortenerModule />} />
         <Route path="settings" element={<SettingsModule />} />
         <Route path="shopify/callback" element={<ShopifyCallback />} />
         <Route path="*" element={<Navigate to="/" replace />} />
