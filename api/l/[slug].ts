@@ -154,13 +154,18 @@ function parseOg(html: string, baseUrl: string): OGData | null {
 }
 
 async function fetchOg(url: string): Promise<OGData | null> {
+  // Use a realistic browser UA — many destinations (Shopify, Cloudflare-fronted
+  // sites, etc.) reject anything with "Bot" in the User-Agent, which leaves the
+  // OG cache empty and breaks share previews.
   try {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const timer = setTimeout(() => ctrl.abort(), 6000);
     const r = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; AuthorCommandCenterBot/1.0; +https://read.melissacummins.com)',
-        Accept: 'text/html,*/*;q=0.8',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept-Encoding': 'identity',
       },
       redirect: 'follow',
       signal: ctrl.signal,
