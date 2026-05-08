@@ -2,6 +2,7 @@ export interface ShortLink {
   id: string;
   user_id: string;
   parent_id: string | null;
+  folder_id: string | null;
   slug: string;
   label: string;
   destination_url: string;
@@ -10,7 +11,12 @@ export interface ShortLink {
   tags: string[];
   is_active: boolean;
   archived_at: string | null;
+  starts_at: string | null;
+  expires_at: string | null;
+  expired_redirect_url: string | null;
   click_count: number;
+  conversion_count: number;
+  conversion_value: number;
   last_clicked_at: string | null;
   created_at: string;
   updated_at: string;
@@ -34,14 +40,72 @@ export interface LinkClick {
   ip_hash: string;
   language: string;
   is_bot: boolean;
+  click_id: string | null;
   clicked_at: string;
+}
+
+export interface LinkFolder {
+  id: string;
+  user_id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ConversionSource = 'manual' | 'shopify_webhook' | 'shopify_clickid' | 'api';
+
+export interface LinkConversion {
+  id: string;
+  link_id: string;
+  user_id: string;
+  click_id: string | null;
+  click_row_id: string | null;
+  source: ConversionSource;
+  external_ref: string | null;
+  value: number;
+  currency: string;
+  notes: string;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface AttributionSettings {
+  user_id: string;
+  shopify_webhook_secret: string | null;
+  click_id_param: string;
+  attribution_window_minutes: number;
+  last_webhook_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export type ShortLinkInsert = Pick<
   ShortLink,
   'slug' | 'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active'
-> & { parent_id?: string | null };
+> & {
+  parent_id?: string | null;
+  folder_id?: string | null;
+  starts_at?: string | null;
+  expires_at?: string | null;
+  expired_redirect_url?: string | null;
+};
 
 export type ShortLinkUpdate = Partial<
-  Pick<ShortLink, 'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active' | 'archived_at'>
+  Pick<
+    ShortLink,
+    'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active' | 'archived_at'
+    | 'folder_id' | 'starts_at' | 'expires_at' | 'expired_redirect_url'
+  >
 >;
+
+export type ConversionInsert = Pick<LinkConversion, 'link_id'> & {
+  source?: ConversionSource;
+  value?: number;
+  currency?: string;
+  notes?: string;
+  external_ref?: string | null;
+  click_id?: string | null;
+  occurred_at?: string;
+};
