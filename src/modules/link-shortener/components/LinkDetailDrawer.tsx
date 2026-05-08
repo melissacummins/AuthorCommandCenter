@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   X, Copy, ExternalLink, Save, Trash2, Plus, Power, ArchiveRestore,
   Loader2, Globe, Tag, Smartphone, Clock, Bot, QrCode, DollarSign, Calendar, FolderIcon,
+  Eye,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { deleteLink, listClicks, updateLink } from '../api';
@@ -40,6 +41,7 @@ export default function LinkDetailDrawer({
   const [startsAt, setStartsAt] = useState(isoToInputLocal(link.starts_at));
   const [expiresAt, setExpiresAt] = useState(isoToInputLocal(link.expires_at));
   const [expiredRedirect, setExpiredRedirect] = useState(link.expired_redirect_url ?? '');
+  const [showOnBio, setShowOnBio] = useState<boolean>(link.show_on_bio ?? true);
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +60,7 @@ export default function LinkDetailDrawer({
     setStartsAt(isoToInputLocal(link.starts_at));
     setExpiresAt(isoToInputLocal(link.expires_at));
     setExpiredRedirect(link.expired_redirect_url ?? '');
+    setShowOnBio(link.show_on_bio ?? true);
     setError(null);
   }, [link.id]);
 
@@ -88,7 +91,8 @@ export default function LinkDetailDrawer({
     folderId !== link.folder_id ||
     startsAt !== isoToInputLocal(link.starts_at) ||
     expiresAt !== isoToInputLocal(link.expires_at) ||
-    expiredRedirect !== (link.expired_redirect_url ?? '');
+    expiredRedirect !== (link.expired_redirect_url ?? '') ||
+    showOnBio !== (link.show_on_bio ?? true);
 
   async function copyUrl() {
     try {
@@ -123,6 +127,7 @@ export default function LinkDetailDrawer({
         starts_at: inputLocalToIso(startsAt),
         expires_at: inputLocalToIso(expiresAt),
         expired_redirect_url: expiredRedirect.trim() ? normalizeUrl(expiredRedirect) : null,
+        show_on_bio: showOnBio,
       });
       onUpdated(updated);
     } catch (e) {
@@ -289,6 +294,36 @@ export default function LinkDetailDrawer({
                   </select>
                 </Field>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setShowOnBio((v) => !v)}
+                className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 transition ${
+                  showOnBio
+                    ? 'border-indigo-200 bg-indigo-50/60'
+                    : 'border-slate-200 bg-slate-50/60'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <Eye className={`w-4 h-4 ${showOnBio ? 'text-indigo-600' : 'text-slate-400'}`} />
+                  <div className="text-left min-w-0">
+                    <div className="text-sm font-medium text-slate-700">Show on bio page</div>
+                    <div className="text-xs text-slate-500">Visible to readers on your link-in-bio page.</div>
+                  </div>
+                </div>
+                <span
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                    showOnBio ? 'bg-indigo-600' : 'bg-slate-300'
+                  }`}
+                  aria-hidden="true"
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      showOnBio ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </span>
+              </button>
 
               <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">

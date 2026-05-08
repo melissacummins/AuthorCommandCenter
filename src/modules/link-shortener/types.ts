@@ -14,6 +14,7 @@ export interface ShortLink {
   starts_at: string | null;
   expires_at: string | null;
   expired_redirect_url: string | null;
+  show_on_bio: boolean;
   click_count: number;
   conversion_count: number;
   conversion_value: number;
@@ -90,13 +91,14 @@ export type ShortLinkInsert = Pick<
   starts_at?: string | null;
   expires_at?: string | null;
   expired_redirect_url?: string | null;
+  show_on_bio?: boolean;
 };
 
 export type ShortLinkUpdate = Partial<
   Pick<
     ShortLink,
     'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active' | 'archived_at'
-    | 'folder_id' | 'starts_at' | 'expires_at' | 'expired_redirect_url'
+    | 'folder_id' | 'starts_at' | 'expires_at' | 'expired_redirect_url' | 'show_on_bio'
   >
 >;
 
