@@ -26,6 +26,16 @@ function byBioOrder(a: ShortLink, b: ShortLink): number {
   return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 }
 
+// Defensively coerce to absolute URL — the env var sometimes gets set without
+// a protocol, in which case <a href="read.melissacummins.com"> is treated as
+// a relative path and routes to /read.melissacummins.com on the current host.
+function absoluteUrl(raw: string): string {
+  if (!raw) return '';
+  return raw.startsWith('http://') || raw.startsWith('https://')
+    ? raw
+    : `https://${raw}`;
+}
+
 export default function BioPagePanel({ links, onUpdated }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -45,8 +55,9 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     [bioLinks],
   );
 
-  const publicBioUrl =
-    (import.meta.env.VITE_SHORT_LINK_BASE_URL as string | undefined) || '';
+  const publicBioUrl = absoluteUrl(
+    (import.meta.env.VITE_SHORT_LINK_BASE_URL as string | undefined) || '',
+  );
 
   async function handleDragEnd(event: DragEndEvent, list: ShortLink[]) {
     const { active, over } = event;
