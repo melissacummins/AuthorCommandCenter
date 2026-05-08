@@ -4,21 +4,24 @@ import Modal from '../../../components/Modal';
 import { useAuth } from '../../../contexts/AuthContext';
 import { createLink, generateUniqueSlug, isSlugAvailable } from '../api';
 import { isValidSlug, isValidUrl, normalizeUrl } from '../utils';
-import type { ShortLink } from '../types';
+import type { LinkFolder, ShortLink } from '../types';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   onCreated: (link: ShortLink) => void;
   parent?: ShortLink | null;
+  folders: LinkFolder[];
+  defaultFolderId?: string | null;
 }
 
-export default function CreateLinkModal({ open, onClose, onCreated, parent }: Props) {
+export default function CreateLinkModal({ open, onClose, onCreated, parent, folders, defaultFolderId }: Props) {
   const { user } = useAuth();
   const [slug, setSlug] = useState('');
   const [destination, setDestination] = useState('');
   const [label, setLabel] = useState('');
   const [channel, setChannel] = useState('');
+  const [folderId, setFolderId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'taken' | 'invalid' | 'ok'>('idle');
@@ -30,6 +33,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent }: Pr
     setLabel(parent ? `${parent.label || parent.slug} — ` : '');
     setDestination(parent?.destination_url ?? '');
     setChannel('');
+    setFolderId(parent?.folder_id ?? defaultFolderId ?? null);
     setSlugStatus('idle');
     void rollSlug();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -84,6 +88,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent }: Pr
         tags: [],
         is_active: true,
         parent_id: parent?.id ?? null,
+        folder_id: folderId,
       });
       onCreated(link);
       onClose();
@@ -140,14 +145,29 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent }: Pr
           <p className="mt-1 text-xs text-slate-500">You can change this later — the short URL stays the same.</p>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Internal label (optional)</label>
-          <input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
-            placeholder="Book launch — main"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Internal label</label>
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              placeholder="Optional"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Folder</label>
+            <select
+              value={folderId ?? ''}
+              onChange={(e) => setFolderId(e.target.value || null)}
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              <option value="">No folder</option>
+              {folders.map((f) => (
+                <option key={f.id} value={f.id}>{f.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {parent && (
