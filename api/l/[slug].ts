@@ -5,6 +5,12 @@
 // query param to the destination so downstream sites can pass it back
 // through to conversion webhooks, and logs a click row.
 //
+// For known social-platform crawlers (Twitterbot, Facebookexternalhit,
+// Slackbot, Discordbot, etc.), instead of redirecting we serve an HTML
+// page with Open Graph metadata copied from the destination so shared
+// short links show a real preview card. OG metadata is cached in
+// link_og_cache for 7 days, keyed by destination_url.
+//
 // Branded HTML helpers are inlined here on purpose: Vercel's bundler does
 // not reliably pick up files from api/_lib/* subdirectories, and a missing
 // import shows up as FUNCTION_INVOCATION_FAILED before the handler runs.
@@ -13,7 +19,7 @@
 //   SUPABASE_URL                 - same as VITE_SUPABASE_URL
 //   SUPABASE_SERVICE_ROLE_KEY    - server-side only
 //   IP_HASH_SALT                 - any random string
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createHash, randomUUID } from 'node:crypto';
 
 type VercelRequest = {
@@ -59,32 +65,9 @@ function brandShell(title: string, heading: string, body: string): string {
 <style>
 :root { color-scheme: light; }
 * { box-sizing: border-box; }
-body {
-  margin: 0; min-height: 100vh;
-  display: grid; place-items: center;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  background: linear-gradient(180deg, #fafafc 0%, #f1f5f9 100%);
-  color: #1e293b;
-}
-.card {
-  max-width: 480px;
-  margin: 24px;
-  padding: 40px 36px;
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.18);
-  text-align: center;
-}
-.dot {
-  width: 56px; height: 56px;
-  margin: 0 auto 20px;
-  border-radius: 18px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  display: grid; place-items: center;
-  color: #fff; font-weight: 700; font-size: 22px;
-  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.5);
-}
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: linear-gradient(180deg, #fafafc 0%, #f1f5f9 100%); color: #1e293b; }
+.card { max-width: 480px; margin: 24px; padding: 40px 36px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.18); text-align: center; }
+.dot { width: 56px; height: 56px; margin: 0 auto 20px; border-radius: 18px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 22px; box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.5); }
 h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.01em; }
 p { margin: 0; color: #64748b; line-height: 1.55; font-size: 15px; }
 .brand { margin-top: 28px; font-size: 12px; color: #94a3b8; letter-spacing: 0.04em; text-transform: uppercase; }
@@ -106,24 +89,15 @@ function notFoundPage(message: string): string {
 }
 
 function expiredPage(): string {
-  return brandShell(
-    'This link has expired',
-    'This link has expired',
-    `<p>The page you're looking for is no longer available. Check back soon or follow along on the author's main site.</p>`,
-  );
+  return brandShell('This link has expired', 'This link has expired', `<p>The page you're looking for is no longer available. Check back soon or follow along on the author's main site.</p>`);
 }
 
 function comingSoonPage(startsAtISO: string): string {
   const when = new Date(startsAtISO);
   const formatted = when.toLocaleString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric',
-    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+    weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
   });
-  return brandShell(
-    'Coming soon',
-    'Coming soon',
-    `<p>This link goes live <strong>${escapeHtml(formatted)}</strong>. Bookmark this page and check back then.</p>`,
-  );
+  return brandShell('Coming soon', 'Coming soon', `<p>This link goes live <strong>${escapeHtml(formatted)}</strong>. Bookmark this page and check back then.</p>`);
 }
 
 function deactivatedPage(): string {
@@ -134,6 +108,135 @@ function sendHtml(res: VercelResponse, html: string, status: number) {
   res.setHeader('content-type', 'text/html; charset=utf-8');
   res.setHeader('cache-control', 'no-store');
   res.status(status).send(html);
+}
+
+// ---- OG preview helpers ----
+
+interface OGData {
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  siteName: string | null;
+}
+
+function isSocialCrawler(ua: string): boolean {
+  return /facebookexternalhit|twitterbot|slackbot|linkedinbot|discordbot|telegrambot|whatsapp|redditbot|pinterest|skypeuripreview|bingbot|googlebot/i.test(ua);
+}
+
+function metaContent(html: string, prop: string): string | null {
+  const tagRe = /<meta\s+([^>]+?)\/?>/gi;
+  const propLower = prop.toLowerCase();
+  let m: RegExpExecArray | null;
+  while ((m = tagRe.exec(html)) !== null) {
+    const attrs = m[1];
+    const propM = attrs.match(/(?:property|name)\s*=\s*["']([^"']+)["']/i);
+    if (propM && propM[1].toLowerCase() === propLower) {
+      const cM = attrs.match(/content\s*=\s*["']([^"']*)["']/i);
+      if (cM) return cM[1];
+    }
+  }
+  return null;
+}
+
+function parseOg(html: string, baseUrl: string): OGData | null {
+  const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+  const titleTag = titleTagMatch ? titleTagMatch[1].trim() : null;
+  const title = metaContent(html, 'og:title') ?? metaContent(html, 'twitter:title') ?? titleTag;
+  const description = metaContent(html, 'og:description') ?? metaContent(html, 'twitter:description') ?? metaContent(html, 'description');
+  const imageRaw = metaContent(html, 'og:image') ?? metaContent(html, 'twitter:image');
+  const siteName = metaContent(html, 'og:site_name');
+  let image: string | null = null;
+  if (imageRaw) {
+    try { image = new URL(imageRaw, baseUrl).toString(); } catch { /* ignore */ }
+  }
+  if (!title && !description && !image) return null;
+  return { title, description, image, siteName };
+}
+
+async function fetchOg(url: string): Promise<OGData | null> {
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const r = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; AuthorCommandCenterBot/1.0; +https://read.melissacummins.com)',
+        Accept: 'text/html,*/*;q=0.8',
+      },
+      redirect: 'follow',
+      signal: ctrl.signal,
+    });
+    clearTimeout(timer);
+    if (!r.ok) return null;
+    const html = await r.text();
+    return parseOg(html, r.url || url);
+  } catch {
+    return null;
+  }
+}
+
+async function getOg(supabase: SupabaseClient, destinationUrl: string): Promise<OGData | null> {
+  try {
+    const { data: cached } = await supabase
+      .from('link_og_cache')
+      .select('og_title, og_description, og_image, og_site_name, expires_at')
+      .eq('destination_url', destinationUrl)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle();
+    if (cached) {
+      return {
+        title: cached.og_title,
+        description: cached.og_description,
+        image: cached.og_image,
+        siteName: cached.og_site_name,
+      };
+    }
+  } catch {
+    // table may not exist yet pre-migration; fall through to fetch
+  }
+  const og = await fetchOg(destinationUrl);
+  if (og) {
+    void supabase
+      .from('link_og_cache')
+      .upsert({
+        destination_url: destinationUrl,
+        og_title: og.title,
+        og_description: og.description,
+        og_image: og.image,
+        og_site_name: og.siteName,
+        fetched_at: new Date().toISOString(),
+        expires_at: new Date(Date.now() + 7 * 86400 * 1000).toISOString(),
+      }, { onConflict: 'destination_url' })
+      .then(() => undefined, () => undefined);
+  }
+  return og;
+}
+
+function ogPreviewHtml(shortUrl: string, destination: string, og: OGData): string {
+  const e = escapeHtml;
+  const title = og.title || 'Link';
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>${e(title)}</title>
+${og.title ? `<meta property="og:title" content="${e(og.title)}" />` : ''}
+${og.description ? `<meta property="og:description" content="${e(og.description)}" />` : ''}
+${og.image ? `<meta property="og:image" content="${e(og.image)}" />` : ''}
+<meta property="og:url" content="${e(shortUrl)}" />
+<meta property="og:type" content="website" />
+${og.siteName ? `<meta property="og:site_name" content="${e(og.siteName)}" />` : ''}
+<meta name="twitter:card" content="${og.image ? 'summary_large_image' : 'summary'}" />
+${og.title ? `<meta name="twitter:title" content="${e(og.title)}" />` : ''}
+${og.description ? `<meta name="twitter:description" content="${e(og.description)}" />` : ''}
+${og.image ? `<meta name="twitter:image" content="${e(og.image)}" />` : ''}
+<meta http-equiv="refresh" content="0;url=${e(destination)}" />
+<link rel="canonical" href="${e(destination)}" />
+</head>
+<body>
+<p>Redirecting to <a href="${e(destination)}">${e(title)}</a>...</p>
+</body>
+</html>`;
 }
 
 // ---- UA / device helpers ----
@@ -292,6 +395,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         click_id: clickId,
       })
       .then(() => undefined, () => undefined);
+
+    // Social-platform crawler? Serve OG-tagged HTML so shared short links
+    // show a real preview card. Real users hit the redirect path below.
+    if (isSocialCrawler(ua)) {
+      const og = await getOg(supabase, link.destination_url);
+      if (og) {
+        const proto = header(req, 'x-forwarded-proto') || 'https';
+        const host = header(req, 'host') || 'read.melissacummins.com';
+        const shortUrl = `${proto}://${host}/${slug}`;
+        sendHtml(res, ogPreviewHtml(shortUrl, destination, og), 200);
+        return;
+      }
+      // Fall through to redirect if OG unavailable.
+    }
 
     res.setHeader('cache-control', 'no-store');
     res.setHeader('location', destination);

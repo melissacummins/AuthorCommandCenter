@@ -11,6 +11,9 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/sortable": "^10.0.0",
+    "@dnd-kit/utilities": "^3.2.2",
     "@supabase/supabase-js": "^2.49.4",
     "@tailwindcss/vite": "^4.1.14",
     "@vercel/edge": "^1.1.4",
