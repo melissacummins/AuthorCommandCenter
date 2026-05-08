@@ -62,6 +62,16 @@ export async function deleteLink(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// Reorders bio links by writing fresh bio_sort_order indices in parallel.
+// Pass an array of link IDs in the desired order; each gets index 0..n-1.
+export async function reorderBioLinks(orderedIds: string[]): Promise<void> {
+  await Promise.all(
+    orderedIds.map((id, idx) =>
+      supabase.from('short_links').update({ bio_sort_order: idx }).eq('id', id),
+    ),
+  );
+}
+
 // ============ Folders ============
 
 export async function listFolders(userId: string): Promise<LinkFolder[]> {
