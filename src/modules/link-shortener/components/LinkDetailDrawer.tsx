@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   X, Copy, ExternalLink, Save, Trash2, Plus, Power, ArchiveRestore,
   Loader2, Globe, Tag, Smartphone, Clock, Bot, QrCode, DollarSign, Calendar, FolderIcon,
-  Eye,
+  Layout, CircleDot,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { deleteLink, listClicks, updateLink } from '../api';
@@ -10,6 +10,7 @@ import {
   buildShortUrl, formatNumber, inputLocalToIso, isoToInputLocal, isValidUrl,
   normalizeUrl, timeAgo,
 } from '../utils';
+import { detectSocialPlatform, SOCIAL_NAMES } from '../socialIcons';
 import type { LinkClick, LinkFolder, ShortLink } from '../types';
 import QRCodeBlock from './QRCodeBlock';
 import ConversionsList from './ConversionsList';
@@ -42,6 +43,8 @@ export default function LinkDetailDrawer({
   const [expiresAt, setExpiresAt] = useState(isoToInputLocal(link.expires_at));
   const [expiredRedirect, setExpiredRedirect] = useState(link.expired_redirect_url ?? '');
   const [showOnBio, setShowOnBio] = useState<boolean>(link.show_on_bio ?? true);
+  const [bioTitle, setBioTitle] = useState<string>(link.bio_title ?? '');
+  const [bioStyle, setBioStyle] = useState<'card' | 'icon'>(link.bio_style ?? 'card');
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,6 +64,8 @@ export default function LinkDetailDrawer({
     setExpiresAt(isoToInputLocal(link.expires_at));
     setExpiredRedirect(link.expired_redirect_url ?? '');
     setShowOnBio(link.show_on_bio ?? true);
+    setBioTitle(link.bio_title ?? '');
+    setBioStyle(link.bio_style ?? 'card');
     setError(null);
   }, [link.id]);
 
@@ -82,6 +87,12 @@ export default function LinkDetailDrawer({
     [allLinks, link.parent_id],
   );
 
+  const detectedPlatform = useMemo(
+    () => detectSocialPlatform(destination || link.destination_url),
+    [destination, link.destination_url],
+  );
+  const detectedPlatformName = SOCIAL_NAMES[detectedPlatform];
+
   const hasChanges =
     label !== link.label ||
     destination !== link.destination_url ||
@@ -92,7 +103,9 @@ export default function LinkDetailDrawer({
     startsAt !== isoToInputLocal(link.starts_at) ||
     expiresAt !== isoToInputLocal(link.expires_at) ||
     expiredRedirect !== (link.expired_redirect_url ?? '') ||
-    showOnBio !== (link.show_on_bio ?? true);
+    showOnBio !== (link.show_on_bio ?? true) ||
+    bioTitle !== (link.bio_title ?? '') ||
+    bioStyle !== (link.bio_style ?? 'card');
 
   async function copyUrl() {
     try {
@@ -128,6 +141,8 @@ export default function LinkDetailDrawer({
         expires_at: inputLocalToIso(expiresAt),
         expired_redirect_url: expiredRedirect.trim() ? normalizeUrl(expiredRedirect) : null,
         show_on_bio: showOnBio,
+        bio_title: bioTitle.trim(),
+        bio_style: bioStyle,
       });
       onUpdated(updated);
     } catch (e) {
@@ -251,13 +266,13 @@ export default function LinkDetailDrawer({
           {parent && (
             <div className="mb-4 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-600">
               Channel variant of <span className="font-mono text-indigo-600">/{parent.slug}</span>
-              {parent.label && <span> — {parent.label}</span>}
+              {parent.label && <span> {parent.label}</span>}
             </div>
           )}
 
           {tab === 'edit' && (
             <div className="space-y-4">
-              <Field label="Internal label">
+              <Field label="Internal label" hint="Only you see this. Used in the dashboard.">
                 <input
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
@@ -295,35 +310,68 @@ export default function LinkDetailDrawer({
                 </Field>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowOnBio((v) => !v)}
-                className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 transition ${
-                  showOnBio
-                    ? 'border-indigo-200 bg-indigo-50/60'
-                    : 'border-slate-200 bg-slate-50/60'
-                }`}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <Eye className={`w-4 h-4 ${showOnBio ? 'text-indigo-600' : 'text-slate-400'}`} />
-                  <div className="text-left min-w-0">
-                    <div className="text-sm font-medium text-slate-700">Show on bio page</div>
-                    <div className="text-xs text-slate-500">Visible to readers on your link-in-bio page.</div>
-                  </div>
-                </div>
-                <span
-                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                    showOnBio ? 'bg-indigo-600' : 'bg-slate-300'
-                  }`}
-                  aria-hidden="true"
+              <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-indigo-50/30">
+                <button
+                  type="button"
+                  onClick={() => setShowOnBio((v) => !v)}
+                  className="w-full flex items-center justify-between"
                 >
+                  <div className="flex items-center gap-2 min-w-0 text-left">
+                    <Layout className={`w-4 h-4 ${showOnBio ? 'text-indigo-600' : 'text-slate-400'}`} />
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-slate-700">Show on bio page</div>
+                      <div className="text-xs text-slate-500">Visible to readers on your link-in-bio page.</div>
+                    </div>
+                  </div>
                   <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      showOnBio ? 'translate-x-6' : 'translate-x-1'
+                    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                      showOnBio ? 'bg-indigo-600' : 'bg-slate-300'
                     }`}
-                  />
-                </span>
-              </button>
+                    aria-hidden="true"
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        showOnBio ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </span>
+                </button>
+
+                {showOnBio && (
+                  <div className="space-y-3 pt-3 border-t border-indigo-100">
+                    <Field label="Public title" hint="What readers see on the bio page. Falls back to the internal label if blank.">
+                      <input
+                        value={bioTitle}
+                        onChange={(e) => setBioTitle(e.target.value)}
+                        placeholder={label || `/${link.slug}`}
+                        className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                      />
+                    </Field>
+
+                    <div>
+                      <label className="text-sm font-medium text-slate-700 mb-1 flex items-center gap-1.5">
+                        Display style
+                      </label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <StyleOption
+                          selected={bioStyle === 'card'}
+                          onClick={() => setBioStyle('card')}
+                          icon={<Layout className="w-4 h-4" />}
+                          label="Card"
+                          hint="Full-width clickable button."
+                        />
+                        <StyleOption
+                          selected={bioStyle === 'icon'}
+                          onClick={() => setBioStyle('icon')}
+                          icon={<CircleDot className="w-4 h-4" />}
+                          label="Social icon"
+                          hint={`Compact circle (${detectedPlatformName})`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="rounded-xl border border-slate-200 p-4 space-y-3 bg-slate-50/50">
                 <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
@@ -502,5 +550,27 @@ function Field({ label, hint, icon, children }: { label: string; hint?: string; 
       {children}
       {hint && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
     </div>
+  );
+}
+
+function StyleOption({
+  selected, onClick, icon, label, hint,
+}: { selected: boolean; onClick: () => void; icon: ReactNode; label: string; hint: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex flex-col items-start gap-1 px-3 py-2.5 rounded-lg border text-left transition ${
+        selected
+          ? 'border-indigo-500 bg-white ring-2 ring-indigo-200'
+          : 'border-slate-200 bg-white hover:border-slate-300'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 text-sm font-medium text-slate-700">
+        {icon}
+        {label}
+      </div>
+      <span className="text-xs text-slate-500 truncate w-full">{hint}</span>
+    </button>
   );
 }
