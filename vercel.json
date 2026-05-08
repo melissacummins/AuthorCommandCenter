@@ -1,5 +1,10 @@
 {
   "rewrites": [
+    {
+      "source": "/:slug([A-Za-z0-9_-]{3,40})",
+      "has": [{ "type": "host", "value": "go.melissacummins.com" }],
+      "destination": "/api/l/:slug"
+    },
     { "source": "/l/:slug", "destination": "/api/l/:slug" },
     { "source": "/((?!api/|l/).*)", "destination": "/index.html" }
   ]

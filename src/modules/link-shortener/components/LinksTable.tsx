@@ -1,26 +1,43 @@
-import { Copy, ExternalLink, Search, ChevronRight, Tag } from 'lucide-react';
-import { useMemo, useState } from 'react';
-import type { ShortLink } from '../types';
-import { buildShortUrl, formatNumber, timeAgo } from '../utils';
+import { useMemo, useState, type ReactNode } from 'react';
+import { Filter, ArrowUpDown, Search } from 'lucide-react';
+import LinkCard from './LinkCard';
+import type { LinkFolder, ShortLink } from '../types';
+import { linkStatus } from '../utils';
+
+type StatusFilter = 'all' | 'live' | 'scheduled' | 'expired' | 'inactive' | 'archived';
+type SortKey = 'newest' | 'oldest' | 'most_clicked' | 'most_revenue';
 
 interface Props {
   links: ShortLink[];
+  folders: LinkFolder[];
+  selectedFolderId: string | null | 'unassigned';
   onSelect: (link: ShortLink) => void;
-  onCopied?: (slug: string) => void;
+  onCopy: (slug: string) => void;
+  onAddVariant: (parent: ShortLink) => void;
+  onShowQr: (link: ShortLink) => void;
+  onToggleActive: (link: ShortLink) => void;
+  onDelete: (link: ShortLink) => void;
 }
 
-export default function LinksTable({ links, onSelect, onCopied }: Props) {
+export default function LinksTable({
+  links, folders, selectedFolderId, onSelect, onCopy,
+  onAddVariant, onShowQr, onToggleActive, onDelete,
+}: Props) {
   const [query, setQuery] = useState('');
-  const [showArchived, setShowArchived] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('newest');
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const parents = useMemo(() => links.filter((l) => !l.parent_id), [links]);
   const childrenByParent = useMemo(() => {
     const map = new Map<string, ShortLink[]>();
     for (const l of links) {
       if (l.parent_id) {
-        const existing = map.get(l.parent_id) ?? [];
-        existing.push(l);
-        map.set(l.parent_id, existing);
+        const list = map.get(l.parent_id) ?? [];
+        list.push(l);
+        map.set(l.parent_id, list);
       }
     }
     return map;
@@ -28,138 +45,195 @@ export default function LinksTable({ links, onSelect, onCopied }: Props) {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return parents.filter((l) => {
-      if (!showArchived && (l.archived_at || !l.is_active)) return false;
+    let result = parents.filter((l) => {
+      if (selectedFolderId === 'unassigned' && l.folder_id) return false;
+      if (selectedFolderId && selectedFolderId !== 'unassigned' && l.folder_id !== selectedFolderId) return false;
+      if (statusFilter !== 'all') {
+        const status = linkStatus(l);
+        if (status.tone !== statusFilter) return false;
+      } else {
+        if (l.archived_at) return false;
+      }
       if (!q) return true;
-      const haystack = [
-        l.slug,
-        l.label,
-        l.destination_url,
-        l.channel,
-        ...(l.tags ?? []),
-      ].join(' ').toLowerCase();
+      const haystack = [l.slug, l.label, l.destination_url, l.channel, ...(l.tags ?? [])].join(' ').toLowerCase();
       const childMatch = (childrenByParent.get(l.id) ?? []).some((c) =>
         [c.slug, c.label, c.channel].join(' ').toLowerCase().includes(q),
       );
       return haystack.includes(q) || childMatch;
     });
-  }, [parents, query, showArchived, childrenByParent]);
 
-  async function copyUrl(slug: string) {
-    try {
-      await navigator.clipboard.writeText(buildShortUrl(slug));
-      onCopied?.(slug);
-    } catch {
-      // ignore
-    }
+    result = [...result].sort((a, b) => {
+      switch (sortKey) {
+        case 'oldest':
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        case 'most_clicked':
+          return b.click_count - a.click_count;
+        case 'most_revenue':
+          return b.conversion_value - a.conversion_value;
+        case 'newest':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+    return result;
+  }, [parents, query, selectedFolderId, statusFilter, sortKey, childrenByParent]);
+
+  function toggleExpand(id: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-slate-200">
-        <div className="relative flex-1 min-w-[220px]">
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <DropDown
+          label={statusFilter === 'all' ? 'Filter' : `Filter: ${statusFilter}`}
+          icon={<Filter className="w-3.5 h-3.5" />}
+          open={filterOpen}
+          onToggle={() => {
+            setFilterOpen((v) => !v);
+            setSortOpen(false);
+          }}
+        >
+          {(['all', 'live', 'scheduled', 'expired', 'inactive', 'archived'] as StatusFilter[]).map((s) => (
+            <div key={s}>
+              <DropOption
+                active={statusFilter === s}
+                onClick={() => {
+                  setStatusFilter(s);
+                  setFilterOpen(false);
+                }}
+              >
+                {s === 'all' ? 'All active' : s.charAt(0).toUpperCase() + s.slice(1)}
+              </DropOption>
+            </div>
+          ))}
+        </DropDown>
+
+        <DropDown
+          label={`Display: ${SORT_LABEL[sortKey]}`}
+          icon={<ArrowUpDown className="w-3.5 h-3.5" />}
+          open={sortOpen}
+          onToggle={() => {
+            setSortOpen((v) => !v);
+            setFilterOpen(false);
+          }}
+        >
+          {(Object.keys(SORT_LABEL) as SortKey[]).map((s) => (
+            <div key={s}>
+              <DropOption
+                active={sortKey === s}
+                onClick={() => {
+                  setSortKey(s);
+                  setSortOpen(false);
+                }}
+              >
+                {SORT_LABEL[s]}
+              </DropOption>
+            </div>
+          ))}
+        </DropDown>
+
+        <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search slug, label, URL, channel…"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            placeholder="Search by short link or URL"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} className="rounded text-indigo-600" />
-          Show archived / inactive
-        </label>
       </div>
 
-      <div className="divide-y divide-slate-100">
-        {filtered.length === 0 ? (
-          <div className="px-5 py-12 text-center text-sm text-slate-400">
-            {query ? 'No links match your search.' : 'No links yet — create your first short link.'}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-slate-200 px-6 py-16 text-center">
+          <div className="text-sm text-slate-500">
+            {query
+              ? 'No links match your search.'
+              : selectedFolderId === 'unassigned'
+              ? 'No links in this view.'
+              : 'No links yet — create your first short link.'}
           </div>
-        ) : (
-          filtered.map((link) => {
-            const kids = childrenByParent.get(link.id) ?? [];
-            return (
-              <div key={link.id}>
-                <Row link={link} onSelect={onSelect} onCopy={copyUrl} />
-                {kids.length > 0 && (
-                  <div className="bg-slate-50/50 border-t border-slate-100">
-                    {kids.map((child) => (
-                      <div key={child.id}>
-                        <Row link={child} onSelect={onSelect} onCopy={copyUrl} indent />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((link) => (
+            <div key={link.id}>
+              <LinkCard
+                link={link}
+                variants={childrenByParent.get(link.id) ?? []}
+                folders={folders}
+                expanded={expanded.has(link.id)}
+                onToggleExpand={() => toggleExpand(link.id)}
+                onSelect={onSelect}
+                onCopy={onCopy}
+                onAddVariant={onAddVariant}
+                onShowQr={onShowQr}
+                onToggleActive={onToggleActive}
+                onDelete={onDelete}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-interface RowProps {
-  link: ShortLink;
-  onSelect: (l: ShortLink) => void;
-  onCopy: (slug: string) => void;
-  indent?: boolean;
+const SORT_LABEL: Record<SortKey, string> = {
+  newest: 'Newest',
+  oldest: 'Oldest',
+  most_clicked: 'Most clicks',
+  most_revenue: 'Most revenue',
+};
+
+interface DropDownProps {
+  label: string;
+  icon: ReactNode;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
 }
 
-function Row({ link, onSelect, onCopy, indent }: RowProps) {
-  const inactive = !link.is_active || !!link.archived_at;
+function DropDown({ label, icon, open, onToggle, children }: DropDownProps) {
   return (
-    <div
-      onClick={() => onSelect(link)}
-      className={`flex items-center gap-3 px-5 py-3 hover:bg-indigo-50/40 cursor-pointer transition-colors ${indent ? 'pl-12' : ''} ${inactive ? 'opacity-60' : ''}`}
-    >
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-sm font-semibold text-indigo-600">/{link.slug}</span>
-          {link.channel && (
-            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-              <Tag className="w-3 h-3" />
-              {link.channel}
-            </span>
-          )}
-          {inactive && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">inactive</span>
-          )}
-          {link.label && <span className="text-sm text-slate-700 truncate">{link.label}</span>}
-        </div>
-        <div className="text-xs text-slate-500 truncate mt-0.5">→ {link.destination_url}</div>
-      </div>
-
-      <div className="hidden md:flex flex-col items-end text-right shrink-0">
-        <div className="text-sm font-semibold text-slate-700 tabular-nums">{formatNumber(link.click_count)}</div>
-        <div className="text-xs text-slate-400">clicks · {timeAgo(link.last_clicked_at)}</div>
-      </div>
-
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onCopy(link.slug);
-          }}
-          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg"
-          title="Copy short URL"
-        >
-          <Copy className="w-4 h-4" />
-        </button>
-        <a
-          href={link.destination_url}
-          target="_blank"
-          rel="noreferrer noopener"
-          onClick={(e) => e.stopPropagation()}
-          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-white rounded-lg"
-          title="Open destination"
-        >
-          <ExternalLink className="w-4 h-4" />
-        </a>
-        <ChevronRight className="w-4 h-4 text-slate-300" />
-      </div>
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+      >
+        {icon}
+        {label}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-30" onClick={onToggle} />
+          <div className="absolute left-0 top-10 z-40 min-w-[180px] bg-white rounded-xl border border-slate-200 shadow-lg py-1 text-sm">
+            {children}
+          </div>
+        </>
+      )}
     </div>
+  );
+}
+
+interface DropOptionProps {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}
+
+function DropOption({ active, onClick, children }: DropOptionProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-3 py-1.5 ${active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
+    >
+      {children}
+    </button>
   );
 }

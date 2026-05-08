@@ -1,12 +1,19 @@
 // Public link redirect endpoint.
-// Looks up the slug in Supabase, logs a click with detailed UA + geo info,
-// and 302s to the destination URL.
+//
+// Resolves a slug, enforces schedule/expire rules (showing branded pages
+// when the link is not active), generates a click_id, appends it as a URL
+// query param to the destination so downstream sites (e.g. Shopify) can
+// pass it back through to conversion webhooks, and logs a click row.
 //
 // Required env vars on Vercel:
 //   SUPABASE_URL                 - same as VITE_SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY    - server-side only, never expose to client
+//   SUPABASE_SERVICE_ROLE_KEY    - server-side only
+//   IP_HASH_SALT                 - any random string
 import { createClient } from '@supabase/supabase-js';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
+import {
+  comingSoonPage, deactivatedPage, expiredPage, htmlResponse, notFoundPage,
+} from '../_lib/branded-pages';
 
 type VercelRequest = {
   query: Record<string, string | string[] | undefined>;
@@ -22,13 +29,10 @@ type VercelResponse = {
   end: () => void;
 };
 
-function notFound(res: VercelResponse, message: string) {
-  res.status(404).setHeader('content-type', 'text/html; charset=utf-8').send(
-    `<!doctype html><meta charset="utf-8"><title>Link not found</title>
-     <style>body{font-family:system-ui,sans-serif;max-width:520px;margin:80px auto;padding:0 24px;color:#1e293b}
-     h1{font-size:24px;margin:0 0 12px}p{color:#64748b;line-height:1.5}</style>
-     <h1>Link not found</h1><p>${message}</p>`
-  );
+function header(req: VercelRequest, name: string): string {
+  const v = req.headers[name];
+  if (Array.isArray(v)) return v[0] ?? '';
+  return v ?? '';
 }
 
 function detectDevice(ua: string): string {
@@ -63,18 +67,11 @@ function isBot(ua: string): boolean {
   return /bot|crawler|spider|crawling|facebookexternalhit|slackbot|twitterbot|linkedinbot|discordbot|telegrambot|whatsapp|preview/i.test(ua);
 }
 
-function header(req: VercelRequest, name: string): string {
-  const v = req.headers[name];
-  if (Array.isArray(v)) return v[0] ?? '';
-  return v ?? '';
-}
-
-function appendUtmIfMissing(url: string, channel: string): string {
-  if (!channel) return url;
+function appendParams(url: string, params: Record<string, string>): string {
   try {
     const u = new URL(url);
-    if (!u.searchParams.has('utm_source')) {
-      u.searchParams.set('utm_source', channel.toLowerCase().replace(/\s+/g, '_'));
+    for (const [k, v] of Object.entries(params)) {
+      if (!u.searchParams.has(k)) u.searchParams.set(k, v);
     }
     return u.toString();
   } catch {
@@ -82,12 +79,18 @@ function appendUtmIfMissing(url: string, channel: string): string {
   }
 }
 
+function sendHtml(res: VercelResponse, html: string, status: number) {
+  const r = htmlResponse(html, status);
+  for (const [k, v] of Object.entries(r.headers)) res.setHeader(k, v);
+  res.status(r.status).send(r.body);
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const slugParam = req.query.slug;
   const slug = Array.isArray(slugParam) ? slugParam[0] : slugParam;
 
   if (!slug || typeof slug !== 'string') {
-    return notFound(res, 'No link provided.');
+    return sendHtml(res, notFoundPage('No link provided.'), 404);
   }
 
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -103,22 +106,44 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: link, error } = await supabase
     .from('short_links')
-    .select('id, user_id, destination_url, channel, is_active, archived_at')
+    .select('id, user_id, destination_url, channel, is_active, archived_at, starts_at, expires_at, expired_redirect_url')
     .eq('slug', slug)
     .maybeSingle();
 
   if (error || !link) {
-    return notFound(res, 'This short link does not exist or was removed.');
+    return sendHtml(res, notFoundPage('This short link does not exist or was removed.'), 404);
   }
+
+  // Look up the user's preferred attribution param name (defaults to 'click_id').
+  const { data: settings } = await supabase
+    .from('link_attribution_settings')
+    .select('click_id_param')
+    .eq('user_id', link.user_id)
+    .maybeSingle();
+  const clickIdParam = settings?.click_id_param || 'click_id';
+
   if (!link.is_active || link.archived_at) {
-    return notFound(res, 'This link has been deactivated.');
+    return sendHtml(res, deactivatedPage(), 410);
+  }
+
+  const now = Date.now();
+  if (link.starts_at && new Date(link.starts_at).getTime() > now) {
+    return sendHtml(res, comingSoonPage(link.starts_at), 200);
+  }
+  if (link.expires_at && new Date(link.expires_at).getTime() <= now) {
+    if (link.expired_redirect_url) {
+      res.setHeader('cache-control', 'no-store');
+      res.setHeader('location', link.expired_redirect_url);
+      res.status(302).end();
+      return;
+    }
+    return sendHtml(res, expiredPage(), 410);
   }
 
   const ua = header(req, 'user-agent');
   const referrer = header(req, 'referer') || header(req, 'referrer');
   const language = (header(req, 'accept-language').split(',')[0] || '').trim();
 
-  // Vercel sets these geolocation headers on every request.
   const country = header(req, 'x-vercel-ip-country');
   const region = header(req, 'x-vercel-ip-country-region');
   const city = decodeURIComponent(header(req, 'x-vercel-ip-city') || '');
@@ -131,7 +156,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ? createHash('sha256').update(ip + (process.env.IP_HASH_SALT || 'inventorypro')).digest('hex').slice(0, 16)
     : '';
 
-  const destination = appendUtmIfMissing(link.destination_url, link.channel || '');
+  const clickId = randomUUID();
+  const destination = appendParams(link.destination_url, {
+    [clickIdParam]: clickId,
+    ...(link.channel ? { utm_source: link.channel.toLowerCase().replace(/\s+/g, '_') } : {}),
+  });
 
   // Fire-and-forget click logging; never block the redirect.
   void supabase
@@ -153,6 +182,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ip_hash: ipHash,
       language,
       is_bot: isBot(ua),
+      click_id: clickId,
     })
     .then(() => undefined);
 
