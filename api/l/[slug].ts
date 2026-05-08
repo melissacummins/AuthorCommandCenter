@@ -2,8 +2,12 @@
 //
 // Resolves a slug, enforces schedule/expire rules (showing branded pages
 // when the link is not active), generates a click_id, appends it as a URL
-// query param to the destination so downstream sites (e.g. Shopify) can
-// pass it back through to conversion webhooks, and logs a click row.
+// query param to the destination so downstream sites can pass it back
+// through to conversion webhooks, and logs a click row.
+//
+// Branded HTML helpers are inlined here on purpose: Vercel's bundler does
+// not reliably pick up files from api/_lib/* subdirectories, and a missing
+// import shows up as FUNCTION_INVOCATION_FAILED before the handler runs.
 //
 // Required env vars on Vercel:
 //   SUPABASE_URL                 - same as VITE_SUPABASE_URL
@@ -11,9 +15,6 @@
 //   IP_HASH_SALT                 - any random string
 import { createClient } from '@supabase/supabase-js';
 import { createHash, randomUUID } from 'node:crypto';
-import {
-  comingSoonPage, deactivatedPage, expiredPage, htmlResponse, notFoundPage,
-} from '../_lib/branded-pages';
 
 type VercelRequest = {
   query: Record<string, string | string[] | undefined>;
@@ -36,12 +37,106 @@ function header(req: VercelRequest, name: string): string {
 }
 
 function safeDecode(s: string): string {
-  try {
-    return decodeURIComponent(s);
-  } catch {
-    return s;
-  }
+  try { return decodeURIComponent(s); } catch { return s; }
 }
+
+// ---- Branded HTML helpers (inlined) ----
+
+const BRAND = 'Author Command Center';
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+function brandShell(title: string, heading: string, body: string): string {
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>${escapeHtml(title)}</title>
+<style>
+:root { color-scheme: light; }
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh;
+  display: grid; place-items: center;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  background: linear-gradient(180deg, #fafafc 0%, #f1f5f9 100%);
+  color: #1e293b;
+}
+.card {
+  max-width: 480px;
+  margin: 24px;
+  padding: 40px 36px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 20px;
+  box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.18);
+  text-align: center;
+}
+.dot {
+  width: 56px; height: 56px;
+  margin: 0 auto 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  display: grid; place-items: center;
+  color: #fff; font-weight: 700; font-size: 22px;
+  box-shadow: 0 12px 24px -10px rgba(99, 102, 241, 0.5);
+}
+h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -0.01em; }
+p { margin: 0; color: #64748b; line-height: 1.55; font-size: 15px; }
+.brand { margin-top: 28px; font-size: 12px; color: #94a3b8; letter-spacing: 0.04em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="dot">${escapeHtml(BRAND.charAt(0))}</div>
+  <h1>${escapeHtml(heading)}</h1>
+  <div>${body}</div>
+  <div class="brand">${escapeHtml(BRAND)}</div>
+</div>
+</body>
+</html>`;
+}
+
+function notFoundPage(message: string): string {
+  return brandShell('Link not found', 'Link not found', `<p>${escapeHtml(message)}</p>`);
+}
+
+function expiredPage(): string {
+  return brandShell(
+    'This link has expired',
+    'This link has expired',
+    `<p>The page you're looking for is no longer available. Check back soon or follow along on the author's main site.</p>`,
+  );
+}
+
+function comingSoonPage(startsAtISO: string): string {
+  const when = new Date(startsAtISO);
+  const formatted = when.toLocaleString('en-US', {
+    weekday: 'long', month: 'long', day: 'numeric',
+    hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  });
+  return brandShell(
+    'Coming soon',
+    'Coming soon',
+    `<p>This link goes live <strong>${escapeHtml(formatted)}</strong>. Bookmark this page and check back then.</p>`,
+  );
+}
+
+function deactivatedPage(): string {
+  return brandShell('Link unavailable', 'Link unavailable', `<p>This short link has been deactivated.</p>`);
+}
+
+function sendHtml(res: VercelResponse, html: string, status: number) {
+  res.setHeader('content-type', 'text/html; charset=utf-8');
+  res.setHeader('cache-control', 'no-store');
+  res.status(status).send(html);
+}
+
+// ---- UA / device helpers ----
 
 function detectDevice(ua: string): string {
   const s = ua.toLowerCase();
@@ -87,18 +182,6 @@ function appendParams(url: string, params: Record<string, string>): string {
   }
 }
 
-function sendHtml(res: VercelResponse, html: string, status: number) {
-  const r = htmlResponse(html, status);
-  for (const [k, v] of Object.entries(r.headers)) res.setHeader(k, v);
-  res.status(r.status).send(r.body);
-}
-
-function sendPlainError(res: VercelResponse, status: number, message: string) {
-  res.setHeader('content-type', 'text/plain');
-  res.setHeader('cache-control', 'no-store');
-  res.status(status).send(message);
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const slugParam = req.query.slug;
@@ -112,7 +195,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !serviceKey) {
-      sendPlainError(res, 500, 'Link service not configured.');
+      res.setHeader('content-type', 'text/plain');
+      res.status(500).send('Link service not configured.');
       return;
     }
 
@@ -131,7 +215,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    // Look up the user's preferred attribution param name (defaults to 'click_id').
     let clickIdParam = 'click_id';
     try {
       const { data: settings } = await supabase
@@ -141,7 +224,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .maybeSingle();
       if (settings?.click_id_param) clickIdParam = settings.click_id_param;
     } catch {
-      // Table may not exist yet (pre-v2 migration); fall back to default.
+      // table may not exist yet pre-migration; fall back
     }
 
     if (!link.is_active || link.archived_at) {
@@ -187,7 +270,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(link.channel ? { utm_source: link.channel.toLowerCase().replace(/\s+/g, '_') } : {}),
     });
 
-    // Fire-and-forget click logging; never block the redirect, never crash the function.
     void supabase
       .from('link_clicks')
       .insert({
@@ -215,12 +297,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.setHeader('location', destination);
     res.status(302).end();
   } catch (err) {
-    // Never let an unexpected throw bubble out as a Vercel FUNCTION_INVOCATION_FAILED.
     console.error('redirect handler error', err);
     try {
       sendHtml(res, notFoundPage('Something went wrong loading this link.'), 500);
     } catch {
-      // res may already be partially sent.
+      // res may already be partially sent
     }
   }
 }
