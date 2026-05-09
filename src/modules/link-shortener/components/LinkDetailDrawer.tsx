@@ -453,12 +453,19 @@ export default function LinkDetailDrawer({
                   </h3>
                   <div className="space-y-1">
                     {variants.map((v) => (
-                      <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-sm">
-                        <span className="font-mono text-indigo-600 shrink-0">/{v.slug}</span>
+                      <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-sm min-w-0">
+                        <span className="font-mono text-indigo-600 shrink-0" title={`/${v.slug}`}>/{v.slug}</span>
                         {v.channel && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 shrink-0">{v.channel}</span>
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 max-w-[10rem] truncate shrink-0"
+                            title={v.channel}
+                          >
+                            {v.channel}
+                          </span>
                         )}
-                        <span className="text-slate-500 truncate flex-1 min-w-0">{v.label || v.destination_url}</span>
+                        <span className="text-slate-500 truncate flex-1 min-w-0 text-xs" title={v.label || v.destination_url}>
+                          {v.label || v.destination_url}
+                        </span>
                         <span className="text-slate-400 tabular-nums shrink-0 text-xs">{formatNumber(v.click_count)}</span>
                         <button
                           onClick={() => copyVariantUrl(v.slug)}

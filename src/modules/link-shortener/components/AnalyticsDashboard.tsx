@@ -21,6 +21,18 @@ const DEVICE_COLORS: Record<string, string> = {
   unknown: '#cbd5e1',
 };
 
+// YYYY-MM-DD in the viewer's local timezone. We use local everywhere so the
+// chart's "today" bucket aligns with how the user perceives "today" — a click
+// at 23:30 UTC for a UTC+2 user lands on the next local day, so bucketing by
+// UTC silently drops those clicks off the right edge of the chart.
+function localDateKey(isoOrDate: string | Date): string {
+  const d = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export default function AnalyticsDashboard({ links, clicks, rangeDays }: Props) {
   const humanClicks = useMemo(() => clicks.filter((c) => !c.is_bot), [clicks]);
 
@@ -40,14 +52,15 @@ export default function AnalyticsDashboard({ links, clicks, rangeDays }: Props) 
 
   const seriesByDay = useMemo(() => {
     const buckets = new Map<string, number>();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     for (let i = rangeDays - 1; i >= 0; i--) {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
+      const d = new Date(today);
       d.setDate(d.getDate() - i);
-      buckets.set(d.toISOString().slice(0, 10), 0);
+      buckets.set(localDateKey(d), 0);
     }
     for (const c of humanClicks) {
-      const key = c.clicked_at.slice(0, 10);
+      const key = localDateKey(c.clicked_at);
       if (buckets.has(key)) buckets.set(key, (buckets.get(key) ?? 0) + 1);
     }
     return Array.from(buckets, ([date, count]) => ({
