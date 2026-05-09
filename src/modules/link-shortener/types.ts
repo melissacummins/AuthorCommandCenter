@@ -19,6 +19,7 @@ export interface ShortLink {
   bio_title: string;
   bio_style: 'card' | 'icon';
   click_count: number;
+  non_bot_click_count: number;
   conversion_count: number;
   conversion_value: number;
   last_clicked_at: string | null;
