@@ -8,11 +8,14 @@
 // Shopify will show a signing secret. Paste that into the Link Shortener
 // settings drawer in the app — we verify it on every incoming request.
 //
-// Attribution:
-//   1. If order.note_attributes contains 'click_id', use it (theme snippet path).
-//   2. Otherwise parse landing_site URL for ?click_id=...
-//   3. Otherwise fall back to recent click matching by referring_site within
-//      the user's attribution_window_minutes (default 3 days).
+// Attribution: STRICT click_id matching only.
+//   1. If order.note_attributes contains 'click_id', look it up in link_clicks.
+//   2. Otherwise parse landing_site URL for ?click_id=... and look up.
+//   3. Otherwise — acknowledge but do not attribute. Loose host-based
+//      fallbacks falsely attribute organic Shopify traffic (e.g. orders
+//      from Facebook ads or direct visits where the customer happened to
+//      have any FB-referred recent click on file) to channel variants
+//      they never actually came through.
 import { createClient } from '@supabase/supabase-js';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
@@ -152,7 +155,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   let linkId: string | null = null;
   let clickRowId: string | null = null;
-  let source: 'shopify_clickid' | 'shopify_webhook' = 'shopify_webhook';
 
   if (clickId) {
     const { data: clickRow } = await supabase
@@ -164,37 +166,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (clickRow) {
       linkId = clickRow.link_id;
       clickRowId = clickRow.id;
-      source = 'shopify_clickid';
     }
   }
 
-  // Fallback: match by referring_site host inside the attribution window.
-  if (!linkId && order.referring_site) {
-    let host = '';
-    try {
-      host = new URL(order.referring_site).host;
-    } catch {
-      host = '';
-    }
-    if (host) {
-      const windowMin = settings.attribution_window_minutes ?? 4320;
-      const since = new Date(Date.now() - windowMin * 60_000).toISOString();
-      const { data: candidate } = await supabase
-        .from('link_clicks')
-        .select('id, link_id')
-        .eq('user_id', userId)
-        .gte('clicked_at', since)
-        .ilike('referrer', `%${host}%`)
-        .order('clicked_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (candidate) {
-        linkId = candidate.link_id;
-        clickRowId = candidate.id;
-      }
-    }
-  }
-
+  // Strict attribution only: if there's no click_id chain, the customer
+  // didn't come through one of our short links — acknowledge and skip.
+  // Earlier versions had a referrer-host fallback that falsely attributed
+  // organic Facebook/direct sales to channel variants whose recent click
+  // happened to share a referrer host with the order.
   if (!linkId) {
     await supabase
       .from('link_attribution_settings')
@@ -214,7 +193,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       user_id: userId,
       click_id: clickId,
       click_row_id: clickRowId,
-      source,
+      source: 'shopify_clickid',
       external_ref: externalRef,
       value,
       currency,
