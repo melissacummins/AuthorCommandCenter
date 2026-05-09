@@ -70,15 +70,6 @@ export default function LinkDetailDrawer({
     setError(null);
   }, [link.id]);
 
-  useEffect(() => {
-    if (!user || tab !== 'clicks') return;
-    setLoadingClicks(true);
-    listClicks(user.id, { linkId: link.id, limit: 200 })
-      .then(setClicks)
-      .catch(() => setClicks([]))
-      .finally(() => setLoadingClicks(false));
-  }, [link.id, user, tab]);
-
   const variants = useMemo(
     () => allLinks.filter((l) => l.parent_id === link.id),
     [allLinks, link.id],
@@ -88,11 +79,55 @@ export default function LinkDetailDrawer({
     [allLinks, link.parent_id],
   );
 
+  // Recent clicks: when viewing a parent, include clicks from all variants
+  // too so the tab actually shows activity instead of "No clicks yet" while
+  // the variants below have plenty.
+  const linkIdsToFetch = useMemo(() => {
+    const ids = [link.id];
+    if (variants.length > 0) {
+      for (const v of variants) ids.push(v.id);
+    }
+    return ids;
+  }, [link.id, variants]);
+
+  useEffect(() => {
+    if (!user || tab !== 'clicks') return;
+    setLoadingClicks(true);
+    Promise.all(linkIdsToFetch.map((id) => listClicks(user.id, { linkId: id, limit: 100 })))
+      .then((results) => {
+        const merged = results.flat().sort((a, b) =>
+          new Date(b.clicked_at).getTime() - new Date(a.clicked_at).getTime(),
+        );
+        setClicks(merged.slice(0, 200));
+      })
+      .catch(() => setClicks([]))
+      .finally(() => setLoadingClicks(false));
+  }, [linkIdsToFetch, user, tab]);
+
   const detectedPlatform = useMemo(
     () => detectSocialPlatform(destination || link.destination_url),
     [destination, link.destination_url],
   );
   const detectedPlatformName = SOCIAL_NAMES[detectedPlatform];
+
+  // Rollup totals across the parent + all its variants. Shown in the
+  // header stat tiles so the drawer matches the link list pill instead
+  // of confusing readers with a "0" while the variants below have data.
+  const directClicks = link.non_bot_click_count ?? 0;
+  const variantClicks = variants.reduce((sum, v) => sum + (v.non_bot_click_count ?? 0), 0);
+  const totalClicks = directClicks + variantClicks;
+  const totalConversionCount =
+    (link.conversion_count ?? 0) +
+    variants.reduce((sum, v) => sum + (v.conversion_count ?? 0), 0);
+  const totalConversionValue =
+    (link.conversion_value ?? 0) +
+    variants.reduce((sum, v) => sum + (v.conversion_value ?? 0), 0);
+  const lastClickedAt = useMemo(() => {
+    const dates = [link.last_clicked_at, ...variants.map((v) => v.last_clicked_at)]
+      .filter(Boolean) as string[];
+    if (dates.length === 0) return null;
+    return dates.sort().reverse()[0];
+  }, [link.last_clicked_at, variants]);
 
   const hasChanges =
     label !== link.label ||
@@ -205,6 +240,11 @@ export default function LinkDetailDrawer({
     }
   }
 
+  const hasVariants = variants.length > 0;
+  const statBreakdown = hasVariants
+    ? `${formatNumber(directClicks)} direct + ${formatNumber(variantClicks)} from ${variants.length} ${variants.length === 1 ? 'variant' : 'variants'}`
+    : 'Bots filtered out';
+
   return (
     <div className="fixed inset-0 z-50 flex">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
@@ -224,10 +264,10 @@ export default function LinkDetailDrawer({
         </header>
 
         <section className="px-6 py-3 border-b border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Stat label="Clicks" value={formatNumber(link.click_count)} />
-          <Stat label="Conversions" value={formatNumber(link.conversion_count)} />
-          <Stat label="Revenue" value={`$${(link.conversion_value ?? 0).toFixed(2)}`} />
-          <Stat label="Last click" value={timeAgo(link.last_clicked_at)} />
+          <Stat label="Clicks" value={formatNumber(totalClicks)} hint={statBreakdown} />
+          <Stat label="Conversions" value={formatNumber(totalConversionCount)} />
+          <Stat label="Revenue" value={`$${(totalConversionValue ?? 0).toFixed(2)}`} />
+          <Stat label="Last click" value={timeAgo(lastClickedAt)} />
         </section>
 
         <section className="px-6 py-3 flex flex-wrap gap-2 border-b border-slate-100">
@@ -452,43 +492,52 @@ export default function LinkDetailDrawer({
                     <Tag className="w-4 h-4" /> Channel variants
                   </h3>
                   <div className="space-y-1">
-                    {variants.map((v) => (
-                      <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-sm min-w-0">
-                        <span className="font-mono text-indigo-600 shrink-0" title={`/${v.slug}`}>/{v.slug}</span>
-                        {v.channel && (
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 max-w-[10rem] truncate shrink-0"
-                            title={v.channel}
-                          >
-                            {v.channel}
-                          </span>
-                        )}
-                        <span className="text-slate-500 truncate flex-1 min-w-0 text-xs" title={v.label || v.destination_url}>
-                          {v.label || v.destination_url}
-                        </span>
-                        <span className="text-slate-400 tabular-nums shrink-0 text-xs">{formatNumber(v.click_count)}</span>
-                        <button
-                          onClick={() => copyVariantUrl(v.slug)}
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded shrink-0 transition"
-                          title="Copy short URL"
-                        >
-                          {copiedVariantSlug === v.slug ? (
-                            <span className="text-xs text-emerald-600 font-medium px-1">Copied!</span>
-                          ) : (
-                            <Copy className="w-3.5 h-3.5" />
+                    {variants.map((v) => {
+                      const variantNonBot = v.non_bot_click_count ?? 0;
+                      const variantBots = (v.click_count ?? 0) - variantNonBot;
+                      return (
+                        <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-sm min-w-0">
+                          <span className="font-mono text-indigo-600 shrink-0" title={`/${v.slug}`}>/{v.slug}</span>
+                          {v.channel && (
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 max-w-[10rem] truncate shrink-0"
+                              title={v.channel}
+                            >
+                              {v.channel}
+                            </span>
                           )}
-                        </button>
-                        <a
-                          href={buildShortUrl(v.slug)}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded shrink-0 transition"
-                          title="Open short URL in new tab"
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    ))}
+                          <span className="text-slate-500 truncate flex-1 min-w-0 text-xs" title={v.label || v.destination_url}>
+                            {v.label || v.destination_url}
+                          </span>
+                          <span
+                            className="text-slate-400 tabular-nums shrink-0 text-xs"
+                            title={variantBots > 0 ? `${formatNumber(variantBots)} bot click${variantBots === 1 ? '' : 's'} ignored` : 'Bots filtered out'}
+                          >
+                            {formatNumber(variantNonBot)}
+                          </span>
+                          <button
+                            onClick={() => copyVariantUrl(v.slug)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded shrink-0 transition"
+                            title="Copy short URL"
+                          >
+                            {copiedVariantSlug === v.slug ? (
+                              <span className="text-xs text-emerald-600 font-medium px-1">Copied!</span>
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                          <a
+                            href={buildShortUrl(v.slug)}
+                            target="_blank"
+                            rel="noreferrer noopener"
+                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-white rounded shrink-0 transition"
+                            title="Open short URL in new tab"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -507,6 +556,9 @@ export default function LinkDetailDrawer({
             <div>
               <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
                 <Clock className="w-4 h-4" /> Recent clicks
+                {hasVariants && (
+                  <span className="text-xs font-normal text-slate-400">(includes variants)</span>
+                )}
               </h3>
               {loadingClicks ? (
                 <div className="text-sm text-slate-400">Loading…</div>
@@ -517,6 +569,9 @@ export default function LinkDetailDrawer({
                   {clicks.map((c) => (
                     <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs">
                       <span className="text-slate-500 tabular-nums whitespace-nowrap">{timeAgo(c.clicked_at)}</span>
+                      {hasVariants && c.slug !== link.slug && (
+                        <span className="font-mono text-indigo-600">/{c.slug}</span>
+                      )}
                       {c.is_bot ? (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-200 text-slate-600">
                           <Bot className="w-3 h-3" /> bot
@@ -557,9 +612,9 @@ function safeHostname(url: string): string {
   }
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="bg-slate-50 rounded-xl px-3 py-2 border border-slate-100">
+    <div className="bg-slate-50 rounded-xl px-3 py-2 border border-slate-100" title={hint}>
       <div className="text-[10px] text-slate-500 uppercase tracking-wide">{label}</div>
       <div className="text-base font-semibold text-slate-800 mt-0.5 truncate">{value}</div>
     </div>
