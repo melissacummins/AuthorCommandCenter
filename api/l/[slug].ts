@@ -378,7 +378,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ...(link.channel ? { utm_source: link.channel.toLowerCase().replace(/\s+/g, '_') } : {}),
     });
 
-    void supabase
+    // Click insert MUST be awaited — fire-and-forget loses the row when the
+    // function terminates after res.end(). We pay ~50-150ms for reliable
+    // attribution; without it conversion tracking is unusable.
+    const { error: clickInsertError } = await supabase
       .from('link_clicks')
       .insert({
         link_id: link.id,
@@ -398,8 +401,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         language,
         is_bot: isBot(ua),
         click_id: clickId,
-      })
-      .then(() => undefined, () => undefined);
+      });
+
+    if (clickInsertError) {
+      console.error('click insert failed:', clickInsertError);
+    }
 
     // Social-platform crawler? Serve OG-tagged HTML so shared short links
     // show a real preview card. Real users hit the redirect path below.
