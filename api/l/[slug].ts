@@ -274,8 +274,28 @@ function detectOS(ua: string): string {
   return 'Other';
 }
 
-function isBot(ua: string): boolean {
-  return /bot|crawler|spider|crawling|facebookexternalhit|slackbot|twitterbot|linkedinbot|discordbot|telegrambot|whatsapp|preview/i.test(ua);
+// Small-population cities that are essentially 100% data-center traffic.
+// Conservative list — deliberately excludes large cities like Fort Worth,
+// Mountain View, or Ashburn where real residents could plausibly visit.
+const DC_CITIES = new Set([
+  'prineville', 'boardman', 'the dalles', 'forest city',
+  'lenoir', 'quincy', 'altoona', 'lulea', 'eemshaven',
+  'clonee', 'henderson',
+]);
+
+function isBot(ua: string, city: string): boolean {
+  if (!ua) return false;
+  // Self-identifying bots
+  if (/bot|crawler|spider|crawling|facebookexternalhit|slackbot|twitterbot|linkedinbot|discordbot|telegrambot|whatsapp|preview|scanner/i.test(ua)) {
+    return true;
+  }
+  // Outdated Chrome (<100) is overwhelmingly automated scanners; real users
+  // keep up to date and Chrome is on 130+ in 2026.
+  const chromeMatch = ua.match(/Chrome\/(\d+)/);
+  if (chromeMatch && parseInt(chromeMatch[1], 10) < 100) return true;
+  // Known small-town data center cities
+  if (city && DC_CITIES.has(city.toLowerCase())) return true;
+  return false;
 }
 
 function appendParams(url: string, params: Record<string, string>): string {
@@ -399,7 +419,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         city,
         ip_hash: ipHash,
         language,
-        is_bot: isBot(ua),
+        is_bot: isBot(ua, city),
         click_id: clickId,
       });
 
