@@ -330,7 +330,9 @@ function sendHtml(res: VercelResponse, html: string, status: number, cacheable: 
   res.setHeader(
     'cache-control',
     cacheable
-      ? 'public, max-age=60, s-maxage=300, stale-while-revalidate=86400'
+      // Short edge cache so admin edits surface within ~30 seconds.
+      // SWR window keeps the page snappy for readers while we revalidate.
+      ? 'public, max-age=15, s-maxage=30, stale-while-revalidate=300'
       : 'no-store',
   );
   res.status(status).send(html);
