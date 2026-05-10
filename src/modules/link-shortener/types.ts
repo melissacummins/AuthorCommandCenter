@@ -86,6 +86,13 @@ export interface AttributionSettings {
   updated_at: string;
 }
 
+export interface BioSettings {
+  user_id: string;
+  logo_url: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export type ShortLinkInsert = Pick<
   ShortLink,
   'slug' | 'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active'

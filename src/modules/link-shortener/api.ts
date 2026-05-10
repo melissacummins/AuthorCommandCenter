@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  AttributionSettings, ConversionInsert, LinkClick, LinkConversion, LinkFolder,
+  AttributionSettings, BioSettings, ConversionInsert, LinkClick, LinkConversion, LinkFolder,
   ShortLink, ShortLinkInsert, ShortLinkUpdate,
 } from './types';
 import { generateSlug, isValidSlug } from './utils';
@@ -78,11 +78,12 @@ export async function listFolders(userId: string): Promise<LinkFolder[]> {
   const { data, error } = await supabase
     .from('link_folders')
     .select('*')
-    .eq('user_id', userId)
-    .order('sort_order', { ascending: true })
-    .order('created_at', { ascending: true });
+    .eq('user_id', userId);
   if (error) throw error;
-  return (data ?? []) as LinkFolder[];
+  // Alphabetical, case-insensitive, locale-aware.
+  return ((data ?? []) as LinkFolder[]).sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
+  );
 }
 
 export async function createFolder(userId: string, name: string, color = '#6366f1'): Promise<LinkFolder> {
@@ -196,4 +197,71 @@ export async function upsertAttributionSettings(
     .single();
   if (error) throw error;
   return data as AttributionSettings;
+}
+
+// ============ Bio settings ============
+
+export async function getBioSettings(userId: string): Promise<BioSettings | null> {
+  const { data, error } = await supabase
+    .from('bio_settings')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data ?? null) as BioSettings | null;
+}
+
+export async function upsertBioSettings(
+  userId: string,
+  patch: Partial<Pick<BioSettings, 'logo_url'>>,
+): Promise<BioSettings> {
+  const { data, error } = await supabase
+    .from('bio_settings')
+    .upsert({ user_id: userId, ...patch }, { onConflict: 'user_id' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BioSettings;
+}
+
+// Uploads a logo image to the per-user folder in the bio-assets bucket
+// and returns the public URL. Cleans up any previously-uploaded logo
+// files in the same folder so we don't accumulate orphaned blobs.
+export async function uploadBioLogo(userId: string, file: File): Promise<string> {
+  const { data: existing } = await supabase.storage.from('bio-assets').list(userId);
+  if (existing && existing.length > 0) {
+    const oldPaths = existing
+      .filter((f) => f.name.toLowerCase().startsWith('logo.'))
+      .map((f) => `${userId}/${f.name}`);
+    if (oldPaths.length > 0) {
+      await supabase.storage.from('bio-assets').remove(oldPaths);
+    }
+  }
+
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().slice(0, 5);
+  const path = `${userId}/logo.${ext}`;
+  const { error } = await supabase.storage
+    .from('bio-assets')
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (error) throw error;
+
+  const { data } = supabase.storage.from('bio-assets').getPublicUrl(path);
+  // Append a cache-buster so the bio page picks up the new logo immediately
+  // without waiting for CDN/edge cache to invalidate.
+  return `${data.publicUrl}?v=${Date.now()}`;
+}
+
+export async function removeBioLogo(userId: string): Promise<void> {
+  const { data: existing } = await supabase.storage.from('bio-assets').list(userId);
+  if (existing && existing.length > 0) {
+    const paths = existing
+      .filter((f) => f.name.toLowerCase().startsWith('logo.'))
+      .map((f) => `${userId}/${f.name}`);
+    if (paths.length > 0) {
+      await supabase.storage.from('bio-assets').remove(paths);
+    }
+  }
+  await supabase
+    .from('bio_settings')
+    .upsert({ user_id: userId, logo_url: null }, { onConflict: 'user_id' });
 }
