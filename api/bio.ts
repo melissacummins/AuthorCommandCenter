@@ -12,6 +12,9 @@
 // Optional:
 //   BIO_TITLE                 - heading on the page (default "Links")
 //   BIO_SUBTITLE              - tagline below the heading
+//
+// The page logo, when present in bio_settings.logo_url, replaces the
+// gradient initial dot.
 import { createClient } from '@supabase/supabase-js';
 
 type VercelRequest = {
@@ -134,8 +137,19 @@ function renderCardLink(link: BioLink): string {
   </a>`;
 }
 
-function renderPage(title: string, subtitle: string, iconLinks: BioLink[], cardLinks: BioLink[]): string {
+interface RenderOptions {
+  title: string;
+  subtitle: string;
+  logoUrl: string | null;
+  iconLinks: BioLink[];
+  cardLinks: BioLink[];
+}
+
+function renderPage({ title, subtitle, logoUrl, iconLinks, cardLinks }: RenderOptions): string {
   const initial = title.trim().charAt(0).toUpperCase() || 'M';
+  const headerVisual = logoUrl
+    ? `<img class="logo" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(title)}" />`
+    : `<div class="dot">${escapeHtml(initial)}</div>`;
   const iconsHtml = iconLinks.length
     ? `<div class="icons">${iconLinks.map(renderIconLink).join('')}</div>`
     : '';
@@ -154,8 +168,9 @@ function renderPage(title: string, subtitle: string, iconLinks: BioLink[], cardL
 <meta name="description" content="${escapeHtml(subtitle || title)}" />
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(subtitle || '')}" />
+${logoUrl ? `<meta property="og:image" content="${escapeHtml(logoUrl)}" />` : ''}
 <meta property="og:type" content="website" />
-<meta name="twitter:card" content="summary" />
+<meta name="twitter:card" content="${logoUrl ? 'summary' : 'summary'}" />
 <title>${escapeHtml(title)}</title>
 <style>
 :root { color-scheme: light; }
@@ -171,10 +186,17 @@ body {
 }
 .wrap { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
 .dot {
-  width: 72px; height: 72px; border-radius: 22px;
+  width: 88px; height: 88px; border-radius: 24px;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 30px;
+  display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 36px;
   letter-spacing: -0.02em; box-shadow: 0 18px 40px -16px rgba(99, 102, 241, 0.55);
+}
+.logo {
+  width: 88px; height: 88px; border-radius: 24px;
+  object-fit: cover;
+  background: #fff;
+  box-shadow: 0 18px 40px -16px rgba(15, 23, 42, 0.25);
+  display: block;
 }
 h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: center; }
 .subtitle {
@@ -219,7 +241,7 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 </head>
 <body>
 <main class="wrap">
-  <div class="dot">${escapeHtml(initial)}</div>
+  ${headerVisual}
   <h1>${escapeHtml(title)}</h1>
   ${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ''}
   ${iconsHtml}
@@ -255,13 +277,13 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     const subtitle = process.env.BIO_SUBTITLE || '';
 
     if (!supabaseUrl || !serviceKey) {
-      sendHtml(res, renderPage(title, 'Bio page is not configured yet.', [], []), 500, false);
+      sendHtml(res, renderPage({ title, subtitle: 'Bio page is not configured yet.', logoUrl: null, iconLinks: [], cardLinks: [] }), 500, false);
       return;
     }
     if (!userId) {
       sendHtml(
         res,
-        renderPage(title, 'Set the BIO_USER_ID environment variable in Vercel to display links here.', [], []),
+        renderPage({ title, subtitle: 'Set the BIO_USER_ID environment variable in Vercel to display links here.', logoUrl: null, iconLinks: [], cardLinks: [] }),
         200, false,
       );
       return;
@@ -271,23 +293,33 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data, error } = await supabase
-      .from('short_links')
-      .select('slug, label, destination_url, starts_at, expires_at, bio_title, bio_style, bio_sort_order, created_at')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .eq('show_on_bio', true)
-      .is('parent_id', null)
-      .is('archived_at', null)
-      .limit(200);
+    // Fetch links and bio settings in parallel.
+    const [linksRes, settingsRes] = await Promise.all([
+      supabase
+        .from('short_links')
+        .select('slug, label, destination_url, starts_at, expires_at, bio_title, bio_style, bio_sort_order, created_at')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .eq('show_on_bio', true)
+        .is('parent_id', null)
+        .is('archived_at', null)
+        .limit(200),
+      supabase
+        .from('bio_settings')
+        .select('logo_url')
+        .eq('user_id', userId)
+        .maybeSingle(),
+    ]);
 
-    if (error) {
-      sendHtml(res, renderPage(title, subtitle, [], []), 200, false);
+    if (linksRes.error) {
+      sendHtml(res, renderPage({ title, subtitle, logoUrl: null, iconLinks: [], cardLinks: [] }), 200, false);
       return;
     }
 
+    const logoUrl = settingsRes.data?.logo_url ?? null;
+
     const now = Date.now();
-    const live: BioLink[] = (data ?? []).filter((l) => {
+    const live: BioLink[] = (linksRes.data ?? []).filter((l) => {
       const startsOk = !l.starts_at || new Date(l.starts_at).getTime() <= now;
       const expiresOk = !l.expires_at || new Date(l.expires_at).getTime() > now;
       return startsOk && expiresOk;
@@ -296,11 +328,11 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     const iconLinks = live.filter((l) => l.bio_style === 'icon').sort(byBioOrder);
     const cardLinks = live.filter((l) => l.bio_style !== 'icon').sort(byBioOrder);
 
-    sendHtml(res, renderPage(title, subtitle, iconLinks, cardLinks), 200, true);
+    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, cardLinks }), 200, true);
   } catch (err) {
     console.error('bio handler error', err);
     try {
-      sendHtml(res, renderPage('Links', 'Something went wrong loading this page.', [], []), 500, false);
+      sendHtml(res, renderPage({ title: 'Links', subtitle: 'Something went wrong loading this page.', logoUrl: null, iconLinks: [], cardLinks: [] }), 500, false);
     } catch {
       // res may already be partially sent
     }

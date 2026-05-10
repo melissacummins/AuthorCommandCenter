@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -8,10 +8,13 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
-  GripVertical, ExternalLink, EyeOff, ArrowLeftRight, Layout,
+  GripVertical, ExternalLink, EyeOff, ArrowLeftRight, Layout, Upload, Trash2, Loader2,
 } from 'lucide-react';
-import type { ShortLink } from '../types';
-import { reorderBioLinks, updateLink } from '../api';
+import { useAuth } from '../../../contexts/AuthContext';
+import type { BioSettings, ShortLink } from '../types';
+import {
+  getBioSettings, removeBioLogo, reorderBioLinks, updateLink, uploadBioLogo, upsertBioSettings,
+} from '../api';
 import {
   detectSocialPlatform, SOCIAL_HEX, SOCIAL_NAMES, SIMPLEICONS_SLUG,
 } from '../socialIcons';
@@ -37,10 +40,21 @@ function absoluteUrl(raw: string): string {
 }
 
 export default function BioPagePanel({ links, onUpdated }: Props) {
+  const { user } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
+
+  const [bioSettings, setBioSettings] = useState<BioSettings | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    getBioSettings(user.id).then(setBioSettings).catch(() => setBioSettings(null));
+  }, [user]);
 
   const bioLinks = useMemo(
     () => links.filter((l) => l.show_on_bio && l.is_active && !l.archived_at && !l.parent_id),
@@ -58,6 +72,48 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   const publicBioUrl = absoluteUrl(
     (import.meta.env.VITE_SHORT_LINK_BASE_URL as string | undefined) || '',
   );
+
+  async function handleLogoSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    e.target.value = ''; // allow re-uploading same file
+
+    if (file.size > 2 * 1024 * 1024) {
+      setLogoError('Logo must be 2MB or smaller.');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Please select an image file.');
+      return;
+    }
+
+    setLogoError(null);
+    setLogoBusy(true);
+    try {
+      const publicUrl = await uploadBioLogo(user.id, file);
+      const updated = await upsertBioSettings(user.id, { logo_url: publicUrl });
+      setBioSettings(updated);
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : 'Failed to upload logo');
+    } finally {
+      setLogoBusy(false);
+    }
+  }
+
+  async function handleRemoveLogo() {
+    if (!user) return;
+    if (!confirm('Remove the bio page logo? The page will fall back to the gradient initial.')) return;
+    setLogoBusy(true);
+    setLogoError(null);
+    try {
+      await removeBioLogo(user.id);
+      setBioSettings((s) => (s ? { ...s, logo_url: null } : s));
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : 'Failed to remove logo');
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   async function handleDragEnd(event: DragEndEvent, list: ShortLink[]) {
     const { active, over } = event;
@@ -113,7 +169,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             <Layout className="w-5 h-5" /> Bio page
           </h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            Reorder links, set the public title, and choose how each one appears on your bio page.
+            Customize how your bio page looks and what readers see.
           </p>
         </div>
         {publicBioUrl && (
@@ -127,6 +183,62 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
           </a>
         )}
       </div>
+
+      <Section
+        title="Page logo"
+        hint="Square images work best. PNG, JPG, WEBP, or SVG up to 2MB."
+      >
+        <div className="flex items-center gap-4 p-4 rounded-xl bg-white border border-slate-200">
+          <div className="w-16 h-16 rounded-2xl overflow-hidden grid place-items-center shrink-0 border border-slate-200"
+            style={{
+              background: bioSettings?.logo_url
+                ? '#fff'
+                : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            }}
+          >
+            {bioSettings?.logo_url ? (
+              <img src={bioSettings.logo_url} alt="Bio logo" className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-white font-bold text-2xl">
+                {(import.meta.env.VITE_BIO_INITIAL as string | undefined) || 'M'}
+              </span>
+            )}
+          </div>
+          <div className="flex-1 min-w-0 flex flex-wrap gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+              onChange={handleLogoSelected}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={logoBusy}
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
+            >
+              {logoBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {bioSettings?.logo_url ? 'Replace logo' : 'Upload logo'}
+            </button>
+            {bioSettings?.logo_url && (
+              <button
+                type="button"
+                onClick={handleRemoveLogo}
+                disabled={logoBusy}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" /> Remove
+              </button>
+            )}
+          </div>
+        </div>
+        {logoError && (
+          <div className="mt-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+            {logoError}
+          </div>
+        )}
+      </Section>
 
       <Section
         title="Social icons"
