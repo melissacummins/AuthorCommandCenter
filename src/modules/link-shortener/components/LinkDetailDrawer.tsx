@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   X, Copy, ExternalLink, Save, Trash2, Plus, Power, ArchiveRestore,
   Loader2, Globe, Tag, Smartphone, Clock, Bot, QrCode, DollarSign, Calendar, FolderIcon,
-  Layout, CircleDot,
+  Layout, CircleDot, Eye, EyeOff,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { deleteLink, listClicks, updateLink } from '../api';
@@ -52,6 +52,7 @@ export default function LinkDetailDrawer({
   const [copiedVariantSlug, setCopiedVariantSlug] = useState<string | null>(null);
   const [clicks, setClicks] = useState<LinkClick[]>([]);
   const [loadingClicks, setLoadingClicks] = useState(true);
+  const [showBots, setShowBots] = useState(false);
 
   useEffect(() => {
     setTab('edit');
@@ -68,6 +69,7 @@ export default function LinkDetailDrawer({
     setBioTitle(link.bio_title ?? '');
     setBioStyle(link.bio_style ?? 'card');
     setError(null);
+    setShowBots(false);
   }, [link.id]);
 
   const variants = useMemo(
@@ -128,6 +130,15 @@ export default function LinkDetailDrawer({
     if (dates.length === 0) return null;
     return dates.sort().reverse()[0];
   }, [link.last_clicked_at, variants]);
+
+  const visibleClicks = useMemo(
+    () => (showBots ? clicks : clicks.filter((c) => !c.is_bot)),
+    [clicks, showBots],
+  );
+  const botClickCount = useMemo(
+    () => clicks.reduce((sum, c) => sum + (c.is_bot ? 1 : 0), 0),
+    [clicks],
+  );
 
   const hasChanges =
     label !== link.label ||
@@ -554,19 +565,46 @@ export default function LinkDetailDrawer({
 
           {tab === 'clicks' && (
             <div>
-              <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-                <Clock className="w-4 h-4" /> Recent clicks
-                {hasVariants && (
-                  <span className="text-xs font-normal text-slate-400">(includes variants)</span>
+              <div className="mb-2 flex items-center justify-between gap-2 flex-wrap">
+                <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  <Clock className="w-4 h-4" /> Recent clicks
+                  {hasVariants && (
+                    <span className="text-xs font-normal text-slate-400">(includes variants)</span>
+                  )}
+                </h3>
+                {botClickCount > 0 && (
+                  <button
+                    onClick={() => setShowBots((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition ${
+                      showBots
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                    title={showBots ? 'Hide bot clicks' : `Show ${botClickCount} bot click${botClickCount === 1 ? '' : 's'}`}
+                  >
+                    {showBots ? (
+                      <>
+                        <EyeOff className="w-3.5 h-3.5" /> Hide bots
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-3.5 h-3.5" /> Show bots ({formatNumber(botClickCount)})
+                      </>
+                    )}
+                  </button>
                 )}
-              </h3>
+              </div>
               {loadingClicks ? (
                 <div className="text-sm text-slate-400">Loading…</div>
-              ) : clicks.length === 0 ? (
-                <div className="text-sm text-slate-400">No clicks yet.</div>
+              ) : visibleClicks.length === 0 ? (
+                <div className="text-sm text-slate-400">
+                  {clicks.length === 0
+                    ? 'No clicks yet.'
+                    : 'No human clicks yet — only bots so far. Click "Show bots" to see them.'}
+                </div>
               ) : (
                 <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-1">
-                  {clicks.map((c) => (
+                  {visibleClicks.map((c) => (
                     <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-lg bg-slate-50 border border-slate-100 text-xs">
                       <span className="text-slate-500 tabular-nums whitespace-nowrap">{timeAgo(c.clicked_at)}</span>
                       {hasVariants && c.slug !== link.slug && (
