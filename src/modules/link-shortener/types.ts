@@ -18,6 +18,7 @@ export interface ShortLink {
   bio_sort_order: number;
   bio_title: string;
   bio_style: 'card' | 'icon';
+  thumbnail_url: string | null;
   click_count: number;
   non_bot_click_count: number;
   conversion_count: number;
@@ -93,6 +94,34 @@ export interface BioSettings {
   updated_at: string;
 }
 
+export type BioBlockType = 'section' | 'image';
+
+export interface BioBlock {
+  id: string;
+  user_id: string;
+  type: BioBlockType;
+  title: string | null;
+  body: string | null;
+  image_url: string | null;
+  link_url: string | null;
+  bio_sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type BioBlockInsert = {
+  type: BioBlockType;
+  title?: string | null;
+  body?: string | null;
+  image_url?: string | null;
+  link_url?: string | null;
+  bio_sort_order?: number;
+};
+
+export type BioBlockUpdate = Partial<
+  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'bio_sort_order'>
+>;
+
 export type ShortLinkInsert = Pick<
   ShortLink,
   'slug' | 'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active'
@@ -106,6 +135,7 @@ export type ShortLinkInsert = Pick<
   bio_title?: string;
   bio_style?: 'card' | 'icon';
   bio_sort_order?: number;
+  thumbnail_url?: string | null;
 };
 
 export type ShortLinkUpdate = Partial<
@@ -113,7 +143,7 @@ export type ShortLinkUpdate = Partial<
     ShortLink,
     'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active' | 'archived_at'
     | 'folder_id' | 'starts_at' | 'expires_at' | 'expired_redirect_url'
-    | 'show_on_bio' | 'bio_title' | 'bio_style' | 'bio_sort_order'
+    | 'show_on_bio' | 'bio_title' | 'bio_style' | 'bio_sort_order' | 'thumbnail_url'
   >
 >;
 

@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  AttributionSettings, BioSettings, ConversionInsert, LinkClick, LinkConversion, LinkFolder,
+  AttributionSettings, BioBlock, BioBlockInsert, BioBlockUpdate, BioSettings,
+  ConversionInsert, LinkClick, LinkConversion, LinkFolder,
   ShortLink, ShortLinkInsert, ShortLinkUpdate,
 } from './types';
 import { generateSlug, isValidSlug } from './utils';
@@ -36,10 +37,44 @@ export async function generateUniqueSlug(maxAttempts = 5): Promise<string> {
   return generateSlug(9);
 }
 
+// Looks across short_links AND bio_blocks for the highest bio_sort_order
+// for this user, returning what should be the NEXT slot. Used to put new
+// bio items at the bottom of the list rather than at the top.
+async function nextBioSortOrder(userId: string): Promise<number> {
+  const [linksRes, blocksRes] = await Promise.all([
+    supabase
+      .from('short_links')
+      .select('bio_sort_order')
+      .eq('user_id', userId)
+      .order('bio_sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('bio_blocks')
+      .select('bio_sort_order')
+      .eq('user_id', userId)
+      .order('bio_sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then((r) => r, () => ({ data: null })),
+  ]);
+  const maxLink = linksRes.data?.bio_sort_order ?? -1;
+  const maxBlock = (blocksRes as { data: { bio_sort_order?: number } | null }).data?.bio_sort_order ?? -1;
+  return Math.max(maxLink, maxBlock) + 1;
+}
+
 export async function createLink(userId: string, input: ShortLinkInsert): Promise<ShortLink> {
+  // Default to placing new bio-enabled links at the bottom of the bio sort
+  // order so existing carefully-arranged sequences aren't disrupted by
+  // every new ARC variant or social link.
+  const showOnBio = input.show_on_bio !== false;
+  const payload: ShortLinkInsert & { user_id: string } = { ...input, user_id: userId };
+  if (input.bio_sort_order === undefined && showOnBio && !input.parent_id) {
+    payload.bio_sort_order = await nextBioSortOrder(userId);
+  }
   const { data, error } = await supabase
     .from('short_links')
-    .insert({ ...input, user_id: userId })
+    .insert(payload)
     .select('*')
     .single();
   if (error) throw error;
@@ -72,6 +107,21 @@ export async function reorderBioLinks(orderedIds: string[]): Promise<void> {
   );
 }
 
+// Reorders mixed bio items (links + blocks) by writing fresh sort indices
+// across BOTH tables in parallel so the global order stays consistent.
+export async function reorderBioItems(
+  items: { kind: 'link' | 'block'; id: string }[],
+): Promise<void> {
+  await Promise.all(
+    items.map((item, idx) => {
+      if (item.kind === 'link') {
+        return supabase.from('short_links').update({ bio_sort_order: idx }).eq('id', item.id);
+      }
+      return supabase.from('bio_blocks').update({ bio_sort_order: idx }).eq('id', item.id);
+    }),
+  );
+}
+
 // ============ Folders ============
 
 export async function listFolders(userId: string): Promise<LinkFolder[]> {
@@ -80,7 +130,6 @@ export async function listFolders(userId: string): Promise<LinkFolder[]> {
     .select('*')
     .eq('user_id', userId);
   if (error) throw error;
-  // Alphabetical, case-insensitive, locale-aware.
   return ((data ?? []) as LinkFolder[]).sort((a, b) =>
     a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }),
   );
@@ -199,7 +248,7 @@ export async function upsertAttributionSettings(
   return data as AttributionSettings;
 }
 
-// ============ Bio settings ============
+// ============ Bio settings + blocks + assets ============
 
 export async function getBioSettings(userId: string): Promise<BioSettings | null> {
   const { data, error } = await supabase
@@ -224,9 +273,49 @@ export async function upsertBioSettings(
   return data as BioSettings;
 }
 
-// Uploads a logo image to the per-user folder in the bio-assets bucket
-// and returns the public URL. Cleans up any previously-uploaded logo
-// files in the same folder so we don't accumulate orphaned blobs.
+export async function listBioBlocks(userId: string): Promise<BioBlock[]> {
+  const { data, error } = await supabase
+    .from('bio_blocks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('bio_sort_order', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as BioBlock[];
+}
+
+export async function createBioBlock(userId: string, input: BioBlockInsert): Promise<BioBlock> {
+  const sortOrder = input.bio_sort_order ?? (await nextBioSortOrder(userId));
+  const { data, error } = await supabase
+    .from('bio_blocks')
+    .insert({ ...input, user_id: userId, bio_sort_order: sortOrder })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BioBlock;
+}
+
+export async function updateBioBlock(id: string, patch: BioBlockUpdate): Promise<BioBlock> {
+  const { data, error } = await supabase
+    .from('bio_blocks')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BioBlock;
+}
+
+export async function deleteBioBlock(id: string): Promise<void> {
+  const { error } = await supabase.from('bio_blocks').delete().eq('id', id);
+  if (error) throw error;
+}
+
+function safeExt(file: File): string {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase().slice(0, 5);
+  return ext.replace(/[^a-z0-9]/g, '') || 'png';
+}
+
+// Logo upload — single file under <user>/logo.<ext>, replaces previous.
 export async function uploadBioLogo(userId: string, file: File): Promise<string> {
   const { data: existing } = await supabase.storage.from('bio-assets').list(userId);
   if (existing && existing.length > 0) {
@@ -237,17 +326,12 @@ export async function uploadBioLogo(userId: string, file: File): Promise<string>
       await supabase.storage.from('bio-assets').remove(oldPaths);
     }
   }
-
-  const ext = (file.name.split('.').pop() || 'png').toLowerCase().slice(0, 5);
-  const path = `${userId}/logo.${ext}`;
+  const path = `${userId}/logo.${safeExt(file)}`;
   const { error } = await supabase.storage
     .from('bio-assets')
     .upload(path, file, { upsert: true, contentType: file.type });
   if (error) throw error;
-
   const { data } = supabase.storage.from('bio-assets').getPublicUrl(path);
-  // Append a cache-buster so the bio page picks up the new logo immediately
-  // without waiting for CDN/edge cache to invalidate.
   return `${data.publicUrl}?v=${Date.now()}`;
 }
 
@@ -264,4 +348,20 @@ export async function removeBioLogo(userId: string): Promise<void> {
   await supabase
     .from('bio_settings')
     .upsert({ user_id: userId, logo_url: null }, { onConflict: 'user_id' });
+}
+
+// General-purpose bio image upload (image cards, future thumbnails). Each
+// upload gets a unique filename so multiple images can coexist for the
+// same user without overwriting each other.
+export async function uploadBioImage(userId: string, file: File): Promise<string> {
+  const id = (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const path = `${userId}/blocks/${id}.${safeExt(file)}`;
+  const { error } = await supabase.storage
+    .from('bio-assets')
+    .upload(path, file, { contentType: file.type });
+  if (error) throw error;
+  const { data } = supabase.storage.from('bio-assets').getPublicUrl(path);
+  return data.publicUrl;
 }
