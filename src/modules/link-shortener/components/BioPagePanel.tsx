@@ -9,11 +9,13 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical, ExternalLink, EyeOff, ArrowLeftRight, Layout, Upload, Trash2, Loader2,
+  Heading, Image as ImageIcon, Plus, Type,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
-import type { BioSettings, ShortLink } from '../types';
+import type { BioBlock, BioSettings, ShortLink } from '../types';
 import {
-  getBioSettings, removeBioLogo, reorderBioLinks, updateLink, uploadBioLogo, upsertBioSettings,
+  createBioBlock, deleteBioBlock, getBioSettings, listBioBlocks, removeBioLogo,
+  reorderBioItems, updateBioBlock, updateLink, uploadBioImage, uploadBioLogo, upsertBioSettings,
 } from '../api';
 import {
   detectSocialPlatform, SOCIAL_HEX, SOCIAL_NAMES, SIMPLEICONS_SLUG,
@@ -24,19 +26,13 @@ interface Props {
   onUpdated: (link: ShortLink) => void;
 }
 
-function byBioOrder(a: ShortLink, b: ShortLink): number {
-  if (a.bio_sort_order !== b.bio_sort_order) return a.bio_sort_order - b.bio_sort_order;
-  return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-}
+type CardItem =
+  | { id: string; kind: 'link'; sortOrder: number; link: ShortLink }
+  | { id: string; kind: 'block'; sortOrder: number; block: BioBlock };
 
-// Defensively coerce to absolute URL — the env var sometimes gets set without
-// a protocol, in which case <a href="read.melissacummins.com"> is treated as
-// a relative path and routes to /read.melissacummins.com on the current host.
 function absoluteUrl(raw: string): string {
   if (!raw) return '';
-  return raw.startsWith('http://') || raw.startsWith('https://')
-    ? raw
-    : `https://${raw}`;
+  return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
 }
 
 export default function BioPagePanel({ links, onUpdated }: Props) {
@@ -48,12 +44,15 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   );
 
   const [bioSettings, setBioSettings] = useState<BioSettings | null>(null);
+  const [blocks, setBlocks] = useState<BioBlock[]>([]);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [adding, setAdding] = useState<'section' | 'image' | null>(null);
 
   useEffect(() => {
     if (!user) return;
     getBioSettings(user.id).then(setBioSettings).catch(() => setBioSettings(null));
+    listBioBlocks(user.id).then(setBlocks).catch(() => setBlocks([]));
   }, [user]);
 
   const bioLinks = useMemo(
@@ -61,13 +60,29 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     [links],
   );
   const iconLinks = useMemo(
-    () => bioLinks.filter((l) => l.bio_style === 'icon').sort(byBioOrder),
+    () => bioLinks
+      .filter((l) => l.bio_style === 'icon')
+      .sort((a, b) =>
+        a.bio_sort_order - b.bio_sort_order ||
+        new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      ),
     [bioLinks],
   );
-  const cardLinks = useMemo(
-    () => bioLinks.filter((l) => l.bio_style !== 'icon').sort(byBioOrder),
-    [bioLinks],
-  );
+  const cardItems = useMemo<CardItem[]>(() => {
+    const linkRows: CardItem[] = bioLinks
+      .filter((l) => l.bio_style !== 'icon')
+      .map((l) => ({ id: `link:${l.id}`, kind: 'link', sortOrder: l.bio_sort_order, link: l }));
+    const blockRows: CardItem[] = blocks.map((b) => ({
+      id: `block:${b.id}`, kind: 'block', sortOrder: b.bio_sort_order, block: b,
+    }));
+    return [...linkRows, ...blockRows].sort((a, b) =>
+      a.sortOrder - b.sortOrder ||
+      (
+        (a.kind === 'link' ? new Date(a.link.created_at).getTime() : new Date(a.block.created_at).getTime())
+        - (b.kind === 'link' ? new Date(b.link.created_at).getTime() : new Date(b.block.created_at).getTime())
+      ),
+    );
+  }, [bioLinks, blocks]);
 
   const publicBioUrl = absoluteUrl(
     (import.meta.env.VITE_SHORT_LINK_BASE_URL as string | undefined) || '',
@@ -76,19 +91,10 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   async function handleLogoSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
-    e.target.value = ''; // allow re-uploading same file
-
-    if (file.size > 2 * 1024 * 1024) {
-      setLogoError('Logo must be 2MB or smaller.');
-      return;
-    }
-    if (!file.type.startsWith('image/')) {
-      setLogoError('Please select an image file.');
-      return;
-    }
-
-    setLogoError(null);
-    setLogoBusy(true);
+    e.target.value = '';
+    if (file.size > 2 * 1024 * 1024) { setLogoError('Logo must be 2MB or smaller.'); return; }
+    if (!file.type.startsWith('image/')) { setLogoError('Please select an image file.'); return; }
+    setLogoError(null); setLogoBusy(true);
     try {
       const publicUrl = await uploadBioLogo(user.id, file);
       const updated = await upsertBioSettings(user.id, { logo_url: publicUrl });
@@ -102,9 +108,8 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
 
   async function handleRemoveLogo() {
     if (!user) return;
-    if (!confirm('Remove the bio page logo? The page will fall back to the gradient initial.')) return;
-    setLogoBusy(true);
-    setLogoError(null);
+    if (!confirm('Remove the bio page logo?')) return;
+    setLogoBusy(true); setLogoError(null);
     try {
       await removeBioLogo(user.id);
       setBioSettings((s) => (s ? { ...s, logo_url: null } : s));
@@ -115,18 +120,29 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     }
   }
 
-  async function handleDragEnd(event: DragEndEvent, list: ShortLink[]) {
+  async function handleDragEnd(
+    event: DragEndEvent,
+    list: { id: string; kind: 'link' | 'block'; rawId: string }[],
+  ) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIdx = list.findIndex((l) => l.id === active.id);
     const newIdx = list.findIndex((l) => l.id === over.id);
     if (oldIdx < 0 || newIdx < 0) return;
     const reordered = arrayMove(list, oldIdx, newIdx);
-    reordered.forEach((l, idx) => {
-      if (l.bio_sort_order !== idx) onUpdated({ ...l, bio_sort_order: idx });
-    });
     try {
-      await reorderBioLinks(reordered.map((l) => l.id));
+      await reorderBioItems(reordered.map((r) => ({ kind: r.kind, id: r.rawId })));
+      // Refresh blocks so their sort orders are picked up; links update via
+      // parent state when callers re-list. For now, optimistically apply.
+      if (user) listBioBlocks(user.id).then(setBlocks).catch(() => undefined);
+      // Patch links in parent state so the UI reflects the new order
+      // without a full re-fetch.
+      reordered.forEach((r, idx) => {
+        if (r.kind === 'link') {
+          const link = bioLinks.find((l) => l.id === r.rawId);
+          if (link && link.bio_sort_order !== idx) onUpdated({ ...link, bio_sort_order: idx });
+        }
+      });
     } catch (err) {
       console.error('reorder failed', err);
     }
@@ -137,18 +153,14 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     try {
       const updated = await updateLink(link.id, { bio_style: next });
       onUpdated(updated);
-    } catch (err) {
-      console.error('toggle style failed', err);
-    }
+    } catch (err) { console.error('toggle style failed', err); }
   }
 
   async function hideFromBio(link: ShortLink) {
     try {
       const updated = await updateLink(link.id, { show_on_bio: false });
       onUpdated(updated);
-    } catch (err) {
-      console.error('hide failed', err);
-    }
+    } catch (err) { console.error('hide failed', err); }
   }
 
   async function saveBioTitle(link: ShortLink, title: string) {
@@ -156,10 +168,76 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     try {
       const updated = await updateLink(link.id, { bio_title: title });
       onUpdated(updated);
+    } catch (err) { console.error('save title failed', err); }
+  }
+
+  async function handleAddSection() {
+    if (!user) return;
+    setAdding('section');
+    try {
+      const created = await createBioBlock(user.id, { type: 'section', title: 'New section', body: '' });
+      setBlocks((bs) => [...bs, created]);
     } catch (err) {
-      console.error('save title failed', err);
+      console.error('add section failed', err);
+    } finally {
+      setAdding(null);
     }
   }
+
+  async function handleAddImageCard() {
+    if (!user) return;
+    setAdding('image');
+    try {
+      const created = await createBioBlock(user.id, { type: 'image', title: '', link_url: '', image_url: null });
+      setBlocks((bs) => [...bs, created]);
+    } catch (err) {
+      console.error('add image card failed', err);
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  async function handleSaveBlock(blockId: string, patch: Partial<BioBlock>) {
+    try {
+      const updated = await updateBioBlock(blockId, patch);
+      setBlocks((bs) => bs.map((b) => (b.id === blockId ? updated : b)));
+    } catch (err) {
+      console.error('save block failed', err);
+    }
+  }
+
+  async function handleDeleteBlock(blockId: string) {
+    if (!confirm('Remove this block from your bio page?')) return;
+    try {
+      await deleteBioBlock(blockId);
+      setBlocks((bs) => bs.filter((b) => b.id !== blockId));
+    } catch (err) {
+      console.error('delete block failed', err);
+    }
+  }
+
+  async function handleUploadBlockImage(block: BioBlock, file: File) {
+    if (!user) return;
+    if (file.size > 5 * 1024 * 1024) { alert('Image must be 5MB or smaller.'); return; }
+    if (!file.type.startsWith('image/')) { alert('Please select an image file.'); return; }
+    try {
+      const url = await uploadBioImage(user.id, file);
+      await handleSaveBlock(block.id, { image_url: url });
+    } catch (err) {
+      console.error('upload block image failed', err);
+      alert(err instanceof Error ? err.message : 'Failed to upload image');
+    }
+  }
+
+  // Mirror cardItems but with raw ids for reorder API calls.
+  const cardItemsForReorder = useMemo(
+    () => cardItems.map((i) => ({
+      id: i.id,
+      kind: i.kind,
+      rawId: i.kind === 'link' ? i.link.id : i.block.id,
+    })),
+    [cardItems],
+  );
 
   return (
     <div className="space-y-6">
@@ -184,12 +262,10 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
         )}
       </div>
 
-      <Section
-        title="Page logo"
-        hint="Square images work best. PNG, JPG, WEBP, or SVG up to 2MB."
-      >
+      <Section title="Page logo" hint="Square images work best. PNG, JPG, WEBP, or SVG up to 2MB.">
         <div className="flex items-center gap-4 p-4 rounded-xl bg-white border border-slate-200">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden grid place-items-center shrink-0 border border-slate-200"
+          <div
+            className="w-16 h-16 rounded-2xl overflow-hidden grid place-items-center shrink-0 border border-slate-200"
             style={{
               background: bioSettings?.logo_url
                 ? '#fff'
@@ -199,9 +275,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             {bioSettings?.logo_url ? (
               <img src={bioSettings.logo_url} alt="Bio logo" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-white font-bold text-2xl">
-                {(import.meta.env.VITE_BIO_INITIAL as string | undefined) || 'M'}
-              </span>
+              <span className="text-white font-bold text-2xl">M</span>
             )}
           </div>
           <div className="flex-1 min-w-0 flex flex-wrap gap-2">
@@ -247,12 +321,25 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
         {iconLinks.length === 0 ? (
           <EmptyHint message="No social icons yet. Use the swap button on a card below to convert it." />
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, iconLinks)}>
-            <SortableContext items={iconLinks.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(e) => {
+              // Icon-only reorder: keep the existing API.
+              const list = iconLinks.map((l) => ({
+                id: `link:${l.id}`,
+                kind: 'link' as const,
+                rawId: l.id,
+              }));
+              return handleDragEnd(e, list);
+            }}
+          >
+            <SortableContext items={iconLinks.map((l) => `link:${l.id}`)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {iconLinks.map((l) => (
-                  <SortableRow
+                  <SortableLinkRow
                     key={l.id}
+                    sortableId={`link:${l.id}`}
                     link={l}
                     onSaveTitle={saveBioTitle}
                     onToggleStyle={toggleStyle}
@@ -265,22 +352,73 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
         )}
       </Section>
 
-      <Section title="Link cards" hint="Full-width cards displayed below the social icons row.">
-        {cardLinks.length === 0 ? (
-          <EmptyHint message="No link cards yet. Create a short link with 'Show on bio page' enabled." />
+      <Section
+        title="Cards & sections"
+        hint="Drag to reorder. New links land at the bottom by default — add sections or image cards to organize between groups."
+        action={(
+          <div className="flex gap-2">
+            <button
+              onClick={handleAddSection}
+              disabled={adding !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+            >
+              <Heading className="w-3.5 h-3.5" /> Section
+            </button>
+            <button
+              onClick={handleAddImageCard}
+              disabled={adding !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+            >
+              <ImageIcon className="w-3.5 h-3.5" /> Image card
+            </button>
+          </div>
+        )}
+      >
+        {cardItems.length === 0 ? (
+          <EmptyHint message="Nothing here yet. Create a short link with 'Show on bio page' enabled, or click + Section / + Image card above." />
         ) : (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={(e) => handleDragEnd(e, cardLinks)}>
-            <SortableContext items={cardLinks.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={(e) => handleDragEnd(e, cardItemsForReorder)}
+          >
+            <SortableContext items={cardItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
-                {cardLinks.map((l) => (
-                  <SortableRow
-                    key={l.id}
-                    link={l}
-                    onSaveTitle={saveBioTitle}
-                    onToggleStyle={toggleStyle}
-                    onHide={hideFromBio}
-                  />
-                ))}
+                {cardItems.map((item) => {
+                  if (item.kind === 'link') {
+                    return (
+                      <SortableLinkRow
+                        key={item.id}
+                        sortableId={item.id}
+                        link={item.link}
+                        onSaveTitle={saveBioTitle}
+                        onToggleStyle={toggleStyle}
+                        onHide={hideFromBio}
+                      />
+                    );
+                  }
+                  if (item.block.type === 'section') {
+                    return (
+                      <SortableSectionRow
+                        key={item.id}
+                        sortableId={item.id}
+                        block={item.block}
+                        onSave={(patch) => handleSaveBlock(item.block.id, patch)}
+                        onDelete={() => handleDeleteBlock(item.block.id)}
+                      />
+                    );
+                  }
+                  return (
+                    <SortableImageRow
+                      key={item.id}
+                      sortableId={item.id}
+                      block={item.block}
+                      onSave={(patch) => handleSaveBlock(item.block.id, patch)}
+                      onDelete={() => handleDeleteBlock(item.block.id)}
+                      onUploadImage={(file) => handleUploadBlockImage(item.block, file)}
+                    />
+                  );
+                })}
               </div>
             </SortableContext>
           </DndContext>
@@ -290,12 +428,15 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   );
 }
 
-function Section({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+function Section({ title, hint, action, children }: { title: string; hint: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section>
-      <header className="mb-2">
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
+      <header className="mb-2 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
+          <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
+        </div>
+        {action}
       </header>
       {children}
     </section>
@@ -310,21 +451,39 @@ function EmptyHint({ message }: { message: string }) {
   );
 }
 
-interface RowProps {
+function useSortableStyle(id: string) {
+  const sortable = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.5 : 1,
+  };
+  return { ...sortable, style };
+}
+
+function DragHandle({ attributes, listeners }: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) {
+  return (
+    <button
+      {...(attributes as React.HTMLAttributes<HTMLButtonElement>)}
+      {...(listeners as React.HTMLAttributes<HTMLButtonElement>)}
+      className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-700 p-1 shrink-0"
+      aria-label="Drag to reorder"
+    >
+      <GripVertical className="w-4 h-4" />
+    </button>
+  );
+}
+
+interface LinkRowProps {
+  sortableId: string;
   link: ShortLink;
   onSaveTitle: (link: ShortLink, title: string) => void;
   onToggleStyle: (link: ShortLink) => void;
   onHide: (link: ShortLink) => void;
 }
 
-function SortableRow({ link, onSaveTitle, onToggleStyle, onHide }: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: link.id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
-
+function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide }: LinkRowProps) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
   const platform = useMemo(() => detectSocialPlatform(link.destination_url), [link.destination_url]);
   const platformColor = '#' + SOCIAL_HEX[platform];
   const platformName = SOCIAL_NAMES[platform];
@@ -342,15 +501,7 @@ function SortableRow({ link, onSaveTitle, onToggleStyle, onHide }: RowProps) {
       style={style}
       className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 transition"
     >
-      <button
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-700 p-1"
-        aria-label="Drag to reorder"
-      >
-        <GripVertical className="w-4 h-4" />
-      </button>
-
+      <DragHandle attributes={attributes} listeners={listeners} />
       <div
         className="w-9 h-9 rounded-lg flex-shrink-0 grid place-items-center text-white"
         style={{ background: platformColor }}
@@ -361,7 +512,6 @@ function SortableRow({ link, onSaveTitle, onToggleStyle, onHide }: RowProps) {
           <span className="text-xs font-semibold">{platformName.charAt(0)}</span>
         )}
       </div>
-
       <div className="flex-1 min-w-0">
         {isIcon ? (
           <div>
@@ -386,7 +536,6 @@ function SortableRow({ link, onSaveTitle, onToggleStyle, onHide }: RowProps) {
           </div>
         )}
       </div>
-
       <button
         onClick={() => onToggleStyle(link)}
         className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
@@ -394,13 +543,156 @@ function SortableRow({ link, onSaveTitle, onToggleStyle, onHide }: RowProps) {
       >
         <ArrowLeftRight className="w-4 h-4" />
       </button>
-
       <button
         onClick={() => onHide(link)}
         className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
         title="Hide from bio page"
       >
         <EyeOff className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+interface SectionRowProps {
+  sortableId: string;
+  block: BioBlock;
+  onSave: (patch: Partial<BioBlock>) => void;
+  onDelete: () => void;
+}
+
+function SortableSectionRow({ sortableId, block, onSave, onDelete }: SectionRowProps) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
+  const [title, setTitle] = useState(block.title ?? '');
+  const [body, setBody] = useState(block.body ?? '');
+  useEffect(() => { setTitle(block.title ?? ''); setBody(block.body ?? ''); }, [block.id, block.title, block.body]);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-amber-50/40 border border-amber-200/60"
+    >
+      <DragHandle attributes={attributes} listeners={listeners} />
+      <div className="w-9 h-9 rounded-lg flex-shrink-0 grid place-items-center bg-amber-100 text-amber-700">
+        <Type className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => onSave({ title })}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          placeholder="Section heading"
+          className="w-full text-sm font-semibold text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+        />
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onBlur={() => onSave({ body })}
+          rows={2}
+          placeholder="Optional body text — supports line breaks."
+          className="w-full text-xs text-slate-600 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 resize-none placeholder-slate-400"
+        />
+      </div>
+      <button
+        onClick={onDelete}
+        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        title="Delete section"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+interface ImageRowProps {
+  sortableId: string;
+  block: BioBlock;
+  onSave: (patch: Partial<BioBlock>) => void;
+  onDelete: () => void;
+  onUploadImage: (file: File) => Promise<void> | void;
+}
+
+function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }: ImageRowProps) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [title, setTitle] = useState(block.title ?? '');
+  const [linkUrl, setLinkUrl] = useState(block.link_url ?? '');
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    setTitle(block.title ?? '');
+    setLinkUrl(block.link_url ?? '');
+  }, [block.id, block.title, block.link_url]);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setBusy(true);
+    try {
+      await onUploadImage(file);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-violet-50/40 border border-violet-200/60"
+    >
+      <DragHandle attributes={attributes} listeners={listeners} />
+      <div className="w-16 h-16 rounded-lg flex-shrink-0 overflow-hidden bg-white border border-slate-200 grid place-items-center">
+        {block.image_url ? (
+          <img src={block.image_url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <ImageIcon className="w-5 h-5 text-slate-300" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0 space-y-1.5">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => onSave({ title })}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          placeholder="Caption (optional)"
+          className="w-full text-sm font-medium text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+        />
+        <input
+          value={linkUrl}
+          onChange={(e) => setLinkUrl(e.target.value)}
+          onBlur={() => onSave({ link_url: linkUrl.trim() || null })}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          placeholder="Where this image links to (e.g. /my-vicious-beast or https://...)"
+          className="w-full text-xs text-slate-600 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+        />
+        <div className="flex items-center gap-2 pt-1">
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/svg+xml,image/gif"
+            onChange={handleFile}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-violet-200 bg-white text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+            {block.image_url ? 'Replace image' : 'Upload image'}
+          </button>
+        </div>
+      </div>
+      <button
+        onClick={onDelete}
+        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        title="Delete image card"
+      >
+        <Trash2 className="w-4 h-4" />
       </button>
     </div>
   );
