@@ -76,6 +76,7 @@ DROP TRIGGER IF EXISTS update_link_click_counts ON link_clicks;
 DROP TRIGGER IF EXISTS increment_link_click ON link_clicks;
 DROP TRIGGER IF EXISTS increment_link_clicks ON link_clicks;
 DROP TRIGGER IF EXISTS link_clicks_increment_count ON link_clicks;
+DROP TRIGGER IF EXISTS update_link_click_counts ON link_clicks;
 
 CREATE TRIGGER update_link_click_counts
 AFTER INSERT ON link_clicks
