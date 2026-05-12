@@ -31,12 +31,16 @@ CREATE INDEX IF NOT EXISTS short_links_parent_idx ON short_links(parent_id);
 
 ALTER TABLE short_links ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own links - select" ON short_links;
 CREATE POLICY "Users manage own links - select"
   ON short_links FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own links - insert" ON short_links;
 CREATE POLICY "Users manage own links - insert"
   ON short_links FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own links - update" ON short_links;
 CREATE POLICY "Users manage own links - update"
   ON short_links FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own links - delete" ON short_links;
 CREATE POLICY "Users manage own links - delete"
   ON short_links FOR DELETE USING (auth.uid() = user_id);
 
@@ -83,6 +87,7 @@ CREATE INDEX IF NOT EXISTS link_clicks_clicked_at_idx ON link_clicks(clicked_at 
 
 ALTER TABLE link_clicks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users read own clicks" ON link_clicks;
 CREATE POLICY "Users read own clicks"
   ON link_clicks FOR SELECT USING (auth.uid() = user_id);
 

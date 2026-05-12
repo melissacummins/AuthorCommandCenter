@@ -72,9 +72,13 @@ BEGIN
   FOR tbl IN
     SELECT unnest(ARRAY['shopify_settings', 'shopify_orders', 'shopify_sync_log'])
   LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "Users can view own %I" ON %I', tbl, tbl);
     EXECUTE format('CREATE POLICY "Users can view own %I" ON %I FOR SELECT USING (auth.uid() = user_id)', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Users can insert own %I" ON %I', tbl, tbl);
     EXECUTE format('CREATE POLICY "Users can insert own %I" ON %I FOR INSERT WITH CHECK (auth.uid() = user_id)', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Users can update own %I" ON %I', tbl, tbl);
     EXECUTE format('CREATE POLICY "Users can update own %I" ON %I FOR UPDATE USING (auth.uid() = user_id)', tbl, tbl);
+    EXECUTE format('DROP POLICY IF EXISTS "Users can delete own %I" ON %I', tbl, tbl);
     EXECUTE format('CREATE POLICY "Users can delete own %I" ON %I FOR DELETE USING (auth.uid() = user_id)', tbl, tbl);
   END LOOP;
 END $$;
