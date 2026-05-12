@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2
+  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -10,6 +10,7 @@ const modules = [
   { name: 'Home', path: '/', icon: Home, color: 'text-amber-400' },
   { name: 'Inventory', path: '/inventory', icon: Package, color: 'text-blue-400' },
   { name: 'Cross-Sell Analyzer', path: '/cross-sell', icon: BarChart3, color: 'text-emerald-400' },
+  { name: 'Catalog', path: '/catalog', icon: Library, color: 'text-indigo-400' },
   { name: 'Book Tracker', path: '/book-tracker', icon: BookOpen, color: 'text-purple-400' },
   { name: 'Profit', path: '/profit-track', icon: DollarSign, color: 'text-green-400' },
   { name: 'Ad Alchemy', path: '/ad-alchemy', icon: Sparkles, color: 'text-orange-400' },

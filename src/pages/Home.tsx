@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone
+  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library
 } from 'lucide-react';
 
 const modules = [
@@ -21,6 +21,14 @@ const modules = [
     icon: BarChart3,
     gradient: 'from-emerald-500 to-emerald-600',
     shadow: 'shadow-emerald-500/25',
+  },
+  {
+    name: 'Catalog',
+    description: 'Every book in one place: status, covers, ISBNs, series links, tropes, excerpts, and marketing copy.',
+    path: '/catalog',
+    icon: Library,
+    gradient: 'from-indigo-500 to-violet-600',
+    shadow: 'shadow-indigo-500/25',
   },
   {
     name: 'Book Tracker',
