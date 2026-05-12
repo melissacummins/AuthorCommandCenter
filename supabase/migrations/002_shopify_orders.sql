@@ -7,7 +7,7 @@
 -- ============================================
 -- SHOPIFY SETTINGS (per-user credentials)
 -- ============================================
-CREATE TABLE shopify_settings (
+CREATE TABLE IF NOT EXISTS shopify_settings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL UNIQUE,
   store_url TEXT NOT NULL,
@@ -22,7 +22,7 @@ CREATE TABLE shopify_settings (
 -- ============================================
 -- SHOPIFY ORDERS (synced order data)
 -- ============================================
-CREATE TABLE shopify_orders (
+CREATE TABLE IF NOT EXISTS shopify_orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   shopify_order_id TEXT NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE shopify_orders (
 -- ============================================
 -- SHOPIFY SYNC LOG
 -- ============================================
-CREATE TABLE shopify_sync_log (
+CREATE TABLE IF NOT EXISTS shopify_sync_log (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   sync_type TEXT NOT NULL,
@@ -86,9 +86,9 @@ END $$;
 -- ============================================
 -- INDEXES
 -- ============================================
-CREATE INDEX idx_shopify_settings_user ON shopify_settings(user_id);
-CREATE INDEX idx_shopify_orders_user ON shopify_orders(user_id);
-CREATE INDEX idx_shopify_orders_date ON shopify_orders(order_date);
-CREATE INDEX idx_shopify_orders_location ON shopify_orders(location_id);
-CREATE INDEX idx_shopify_orders_shopify_id ON shopify_orders(shopify_order_id);
-CREATE INDEX idx_shopify_sync_log_user ON shopify_sync_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_shopify_settings_user ON shopify_settings(user_id);
+CREATE INDEX IF NOT EXISTS idx_shopify_orders_user ON shopify_orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_shopify_orders_date ON shopify_orders(order_date);
+CREATE INDEX IF NOT EXISTS idx_shopify_orders_location ON shopify_orders(location_id);
+CREATE INDEX IF NOT EXISTS idx_shopify_orders_shopify_id ON shopify_orders(shopify_order_id);
+CREATE INDEX IF NOT EXISTS idx_shopify_sync_log_user ON shopify_sync_log(user_id);

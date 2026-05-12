@@ -40,6 +40,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
@@ -47,7 +48,7 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================
 -- INVENTORY MODULE
 -- ============================================
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
@@ -79,7 +80,7 @@ CREATE TABLE products (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE inventory_orders (
+CREATE TABLE IF NOT EXISTS inventory_orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   product_id UUID REFERENCES products(id) ON DELETE CASCADE NOT NULL,
@@ -93,7 +94,7 @@ CREATE TABLE inventory_orders (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE purchase_orders (
+CREATE TABLE IF NOT EXISTS purchase_orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   product_id UUID,
@@ -107,7 +108,7 @@ CREATE TABLE purchase_orders (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE book_specs (
+CREATE TABLE IF NOT EXISTS book_specs (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   product_id UUID,
@@ -125,7 +126,7 @@ CREATE TABLE book_specs (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE printer_quotes (
+CREATE TABLE IF NOT EXISTS printer_quotes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   product_id UUID,
@@ -142,7 +143,7 @@ CREATE TABLE printer_quotes (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE sales_regions (
+CREATE TABLE IF NOT EXISTS sales_regions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   region TEXT NOT NULL,
@@ -153,7 +154,7 @@ CREATE TABLE sales_regions (
 -- ============================================
 -- CROSS-SELL MODULE
 -- ============================================
-CREATE TABLE cross_sell_reports (
+CREATE TABLE IF NOT EXISTS cross_sell_reports (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   year TEXT NOT NULL,
@@ -166,7 +167,7 @@ CREATE TABLE cross_sell_reports (
 -- ============================================
 -- BOOK TRACKER MODULE
 -- ============================================
-CREATE TABLE tracked_books (
+CREATE TABLE IF NOT EXISTS tracked_books (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
@@ -183,7 +184,7 @@ CREATE TABLE tracked_books (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE quarterly_updates (
+CREATE TABLE IF NOT EXISTS quarterly_updates (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   book_id UUID REFERENCES tracked_books(id) ON DELETE CASCADE NOT NULL,
@@ -196,7 +197,7 @@ CREATE TABLE quarterly_updates (
 -- ============================================
 -- PROFIT TRACK MODULE
 -- ============================================
-CREATE TABLE daily_records (
+CREATE TABLE IF NOT EXISTS daily_records (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   date TEXT NOT NULL,
@@ -214,7 +215,7 @@ CREATE TABLE daily_records (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE weekly_notes (
+CREATE TABLE IF NOT EXISTS weekly_notes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   week_start_date TEXT NOT NULL,
@@ -224,7 +225,7 @@ CREATE TABLE weekly_notes (
   UNIQUE(user_id, week_start_date)
 );
 
-CREATE TABLE order_sources (
+CREATE TABLE IF NOT EXISTS order_sources (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
@@ -234,7 +235,7 @@ CREATE TABLE order_sources (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE monthly_orders (
+CREATE TABLE IF NOT EXISTS monthly_orders (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   month_key TEXT NOT NULL,
@@ -244,7 +245,7 @@ CREATE TABLE monthly_orders (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE monthly_page_reads (
+CREATE TABLE IF NOT EXISTS monthly_page_reads (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   month_key TEXT NOT NULL,
@@ -253,7 +254,7 @@ CREATE TABLE monthly_page_reads (
   UNIQUE(user_id, month_key)
 );
 
-CREATE TABLE book_products (
+CREATE TABLE IF NOT EXISTS book_products (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
@@ -266,7 +267,7 @@ CREATE TABLE book_products (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE book_daily_metrics (
+CREATE TABLE IF NOT EXISTS book_daily_metrics (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   date TEXT NOT NULL,
@@ -287,7 +288,7 @@ CREATE TABLE book_daily_metrics (
 -- ============================================
 -- AD ALCHEMY MODULE
 -- ============================================
-CREATE TABLE ad_projects (
+CREATE TABLE IF NOT EXISTS ad_projects (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
@@ -298,7 +299,7 @@ CREATE TABLE ad_projects (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE enriched_ads (
+CREATE TABLE IF NOT EXISTS enriched_ads (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   project_id UUID REFERENCES ad_projects(id) ON DELETE SET NULL,
@@ -330,7 +331,7 @@ CREATE TABLE enriched_ads (
 -- ============================================
 -- FINSTREAM MODULE
 -- ============================================
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   date TEXT NOT NULL,
@@ -343,7 +344,7 @@ CREATE TABLE transactions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE category_rules (
+CREATE TABLE IF NOT EXISTS category_rules (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   match_string TEXT NOT NULL,
@@ -352,7 +353,7 @@ CREATE TABLE category_rules (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE manual_subscriptions (
+CREATE TABLE IF NOT EXISTS manual_subscriptions (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   vendor_name TEXT NOT NULL,
@@ -362,7 +363,7 @@ CREATE TABLE manual_subscriptions (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE cash_flow_notes (
+CREATE TABLE IF NOT EXISTS cash_flow_notes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   month TEXT NOT NULL,
@@ -372,7 +373,7 @@ CREATE TABLE cash_flow_notes (
   UNIQUE(user_id, month)
 );
 
-CREATE TABLE manual_history_entries (
+CREATE TABLE IF NOT EXISTS manual_history_entries (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   month TEXT NOT NULL,
@@ -384,7 +385,7 @@ CREATE TABLE manual_history_entries (
 -- ============================================
 -- KDP OPTIMIZER MODULE
 -- ============================================
-CREATE TABLE tropes (
+CREATE TABLE IF NOT EXISTS tropes (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   name TEXT NOT NULL,
@@ -392,7 +393,7 @@ CREATE TABLE tropes (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE kdp_books (
+CREATE TABLE IF NOT EXISTS kdp_books (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   title TEXT NOT NULL,
@@ -405,7 +406,7 @@ CREATE TABLE kdp_books (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE TABLE keywords (
+CREATE TABLE IF NOT EXISTS keywords (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
   text TEXT NOT NULL,
@@ -484,21 +485,21 @@ END $$;
 -- ============================================
 -- INDEXES FOR PERFORMANCE
 -- ============================================
-CREATE INDEX idx_products_user ON products(user_id);
-CREATE INDEX idx_inventory_orders_user ON inventory_orders(user_id);
-CREATE INDEX idx_inventory_orders_product ON inventory_orders(product_id);
-CREATE INDEX idx_purchase_orders_user ON purchase_orders(user_id);
-CREATE INDEX idx_daily_records_user ON daily_records(user_id);
-CREATE INDEX idx_daily_records_date ON daily_records(date);
-CREATE INDEX idx_transactions_user ON transactions(user_id);
-CREATE INDEX idx_transactions_date ON transactions(date);
-CREATE INDEX idx_enriched_ads_user ON enriched_ads(user_id);
-CREATE INDEX idx_enriched_ads_project ON enriched_ads(project_id);
-CREATE INDEX idx_keywords_user ON keywords(user_id);
-CREATE INDEX idx_keywords_trope ON keywords(trope_id);
-CREATE INDEX idx_tracked_books_user ON tracked_books(user_id);
-CREATE INDEX idx_book_daily_metrics_book ON book_daily_metrics(book_id);
-CREATE INDEX idx_quarterly_updates_book ON quarterly_updates(book_id);
-CREATE INDEX idx_cross_sell_reports_user ON cross_sell_reports(user_id);
-CREATE INDEX idx_book_products_user ON book_products(user_id);
-CREATE INDEX idx_monthly_orders_user ON monthly_orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_products_user ON products(user_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_orders_user ON inventory_orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_orders_product ON inventory_orders(product_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_orders_user ON purchase_orders(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_records_user ON daily_records(user_id);
+CREATE INDEX IF NOT EXISTS idx_daily_records_date ON daily_records(date);
+CREATE INDEX IF NOT EXISTS idx_transactions_user ON transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
+CREATE INDEX IF NOT EXISTS idx_enriched_ads_user ON enriched_ads(user_id);
+CREATE INDEX IF NOT EXISTS idx_enriched_ads_project ON enriched_ads(project_id);
+CREATE INDEX IF NOT EXISTS idx_keywords_user ON keywords(user_id);
+CREATE INDEX IF NOT EXISTS idx_keywords_trope ON keywords(trope_id);
+CREATE INDEX IF NOT EXISTS idx_tracked_books_user ON tracked_books(user_id);
+CREATE INDEX IF NOT EXISTS idx_book_daily_metrics_book ON book_daily_metrics(book_id);
+CREATE INDEX IF NOT EXISTS idx_quarterly_updates_book ON quarterly_updates(book_id);
+CREATE INDEX IF NOT EXISTS idx_cross_sell_reports_user ON cross_sell_reports(user_id);
+CREATE INDEX IF NOT EXISTS idx_book_products_user ON book_products(user_id);
+CREATE INDEX IF NOT EXISTS idx_monthly_orders_user ON monthly_orders(user_id);
