@@ -6,7 +6,7 @@ import Home from './pages/Home';
 import InventoryModule from './modules/inventory/InventoryModule';
 import CrossSellModule from './modules/cross-sell/CrossSellModule';
 import BookTrackerModule from './modules/book-tracker/BookTrackerModule';
-import BooksModule from './modules/books/BooksModule';
+import CatalogModule from './modules/catalog/CatalogModule';
 import ProfitTrackModule from './modules/profit-track/ProfitTrackModule';
 import AdAlchemyModule from './modules/ad-alchemy/AdAlchemyModule';
 import MarketingModule from './modules/marketing/MarketingModule';
@@ -41,7 +41,7 @@ function ProtectedRoutes() {
         <Route path="inventory" element={<InventoryModule />} />
         <Route path="cross-sell" element={<CrossSellModule />} />
         <Route path="book-tracker" element={<BookTrackerModule />} />
-        <Route path="books" element={<BooksModule />} />
+        <Route path="catalog" element={<CatalogModule />} />
         <Route path="profit-track" element={<ProfitTrackModule />} />
         <Route path="ad-alchemy" element={<AdAlchemyModule />} />
         <Route path="marketing" element={<MarketingModule />} />

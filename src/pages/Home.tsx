@@ -23,9 +23,9 @@ const modules = [
     shadow: 'shadow-emerald-500/25',
   },
   {
-    name: 'Books',
-    description: 'Per-book records: status, covers, ISBNs, series links, tropes, excerpts, and marketing copy.',
-    path: '/books',
+    name: 'Catalog',
+    description: 'Every book in one place: status, covers, ISBNs, series links, tropes, excerpts, and marketing copy.',
+    path: '/catalog',
     icon: Library,
     gradient: 'from-indigo-500 to-violet-600',
     shadow: 'shadow-indigo-500/25',
