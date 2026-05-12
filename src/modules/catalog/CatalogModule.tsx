@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Library, Plus, BookOpen, ArrowLeft, Search } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { createBook, deleteBook, listBooks, updateBook } from './api';
+import { createBook, deleteBook, listBooks, removeBookCover, updateBook, uploadBookCover } from './api';
 import type { Book, BookInsert } from './types';
 import { STATUS_COLORS, STATUS_LABELS } from './types';
 import BookForm from './components/BookForm';
@@ -41,12 +41,17 @@ export default function CatalogModule() {
     );
   }, [books, query]);
 
-  async function handleCreate(input: BookInsert) {
+  async function handleCreate(input: BookInsert, coverFile: File | null) {
     if (!user) return;
     setSaving(true);
     try {
       const created = await createBook(user.id, input);
-      setBooks(prev => [created, ...prev]);
+      let final = created;
+      if (coverFile) {
+        const url = await uploadBookCover(user.id, created.id, coverFile);
+        final = await updateBook(created.id, { cover_url: url });
+      }
+      setBooks(prev => [final, ...prev]);
       setView({ mode: 'list' });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -55,10 +60,19 @@ export default function CatalogModule() {
     }
   }
 
-  async function handleUpdate(id: string, input: BookInsert) {
+  async function handleUpdate(id: string, input: BookInsert, coverFile: File | null, coverCleared: boolean) {
+    if (!user) return;
     setSaving(true);
     try {
-      const updated = await updateBook(id, input);
+      let patch: BookInsert & { cover_url?: string | null } = { ...input };
+      if (coverFile) {
+        const url = await uploadBookCover(user.id, id, coverFile);
+        patch.cover_url = url;
+      } else if (coverCleared) {
+        await removeBookCover(user.id, id);
+        patch.cover_url = null;
+      }
+      const updated = await updateBook(id, patch);
       setBooks(prev => prev.map(b => (b.id === id ? updated : b)));
       setView({ mode: 'list' });
     } catch (err) {
@@ -69,7 +83,9 @@ export default function CatalogModule() {
   }
 
   async function handleDelete(id: string) {
+    if (!user) return;
     try {
+      await removeBookCover(user.id, id).catch(() => undefined);
       await deleteBook(id);
       setBooks(prev => prev.filter(b => b.id !== id));
       setView({ mode: 'list' });
@@ -101,7 +117,11 @@ export default function CatalogModule() {
           initial={initial}
           saving={saving}
           onCancel={() => setView({ mode: 'list' })}
-          onSubmit={input => (isEdit && initial ? handleUpdate(initial.id, input) : handleCreate(input))}
+          onSubmit={(input, file, cleared) =>
+            isEdit && initial
+              ? handleUpdate(initial.id, input, file, cleared)
+              : handleCreate(input, file)
+          }
           onDelete={isEdit && initial ? () => handleDelete(initial.id) : undefined}
         />
       </div>
@@ -169,38 +189,25 @@ function BookCard({ book, onClick }: { book: Book; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="text-left bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-slate-300 transition-all flex gap-4"
+      className="text-left bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-slate-300 transition-all flex gap-4 items-center"
     >
-      <div className="w-16 h-24 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0">
+      <div className="w-16 h-24 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
         {book.cover_url ? (
-          <img src={book.cover_url} alt="" className="w-full h-full object-cover rounded-lg" />
+          <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
         ) : (
           <BookOpen className="w-6 h-6 text-indigo-400" />
         )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-semibold text-slate-800 leading-tight line-clamp-2">{book.title}</h3>
+          {seriesLine && (
+            <p className="text-xs text-indigo-600 font-medium truncate">{seriesLine}</p>
+          )}
           <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[book.status]}`}>
             {STATUS_LABELS[book.status]}
           </span>
         </div>
-        {book.subtitle && (
-          <p className="text-xs text-slate-500 line-clamp-1 mb-1">{book.subtitle}</p>
-        )}
-        {seriesLine && (
-          <p className="text-xs text-indigo-600 font-medium mb-2">{seriesLine}</p>
-        )}
-        {book.tropes.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {book.tropes.slice(0, 3).map(t => (
-              <span key={t} className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded">{t}</span>
-            ))}
-            {book.tropes.length > 3 && (
-              <span className="text-[10px] px-1.5 py-0.5 text-slate-400">+{book.tropes.length - 3}</span>
-            )}
-          </div>
-        )}
+        <h3 className="font-semibold text-slate-800 leading-tight break-words">{book.title}</h3>
       </div>
     </button>
   );

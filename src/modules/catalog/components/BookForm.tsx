@@ -1,11 +1,11 @@
-import { useState, type FormEvent } from 'react';
-import { Trash2 } from 'lucide-react';
+import { useRef, useState, type FormEvent } from 'react';
+import { BookOpen, Trash2, Upload, X } from 'lucide-react';
 import type { Book, BookInsert, BookStatus } from '../types';
 import { STATUS_LABELS } from '../types';
 
 interface BookFormProps {
   initial?: Book | null;
-  onSubmit: (input: BookInsert) => Promise<void> | void;
+  onSubmit: (input: BookInsert, coverFile: File | null, coverCleared: boolean) => Promise<void> | void;
   onCancel: () => void;
   onDelete?: () => Promise<void> | void;
   saving?: boolean;
@@ -77,6 +77,28 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
   const [keywordsText, setKeywordsText] = useState((initial?.keywords ?? []).join('\n'));
   const [bisacText, setBisacText] = useState((initial?.bisac_categories ?? []).join('\n'));
 
+  // Cover state: pendingFile holds a not-yet-uploaded file; previewUrl shows
+  // either the local blob preview or the saved cover_url. coverCleared
+  // tracks whether the user explicitly removed an existing cover.
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(initial?.cover_url ?? null);
+  const [coverCleared, setCoverCleared] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function pickCover(file: File | null) {
+    if (!file) return;
+    setPendingFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+    setCoverCleared(false);
+  }
+
+  function clearCover() {
+    setPendingFile(null);
+    setPreviewUrl(null);
+    setCoverCleared(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   function set<K extends keyof BookInsert>(key: K, value: BookInsert[K]) {
     setDraft(d => ({ ...d, [key]: value }));
   }
@@ -93,17 +115,66 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!draft.title.trim()) return;
-    await onSubmit({
-      ...draft,
-      tropes: linesToArray(tropesText),
-      amazon_keywords: linesToArray(amazonKwText),
-      keywords: linesToArray(keywordsText),
-      bisac_categories: linesToArray(bisacText),
-    });
+    await onSubmit(
+      {
+        ...draft,
+        tropes: linesToArray(tropesText),
+        amazon_keywords: linesToArray(amazonKwText),
+        keywords: linesToArray(keywordsText),
+        bisac_categories: linesToArray(bisacText),
+      },
+      pendingFile,
+      coverCleared,
+    );
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
+      {/* Cover */}
+      <div className={sectionCls}>
+        <h3 className={sectionTitle}>Cover</h3>
+        <div className="flex items-start gap-4">
+          <div className="w-28 h-40 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
+            {previewUrl ? (
+              <img src={previewUrl} alt="Cover preview" className="w-full h-full object-cover" />
+            ) : (
+              <BookOpen className="w-8 h-8 text-indigo-400" />
+            )}
+          </div>
+          <div className="flex-1 space-y-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={e => pickCover(e.target.files?.[0] ?? null)}
+            />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
+              >
+                <Upload className="w-4 h-4" />
+                {previewUrl ? 'Replace cover' : 'Upload cover'}
+              </button>
+              {previewUrl && (
+                <button
+                  type="button"
+                  onClick={clearCover}
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-lg"
+                >
+                  <X className="w-4 h-4" /> Remove
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">
+              PNG, JPG, WebP, or GIF. Up to 10MB. Saved when you save the book.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Identity */}
       <div className={sectionCls}>
         <h3 className={sectionTitle}>Identity</h3>
@@ -219,8 +290,14 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           <textarea rows={3} className={inputCls} value={draft.kinks ?? ''} onChange={e => setText('kinks', e.target.value)} />
         </div>
         <div>
-          <label className={labelCls}>Tropes <span className="text-slate-400 font-normal">(one per line)</span></label>
-          <textarea rows={5} className={inputCls} value={tropesText} onChange={e => setTropesText(e.target.value)} placeholder={'Curvy Girl\nFated Mates\nHe falls first'} />
+          <label className={labelCls}>Tropes</label>
+          <textarea
+            rows={5}
+            className={inputCls}
+            value={tropesText}
+            onChange={e => setTropesText(e.target.value)}
+            placeholder={'One per line:\nCurvy Girl\nFated Mates\nHe falls first'}
+          />
         </div>
       </div>
 
@@ -277,18 +354,35 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       {/* Discovery */}
       <div className={sectionCls}>
         <h3 className={sectionTitle}>Discovery</h3>
+        <p className="text-xs text-slate-500 -mt-2">One entry per line.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
-            <label className={labelCls}>Amazon keywords <span className="text-slate-400 font-normal">(one per line, 7 max)</span></label>
-            <textarea rows={7} className={inputCls} value={amazonKwText} onChange={e => setAmazonKwText(e.target.value)} />
+            <label className={labelCls}>Amazon keywords</label>
+            <textarea
+              rows={7}
+              className={inputCls}
+              value={amazonKwText}
+              onChange={e => setAmazonKwText(e.target.value)}
+              placeholder="7 keywords max"
+            />
           </div>
           <div>
-            <label className={labelCls}>Other keywords <span className="text-slate-400 font-normal">(one per line)</span></label>
-            <textarea rows={7} className={inputCls} value={keywordsText} onChange={e => setKeywordsText(e.target.value)} />
+            <label className={labelCls}>Other keywords</label>
+            <textarea
+              rows={7}
+              className={inputCls}
+              value={keywordsText}
+              onChange={e => setKeywordsText(e.target.value)}
+            />
           </div>
           <div>
-            <label className={labelCls}>BISAC categories <span className="text-slate-400 font-normal">(one per line)</span></label>
-            <textarea rows={7} className={inputCls} value={bisacText} onChange={e => setBisacText(e.target.value)} />
+            <label className={labelCls}>BISAC categories</label>
+            <textarea
+              rows={7}
+              className={inputCls}
+              value={bisacText}
+              onChange={e => setBisacText(e.target.value)}
+            />
           </div>
         </div>
       </div>
