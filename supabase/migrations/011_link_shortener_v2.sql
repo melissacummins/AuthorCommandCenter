@@ -25,12 +25,16 @@ CREATE INDEX IF NOT EXISTS link_folders_user_idx ON link_folders(user_id, sort_o
 
 ALTER TABLE link_folders ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own folders - select" ON link_folders;
 CREATE POLICY "Users manage own folders - select"
   ON link_folders FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own folders - insert" ON link_folders;
 CREATE POLICY "Users manage own folders - insert"
   ON link_folders FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own folders - update" ON link_folders;
 CREATE POLICY "Users manage own folders - update"
   ON link_folders FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own folders - delete" ON link_folders;
 CREATE POLICY "Users manage own folders - delete"
   ON link_folders FOR DELETE USING (auth.uid() = user_id);
 
@@ -87,12 +91,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS link_conversions_user_external_unique
 
 ALTER TABLE link_conversions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own conversions - select" ON link_conversions;
 CREATE POLICY "Users manage own conversions - select"
   ON link_conversions FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own conversions - insert" ON link_conversions;
 CREATE POLICY "Users manage own conversions - insert"
   ON link_conversions FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own conversions - update" ON link_conversions;
 CREATE POLICY "Users manage own conversions - update"
   ON link_conversions FOR UPDATE USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own conversions - delete" ON link_conversions;
 CREATE POLICY "Users manage own conversions - delete"
   ON link_conversions FOR DELETE USING (auth.uid() = user_id);
 
@@ -139,9 +147,12 @@ CREATE TABLE IF NOT EXISTS link_attribution_settings (
 
 ALTER TABLE link_attribution_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users manage own attribution settings - select" ON link_attribution_settings;
 CREATE POLICY "Users manage own attribution settings - select"
   ON link_attribution_settings FOR SELECT USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own attribution settings - insert" ON link_attribution_settings;
 CREATE POLICY "Users manage own attribution settings - insert"
   ON link_attribution_settings FOR INSERT WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS "Users manage own attribution settings - update" ON link_attribution_settings;
 CREATE POLICY "Users manage own attribution settings - update"
   ON link_attribution_settings FOR UPDATE USING (auth.uid() = user_id);
