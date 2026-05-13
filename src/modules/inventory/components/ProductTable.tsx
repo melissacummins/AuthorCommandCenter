@@ -64,7 +64,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
   async function saveEdit(id: string, field: string) {
     try {
       const numericFields = ['base_price', 'production_cost', 'shipping_cost', 'shipping_supplies_cost',
-        'pa_costs', 'handling_fee_add_on', 'tt_shop_price', 'free_shipping', 'lead_time',
+        'pa_costs', 'qa_cost', 'handling_fee_add_on', 'tt_shop_price', 'free_shipping', 'lead_time',
         'book_stock', 'books_purchased', 'bundles_purchased', 'purchased_via_bundles',
         'six_month_book_sales', 'six_month_bundle_sales', 'csv_avg_daily', 'csv_reorder_threshold'];
       const value = numericFields.includes(field) ? Number(editValue) : editValue;
@@ -457,6 +457,10 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
                                 <EditableCell id={product.id} field="pa_costs" value={product.pa_costs} format={formatCurrency} />
                               </div>
                               <div>
+                                <p className="text-[11px] text-slate-400 uppercase mb-0.5" title="QA cost per unit — e.g., $15 PA session ÷ books in batch">QA Cost</p>
+                                <EditableCell id={product.id} field="qa_cost" value={product.qa_cost} format={formatCurrency} />
+                              </div>
+                              <div>
                                 <p className="text-[11px] text-slate-400 uppercase mb-0.5">Handling Fee</p>
                                 <EditableCell id={product.id} field="handling_fee_add_on" value={product.handling_fee_add_on} format={formatCurrency} />
                               </div>
@@ -464,13 +468,42 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
                                 <p className="text-[11px] text-slate-400 uppercase mb-0.5">Transaction Fees</p>
                                 <span>{formatCurrency(product.metrics.transactionFees)}</span>
                               </div>
-                              <div>
-                                <p className="text-[11px] text-slate-400 uppercase mb-0.5">Net Margin ($)</p>
-                                <span className={`font-medium ${marginColor(product.metrics.netMarginPercent)}`}>{formatCurrency(product.metrics.netMargin)}</span>
-                              </div>
-                              <div className="col-span-4">
-                                <p className="text-[11px] text-slate-400 uppercase mb-0.5">Net Margin (%)</p>
-                                <span className={`text-lg font-semibold ${marginColor(product.metrics.netMarginPercent)}`}>{product.metrics.netMarginPercent.toFixed(1)}%</span>
+                            </div>
+
+                            {/* Cost Breakdown — grouped subtotals for printer comparison */}
+                            <div className="mt-4 pt-4 border-t border-slate-200">
+                              <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Cost Breakdown</p>
+                              <div className="space-y-1.5 text-sm">
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-slate-600" title="Production + Shipping + Shipping Supplies. Use this to compare printers.">
+                                    Printer / Fulfillment
+                                  </span>
+                                  <span className="font-medium text-slate-800">{formatCurrency(product.metrics.printerCost)}</span>
+                                </div>
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-slate-600" title="PA Costs + QA Cost — your assistant's total time per unit">
+                                    PA Total (incl. QA)
+                                  </span>
+                                  <span className="font-medium text-slate-800">{formatCurrency(product.metrics.paTotal)}</span>
+                                </div>
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-slate-600">Transaction Fees</span>
+                                  <span className="font-medium text-slate-800">{formatCurrency(product.metrics.transactionFees)}</span>
+                                </div>
+                                <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-100">
+                                  <span className="text-slate-700 font-medium">Total Cost / Unit</span>
+                                  <span className="font-semibold text-slate-900">{formatCurrency(product.metrics.totalCostPerUnit)}</span>
+                                </div>
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-slate-600" title="Base Price + Handling Fee">Revenue / Unit</span>
+                                  <span className="font-medium text-slate-800">{formatCurrency(product.metrics.revenuePerUnit)}</span>
+                                </div>
+                                <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-100">
+                                  <span className="text-slate-700 font-medium">Net Margin</span>
+                                  <span className={`font-semibold ${marginColor(product.metrics.netMarginPercent)}`}>
+                                    {formatCurrency(product.metrics.netMargin)} ({product.metrics.netMarginPercent.toFixed(1)}%)
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
