@@ -55,6 +55,7 @@ CREATE TABLE products (
   shipping_cost NUMERIC DEFAULT 0,
   shipping_supplies_cost NUMERIC DEFAULT 0,
   pa_costs NUMERIC DEFAULT 0,
+  qa_cost NUMERIC DEFAULT 0,
   handling_fee_add_on NUMERIC DEFAULT 0,
   tt_shop_price NUMERIC DEFAULT 0,
   free_shipping NUMERIC DEFAULT 0,

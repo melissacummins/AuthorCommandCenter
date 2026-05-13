@@ -27,6 +27,7 @@ export interface Product {
   shipping_cost: number;
   shipping_supplies_cost: number;
   pa_costs: number;
+  qa_cost: number;
   handling_fee_add_on: number;
   tt_shop_price: number;
   free_shipping: number;

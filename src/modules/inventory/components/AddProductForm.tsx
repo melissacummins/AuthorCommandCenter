@@ -19,6 +19,7 @@ export default function AddProductForm({ onClose, onRefetch }: AddProductFormPro
     shipping_cost: 0,
     shipping_supplies_cost: 0,
     pa_costs: 0,
+    qa_cost: 0,
     handling_fee_add_on: 0,
     tt_shop_price: 0,
     free_shipping: 0,
@@ -106,6 +107,7 @@ export default function AddProductForm({ onClose, onRefetch }: AddProductFormPro
           <NumberField label="Shipping Cost" value={form.shipping_cost} onChange={v => updateField('shipping_cost', v)} />
           <NumberField label="Shipping Supplies" value={form.shipping_supplies_cost} onChange={v => updateField('shipping_supplies_cost', v)} />
           <NumberField label="PA Costs" value={form.pa_costs} onChange={v => updateField('pa_costs', v)} />
+          <NumberField label="QA Cost (per unit)" value={form.qa_cost} onChange={v => updateField('qa_cost', v)} />
           <NumberField label="Handling Fee Add-On" value={form.handling_fee_add_on} onChange={v => updateField('handling_fee_add_on', v)} />
           <NumberField label="Free Shipping" value={form.free_shipping} onChange={v => updateField('free_shipping', v)} />
         </div>

@@ -15,11 +15,15 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     ? (product.base_price * FEE_RATES.TRANSACTION_FEE_PERCENT) + FEE_RATES.TRANSACTION_FEE_FIXED
     : 0;
 
-  // Net Margin ($): (basePrice + handlingFeeAddOn) - (productionCost + shippingCost + transactionFees + shippingSuppliesCost + paCosts)
-  // handlingFeeAddOn is REVENUE (extra charge to customer), not a cost
-  const netMargin = (product.base_price + product.handling_fee_add_on)
-    - (product.production_cost + product.shipping_cost + transactionFees
-       + product.shipping_supplies_cost + product.pa_costs);
+  // Grouped cost subtotals — let the user compare "printer + QA" across vendors
+  // and see the PA's true contribution to per-unit cost.
+  const printerCost = product.production_cost + product.shipping_cost + product.shipping_supplies_cost;
+  const paTotal = product.pa_costs + product.qa_cost;
+  const totalCostPerUnit = printerCost + paTotal + transactionFees;
+  const revenuePerUnit = product.base_price + product.handling_fee_add_on;
+
+  // Net Margin ($): revenue - all costs (including QA)
+  const netMargin = revenuePerUnit - totalCostPerUnit;
 
   // Net Margin %: netMargin / basePrice
   const netMarginPercent = product.base_price > 0 ? (netMargin / product.base_price) * 100 : 0;
@@ -29,10 +33,10 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     ? (product.tt_shop_price * FEE_RATES.TIKTOK_FEE_PERCENT) + FEE_RATES.TIKTOK_FEE_FIXED
     : 0;
 
-  // TikTok Net Margin ($): (ttShopPrice - ttFees) - (productionCost + shippingCost + freeShipping + shippingSuppliesCost + paCosts)
-  const ttNetMargin = (product.tt_shop_price - ttFees)
-    - (product.production_cost + product.shipping_cost + product.free_shipping
-       + product.shipping_supplies_cost + product.pa_costs);
+  // TikTok Net Margin: TikTok absorbs shipping, so use free_shipping instead of shipping_cost
+  const ttTotalCostPerUnit = product.production_cost + product.free_shipping
+    + product.shipping_supplies_cost + paTotal + ttFees;
+  const ttNetMargin = product.tt_shop_price - ttTotalCostPerUnit;
 
   // TikTok Net Margin %: ttNetMargin / ttShopPrice
   const ttNetMarginPercent = product.tt_shop_price > 0 ? (ttNetMargin / product.tt_shop_price) * 100 : 0;
@@ -104,9 +108,14 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
 
   return {
     transactionFees,
+    printerCost,
+    paTotal,
+    totalCostPerUnit,
+    revenuePerUnit,
     netMargin,
     netMarginPercent,
     ttFees,
+    ttTotalCostPerUnit,
     ttNetMargin,
     ttNetMarginPercent,
     bookInventory,
