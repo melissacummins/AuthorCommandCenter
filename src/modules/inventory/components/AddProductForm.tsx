@@ -1,32 +1,34 @@
 import React, { useState } from 'react';
 import { CATEGORIES } from '../utils';
 import { addProduct } from '../api';
+import type { Product } from '../../../lib/types';
 
 interface AddProductFormProps {
   onClose: () => void;
   onRefetch: () => void;
+  duplicateFrom?: Product | null;
 }
 
-export default function AddProductForm({ onClose, onRefetch }: AddProductFormProps) {
+export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: AddProductFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
     name: '',
     sku: '',
-    category: 'Paperback' as string,
-    base_price: 0,
-    production_cost: 0,
-    shipping_cost: 0,
-    shipping_supplies_cost: 0,
-    pa_costs: 0,
-    qa_cost: 0,
-    handling_fee_add_on: 0,
-    tt_shop_price: 0,
-    free_shipping: 0,
+    category: (duplicateFrom?.category ?? 'Paperback') as string,
+    base_price: duplicateFrom?.base_price ?? 0,
+    production_cost: duplicateFrom?.production_cost ?? 0,
+    shipping_cost: duplicateFrom?.shipping_cost ?? 0,
+    shipping_supplies_cost: duplicateFrom?.shipping_supplies_cost ?? 0,
+    pa_costs: duplicateFrom?.pa_costs ?? 0,
+    qa_cost: duplicateFrom?.qa_cost ?? 0,
+    handling_fee_add_on: duplicateFrom?.handling_fee_add_on ?? 0,
+    tt_shop_price: duplicateFrom?.tt_shop_price ?? 0,
+    free_shipping: duplicateFrom?.free_shipping ?? 0,
     book_stock: 0,
     book_inventory: 0,
     bundles_inventory: 0,
-    lead_time: 0,
+    lead_time: duplicateFrom?.lead_time ?? 0,
     books_in_bundle: '',
     bundles: '',
     do_not_reorder: false,
@@ -67,6 +69,11 @@ export default function AddProductForm({ onClose, onRefetch }: AddProductFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {duplicateFrom && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-lg text-sm">
+          Pricing & costs copied from <strong>{duplicateFrom.name}</strong>. Enter a new name and SKU below.
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className="block text-xs text-slate-500 mb-1">Product Name *</label>

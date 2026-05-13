@@ -21,7 +21,18 @@ export default function InventoryModule() {
   const { settings: shopifySettings, loading: shopifyLoading, refetch: refetchShopify } = useShopifySettings();
   const [tab, setTab] = useState<Tab>('dashboard');
   const [showAddProduct, setShowAddProduct] = useState(false);
+  const [duplicateFrom, setDuplicateFrom] = useState<Product | null>(null);
   const [stockProduct, setStockProduct] = useState<Product | null>(null);
+
+  function startDuplicate(p: Product) {
+    setDuplicateFrom(p);
+    setShowAddProduct(true);
+  }
+
+  function closeAddProduct() {
+    setShowAddProduct(false);
+    setDuplicateFrom(null);
+  }
   const [showMigration, setShowMigration] = useState(false);
   const [showShopifySettings, setShowShopifySettings] = useState(false);
   const [pendingStock, setPendingStock] = useState<Map<string, number>>(new Map());
@@ -121,6 +132,7 @@ export default function InventoryModule() {
           products={products}
           onRefetch={refetch}
           onAdjustStock={setStockProduct}
+          onDuplicate={startDuplicate}
           pendingStock={pendingStock}
         />
       )}
@@ -140,8 +152,8 @@ export default function InventoryModule() {
       )}
 
       {/* Add Product Modal */}
-      <Modal open={showAddProduct} onClose={() => setShowAddProduct(false)} title="Add New Product" maxWidth="max-w-2xl">
-        <AddProductForm onClose={() => setShowAddProduct(false)} onRefetch={refetch} />
+      <Modal open={showAddProduct} onClose={closeAddProduct} title={duplicateFrom ? `Duplicate "${duplicateFrom.name}"` : 'Add New Product'} maxWidth="max-w-2xl">
+        <AddProductForm onClose={closeAddProduct} onRefetch={refetch} duplicateFrom={duplicateFrom} />
       </Modal>
 
       {/* Stock Adjustment Modal */}
