@@ -5,9 +5,11 @@ import { createBook, deleteBook, listBooks, removeBookCover, updateBook, uploadB
 import type { Book, BookInsert } from './types';
 import { STATUS_COLORS, STATUS_LABELS } from './types';
 import BookForm from './components/BookForm';
+import CatalogOverview from './components/CatalogOverview';
 
+type Tab = 'overview' | 'books';
 type View =
-  | { mode: 'list' }
+  | { mode: 'list'; tab: Tab }
   | { mode: 'new' }
   | { mode: 'edit'; book: Book };
 
@@ -16,7 +18,7 @@ export default function CatalogModule() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<View>({ mode: 'list' });
+  const [view, setView] = useState<View>({ mode: 'list', tab: 'overview' });
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -52,7 +54,7 @@ export default function CatalogModule() {
         final = await updateBook(created.id, { cover_url: url });
       }
       setBooks(prev => [final, ...prev]);
-      setView({ mode: 'list' });
+      setView({ mode: 'list', tab: 'books' });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -74,7 +76,7 @@ export default function CatalogModule() {
       }
       const updated = await updateBook(id, patch);
       setBooks(prev => prev.map(b => (b.id === id ? updated : b)));
-      setView({ mode: 'list' });
+      setView({ mode: 'list', tab: 'books' });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -88,7 +90,7 @@ export default function CatalogModule() {
       await removeBookCover(user.id, id).catch(() => undefined);
       await deleteBook(id);
       setBooks(prev => prev.filter(b => b.id !== id));
-      setView({ mode: 'list' });
+      setView({ mode: 'list', tab: 'books' });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -100,7 +102,7 @@ export default function CatalogModule() {
     return (
       <div className="p-6 lg:p-8 max-w-4xl mx-auto">
         <button
-          onClick={() => setView({ mode: 'list' })}
+          onClick={() => setView({ mode: 'list', tab: 'books' })}
           className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Catalog
@@ -116,7 +118,7 @@ export default function CatalogModule() {
         <BookForm
           initial={initial}
           saving={saving}
-          onCancel={() => setView({ mode: 'list' })}
+          onCancel={() => setView({ mode: 'list', tab: 'books' })}
           onSubmit={(input, file, cleared) =>
             isEdit && initial
               ? handleUpdate(initial.id, input, file, cleared)
@@ -128,10 +130,12 @@ export default function CatalogModule() {
     );
   }
 
+  const activeTab: Tab = view.mode === 'list' ? view.tab : 'overview';
+
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
             <Library className="w-6 h-6 text-indigo-500" /> Catalog
@@ -148,18 +152,15 @@ export default function CatalogModule() {
         </button>
       </div>
 
-      {/* Search */}
-      {books.length > 0 && (
-        <div className="relative mb-5 max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search by title, series, or trope"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
-          />
-        </div>
-      )}
+      {/* Tab strip */}
+      <div className="flex gap-1 border-b border-slate-200 mb-5">
+        <TabButton active={activeTab === 'overview'} onClick={() => setView({ mode: 'list', tab: 'overview' })}>
+          Overview
+        </TabButton>
+        <TabButton active={activeTab === 'books'} onClick={() => setView({ mode: 'list', tab: 'books' })}>
+          Books {books.length > 0 && <span className="ml-1 text-xs text-slate-400">({books.length})</span>}
+        </TabButton>
+      </div>
 
       {error && (
         <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
@@ -169,16 +170,50 @@ export default function CatalogModule() {
 
       {loading ? (
         <div className="text-center py-16 text-slate-500 text-sm">Loading catalog…</div>
-      ) : filtered.length === 0 ? (
-        <EmptyState onAdd={() => setView({ mode: 'new' })} hasBooks={books.length > 0} />
+      ) : activeTab === 'overview' ? (
+        <CatalogOverview books={books} onOpenBook={book => setView({ mode: 'edit', book })} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map(book => (
-            <BookCard key={book.id} book={book} onClick={() => setView({ mode: 'edit', book })} />
-          ))}
-        </div>
+        <>
+          {/* Search */}
+          {books.length > 0 && (
+            <div className="relative mb-5 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search by title, series, or trope"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+          )}
+
+          {filtered.length === 0 ? (
+            <EmptyState onAdd={() => setView({ mode: 'new' })} hasBooks={books.length > 0} />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filtered.map(book => (
+                <BookCard key={book.id} book={book} onClick={() => setView({ mode: 'edit', book })} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
+  );
+}
+
+function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+        active
+          ? 'border-indigo-500 text-indigo-600'
+          : 'border-transparent text-slate-500 hover:text-slate-700'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 

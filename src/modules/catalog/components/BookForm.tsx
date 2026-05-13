@@ -1,6 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { BookOpen, Trash2, Upload, X } from 'lucide-react';
-import type { Book, BookInsert, BookStatus } from '../types';
+import { BookOpen, Plus, Star, Trash2, Upload, X } from 'lucide-react';
+import type { Book, BookInsert, BookStatus, ReviewExcerpt } from '../types';
 import { STATUS_LABELS } from '../types';
 
 interface BookFormProps {
@@ -76,6 +76,17 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
   const [amazonKwText, setAmazonKwText] = useState((initial?.amazon_keywords ?? []).join('\n'));
   const [keywordsText, setKeywordsText] = useState((initial?.keywords ?? []).join('\n'));
   const [bisacText, setBisacText] = useState((initial?.bisac_categories ?? []).join('\n'));
+  const [reviews, setReviews] = useState<ReviewExcerpt[]>(initial?.reviews ?? []);
+
+  function addReview() {
+    setReviews(r => [...r, { quote: '', source: '', rating: null }]);
+  }
+  function updateReview(i: number, patch: Partial<ReviewExcerpt>) {
+    setReviews(r => r.map((rev, idx) => (idx === i ? { ...rev, ...patch } : rev)));
+  }
+  function removeReview(i: number) {
+    setReviews(r => r.filter((_, idx) => idx !== i));
+  }
 
   // Cover state: pendingFile holds a not-yet-uploaded file; previewUrl shows
   // either the local blob preview or the saved cover_url. coverCleared
@@ -122,6 +133,9 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         amazon_keywords: linesToArray(amazonKwText),
         keywords: linesToArray(keywordsText),
         bisac_categories: linesToArray(bisacText),
+        reviews: reviews
+          .map(r => ({ quote: r.quote.trim(), source: r.source.trim(), rating: r.rating ?? null }))
+          .filter(r => r.quote || r.source),
       },
       pendingFile,
       coverCleared,
@@ -387,6 +401,59 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         </div>
       </div>
 
+      {/* Reviews */}
+      <div className={sectionCls}>
+        <div className="flex items-center justify-between">
+          <h3 className={sectionTitle}>Review excerpts</h3>
+          <button
+            type="button"
+            onClick={addReview}
+            className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800"
+          >
+            <Plus className="w-4 h-4" /> Add review
+          </button>
+        </div>
+        {reviews.length === 0 ? (
+          <p className="text-xs text-slate-500">
+            Pull-quotes you want to reuse on covers, ads, or your bio page.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {reviews.map((rev, i) => (
+              <div key={i} className="rounded-lg border border-slate-200 p-3 space-y-2 bg-slate-50/50">
+                <textarea
+                  rows={2}
+                  className={inputCls}
+                  value={rev.quote}
+                  onChange={e => updateReview(i, { quote: e.target.value })}
+                  placeholder="“Devoured this in one sitting.”"
+                />
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input
+                    className={`${inputCls} flex-1 min-w-[8rem]`}
+                    value={rev.source}
+                    onChange={e => updateReview(i, { source: e.target.value })}
+                    placeholder="Source (reader, blog, Goodreads…)"
+                  />
+                  <StarPicker
+                    value={rev.rating ?? null}
+                    onChange={r => updateReview(i, { rating: r })}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeReview(i)}
+                    className="p-2 text-rose-500 hover:bg-rose-50 rounded"
+                    aria-label="Remove review"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Notes */}
       <div className={sectionCls}>
         <h3 className={sectionTitle}>Notes</h3>
@@ -422,5 +489,28 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         </div>
       </div>
     </form>
+  );
+}
+
+function StarPicker({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  return (
+    <div className="flex items-center gap-0.5" role="radiogroup" aria-label="Rating">
+      {[1, 2, 3, 4, 5].map(n => {
+        const active = value !== null && value >= n;
+        return (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(value === n ? null : n)}
+            className="p-0.5"
+            aria-label={`${n} star`}
+            aria-checked={value === n}
+            role="radio"
+          >
+            <Star className={`w-4 h-4 ${active ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+          </button>
+        );
+      })}
+    </div>
   );
 }
