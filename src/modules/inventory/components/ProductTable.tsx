@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, ChevronDown, ChevronUp, ChevronRight, Edit2, Check, X, Plus, Trash2, FileText } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, ChevronRight, Edit2, Check, X, Plus, Trash2, FileText, Copy } from 'lucide-react';
 import type { Product, PurchaseOrder } from '../../../lib/types';
 import { calculateProductMetrics, formatCurrency, formatPercent, marginColor, CATEGORIES, STATUSES } from '../utils';
 import { updateProduct, deleteProduct } from '../api';
@@ -9,12 +9,26 @@ interface ProductTableProps {
   products: Product[];
   onRefetch: () => void;
   onAdjustStock: (product: Product) => void;
+  onDuplicate?: (product: Product) => void;
   pendingStock?: Map<string, number>;
 }
 
+const BULK_FIELDS: Array<{ value: string; label: string }> = [
+  { value: 'qa_cost', label: 'QA Cost' },
+  { value: 'pa_costs', label: 'PA Costs' },
+  { value: 'production_cost', label: 'Production Cost' },
+  { value: 'shipping_cost', label: 'Shipping Cost' },
+  { value: 'shipping_supplies_cost', label: 'Shipping Supplies' },
+  { value: 'handling_fee_add_on', label: 'Handling Fee' },
+  { value: 'base_price', label: 'Base Price' },
+  { value: 'tt_shop_price', label: 'TikTok Price' },
+  { value: 'free_shipping', label: 'TikTok Free Shipping' },
+  { value: 'lead_time', label: 'Lead Time (days)' },
+];
+
 type SortKey = 'name' | 'category' | 'base_price' | 'netMarginPercent' | 'book_inventory' | 'status';
 
-export default function ProductTable({ products, onRefetch, onAdjustStock, pendingStock }: ProductTableProps) {
+export default function ProductTable({ products, onRefetch, onAdjustStock, onDuplicate, pendingStock }: ProductTableProps) {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -23,6 +37,10 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingField, setEditingField] = useState<{ id: string; field: string } | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkField, setBulkField] = useState<string>(BULK_FIELDS[0].value);
+  const [bulkValue, setBulkValue] = useState<string>('');
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   const enriched = products.map(p => ({ ...p, metrics: calculateProductMetrics(p, products) }));
 
@@ -121,6 +139,53 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
   async function handleDelete(id: string, name: string) {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     try { await deleteProduct(id); onRefetch(); } catch (err) { console.error(err); }
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAllFiltered(filteredIds: string[]) {
+    const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) filteredIds.forEach(id => next.delete(id));
+      else filteredIds.forEach(id => next.add(id));
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setBulkValue('');
+  }
+
+  async function applyBulkEdit() {
+    if (selectedIds.size === 0) return;
+    if (bulkValue.trim() === '') return;
+    const numValue = Number(bulkValue);
+    if (Number.isNaN(numValue)) {
+      alert(`"${bulkValue}" is not a number.`);
+      return;
+    }
+    const fieldLabel = BULK_FIELDS.find(f => f.value === bulkField)?.label ?? bulkField;
+    if (!confirm(`Set ${fieldLabel} to ${numValue} on ${selectedIds.size} product${selectedIds.size === 1 ? '' : 's'}?`)) return;
+    setBulkSaving(true);
+    try {
+      const ids: string[] = Array.from(selectedIds);
+      await Promise.all(ids.map(id => updateProduct(id, { [bulkField]: numValue })));
+      clearSelection();
+      onRefetch();
+    } catch (err) {
+      console.error('Bulk edit failed:', err);
+      alert('Bulk edit failed. See console for details.');
+    }
+    setBulkSaving(false);
   }
 
   function SortIcon({ column }: { column: SortKey }) {
@@ -261,7 +326,58 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
         </select>
       </div>
 
-      <p className="text-sm text-slate-500">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <p className="text-sm text-slate-500">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</p>
+        {selectedIds.size === 0 && filtered.length > 0 && (
+          <button
+            onClick={() => toggleSelectAllFiltered(filtered.map(p => p.id))}
+            className="text-xs text-slate-500 hover:text-slate-700 underline"
+          >
+            Select all {filtered.length} in current filter
+          </button>
+        )}
+      </div>
+
+      {/* Bulk Edit Panel — appears when rows are selected */}
+      {selectedIds.size > 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-blue-800">
+            {selectedIds.size} selected
+          </span>
+          <span className="text-blue-300">|</span>
+          <span className="text-sm text-blue-700">Set</span>
+          <select
+            value={bulkField}
+            onChange={e => setBulkField(e.target.value)}
+            className="px-2 py-1.5 border border-blue-200 rounded-lg text-sm bg-white focus:outline-none focus:border-blue-400"
+          >
+            {BULK_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
+          </select>
+          <span className="text-sm text-blue-700">to</span>
+          <input
+            type="number"
+            step="0.01"
+            value={bulkValue}
+            onChange={e => setBulkValue(e.target.value)}
+            placeholder="0.00"
+            className="w-28 px-2 py-1.5 border border-blue-200 rounded-lg text-sm bg-white focus:outline-none focus:border-blue-400"
+          />
+          <button
+            onClick={applyBulkEdit}
+            disabled={bulkSaving || bulkValue.trim() === ''}
+            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          >
+            {bulkSaving ? 'Applying…' : `Apply to ${selectedIds.size}`}
+          </button>
+          <button
+            onClick={clearSelection}
+            disabled={bulkSaving}
+            className="px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100 rounded-lg disabled:opacity-50"
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
@@ -269,6 +385,15 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="w-8 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={filtered.length > 0 && filtered.every(p => selectedIds.has(p.id))}
+                    onChange={() => toggleSelectAllFiltered(filtered.map(p => p.id))}
+                    className="rounded cursor-pointer"
+                    title="Select all in current filter"
+                  />
+                </th>
                 <th className="w-8 px-3 py-3"></th>
                 {([
                   ['name', 'Product', 'text-left'],
@@ -292,7 +417,15 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
                 const memberBundles = getProductBundles(product);
                 return (
                 <>
-                  <tr key={product.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                  <tr key={product.id} className={`border-b border-slate-100 hover:bg-slate-50 transition-colors ${selectedIds.has(product.id) ? 'bg-blue-50/40' : ''}`}>
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(product.id)}
+                        onChange={() => toggleSelect(product.id)}
+                        className="rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="px-3 py-3">
                       <button onClick={() => setExpandedId(expandedId === product.id ? null : product.id)} className="text-slate-400 hover:text-slate-600">
                         <ChevronRight className={`w-4 h-4 transition-transform ${expandedId === product.id ? 'rotate-90' : ''}`} />
@@ -322,6 +455,11 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
                         <button onClick={() => onAdjustStock(product)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-lg" title="Adjust Stock">
                           <Plus className="w-4 h-4" />
                         </button>
+                        {onDuplicate && (
+                          <button onClick={() => onDuplicate(product)} className="p-1.5 text-slate-500 hover:bg-slate-100 rounded-lg" title="Duplicate (copy pricing & costs)">
+                            <Copy className="w-4 h-4" />
+                          </button>
+                        )}
                         <button onClick={() => handleDelete(product.id, product.name)} className="p-1.5 text-red-400 hover:bg-red-50 rounded-lg" title="Delete">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -330,7 +468,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
                   </tr>
                   {expandedId === product.id && (
                     <tr key={`${product.id}-detail`} className="bg-slate-50/50">
-                      <td colSpan={9} className="px-6 py-5">
+                      <td colSpan={10} className="px-6 py-5">
                         {/* Product Info — editable name, SKU, category */}
                         <div className="flex flex-wrap items-center gap-4 mb-4 pb-4 border-b border-slate-200">
                           <div className="flex-1 min-w-[200px]">
@@ -654,7 +792,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, pendi
               )})}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-slate-400">
+                  <td colSpan={10} className="px-6 py-12 text-center text-slate-400">
                     {products.length === 0 ? 'No products yet. Add your first product to get started.' : 'No products match your filters.'}
                   </td>
                 </tr>
