@@ -2,27 +2,20 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library
+  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2,
 } from 'lucide-react';
 
-const modules = [
-  {
-    name: 'Inventory & Orders',
-    description: 'Track product stock, pull Shopify orders by location, and auto-update inventory from sales.',
-    path: '/inventory',
-    icon: Package,
-    gradient: 'from-blue-500 to-blue-600',
-    shadow: 'shadow-blue-500/25',
-  },
-  {
-    name: 'Cross-Sell Analyzer',
-    description: 'Upload Shopify CSVs to discover which products your customers buy together.',
-    path: '/cross-sell',
-    icon: BarChart3,
-    gradient: 'from-emerald-500 to-emerald-600',
-    shadow: 'shadow-emerald-500/25',
-  },
-  {
+interface ModuleCard {
+  name: string;
+  description: string;
+  path: string;
+  icon: typeof Package;
+  gradient: string;
+  shadow: string;
+}
+
+const moduleByPath: Record<string, ModuleCard> = {
+  '/catalog': {
     name: 'Catalog',
     description: 'Every book in one place: status, covers, ISBNs, series links, tropes, excerpts, and marketing copy.',
     path: '/catalog',
@@ -30,7 +23,7 @@ const modules = [
     gradient: 'from-indigo-500 to-violet-600',
     shadow: 'shadow-indigo-500/25',
   },
-  {
+  '/book-tracker': {
     name: 'Book Tracker',
     description: 'Track development costs for each book and see when they pay for themselves.',
     path: '/book-tracker',
@@ -38,7 +31,7 @@ const modules = [
     gradient: 'from-purple-500 to-purple-600',
     shadow: 'shadow-purple-500/25',
   },
-  {
+  '/profit-track': {
     name: 'Profit',
     description: 'Log daily ad spend and royalties across Amazon, Shopify, Kobo, and more.',
     path: '/profit-track',
@@ -46,23 +39,7 @@ const modules = [
     gradient: 'from-green-500 to-green-600',
     shadow: 'shadow-green-500/25',
   },
-  {
-    name: 'Ad Alchemy',
-    description: 'Analyze Facebook ad performance, identify winning hooks, and optimize creatives.',
-    path: '/ad-alchemy',
-    icon: Sparkles,
-    gradient: 'from-orange-500 to-orange-600',
-    shadow: 'shadow-orange-500/25',
-  },
-  {
-    name: 'Marketing',
-    description: 'Create ad copy, manage creatives, build reel scripts, and adapt content for social media.',
-    path: '/marketing',
-    icon: Megaphone,
-    gradient: 'from-pink-500 to-pink-600',
-    shadow: 'shadow-pink-500/25',
-  },
-  {
+  '/finstream': {
     name: 'Financials',
     description: 'Import bank transactions, auto-categorize expenses, and track subscriptions.',
     path: '/finstream',
@@ -70,7 +47,39 @@ const modules = [
     gradient: 'from-cyan-500 to-cyan-600',
     shadow: 'shadow-cyan-500/25',
   },
-  {
+  '/inventory': {
+    name: 'Inventory & Orders',
+    description: 'Track product stock, pull Shopify orders by location, and auto-update inventory from sales.',
+    path: '/inventory',
+    icon: Package,
+    gradient: 'from-blue-500 to-blue-600',
+    shadow: 'shadow-blue-500/25',
+  },
+  '/cross-sell': {
+    name: 'Cross-Sell Analyzer',
+    description: 'Upload Shopify CSVs to discover which products your customers buy together.',
+    path: '/cross-sell',
+    icon: BarChart3,
+    gradient: 'from-emerald-500 to-emerald-600',
+    shadow: 'shadow-emerald-500/25',
+  },
+  '/ad-alchemy': {
+    name: 'Ad Alchemy',
+    description: 'Analyze Facebook ad performance, identify winning hooks, and optimize creatives.',
+    path: '/ad-alchemy',
+    icon: Sparkles,
+    gradient: 'from-orange-500 to-orange-600',
+    shadow: 'shadow-orange-500/25',
+  },
+  '/marketing': {
+    name: 'Marketing',
+    description: 'Create ad copy, manage creatives, build reel scripts, and adapt content for social media.',
+    path: '/marketing',
+    icon: Megaphone,
+    gradient: 'from-pink-500 to-pink-600',
+    shadow: 'shadow-pink-500/25',
+  },
+  '/kdp-optimizer': {
     name: 'KDP Optimizer',
     description: 'Manage keyword lists, analyze competition, and generate optimized Amazon keyword boxes.',
     path: '/kdp-optimizer',
@@ -78,6 +87,21 @@ const modules = [
     gradient: 'from-rose-500 to-rose-600',
     shadow: 'shadow-rose-500/25',
   },
+  '/links': {
+    name: 'Link Shortener',
+    description: 'Custom slugs, click tracking, archived links, and a hosted bio page.',
+    path: '/links',
+    icon: Link2,
+    gradient: 'from-indigo-500 to-indigo-600',
+    shadow: 'shadow-indigo-500/25',
+  },
+};
+
+const sections: { label: string; paths: string[] }[] = [
+  { label: 'Catalog',    paths: ['/catalog'] },
+  { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
+  { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/kdp-optimizer', '/links'] },
 ];
 
 export default function Home() {
@@ -96,28 +120,36 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Module Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-        {modules.map(module => {
-          const Icon = module.icon;
-          return (
-            <Link
-              key={module.path}
-              to={module.path}
-              className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-200"
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br ${module.gradient} rounded-xl shadow-lg ${module.shadow}`}>
-                  <Icon className="w-6 h-6 text-white" />
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-1">{module.name}</h3>
-              <p className="text-sm text-slate-500 leading-relaxed">{module.description}</p>
-            </Link>
-          );
-        })}
-      </div>
+      {sections.map(section => (
+        <section key={section.label} className="mb-8">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
+            {section.label}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {section.paths.map(path => {
+              const m = moduleByPath[path];
+              if (!m) return null;
+              const Icon = m.icon;
+              return (
+                <Link
+                  key={m.path}
+                  to={m.path}
+                  className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-200"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className={`inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br ${m.gradient} rounded-xl shadow-lg ${m.shadow}`}>
+                      <Icon className="w-6 h-6 text-white" />
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-1">{m.name}</h3>
+                  <p className="text-sm text-slate-500 leading-relaxed">{m.description}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+      ))}
 
       {/* Info Banner */}
       <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">

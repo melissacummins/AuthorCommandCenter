@@ -8,18 +8,63 @@ import { useState, type ReactNode } from 'react';
 
 const modules = [
   { name: 'Home', path: '/', icon: Home, color: 'text-amber-400' },
-  { name: 'Inventory', path: '/inventory', icon: Package, color: 'text-blue-400' },
-  { name: 'Cross-Sell Analyzer', path: '/cross-sell', icon: BarChart3, color: 'text-emerald-400' },
   { name: 'Catalog', path: '/catalog', icon: Library, color: 'text-indigo-400' },
   { name: 'Book Tracker', path: '/book-tracker', icon: BookOpen, color: 'text-purple-400' },
   { name: 'Profit', path: '/profit-track', icon: DollarSign, color: 'text-green-400' },
+  { name: 'Financials', path: '/finstream', icon: Wallet, color: 'text-cyan-400' },
+  { name: 'Inventory', path: '/inventory', icon: Package, color: 'text-blue-400' },
+  { name: 'Cross-Sell Analyzer', path: '/cross-sell', icon: BarChart3, color: 'text-emerald-400' },
   { name: 'Ad Alchemy', path: '/ad-alchemy', icon: Sparkles, color: 'text-orange-400' },
   { name: 'Marketing', path: '/marketing', icon: Megaphone, color: 'text-pink-400' },
-  { name: 'Financials', path: '/finstream', icon: Wallet, color: 'text-cyan-400' },
   { name: 'KDP Optimizer', path: '/kdp-optimizer', icon: Search, color: 'text-rose-400' },
   { name: 'Link Shortener', path: '/links', icon: Link2, color: 'text-indigo-400' },
   { name: 'Settings', path: '/settings', icon: Settings, color: 'text-slate-300' },
 ];
+
+// Sidebar sections — each section header groups the module paths that
+// follow it. Home and Settings live outside any section.
+const sections: { label: string; paths: string[] }[] = [
+  { label: 'Catalog',    paths: ['/catalog'] },
+  { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
+  { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/kdp-optimizer', '/links'] },
+];
+
+const moduleByPath = Object.fromEntries(modules.map(m => [m.path, m]));
+const homeModule = moduleByPath['/'];
+const settingsModule = moduleByPath['/settings'];
+
+type ModuleEntry = (typeof modules)[number];
+
+function NavLink({
+  module,
+  collapsed,
+  activePath,
+  onNav,
+}: {
+  module: ModuleEntry;
+  collapsed: boolean;
+  activePath: string;
+  onNav: () => void;
+}) {
+  const Icon = module.icon;
+  const isActive = activePath === module.path;
+  return (
+    <Link
+      to={module.path}
+      onClick={onNav}
+      title={collapsed ? module.name : undefined}
+      className={`
+        flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-xl transition-all group
+        ${isActive ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}
+      `}
+    >
+      <Icon className={`w-5 h-5 shrink-0 ${isActive ? module.color : 'text-slate-500 group-hover:text-slate-300'}`} />
+      {!collapsed && <span className="font-medium text-sm">{module.name}</span>}
+      {!collapsed && isActive && <ChevronRight className="w-4 h-4 ml-auto text-slate-500" />}
+    </Link>
+  );
+}
 
 export default function Layout({ children }: { children: ReactNode }) {
   const { user, profile, signOut } = useAuth();
@@ -79,27 +124,39 @@ export default function Layout({ children }: { children: ReactNode }) {
         </button>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 py-2 space-y-1 overflow-y-auto">
-          {modules.map(module => {
-            const Icon = module.icon;
-            const isActive = location.pathname === module.path;
-            return (
-              <Link
-                key={module.path}
-                to={module.path}
-                onClick={() => setSidebarOpen(false)}
-                title={collapsed ? module.name : undefined}
-                className={`
-                  flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-xl transition-all group
-                  ${isActive ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}
-                `}
-              >
-                <Icon className={`w-5 h-5 shrink-0 ${isActive ? module.color : 'text-slate-500 group-hover:text-slate-300'}`} />
-                {!collapsed && <span className="font-medium text-sm">{module.name}</span>}
-                {!collapsed && isActive && <ChevronRight className="w-4 h-4 ml-auto text-slate-500" />}
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-2 py-2 overflow-y-auto">
+          <NavLink module={homeModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
+
+          {sections.map(section => (
+            <div key={section.label} className="mt-4">
+              {!collapsed && (
+                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+                  {section.label}
+                </p>
+              )}
+              {collapsed && <div className="mx-3 my-2 border-t border-slate-700/50" />}
+              <div className="space-y-1">
+                {section.paths.map(path => {
+                  const m = moduleByPath[path];
+                  if (!m) return null;
+                  return (
+                    <NavLink
+                      key={m.path}
+                      module={m}
+                      collapsed={collapsed}
+                      activePath={location.pathname}
+                      onNav={() => setSidebarOpen(false)}
+                    />
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          <div className="mt-4">
+            {collapsed && <div className="mx-3 my-2 border-t border-slate-700/50" />}
+            <NavLink module={settingsModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
+          </div>
         </nav>
 
         {/* User */}
