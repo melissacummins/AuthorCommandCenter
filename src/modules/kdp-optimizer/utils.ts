@@ -1,205 +1,204 @@
 import type { Keyword, ScoreColor } from './types';
 
-// ============================================
-// METADATA INDEXING
-// ============================================
-// Amazon already indexes the title, subtitle, series, and chosen
-// categories. Splitting those into normalized words tells us which
-// words inside any keyword phrase are already "covered" — and the
-// 7-box packer should skip those.
-
-const WORD_SPLIT = /[^a-z0-9]+/i;
-
-export function normalizeWords(...sources: (string | null | undefined)[]): Set<string> {
-  const out = new Set<string>();
-  for (const s of sources) {
-    if (!s) continue;
-    for (const w of s.toLowerCase().split(WORD_SPLIT)) {
-      if (w.length >= 2) out.add(w);
-    }
-  }
-  return out;
-}
-
-export function keywordWords(text: string): string[] {
-  return text.toLowerCase().split(WORD_SPLIT).filter(w => w.length >= 2);
-}
-
-// True if every meaningful word in `keyword` is already in `covered`.
-export function isFullyCovered(keyword: string, covered: Set<string>): boolean {
-  const words = keywordWords(keyword);
-  if (words.length === 0) return false;
-  return words.every(w => covered.has(w));
-}
+// Ported from melissacummins/KDP-Optimizer (utils.ts) so the algorithm
+// matches the standalone app exactly. Kept comments terse — the
+// upstream file is the source of truth for behavior.
 
 // ============================================
-// 7-BOX OPTIMIZER
+// Parsing helpers
 // ============================================
-// Amazon gives you 7 keyword fields, each up to 50 characters. Each
-// field is treated as a bag of words — anything in your title /
-// subtitle / series / categories is already indexed, so we shouldn't
-// re-spend characters on them.
-//
-// Strategy: collect every unique word from your selected keywords,
-// drop any that are already in metadata, then greedy-pack alphabet-
-// ically into 7 boxes of <= 50 chars (space-separated).
 
-export const MAX_BOX_CHARS = 50;
-export const BOX_COUNT = 7;
-
-export interface PackResult {
-  boxes: string[];
-  unused: string[]; // words we couldn't fit
-  totalWords: number;
-}
-
-export function packAmazonBoxes(
-  selectedKeywords: Pick<Keyword, 'text'>[],
-  metadataCovered: Set<string>,
-): PackResult {
-  const wordSet = new Set<string>();
-  for (const k of selectedKeywords) {
-    for (const w of keywordWords(k.text)) {
-      if (!metadataCovered.has(w)) wordSet.add(w);
-    }
-  }
-  const words = Array.from(wordSet).sort();
-  const boxes: string[] = Array(BOX_COUNT).fill('');
-  const unused: string[] = [];
-
-  for (const w of words) {
-    let placed = false;
-    for (let i = 0; i < BOX_COUNT; i++) {
-      const next = boxes[i] === '' ? w : `${boxes[i]} ${w}`;
-      if (next.length <= MAX_BOX_CHARS) {
-        boxes[i] = next;
-        placed = true;
-        break;
-      }
-    }
-    if (!placed) unused.push(w);
-  }
-
-  return { boxes, unused, totalWords: words.length };
-}
-
-// ============================================
-// CSV IMPORT (Publisher Rocket-ish)
-// ============================================
-// Real Publisher Rocket exports use column names like:
-//   Keyword, Estimated Amazon Searches, Competition Score, ...
-// Be lenient about exact column casing/spacing; we map a small set
-// of synonyms to our schema.
-
-const COLUMN_SYNONYMS: Record<keyof CsvRow, string[]> = {
-  text: ['keyword', 'keywords', 'phrase', 'search term'],
-  search_volume: ['estimated amazon searches', 'est searches', 'est. searches', 'search volume', 'searches'],
-  competitive_score: ['competition score', 'comp score', 'competitive score'],
-  competitors: ['competitors', 'number of competitors'],
-  avg_pages: ['avg pages', 'average number of pages', 'average pages'],
-  avg_price: ['avg price', 'average price'],
-  avg_monthly_earnings: ['avg monthly earnings', 'average monthly earnings', 'monthly earnings'],
+export const parseNumberString = (str?: string): number => {
+  if (!str) return 0;
+  // Publisher Rocket uses "<100" sometimes. Treat as 50 for sorting.
+  if (str.includes('<')) return 50;
+  const clean = str.replace(/[$,\s]/g, '');
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
 };
 
-export interface CsvRow {
-  text: string;
-  search_volume: number;
-  competitive_score: number;
-  competitors: number;
-  avg_pages: number;
-  avg_price: number;
-  avg_monthly_earnings: number;
+export const toTitleCase = (str: string): string =>
+  str.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.substring(1).toLowerCase());
+
+// ============================================
+// Keyword optimization
+// ============================================
+
+const STOP_WORDS = new Set([
+  'the', 'a', 'an', 'of', 'for', 'with', 'in', 'on', 'at', 'to', 'by', 'and', '&',
+  'is', 'are', 'or', 'it', 'this', 'that', 'kindle', 'book', 'books',
+]);
+
+export const isStopWord = (word: string): boolean => STOP_WORDS.has(word.toLowerCase());
+
+export const cleanKeywordText = (text: string): string[] => {
+  if (!text) return [];
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(/\s+/)
+    .filter(w => w.length > 0 && !STOP_WORDS.has(w));
+};
+
+interface MetadataSource {
+  title: string;
+  subtitle: string | null;
+  series: string;
+  amazon_categories: string;
 }
 
-function colorForVolume(v: number): ScoreColor {
-  if (v <= 0) return 'Gray';
-  if (v < 100) return 'Red';
-  if (v < 1000) return 'Yellow';
-  return 'Green';
+export const getMetadataWords = (book: MetadataSource): Set<string> => {
+  const words = new Set<string>();
+  const add = (txt?: string | null) => {
+    if (!txt) return;
+    cleanKeywordText(txt).forEach(w => words.add(w));
+  };
+  add(book.title);
+  add(book.subtitle);
+  add(book.series);
+  add(book.amazon_categories);
+  // Tropes are intentionally NOT added — they're internal organization,
+  // not Amazon-facing metadata. Matches upstream behavior.
+  return words;
+};
+
+const isWordCovered = (word: string, covered: Set<string>): boolean => {
+  if (covered.has(word)) return true;
+  if (word.endsWith('s') && covered.has(word.slice(0, -1))) return true;
+  if (covered.has(word + 's')) return true;
+  return false;
+};
+
+export interface CoverageResult {
+  phraseWords: string[];
+  neededWords: string[];
+  coveredWords: string[];
+  isFullyCovered: boolean;
 }
 
-function colorForCompetition(c: number): ScoreColor {
-  if (c <= 0) return 'Gray';
-  if (c >= 70) return 'Red';
-  if (c >= 40) return 'Yellow';
-  return 'Green';
-}
-
-export interface ParsedCsv {
-  rows: (CsvRow & {
-    search_volume_color: ScoreColor;
-    competitive_score_color: ScoreColor;
-  })[];
-  warnings: string[];
-}
-
-export function parseRocketCsv(csv: string): ParsedCsv {
-  const warnings: string[] = [];
-  const lines = csv.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim().length > 0);
-  if (lines.length === 0) return { rows: [], warnings: ['Empty CSV.'] };
-
-  const headerCells = splitCsvLine(lines[0]).map(s => s.trim().toLowerCase());
-  const colIndex: Partial<Record<keyof CsvRow, number>> = {};
-  for (const [field, synonyms] of Object.entries(COLUMN_SYNONYMS) as [keyof CsvRow, string[]][]) {
-    const i = headerCells.findIndex(h => synonyms.includes(h));
-    if (i >= 0) colIndex[field] = i;
+export const analyzeKeywordCoverage = (phrase: string, covered: Set<string>): CoverageResult => {
+  const phraseWords = cleanKeywordText(phrase);
+  const neededWords: string[] = [];
+  const coveredWords: string[] = [];
+  for (const w of phraseWords) {
+    if (isWordCovered(w, covered)) coveredWords.push(w);
+    else neededWords.push(w);
   }
-  if (colIndex.text === undefined) {
-    return { rows: [], warnings: ['Could not find a "Keyword" column in the header.'] };
-  }
+  return {
+    phraseWords,
+    neededWords,
+    coveredWords,
+    isFullyCovered: neededWords.length === 0,
+  };
+};
 
-  const rows: ParsedCsv['rows'] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cells = splitCsvLine(lines[i]);
-    const text = (cells[colIndex.text!] ?? '').trim();
-    if (!text) continue;
-    const sv = num(cells[colIndex.search_volume ?? -1]);
-    const cs = num(cells[colIndex.competitive_score ?? -1]);
-    rows.push({
-      text,
-      search_volume: sv,
-      competitive_score: cs,
-      competitors: num(cells[colIndex.competitors ?? -1]),
-      avg_pages: num(cells[colIndex.avg_pages ?? -1]),
-      avg_price: num(cells[colIndex.avg_price ?? -1]),
-      avg_monthly_earnings: num(cells[colIndex.avg_monthly_earnings ?? -1]),
-      search_volume_color: colorForVolume(sv),
-      competitive_score_color: colorForCompetition(cs),
-    });
-  }
-
-  if (rows.length === 0) warnings.push('No data rows found — only a header was detected.');
-  return { rows, warnings };
-}
-
-// Lightweight CSV splitter — handles double-quoted cells and embedded commas.
-function splitCsvLine(line: string): string[] {
-  const out: string[] = [];
-  let cur = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        cur += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === ',' && !inQuotes) {
-      out.push(cur);
-      cur = '';
-    } else {
-      cur += ch;
+// Pack the unique uncovered words from a list of selected keyword
+// phrases into 50-character boxes. Returns however many boxes are
+// needed (UI shows 7 slots and warns if more are produced).
+export const optimizeKeywords = (phrases: string[], metadataWords: Set<string>): string[] => {
+  const uniqueNeeded = new Set<string>();
+  for (const phrase of phrases) {
+    for (const w of cleanKeywordText(phrase)) {
+      if (!isWordCovered(w, metadataWords)) uniqueNeeded.add(w);
     }
   }
-  out.push(cur);
-  return out;
+
+  // Sort shorter-first so when we drop singular/plural duplicates we
+  // keep the shorter form (book vs books).
+  const candidates = Array.from(uniqueNeeded).sort(
+    (a, b) => a.length - b.length || a.localeCompare(b),
+  );
+  const finalWords = new Set<string>();
+  for (const w of candidates) {
+    if (!isWordCovered(w, finalWords)) finalWords.add(w);
+  }
+
+  const sorted = Array.from(finalWords).sort();
+  const boxes: string[] = [];
+  let cur = '';
+  for (const w of sorted) {
+    if (cur === '') cur = w;
+    else if (cur.length + 1 + w.length <= 50) cur += ' ' + w;
+    else {
+      boxes.push(cur);
+      cur = w;
+    }
+  }
+  if (cur) boxes.push(cur);
+  return boxes;
+};
+
+// ============================================
+// CSV parsing — Publisher Rocket exports
+// ============================================
+
+export interface KeywordRawData {
+  Keyword: string;
+  'Average Pages'?: string;
+  'Number Of Competitors'?: string;
+  'Average Price'?: string;
+  'Average Monthly Earnings'?: string;
+  'Est. Amazon Searches/Month'?: string;
+  'Amazon Searches/Month Color'?: string;
+  'Competitive Score'?: string | number;
+  'Competitive Score Color'?: string;
 }
 
-function num(raw: string | undefined): number {
-  if (raw === undefined) return 0;
-  const cleaned = raw.replace(/[$,%\s]/g, '');
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
+export const parseCSV = (csvText: string): KeywordRawData[] => {
+  const lines = csvText.replace(/^﻿/, '').split('\n').map(l => l.trim()).filter(l => l);
+  if (lines.length < 2) return [];
+
+  const parseLine = (line: string): string[] => {
+    const result: string[] = [];
+    let cur = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') inQuotes = !inQuotes;
+      else if (ch === ',' && !inQuotes) {
+        result.push(cur.trim().replace(/^"|"$/g, ''));
+        cur = '';
+      } else cur += ch;
+    }
+    result.push(cur.trim().replace(/^"|"$/g, ''));
+    return result;
+  };
+
+  const headers = parseLine(lines[0]);
+  const data: KeywordRawData[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseLine(lines[i]);
+    if (values.length === headers.length) {
+      const entry: Record<string, string> = {};
+      headers.forEach((h, idx) => { entry[h] = values[idx]; });
+      data.push(entry as unknown as KeywordRawData);
+    }
+  }
+  return data;
+};
+
+// Convert one CSV row into the DB shape (snake_case columns matching
+// our keywords table). Trusts colors that PR provides; defaults to Gray.
+export function csvRowToKeywordPayload(
+  row: KeywordRawData,
+  userId: string,
+  tropeId: string,
+): Omit<Keyword, 'id' | 'created_at' | 'external_id'> {
+  const compRaw = row['Competitive Score'];
+  const competitive_score =
+    typeof compRaw === 'number' ? compRaw : parseNumberString(String(compRaw ?? ''));
+  return {
+    user_id: userId,
+    trope_id: tropeId,
+    text: row.Keyword.trim(),
+    search_volume: parseNumberString(row['Est. Amazon Searches/Month']),
+    search_volume_color: (row['Amazon Searches/Month Color'] || 'Gray') as ScoreColor,
+    competitive_score,
+    competitive_score_color: (row['Competitive Score Color'] || 'Gray') as ScoreColor,
+    competitors: parseNumberString(row['Number Of Competitors']),
+    avg_pages: parseNumberString(row['Average Pages']),
+    avg_price: parseNumberString(row['Average Price']),
+    avg_monthly_earnings: parseNumberString(row['Average Monthly Earnings']),
+    last_updated: Date.now(),
+  };
 }

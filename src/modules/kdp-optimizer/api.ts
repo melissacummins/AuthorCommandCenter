@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type { ImportJson, ImportSummary, KdpBook, Keyword, Trope } from './types';
-import type { ParsedCsv } from './utils';
+import { csvRowToKeywordPayload, parseCSV, toTitleCase, type KeywordRawData } from './utils';
 
 export async function listTropes(userId: string): Promise<Trope[]> {
   const { data, error } = await supabase
@@ -82,54 +82,40 @@ export async function moveKeywordsToTrope(ids: string[], newTropeId: string): Pr
 // keyword by (user_id, trope_id, text); if it exists we refresh the
 // metrics, otherwise insert a new row. Re-uploads from Publisher
 // Rocket are idempotent and just refresh the numbers.
+// Import a Publisher Rocket CSV into a single trope. Upserts by
+// (trope_id, lower(text)) so re-uploads from PR refresh metrics in
+// place. Mirrors importKeywords from the standalone app.
 export async function importTropeCsv(
   userId: string,
   tropeId: string,
-  parsed: ParsedCsv,
-): Promise<{ inserted: number; updated: number }> {
-  if (parsed.rows.length === 0) return { inserted: 0, updated: 0 };
+  csvText: string,
+): Promise<{ inserted: number; updated: number; rows: number }> {
+  const rows = parseCSV(csvText).filter(r => r.Keyword?.trim());
+  if (rows.length === 0) return { inserted: 0, updated: 0, rows: 0 };
 
-  // Find existing keywords for this trope keyed by lowercase text so we
-  // can upsert without violating any unique constraint and without
-  // duplicating "Curvy Girl" vs "curvy girl".
   const { data: existing, error: exErr } = await supabase
     .from('keywords')
     .select('id, text')
     .eq('user_id', userId)
     .eq('trope_id', tropeId);
   if (exErr) throw exErr;
-
-  const existingByText = new Map<string, string>(); // lowered text -> id
-  for (const e of existing ?? []) {
-    existingByText.set((e.text ?? '').toLowerCase().trim(), e.id);
-  }
+  const existingByText = new Map<string, string>();
+  for (const e of existing ?? []) existingByText.set((e.text ?? '').toLowerCase().trim(), e.id);
 
   const toInsert: Record<string, unknown>[] = [];
   let updated = 0;
 
-  for (const row of parsed.rows) {
-    const key = row.text.toLowerCase().trim();
+  for (const row of rows) {
+    const key = row.Keyword.toLowerCase().trim();
+    const payload = csvRowToKeywordPayload(row, userId, tropeId);
     const existingId = existingByText.get(key);
-    const payload = {
-      user_id: userId,
-      trope_id: tropeId,
-      text: row.text,
-      search_volume: row.search_volume,
-      search_volume_color: row.search_volume_color,
-      competitive_score: row.competitive_score,
-      competitive_score_color: row.competitive_score_color,
-      competitors: row.competitors,
-      avg_pages: row.avg_pages,
-      avg_price: row.avg_price,
-      avg_monthly_earnings: row.avg_monthly_earnings,
-      last_updated: Date.now(),
-    };
     if (existingId) {
       const { error } = await supabase.from('keywords').update(payload).eq('id', existingId);
       if (error) throw error;
       updated++;
     } else {
       toInsert.push(payload);
+      existingByText.set(key, '__pending__');
     }
   }
 
@@ -138,30 +124,159 @@ export async function importTropeCsv(
     const { error } = await supabase.from('keywords').insert(batch);
     if (error) throw error;
   }
-
-  return { inserted: toInsert.length, updated };
+  return { inserted: toInsert.length, updated, rows: rows.length };
 }
 
-// Merge `fromTropeIds` into `intoTropeId`: reassign all keywords and
-// affected kdp_books.assigned_trope_ids entries, then delete the
-// source tropes.
+// Smart import — auto-categorize rows into existing tropes by longest
+// trope name contained in the keyword text. Creates a new trope (named
+// after the keyword in title case) if no match. Mirrors
+// smartImportKeywords from the standalone app.
+export async function smartImportKeywords(
+  userId: string,
+  csvText: string,
+): Promise<{ inserted: number; updated: number; tropesCreated: number; rows: number }> {
+  const raw = parseCSV(csvText).filter(r => r.Keyword?.trim());
+  if (raw.length === 0) return { inserted: 0, updated: 0, tropesCreated: 0, rows: 0 };
+
+  const { data: tropes } = await supabase
+    .from('tropes')
+    .select('id, name')
+    .eq('user_id', userId);
+
+  // Local working copies — we may add to them as we go.
+  const tropeList: { id: string; name: string }[] = (tropes ?? []).map(t => ({ id: t.id, name: t.name as string }));
+
+  // Process shorter keywords first so "Curvy Girl" can become a trope
+  // before "Curvy Girl Romance" tries to match it.
+  const sorted = [...raw].sort((a, b) => a.Keyword.length - b.Keyword.length);
+
+  let tropesCreated = 0;
+  // Group payloads by trope_id to batch insert/update efficiently.
+  const inserts: Record<string, unknown>[] = [];
+  const updates: { id: string; payload: Record<string, unknown> }[] = [];
+
+  for (const row of sorted) {
+    const text = row.Keyword.trim();
+    const lower = text.toLowerCase();
+
+    // Longest trope-name substring match.
+    let matched = tropeList
+      .filter(t => lower.includes(t.name.toLowerCase()))
+      .sort((a, b) => b.name.length - a.name.length)[0];
+
+    if (!matched) {
+      const newName = toTitleCase(text);
+      const { data: created, error: cErr } = await supabase
+        .from('tropes')
+        .insert({ user_id: userId, name: newName, description: 'Auto-created from import' })
+        .select('id, name')
+        .single();
+      if (cErr) throw cErr;
+      matched = { id: created.id as string, name: created.name as string };
+      tropeList.push(matched);
+      tropesCreated++;
+    }
+
+    const payload = csvRowToKeywordPayload(row, userId, matched.id);
+
+    // Look up existing within trope by text — one round-trip per row;
+    // fine for a few hundred rows.
+    const { data: existingKw } = await supabase
+      .from('keywords')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('trope_id', matched.id)
+      .ilike('text', text)
+      .maybeSingle();
+
+    if (existingKw?.id) updates.push({ id: existingKw.id, payload });
+    else inserts.push(payload);
+  }
+
+  for (let i = 0; i < inserts.length; i += 200) {
+    const batch = inserts.slice(i, i + 200);
+    const { error } = await supabase.from('keywords').insert(batch);
+    if (error) throw error;
+  }
+  for (const u of updates) {
+    const { error } = await supabase.from('keywords').update(u.payload).eq('id', u.id);
+    if (error) throw error;
+  }
+
+  return { inserted: inserts.length, updated: updates.length, tropesCreated, rows: raw.length };
+}
+
+export async function copyKeywordToTrope(userId: string, keywordId: string, targetTropeId: string): Promise<void> {
+  const { data: original, error: oErr } = await supabase
+    .from('keywords')
+    .select('*')
+    .eq('id', keywordId)
+    .single();
+  if (oErr) throw oErr;
+  if (original.trope_id === targetTropeId) return;
+
+  const { data: existing } = await supabase
+    .from('keywords')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('trope_id', targetTropeId)
+    .ilike('text', original.text)
+    .maybeSingle();
+
+  const { id: _id, created_at: _ca, external_id: _xi, ...rest } = original;
+  const payload = { ...rest, trope_id: targetTropeId };
+  if (existing?.id) {
+    const { error } = await supabase.from('keywords').update(payload).eq('id', existing.id);
+    if (error) throw error;
+  } else {
+    const { error } = await supabase.from('keywords').insert(payload);
+    if (error) throw error;
+  }
+}
+
+// Merge tropes into a target by NAME. Creates the target if it doesn't
+// exist; reassigns every keyword from the sources to it (deduping by
+// lowercased text); rewrites kdp_books.assigned_trope_ids; deletes
+// the now-empty sources. Mirrors upstream mergeTropes(targetTropeName,
+// sourceTropeIds).
 export async function mergeTropes(
   userId: string,
-  fromTropeIds: string[],
-  intoTropeId: string,
-): Promise<void> {
-  const sources = fromTropeIds.filter(id => id !== intoTropeId);
-  if (sources.length === 0) return;
+  targetTropeName: string,
+  sourceTropeIds: string[],
+): Promise<{ targetTropeId: string }> {
+  if (!targetTropeName.trim() || sourceTropeIds.length === 0) {
+    throw new Error('mergeTropes: need a target name and at least one source.');
+  }
 
-  // 1. Move keywords (dedupe by text within target trope).
+  // 1. Resolve or create target trope.
+  const { data: existing } = await supabase
+    .from('tropes')
+    .select('id, name')
+    .eq('user_id', userId)
+    .ilike('name', targetTropeName.trim());
+  let targetId: string;
+  if (existing && existing.length > 0) {
+    targetId = existing[0].id as string;
+  } else {
+    const { data: created, error: cErr } = await supabase
+      .from('tropes')
+      .insert({ user_id: userId, name: targetTropeName.trim(), description: 'Merged Category' })
+      .select('id')
+      .single();
+    if (cErr) throw cErr;
+    targetId = created.id as string;
+  }
+
+  const sources = sourceTropeIds.filter(id => id !== targetId);
+  if (sources.length === 0) return { targetTropeId: targetId };
+
+  // 2. Dedupe keywords as we move them.
   const { data: targetKws } = await supabase
     .from('keywords')
     .select('text')
     .eq('user_id', userId)
-    .eq('trope_id', intoTropeId);
-  const targetTexts = new Set<string>(
-    (targetKws ?? []).map(k => (k.text ?? '').toLowerCase().trim()),
-  );
+    .eq('trope_id', targetId);
+  const targetTexts = new Set<string>((targetKws ?? []).map(k => (k.text ?? '').toLowerCase().trim()));
 
   const { data: srcKws } = await supabase
     .from('keywords')
@@ -179,11 +294,10 @@ export async function mergeTropes(
       targetTexts.add(key);
     }
   }
-  if (toMove.length > 0) await moveKeywordsToTrope(toMove, intoTropeId);
+  if (toMove.length > 0) await moveKeywordsToTrope(toMove, targetId);
   if (toDrop.length > 0) await deleteKeywords(toDrop);
 
-  // 2. Rewrite assigned_trope_ids on every kdp_books row that
-  //    references any source trope.
+  // 3. Rewrite kdp_books.assigned_trope_ids referencing any source.
   const { data: books } = await supabase
     .from('kdp_books')
     .select('id, assigned_trope_ids')
@@ -191,7 +305,7 @@ export async function mergeTropes(
   for (const b of books ?? []) {
     const ids: string[] = Array.isArray(b.assigned_trope_ids) ? b.assigned_trope_ids : [];
     if (!ids.some(id => sources.includes(id))) continue;
-    const next = Array.from(new Set(ids.map(id => (sources.includes(id) ? intoTropeId : id))));
+    const next = Array.from(new Set(ids.map(id => (sources.includes(id) ? targetId : id))));
     const { error } = await supabase
       .from('kdp_books')
       .update({ assigned_trope_ids: next })
@@ -199,9 +313,11 @@ export async function mergeTropes(
     if (error) throw error;
   }
 
-  // 3. Delete the source tropes.
+  // 4. Delete the source tropes.
   const { error: delErr } = await supabase.from('tropes').delete().in('id', sources);
   if (delErr) throw delErr;
+
+  return { targetTropeId: targetId };
 }
 
 export async function updateKdpBook(

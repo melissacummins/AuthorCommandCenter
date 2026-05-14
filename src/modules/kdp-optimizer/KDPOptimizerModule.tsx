@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Search, BookOpen, Tag, Upload, Plus, Trash2, Edit3, Link as LinkIcon } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Search, BookOpen, Tag, Upload, Plus, Trash2, Edit3, Link as LinkIcon, Sparkles, GitMerge,
+} from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { listBooks } from '../catalog/api';
 import type { Book } from '../catalog/types';
 import {
-  createTrope, deleteTrope, listKdpBooks, listKeywords, listTropes, updateTrope,
+  createTrope, deleteTrope, listKdpBooks, listKeywords, listTropes, mergeTropes,
+  smartImportKeywords, updateTrope,
 } from './api';
 import type { KdpBook, Keyword, Trope } from './types';
 import BookOptimizer from './components/BookOptimizer';
 import ImportTab from './components/ImportTab';
+import TropeDetail from './components/TropeDetail';
 
 type Tab = 'overview' | 'books' | 'tropes' | 'import';
 
@@ -20,6 +24,7 @@ export default function KDPOptimizerModule() {
   const [kdpBooks, setKdpBooks] = useState<KdpBook[]>([]);
   const [catalogBooks, setCatalogBooks] = useState<Book[]>([]);
   const [activeBook, setActiveBook] = useState<KdpBook | null>(null);
+  const [activeTrope, setActiveTrope] = useState<Trope | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,6 +79,21 @@ export default function KDPOptimizerModule() {
     );
   }
 
+  if (activeTrope) {
+    const tropeKws = keywords.filter(k => k.trope_id === activeTrope.id);
+    return (
+      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+        <TropeDetail
+          trope={activeTrope}
+          allTropes={tropes}
+          keywords={tropeKws}
+          onBack={() => setActiveTrope(null)}
+          onChange={reload}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex items-start gap-3 mb-4">
@@ -119,6 +139,7 @@ export default function KDPOptimizerModule() {
           userId={user!.id}
           tropes={tropes}
           keywordsByTrope={keywordsByTrope}
+          onOpen={t => setActiveTrope(t)}
           onChange={reload}
         />
       ) : (
@@ -306,15 +327,22 @@ function BooksTab({
 // TROPES TAB
 // ============================================
 function TropesTab({
-  userId, tropes, keywordsByTrope, onChange,
+  userId, tropes, keywordsByTrope, onOpen, onChange,
 }: {
   userId: string;
   tropes: Trope[];
   keywordsByTrope: Map<string, number>;
+  onOpen: (t: Trope) => void;
   onChange: () => void;
 }) {
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [mergeMode, setMergeMode] = useState(false);
+  const [mergeSelected, setMergeSelected] = useState<Set<string>>(new Set());
+  const [mergeTarget, setMergeTarget] = useState('');
+  const smartFileRef = useRef<HTMLInputElement>(null);
 
   async function add() {
     if (!newName.trim()) return;
@@ -328,24 +356,122 @@ function TropesTab({
     }
   }
 
+  async function onSmartCsv(file: File) {
+    setBusy(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const text = await file.text();
+      const r = await smartImportKeywords(userId, text);
+      setInfo(
+        `Smart import — ${r.inserted} added, ${r.updated} updated, ${r.tropesCreated} new tropes created (${r.rows} rows).`,
+      );
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+      if (smartFileRef.current) smartFileRef.current.value = '';
+    }
+  }
+
+  function toggleMergeSel(id: string) {
+    setMergeSelected(s => {
+      const next = new Set(s);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function runMerge() {
+    if (!mergeTarget.trim() || mergeSelected.size === 0) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await mergeTropes(userId, mergeTarget.trim(), Array.from(mergeSelected));
+      setInfo(`Merged ${mergeSelected.size} trope${mergeSelected.size === 1 ? '' : 's'} into "${mergeTarget.trim()}".`);
+      setMergeSelected(new Set());
+      setMergeTarget('');
+      setMergeMode(false);
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex gap-2">
+      {/* Quick actions */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-2 items-center">
         <input
           value={newName}
           onChange={e => setNewName(e.target.value)}
           placeholder="New trope name"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className="flex-1 min-w-[12rem] rounded-lg border border-slate-300 px-3 py-2 text-sm"
           onKeyDown={e => { if (e.key === 'Enter') add(); }}
         />
         <button
           onClick={add}
           disabled={busy || !newName.trim()}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
         >
           <Plus className="w-4 h-4" /> Add
         </button>
+        <input
+          ref={smartFileRef}
+          type="file"
+          accept=".csv,text/csv"
+          className="hidden"
+          onChange={e => { const f = e.target.files?.[0]; if (f) onSmartCsv(f); }}
+        />
+        <button
+          onClick={() => smartFileRef.current?.click()}
+          disabled={busy}
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
+          title="Auto-categorize a CSV into existing or new tropes"
+        >
+          <Sparkles className="w-4 h-4" /> Smart Import CSV
+        </button>
+        <button
+          onClick={() => { setMergeMode(v => !v); setMergeSelected(new Set()); setMergeTarget(''); }}
+          className={`inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg ${
+            mergeMode ? 'text-white bg-rose-600 hover:bg-rose-700' : 'text-slate-700 bg-white border border-slate-300 hover:bg-slate-50'
+          }`}
+        >
+          <GitMerge className="w-4 h-4" /> {mergeMode ? 'Cancel merge' : 'Merge categories'}
+        </button>
       </div>
+
+      {error && <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>}
+      {info && <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">{info}</div>}
+
+      {/* Merge panel */}
+      {mergeMode && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 space-y-3 text-sm">
+          <p className="text-rose-900">
+            Pick the source tropes to merge below, then enter a target name. The target is created
+            if it doesn't already exist.
+          </p>
+          <div className="flex gap-2 items-center">
+            <input
+              value={mergeTarget}
+              onChange={e => setMergeTarget(e.target.value)}
+              placeholder="Target trope name (e.g. Curvy Girl)"
+              className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
+            />
+            <button
+              onClick={runMerge}
+              disabled={busy || !mergeTarget.trim() || mergeSelected.size === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 disabled:bg-slate-300 rounded-lg"
+            >
+              <GitMerge className="w-4 h-4" /> Merge {mergeSelected.size > 0 ? `(${mergeSelected.size})` : ''}
+            </button>
+          </div>
+        </div>
+      )}
 
       {tropes.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 text-sm text-slate-500">
@@ -354,7 +480,16 @@ function TropesTab({
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
           {tropes.map(t => (
-            <TropeRow key={t.id} trope={t} keywordCount={keywordsByTrope.get(t.id) ?? 0} onChange={onChange} />
+            <TropeRow
+              key={t.id}
+              trope={t}
+              keywordCount={keywordsByTrope.get(t.id) ?? 0}
+              onChange={onChange}
+              onOpen={() => onOpen(t)}
+              mergeMode={mergeMode}
+              mergeSelected={mergeSelected.has(t.id)}
+              onToggleMerge={() => toggleMergeSel(t.id)}
+            />
           ))}
         </div>
       )}
@@ -362,7 +497,17 @@ function TropesTab({
   );
 }
 
-function TropeRow({ trope, keywordCount, onChange }: { trope: Trope; keywordCount: number; onChange: () => void }) {
+function TropeRow({
+  trope, keywordCount, onChange, onOpen, mergeMode, mergeSelected, onToggleMerge,
+}: {
+  trope: Trope;
+  keywordCount: number;
+  onChange: () => void;
+  onOpen: () => void;
+  mergeMode: boolean;
+  mergeSelected: boolean;
+  onToggleMerge: () => void;
+}) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(trope.name);
   const [description, setDescription] = useState(trope.description);
@@ -415,11 +560,14 @@ function TropeRow({ trope, keywordCount, onChange }: { trope: Trope; keywordCoun
     );
   }
   return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3">
-      <div className="min-w-0">
+    <div className={`flex items-center justify-between gap-3 px-4 py-3 ${mergeSelected ? 'bg-rose-50' : 'hover:bg-slate-50'}`}>
+      {mergeMode && (
+        <input type="checkbox" checked={mergeSelected} onChange={onToggleMerge} />
+      )}
+      <button onClick={onOpen} className="text-left flex-1 min-w-0">
         <div className="text-sm font-medium text-slate-800 truncate">{trope.name}</div>
         {trope.description && <div className="text-xs text-slate-500 truncate">{trope.description}</div>}
-      </div>
+      </button>
       <div className="flex items-center gap-3 shrink-0">
         <span className="text-xs text-slate-500">{keywordCount} keywords</span>
         <button onClick={() => setEditing(true)} className="p-1.5 text-slate-500 hover:text-slate-800 rounded">
