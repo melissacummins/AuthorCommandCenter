@@ -206,7 +206,7 @@ export default function ARCsModule() {
       )}
 
       {view.tab === 'import' ? (
-        <ImportTab userId={user!.id} onImported={reload} />
+        <ImportTab userId={user!.id} catalogBooks={catalogBooks} onImported={reload} />
       ) : loading ? (
         <div className="text-center py-16 text-slate-500 text-sm">Loading readers…</div>
       ) : (
