@@ -1,17 +1,20 @@
 import { useRef, useState } from 'react';
 import { AlertCircle, CheckCircle2, FileText, FileType2, Upload } from 'lucide-react';
+import type { Book } from '../../catalog/types';
 import {
   backfillNotesByName, importNotionJson, parseNotionCsv,
   type ImportSummary, type NotesBackfillEntry, type NotesBackfillSummary, type NotionArcRow,
 } from '../api';
 import { parseNotionMarkdown } from '../notion-md';
+import AddApplicantsPanel from './AddApplicantsPanel';
 
 interface Props {
   userId: string;
+  catalogBooks: Book[];
   onImported: () => void;
 }
 
-export default function ImportTab({ userId, onImported }: Props) {
+export default function ImportTab({ userId, catalogBooks, onImported }: Props) {
   const [json, setJson] = useState('');
   const [busy, setBusy] = useState(false);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -143,6 +146,8 @@ export default function ImportTab({ userId, onImported }: Props) {
           </div>
         )}
       </div>
+
+      <AddApplicantsPanel userId={userId} catalogBooks={catalogBooks} onImported={onImported} />
 
       <BackfillNotesPanel userId={userId} onImported={onImported} />
     </div>
