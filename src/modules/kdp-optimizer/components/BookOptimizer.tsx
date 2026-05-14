@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, Save, Search } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckSquare, Copy, Info, Save, Search, Square, TrendingUp } from 'lucide-react';
 import type { Book } from '../../catalog/types';
 import { updateKdpBook } from '../api';
 import type { KdpBook, Keyword, ScoreColor, Trope } from '../types';
-import { COLOR_CLASSES } from '../types';
+import {
+  analyzeKeywordCoverage, cleanKeywordText, getMetadataWords, isStopWord, optimizeKeywords,
+} from '../utils';
 
 interface Props {
   book: KdpBook;
@@ -14,58 +16,84 @@ interface Props {
   onSaved: (updated: KdpBook) => void;
 }
 
-const COLOR_DOT: Record<ScoreColor, string> = {
-  Green: 'bg-emerald-500',
-  Yellow: 'bg-amber-500',
-  Red: 'bg-rose-500',
-  Gray: 'bg-slate-400',
+const COLOR_BG: Record<ScoreColor, string> = {
+  Green: 'bg-emerald-100 text-emerald-800',
+  Yellow: 'bg-amber-100 text-amber-800',
+  Red: 'bg-rose-100 text-rose-800',
+  Gray: 'bg-slate-100 text-slate-600',
 };
+
+const fmtNum = (n: number) => n.toLocaleString();
+const fmtCurrency = (n: number) => `$${n.toFixed(2)}`;
 
 export default function BookOptimizer({ book, tropes, keywords, catalogBooks, onBack, onSaved }: Props) {
   const [draft, setDraft] = useState<KdpBook>(book);
-  const [query, setQuery] = useState('');
-  const [showOnlyAssigned, setShowOnlyAssigned] = useState(false);
+  const [filterText, setFilterText] = useState('');
+  const [showAssignTropes, setShowAssignTropes] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const tropeById = useMemo(() => {
-    const m = new Map<string, Trope>();
-    for (const t of tropes) m.set(t.id, t);
-    return m;
-  }, [tropes]);
+  const selectedSet = useMemo(() => new Set(draft.selected_keyword_ids), [draft.selected_keyword_ids]);
+  const assignedSet = useMemo(() => new Set(draft.assigned_trope_ids), [draft.assigned_trope_ids]);
+  const tropeById = useMemo(() => new Map(tropes.map(t => [t.id, t])), [tropes]);
 
-  const assignedTropeSet = useMemo(() => new Set(draft.assigned_trope_ids), [draft.assigned_trope_ids]);
-  const selectedKeywordSet = useMemo(() => new Set(draft.selected_keyword_ids), [draft.selected_keyword_ids]);
+  const assignedTropes = useMemo(
+    () => draft.assigned_trope_ids.map(id => tropeById.get(id)).filter((t): t is Trope => Boolean(t)),
+    [draft.assigned_trope_ids, tropeById],
+  );
 
-  // Group keywords by trope, sorted by trope name then keyword text.
-  const grouped = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const groups = new Map<string, Keyword[]>();
+  // 1. Raw pool: every keyword whose trope is assigned to this book.
+  // 2. Dedup by lowercased text — when collisions, prefer the
+  //    currently-selected one, then higher search volume.
+  const uniquePool = useMemo(() => {
+    const map = new Map<string, Keyword>();
     for (const k of keywords) {
-      if (q && !k.text.toLowerCase().includes(q)) continue;
-      if (showOnlyAssigned && !assignedTropeSet.has(k.trope_id)) continue;
-      const arr = groups.get(k.trope_id) ?? [];
-      arr.push(k);
-      groups.set(k.trope_id, arr);
+      if (!assignedSet.has(k.trope_id)) continue;
+      const norm = k.text.toLowerCase().trim();
+      const existing = map.get(norm);
+      if (!existing) {
+        map.set(norm, k);
+        continue;
+      }
+      const kSel = selectedSet.has(k.id);
+      const eSel = selectedSet.has(existing.id);
+      if (kSel && !eSel) map.set(norm, k);
+      else if (kSel === eSel && k.search_volume > existing.search_volume) map.set(norm, k);
     }
-    return Array.from(groups.entries())
-      .map(([tropeId, list]) => ({
-        trope: tropeById.get(tropeId),
-        tropeId,
-        keywords: list.sort((a, b) => a.text.localeCompare(b.text)),
-      }))
-      .filter(g => g.trope)
-      .sort((a, b) => (a.trope!.name).localeCompare(b.trope!.name));
-  }, [keywords, query, showOnlyAssigned, assignedTropeSet, tropeById]);
+    return Array.from(map.values());
+  }, [keywords, assignedSet, selectedSet]);
 
-  function toggleTrope(id: string) {
-    setDraft(d => {
-      const set = new Set(d.assigned_trope_ids);
-      if (set.has(id)) set.delete(id);
-      else set.add(id);
-      return { ...d, assigned_trope_ids: Array.from(set) };
-    });
-  }
+  const metadataWords = useMemo(() => getMetadataWords(draft), [draft]);
+
+  // Effective coverage = metadata + words from already-selected
+  // keywords. Used for visual strike-through; the optimizer itself
+  // only excludes metadata, since the selected words ARE the input.
+  const effectiveCovered = useMemo(() => {
+    const out = new Set(metadataWords);
+    for (const k of keywords) {
+      if (!selectedSet.has(k.id)) continue;
+      for (const w of cleanKeywordText(k.text)) out.add(w);
+    }
+    return out;
+  }, [metadataWords, keywords, selectedSet]);
+
+  const filteredPool = useMemo(() => {
+    const q = filterText.toLowerCase();
+    return uniquePool
+      .filter(k => k.text.toLowerCase().includes(q))
+      .sort((a, b) => b.search_volume - a.search_volume);
+  }, [uniquePool, filterText]);
+
+  const selectedKeywords = useMemo(
+    () => keywords.filter(k => selectedSet.has(k.id)),
+    [keywords, selectedSet],
+  );
+  const totalVolume = selectedKeywords.reduce((sum, k) => sum + (k.search_volume || 0), 0);
+
+  const optimizedBoxes = useMemo(
+    () => optimizeKeywords(selectedKeywords.map(k => k.text), metadataWords),
+    [selectedKeywords, metadataWords],
+  );
 
   function toggleKeyword(id: string) {
     setDraft(d => {
@@ -73,6 +101,15 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
       if (set.has(id)) set.delete(id);
       else set.add(id);
       return { ...d, selected_keyword_ids: Array.from(set) };
+    });
+  }
+
+  function toggleTrope(id: string) {
+    setDraft(d => {
+      const set = new Set(d.assigned_trope_ids);
+      if (set.has(id)) set.delete(id);
+      else set.add(id);
+      return { ...d, assigned_trope_ids: Array.from(set) };
     });
   }
 
@@ -99,152 +136,304 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
 
   return (
     <div className="space-y-4">
-      <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
-        <ArrowLeft className="w-4 h-4" /> Back to KDP books
-      </button>
-
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-bold text-slate-800">{draft.title}</h2>
-            {draft.subtitle && <p className="text-sm text-slate-500">{draft.subtitle}</p>}
-            {draft.series && <p className="text-xs text-indigo-600 font-medium mt-1">{draft.series}</p>}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-2">
+            <ArrowLeft className="w-4 h-4" /> Back to KDP books
+          </button>
+          <h2 className="text-2xl font-bold text-slate-800">{draft.title}</h2>
+          <div className="text-sm text-slate-500 flex flex-wrap items-center gap-2">
+            {draft.subtitle && <span>{draft.subtitle}</span>}
+            {draft.subtitle && draft.series && <span>•</span>}
+            {draft.series && <span className="text-slate-400">{draft.series}</span>}
           </div>
-          <button
-            onClick={save}
-            disabled={saving}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg shadow-sm shrink-0"
+        </div>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg shadow-sm shrink-0"
+        >
+          <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+      )}
+
+      {/* Book metadata */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Linked Catalog book</label>
+          <select
+            value={draft.book_id ?? ''}
+            onChange={e => setDraft(d => ({ ...d, book_id: e.target.value || null }))}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
           >
-            <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
+            <option value="">— Not linked —</option>
+            {catalogBooks.map(b => (
+              <option key={b.id} value={b.id}>{b.title}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-slate-700 mb-1">Amazon categories</label>
+          <input
+            value={draft.amazon_categories}
+            onChange={e => setDraft(d => ({ ...d, amazon_categories: e.target.value }))}
+            placeholder="Paranormal Romance, Werewolves & Shifters"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+      </div>
+
+      {/* Metadata indexing banner */}
+      <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-md text-sm text-indigo-800 flex items-start gap-2">
+        <Info className="w-4 h-4 mt-0.5 shrink-0" />
+        <div>
+          <span className="font-semibold">Metadata indexing:</span> words from your Title, Subtitle,
+          Series, Amazon Categories, and{' '}
+          <span className="font-bold underline decoration-indigo-400">Selected Keywords</span> are
+          considered "covered". Keywords below that are <s>crossed out</s> are already present in these
+          sources.
+          {metadataWords.size > 0 && (
+            <div className="mt-1 text-xs text-indigo-600 opacity-80">
+              <strong>Active metadata:</strong> {Array.from(metadataWords).sort().join(', ')}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Assigned tropes */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4">
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="text-sm">
+            <span className="font-semibold text-slate-800">Assigned tropes</span>
+            <span className="text-slate-500 ml-1">({assignedTropes.length})</span>
+          </div>
+          <button onClick={() => setShowAssignTropes(v => !v)} className="text-sm text-indigo-600 hover:text-indigo-800">
+            {showAssignTropes ? 'Done' : 'Edit tropes'}
           </button>
         </div>
-
-        {error && (
-          <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Linked Catalog book</label>
-            <select
-              value={draft.book_id ?? ''}
-              onChange={e => setDraft(d => ({ ...d, book_id: e.target.value || null }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
-            >
-              <option value="">— Not linked —</option>
-              {catalogBooks.map(b => (
-                <option key={b.id} value={b.id}>{b.title}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Amazon categories</label>
-            <input
-              value={draft.amazon_categories}
-              onChange={e => setDraft(d => ({ ...d, amazon_categories: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-2 items-end">
-            <Stat label="Tropes assigned" value={assignedTropeSet.size} />
-            <Stat label="Keywords selected" value={selectedKeywordSet.size} />
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center bg-white rounded-2xl border border-slate-200 p-3">
-        <div className="relative flex-1 min-w-[12rem]">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Filter keywords by text"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300"
-          />
-        </div>
-        <label className="text-xs text-slate-600 flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={showOnlyAssigned}
-            onChange={e => setShowOnlyAssigned(e.target.checked)}
-          />
-          Only show assigned tropes
-        </label>
-      </div>
-
-      {/* Grouped keywords */}
-      <div className="space-y-3">
-        {grouped.length === 0 && (
-          <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 text-sm text-slate-500">
-            No keywords match. Import data on the Import tab, or clear the filter.
+        {assignedTropes.length === 0 && !showAssignTropes ? (
+          <p className="text-sm text-slate-500">No tropes assigned. Edit tropes to choose which ones apply to this book.</p>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {assignedTropes.map(t => (
+              <span key={t.id} className="text-xs px-2 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-100">
+                {t.name}
+              </span>
+            ))}
           </div>
         )}
-        {grouped.map(g => {
-          const trope = g.trope!;
-          const assigned = assignedTropeSet.has(trope.id);
-          const selectedInGroup = g.keywords.filter(k => selectedKeywordSet.has(k.id)).length;
-          return (
-            <div key={trope.id} className="bg-white rounded-2xl border border-slate-200">
-              <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-slate-100">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" checked={assigned} onChange={() => toggleTrope(trope.id)} />
-                  <span className="font-semibold text-slate-800">{trope.name}</span>
-                </label>
-                <span className="text-xs text-slate-500">
-                  {selectedInGroup} / {g.keywords.length} selected
-                </span>
+        {showAssignTropes && (
+          <div className="mt-4 max-h-64 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-1 border-t border-slate-100 pt-3">
+            {tropes.map(t => (
+              <label key={t.id} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 rounded text-sm">
+                <input type="checkbox" checked={assignedSet.has(t.id)} onChange={() => toggleTrope(t.id)} />
+                <span className="truncate">{t.name}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* LEFT: Available Keywords */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
+          <div className="p-4 border-b border-slate-100 bg-slate-50">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h3 className="font-semibold text-slate-700">Available keywords</h3>
+              <span className="text-xs text-slate-500">
+                Found: {filteredPool.length} (Deduped) of {uniquePool.length}
+              </span>
+            </div>
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={filterText}
+                onChange={e => setFilterText(e.target.value)}
+                placeholder="Filter keywords"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              />
+            </div>
+            {assignedTropes.length > 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                Sources: {assignedTropes.map(t => t.name).join(', ')}
+              </p>
+            )}
+          </div>
+
+          {assignedTropes.length === 0 ? (
+            <div className="p-8 text-center text-sm text-slate-500">
+              Assign at least one trope to see its keywords here.
+            </div>
+          ) : (
+            <div className="overflow-auto max-h-[640px]">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 z-10 shadow-sm">
+                  <tr>
+                    <th className="px-3 py-2 w-8"></th>
+                    <th className="px-3 py-2 whitespace-nowrap">Keyword</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Est. Searches</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Comp Score</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Competitors</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Avg Pages</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Avg Price</th>
+                    <th className="px-3 py-2 whitespace-nowrap">Avg Monthly</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredPool.map(kw => {
+                    const isSelected = selectedSet.has(kw.id);
+                    const coverage = analyzeKeywordCoverage(kw.text, effectiveCovered);
+                    return (
+                      <tr
+                        key={kw.id}
+                        onClick={() => toggleKeyword(kw.id)}
+                        className={`cursor-pointer transition ${isSelected ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}
+                      >
+                        <td className="px-3 py-2">
+                          {isSelected ? (
+                            <CheckSquare className="w-4 h-4 text-indigo-600" />
+                          ) : (
+                            <Square className="w-4 h-4 text-slate-300" />
+                          )}
+                        </td>
+                        <td className="px-3 py-2 font-medium whitespace-nowrap">
+                          {kw.text.split(' ').map((word, idx) => {
+                            const clean = word.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const isCovered =
+                              effectiveCovered.has(clean) || isStopWord(clean) || clean.length === 0;
+                            return (
+                              <span
+                                key={idx}
+                                className={
+                                  isCovered
+                                    ? 'text-slate-400 line-through decoration-slate-400 decoration-1 mr-1'
+                                    : 'text-slate-900 mr-1'
+                                }
+                              >
+                                {word}
+                              </span>
+                            );
+                          })}
+                          {coverage.isFullyCovered && !isSelected && (
+                            <span className="ml-2 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
+                              Covered
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-3 py-2"><Chip text={fmtNum(kw.search_volume)} color={kw.search_volume_color as ScoreColor} /></td>
+                        <td className="px-3 py-2"><Chip text={String(kw.competitive_score)} color={kw.competitive_score_color as ScoreColor} /></td>
+                        <td className="px-3 py-2 text-slate-600">{fmtNum(kw.competitors)}</td>
+                        <td className="px-3 py-2 text-slate-600">{fmtNum(kw.avg_pages)}</td>
+                        <td className="px-3 py-2 text-slate-600">{fmtCurrency(kw.avg_price)}</td>
+                        <td className="px-3 py-2 text-slate-600">{fmtCurrency(kw.avg_monthly_earnings)}</td>
+                      </tr>
+                    );
+                  })}
+                  {filteredPool.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-400">
+                        No keywords found. Check your filters or assign more tropes.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT: Optimization */}
+        <div className="space-y-4 lg:sticky lg:top-4 self-start">
+          <div className="bg-indigo-900 text-white p-5 rounded-2xl shadow-sm">
+            <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5" /> Optimization stats
+            </h3>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="block text-indigo-200 text-xs">Selected phrases</span>
+                <span className="text-2xl font-bold">{selectedKeywords.length}</span>
               </div>
-              <div className="divide-y divide-slate-100">
-                {g.keywords.map(k => {
-                  const selected = selectedKeywordSet.has(k.id);
-                  return (
-                    <label
-                      key={k.id}
-                      className={`flex items-center gap-3 px-4 py-2 hover:bg-slate-50 cursor-pointer ${selected ? 'bg-indigo-50/40' : ''}`}
-                    >
-                      <input type="checkbox" checked={selected} onChange={() => toggleKeyword(k.id)} />
-                      <span className="text-sm text-slate-800 flex-1 truncate">{k.text}</span>
-                      <KeywordMetrics keyword={k} />
-                    </label>
-                  );
-                })}
+              <div>
+                <span className="block text-indigo-200 text-xs">Total search volume</span>
+                <span className="text-2xl font-bold">{fmtNum(totalVolume)}</span>
               </div>
             </div>
-          );
-        })}
+            <p className="mt-4 text-xs text-indigo-200 bg-indigo-800/50 p-3 rounded">
+              Algorithm excludes words already in your Title, Subtitle, Series, and Amazon
+              Categories — Tropes are organization buckets and aren't indexed by Amazon.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-slate-700 mb-3">
+              Amazon keyword boxes ({Math.min(optimizedBoxes.length, 7)}/7)
+            </h3>
+            <div className="space-y-3">
+              {Array.from({ length: 7 }).map((_, idx) => (
+                <KeywordBox key={idx} index={idx + 1} content={optimizedBoxes[idx] || ''} />
+              ))}
+            </div>
+            {optimizedBoxes.length > 7 && (
+              <div className="mt-3 p-3 bg-rose-50 text-rose-700 rounded-md text-sm flex items-start gap-2 border border-rose-200">
+                <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                You have enough unique words to fill {optimizedBoxes.length} boxes. The extras are hidden.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="text-center bg-slate-50 rounded-lg px-2 py-1.5">
-      <div className="text-lg font-bold text-slate-800 leading-tight">{value}</div>
-      <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
-    </div>
-  );
+function Chip({ text, color }: { text: string; color: ScoreColor | '' }) {
+  const klass = color ? COLOR_BG[color] : COLOR_BG.Gray;
+  return <span className={`inline-block px-1.5 py-0.5 rounded font-mono text-xs ${klass}`}>{text}</span>;
 }
 
-function KeywordMetrics({ keyword }: { keyword: Keyword }) {
-  const sv = keyword.search_volume_color as ScoreColor | '';
-  const cs = keyword.competitive_score_color as ScoreColor | '';
+function KeywordBox({ index, content }: { index: number; content: string }) {
+  const [copied, setCopied] = useState(false);
+  const len = content.length;
+  const isOver = len > 50;
+  const isEmpty = len === 0;
+  function copy() {
+    if (!content) return;
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
   return (
-    <div className="flex items-center gap-2 text-xs text-slate-500 shrink-0">
-      <span className="hidden md:inline">
-        Vol:{' '}
-        {sv && <span className={`inline-block w-2 h-2 rounded-full mr-1 align-middle ${COLOR_DOT[sv]}`} />}
-        <span className="font-medium text-slate-700">{keyword.search_volume.toLocaleString()}</span>
-      </span>
-      <span className="hidden md:inline">
-        Comp:{' '}
-        {cs && <span className={`inline-block w-2 h-2 rounded-full mr-1 align-middle ${COLOR_DOT[cs]}`} />}
-        <span className="font-medium text-slate-700">{keyword.competitive_score}</span>
-      </span>
-      <span className="hidden lg:inline">
-        ${keyword.avg_monthly_earnings.toLocaleString()}/mo
-      </span>
+    <div>
+      <div className="flex justify-between text-xs text-slate-500 mb-1">
+        <span className="font-medium">Box {index}</span>
+        <span className={isOver ? 'text-rose-500 font-bold' : len === 50 ? 'text-emerald-600' : ''}>
+          {len} / 50
+        </span>
+      </div>
+      <div className="relative">
+        <input
+          readOnly
+          value={content}
+          placeholder="Empty"
+          className={`w-full p-3 pr-10 rounded-md font-mono text-sm text-slate-800 border ${
+            isEmpty ? 'bg-slate-50 border-slate-200' : 'bg-white border-indigo-200'
+          } ${isOver ? 'border-rose-500' : ''}`}
+        />
+        {!isEmpty && (
+          <button
+            onClick={copy}
+            title="Copy"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+          >
+            <Copy className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+      {copied && <p className="text-[10px] text-emerald-600 mt-0.5">Copied!</p>}
     </div>
   );
 }
