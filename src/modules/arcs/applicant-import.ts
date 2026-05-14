@@ -1,5 +1,8 @@
 import { supabase } from '../../lib/supabase';
-import { normalizeEmail, normalizeName, similarity, tokenOverlap } from './match';
+import {
+  normalizeEmail, normalizeIgHandle, normalizeName, normalizeTtHandle,
+  similarity, tokenOverlap,
+} from './match';
 import type { ArcReader } from './types';
 
 // ============================================
@@ -157,6 +160,8 @@ export function parseApplicantCsv(csv: string): CsvParseResult {
 
 export type MatchReason =
   | 'exact_email'
+  | 'exact_ig'
+  | 'exact_tt'
   | 'exact_name'
   | 'fuzzy_name'
   | 'token_overlap';
@@ -190,84 +195,93 @@ export async function computeApplicantMatches(
   if (error) throw error;
   const readers = (data ?? []) as ArcReader[];
 
-  // Pre-normalize.
+  // Pre-normalize. Email, IG handle, and TT handle are unique
+  // identifiers — those drive the auto-merge suggestion. Name is too
+  // noisy (common names, nicknames, spelling drift) so it surfaces as
+  // a selectable candidate only.
   const byEmail = new Map<string, ArcReader>();
+  const byIg = new Map<string, ArcReader>();
+  const byTt = new Map<string, ArcReader>();
   const normalized = readers.map(r => {
     const nName = normalizeName(r.name);
     const nEmail = normalizeEmail(r.email);
+    const nIg = normalizeIgHandle(r.ig_profile_url);
+    const nTt = normalizeTtHandle(r.tt_profile_url);
     if (nEmail) byEmail.set(nEmail, r);
-    return { reader: r, nName, nEmail };
+    if (nIg) byIg.set(nIg, r);
+    if (nTt) byTt.set(nTt, r);
+    return { reader: r, nName };
   });
 
   const previews: MatchPreview[] = applicants.map(applicant => {
     const aName = normalizeName(applicant.name);
     const aEmail = normalizeEmail(applicant.email);
+    const aIg = normalizeIgHandle(applicant.ig_profile_url);
+    const aTt = normalizeTtHandle(applicant.tt_profile_url);
 
     const candidates: MatchCandidate[] = [];
+    const pushUnique = (c: MatchCandidate) => {
+      if (!candidates.some(x => x.readerId === c.readerId)) candidates.push(c);
+    };
 
     if (aEmail) {
       const hit = byEmail.get(aEmail);
-      if (hit) {
-        candidates.push({
-          readerId: hit.id,
-          readerName: hit.name,
-          readerEmail: hit.email,
-          confidence: 1,
-          reason: 'exact_email',
-        });
-      }
+      if (hit) pushUnique({
+        readerId: hit.id, readerName: hit.name, readerEmail: hit.email,
+        confidence: 1, reason: 'exact_email',
+      });
+    }
+    if (aIg) {
+      const hit = byIg.get(aIg);
+      if (hit) pushUnique({
+        readerId: hit.id, readerName: hit.name, readerEmail: hit.email,
+        confidence: 0.97, reason: 'exact_ig',
+      });
+    }
+    if (aTt) {
+      const hit = byTt.get(aTt);
+      if (hit) pushUnique({
+        readerId: hit.id, readerName: hit.name, readerEmail: hit.email,
+        confidence: 0.97, reason: 'exact_tt',
+      });
     }
 
-    for (const { reader, nName, nEmail } of normalized) {
+    for (const { reader, nName } of normalized) {
       if (candidates.some(c => c.readerId === reader.id)) continue;
       if (aName && nName === aName) {
-        candidates.push({
-          readerId: reader.id,
-          readerName: reader.name,
-          readerEmail: reader.email,
-          confidence: aEmail && nEmail !== aEmail ? 0.92 : 0.98,
-          reason: 'exact_name',
+        pushUnique({
+          readerId: reader.id, readerName: reader.name, readerEmail: reader.email,
+          confidence: 0.85, reason: 'exact_name',
         });
         continue;
       }
       if (aName && nName) {
         const sim = similarity(aName, nName);
         if (sim >= FUZZY_THRESHOLD) {
-          candidates.push({
-            readerId: reader.id,
-            readerName: reader.name,
-            readerEmail: reader.email,
-            confidence: sim,
-            reason: 'fuzzy_name',
+          pushUnique({
+            readerId: reader.id, readerName: reader.name, readerEmail: reader.email,
+            confidence: sim * 0.85, reason: 'fuzzy_name',
           });
           continue;
         }
         const tok = tokenOverlap(aName, nName);
         if (tok >= TOKEN_THRESHOLD) {
-          candidates.push({
-            readerId: reader.id,
-            readerName: reader.name,
-            readerEmail: reader.email,
-            confidence: 0.6 + tok * 0.2, // 0.72..0.8 ish
-            reason: 'token_overlap',
+          pushUnique({
+            readerId: reader.id, readerName: reader.name, readerEmail: reader.email,
+            confidence: 0.55 + tok * 0.15, reason: 'token_overlap',
           });
         }
       }
     }
 
     candidates.sort((a, b) => b.confidence - a.confidence);
-    const top = candidates[0];
-    let suggestedDecision: 'merge' | 'create' = 'create';
-    let suggestedReaderId: string | null = null;
-    if (top) {
-      if (top.reason === 'exact_email' || top.reason === 'exact_name') {
-        suggestedDecision = 'merge';
-        suggestedReaderId = top.readerId;
-      } else {
-        // Fuzzy / token — let the user decide; default to create.
-        suggestedDecision = 'create';
-      }
-    }
+
+    // Auto-merge ONLY on unique identifiers: email or social handle.
+    // Name matches surface as candidates but never auto-pick.
+    const autoMergeReasons: MatchReason[] = ['exact_email', 'exact_ig', 'exact_tt'];
+    const autoMerge = candidates.find(c => autoMergeReasons.includes(c.reason));
+    const suggestedDecision: 'merge' | 'create' = autoMerge ? 'merge' : 'create';
+    const suggestedReaderId = autoMerge?.readerId ?? null;
 
     return {
       applicant,
@@ -399,6 +413,8 @@ export async function applyApplicantDecisions(
 
 export const REASON_LABELS: Record<MatchReason, string> = {
   exact_email: 'Same email',
+  exact_ig: 'Same Instagram',
+  exact_tt: 'Same TikTok',
   exact_name: 'Same name',
   fuzzy_name: 'Similar name',
   token_overlap: 'Shared name words',

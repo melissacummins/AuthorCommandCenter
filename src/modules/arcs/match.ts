@@ -17,6 +17,31 @@ export function normalizeEmail(s: string | null | undefined): string {
   return s.toLowerCase().trim();
 }
 
+// Pull a canonical handle out of an Instagram/TikTok URL or raw input.
+// People paste these in many forms — full URLs with tracking params,
+// "@username", "instagram.com/username", just "username" — so we strip
+// down to the handle itself for comparison.
+//
+// Returns '' if we can't find anything that looks like a handle.
+export function normalizeIgHandle(input: string | null | undefined): string {
+  return extractHandle(input, /(?:instagram\.com\/|^@?)([A-Za-z0-9_.]+)/i);
+}
+
+export function normalizeTtHandle(input: string | null | undefined): string {
+  return extractHandle(input, /(?:tiktok\.com\/@|^@?)([A-Za-z0-9_.]+)/i);
+}
+
+function extractHandle(input: string | null | undefined, re: RegExp): string {
+  if (!input) return '';
+  const cleaned = input.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  const m = cleaned.match(re);
+  if (!m) return '';
+  // Strip trailing slashes / query / fragment / common junk paths.
+  const raw = m[1].replace(/[/?#].*$/, '').toLowerCase();
+  if (!raw || raw === 'www' || raw === 'p' || raw === 'reel' || raw === 'tv') return '';
+  return raw;
+}
+
 // Two-row dynamic programming Levenshtein distance. O(m * n) time,
 // O(min(m, n)) space.
 export function levenshteinDistance(a: string, b: string): number {
