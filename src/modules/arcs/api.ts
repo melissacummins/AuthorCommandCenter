@@ -227,3 +227,77 @@ export function parseNotionCsv(csv: string): NotionArcRow[] {
   }
   return rows;
 }
+
+// ============================================
+// Notes backfill (Notion Markdown export)
+// ============================================
+// Applies notes-only updates to existing arc_readers rows. Matches by
+// name (case-insensitive, trimmed) since Notion's standard CSV export
+// doesn't include page IDs, so most existing rows have external_id NULL.
+// Returns matched / unmatched / skipped counts plus the list of names
+// that didn't match.
+
+export interface NotesBackfillEntry {
+  name: string;
+  notes: string;
+}
+
+export interface NotesBackfillSummary {
+  matched: number;
+  skippedEmpty: number;
+  unmatched: string[];
+  errors: string[];
+}
+
+export async function backfillNotesByName(
+  userId: string,
+  entries: NotesBackfillEntry[],
+): Promise<NotesBackfillSummary> {
+  const summary: NotesBackfillSummary = {
+    matched: 0,
+    skippedEmpty: 0,
+    unmatched: [],
+    errors: [],
+  };
+
+  // Skip empty notes — no point overwriting existing notes with blanks.
+  const meaningful = entries.filter(e => {
+    if (!e.name?.trim()) return false;
+    if (!e.notes?.trim()) {
+      summary.skippedEmpty++;
+      return false;
+    }
+    return true;
+  });
+  if (meaningful.length === 0) return summary;
+
+  // Pull all readers once for fast lookup.
+  const { data: rows, error } = await supabase
+    .from('arc_readers')
+    .select('id, name')
+    .eq('user_id', userId);
+  if (error) throw error;
+  const byName = new Map<string, string>();
+  for (const r of rows ?? []) {
+    if (r.name) byName.set(r.name.toLowerCase().trim(), r.id);
+  }
+
+  for (const entry of meaningful) {
+    const id = byName.get(entry.name.toLowerCase().trim());
+    if (!id) {
+      summary.unmatched.push(entry.name);
+      continue;
+    }
+    const { error: uErr } = await supabase
+      .from('arc_readers')
+      .update({ notes: entry.notes })
+      .eq('id', id);
+    if (uErr) {
+      summary.errors.push(`${entry.name}: ${uErr.message}`);
+      continue;
+    }
+    summary.matched++;
+  }
+
+  return summary;
+}
