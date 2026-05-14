@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type { ImportJson, ImportSummary, KdpBook, Keyword, Trope } from './types';
+import type { ParsedCsv } from './utils';
 
 export async function listTropes(userId: string): Promise<Trope[]> {
   const { data, error } = await supabase
@@ -55,6 +56,152 @@ export async function updateTrope(id: string, patch: Partial<Pick<Trope, 'name' 
 export async function deleteTrope(id: string): Promise<void> {
   const { error } = await supabase.from('tropes').delete().eq('id', id);
   if (error) throw error;
+}
+
+export async function deleteKeyword(id: string): Promise<void> {
+  const { error } = await supabase.from('keywords').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function deleteKeywords(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase.from('keywords').delete().in('id', ids);
+  if (error) throw error;
+}
+
+export async function moveKeywordsToTrope(ids: string[], newTropeId: string): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await supabase
+    .from('keywords')
+    .update({ trope_id: newTropeId })
+    .in('id', ids);
+  if (error) throw error;
+}
+
+// CSV import for one trope. For each parsed row we look up an existing
+// keyword by (user_id, trope_id, text); if it exists we refresh the
+// metrics, otherwise insert a new row. Re-uploads from Publisher
+// Rocket are idempotent and just refresh the numbers.
+export async function importTropeCsv(
+  userId: string,
+  tropeId: string,
+  parsed: ParsedCsv,
+): Promise<{ inserted: number; updated: number }> {
+  if (parsed.rows.length === 0) return { inserted: 0, updated: 0 };
+
+  // Find existing keywords for this trope keyed by lowercase text so we
+  // can upsert without violating any unique constraint and without
+  // duplicating "Curvy Girl" vs "curvy girl".
+  const { data: existing, error: exErr } = await supabase
+    .from('keywords')
+    .select('id, text')
+    .eq('user_id', userId)
+    .eq('trope_id', tropeId);
+  if (exErr) throw exErr;
+
+  const existingByText = new Map<string, string>(); // lowered text -> id
+  for (const e of existing ?? []) {
+    existingByText.set((e.text ?? '').toLowerCase().trim(), e.id);
+  }
+
+  const toInsert: Record<string, unknown>[] = [];
+  let updated = 0;
+
+  for (const row of parsed.rows) {
+    const key = row.text.toLowerCase().trim();
+    const existingId = existingByText.get(key);
+    const payload = {
+      user_id: userId,
+      trope_id: tropeId,
+      text: row.text,
+      search_volume: row.search_volume,
+      search_volume_color: row.search_volume_color,
+      competitive_score: row.competitive_score,
+      competitive_score_color: row.competitive_score_color,
+      competitors: row.competitors,
+      avg_pages: row.avg_pages,
+      avg_price: row.avg_price,
+      avg_monthly_earnings: row.avg_monthly_earnings,
+      last_updated: Date.now(),
+    };
+    if (existingId) {
+      const { error } = await supabase.from('keywords').update(payload).eq('id', existingId);
+      if (error) throw error;
+      updated++;
+    } else {
+      toInsert.push(payload);
+    }
+  }
+
+  for (let i = 0; i < toInsert.length; i += 200) {
+    const batch = toInsert.slice(i, i + 200);
+    const { error } = await supabase.from('keywords').insert(batch);
+    if (error) throw error;
+  }
+
+  return { inserted: toInsert.length, updated };
+}
+
+// Merge `fromTropeIds` into `intoTropeId`: reassign all keywords and
+// affected kdp_books.assigned_trope_ids entries, then delete the
+// source tropes.
+export async function mergeTropes(
+  userId: string,
+  fromTropeIds: string[],
+  intoTropeId: string,
+): Promise<void> {
+  const sources = fromTropeIds.filter(id => id !== intoTropeId);
+  if (sources.length === 0) return;
+
+  // 1. Move keywords (dedupe by text within target trope).
+  const { data: targetKws } = await supabase
+    .from('keywords')
+    .select('text')
+    .eq('user_id', userId)
+    .eq('trope_id', intoTropeId);
+  const targetTexts = new Set<string>(
+    (targetKws ?? []).map(k => (k.text ?? '').toLowerCase().trim()),
+  );
+
+  const { data: srcKws } = await supabase
+    .from('keywords')
+    .select('id, text')
+    .eq('user_id', userId)
+    .in('trope_id', sources);
+
+  const toMove: string[] = [];
+  const toDrop: string[] = [];
+  for (const k of srcKws ?? []) {
+    const key = (k.text ?? '').toLowerCase().trim();
+    if (targetTexts.has(key)) toDrop.push(k.id);
+    else {
+      toMove.push(k.id);
+      targetTexts.add(key);
+    }
+  }
+  if (toMove.length > 0) await moveKeywordsToTrope(toMove, intoTropeId);
+  if (toDrop.length > 0) await deleteKeywords(toDrop);
+
+  // 2. Rewrite assigned_trope_ids on every kdp_books row that
+  //    references any source trope.
+  const { data: books } = await supabase
+    .from('kdp_books')
+    .select('id, assigned_trope_ids')
+    .eq('user_id', userId);
+  for (const b of books ?? []) {
+    const ids: string[] = Array.isArray(b.assigned_trope_ids) ? b.assigned_trope_ids : [];
+    if (!ids.some(id => sources.includes(id))) continue;
+    const next = Array.from(new Set(ids.map(id => (sources.includes(id) ? intoTropeId : id))));
+    const { error } = await supabase
+      .from('kdp_books')
+      .update({ assigned_trope_ids: next })
+      .eq('id', b.id);
+    if (error) throw error;
+  }
+
+  // 3. Delete the source tropes.
+  const { error: delErr } = await supabase.from('tropes').delete().in('id', sources);
+  if (delErr) throw delErr;
 }
 
 export async function updateKdpBook(
