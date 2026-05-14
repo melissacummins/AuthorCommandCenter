@@ -463,45 +463,48 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       )}
 
       {/* Discovery */}
-      <div className={sectionCls}>
-        <h3 className={sectionTitle}>Discovery</h3>
-        <p className="text-xs text-slate-500 -mt-2">
-          One entry per line.
-          {kdpData && kdpData.keywords.length > 0 && (
-            <> Amazon keywords below are a manual fallback used when no KDP Optimizer link exists.</>
-          )}
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className={labelCls}>Amazon keywords</label>
-            <textarea
-              rows={7}
-              className={inputCls}
-              value={amazonKwText}
-              onChange={e => setAmazonKwText(e.target.value)}
-              placeholder="7 keywords max"
-            />
+      {(() => {
+        const kdpLinked = Boolean(kdpData && kdpData.keywords.length > 0);
+        const gridCols = kdpLinked ? 'md:grid-cols-2' : 'md:grid-cols-3';
+        return (
+          <div className={sectionCls}>
+            <h3 className={sectionTitle}>Discovery</h3>
+            <p className="text-xs text-slate-500 -mt-2">One entry per line.</p>
+            <div className={`grid grid-cols-1 ${gridCols} gap-3`}>
+              {!kdpLinked && (
+                <div>
+                  <label className={labelCls}>Amazon keywords</label>
+                  <textarea
+                    rows={7}
+                    className={inputCls}
+                    value={amazonKwText}
+                    onChange={e => setAmazonKwText(e.target.value)}
+                    placeholder="7 keywords max"
+                  />
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>Other keywords</label>
+                <textarea
+                  rows={7}
+                  className={inputCls}
+                  value={keywordsText}
+                  onChange={e => setKeywordsText(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>BISAC categories</label>
+                <textarea
+                  rows={7}
+                  className={inputCls}
+                  value={bisacText}
+                  onChange={e => setBisacText(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className={labelCls}>Other keywords</label>
-            <textarea
-              rows={7}
-              className={inputCls}
-              value={keywordsText}
-              onChange={e => setKeywordsText(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className={labelCls}>BISAC categories</label>
-            <textarea
-              rows={7}
-              className={inputCls}
-              value={bisacText}
-              onChange={e => setBisacText(e.target.value)}
-            />
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Reviews */}
       <div className={sectionCls}>
