@@ -128,13 +128,17 @@ export default function Layout({ children }: { children: ReactNode }) {
           <NavLink module={homeModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
 
           {sections.map(section => (
-            <div key={section.label} className="mt-4">
+            <div key={section.label} className="mt-5">
               {!collapsed && (
-                <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
-                  {section.label}
-                </p>
+                <div className="flex items-center gap-2 px-3 pb-2">
+                  <div className="h-px flex-1 bg-slate-700/60" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-400/70">
+                    {section.label}
+                  </span>
+                  <div className="h-px flex-1 bg-slate-700/60" />
+                </div>
               )}
-              {collapsed && <div className="mx-3 my-2 border-t border-slate-700/50" />}
+              {collapsed && <div className="mx-3 my-3 border-t border-slate-700/50" />}
               <div className="space-y-1">
                 {section.paths.map(path => {
                   const m = moduleByPath[path];

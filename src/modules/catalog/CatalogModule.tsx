@@ -6,6 +6,7 @@ import type { Book, BookInsert } from './types';
 import { STATUS_COLORS, STATUS_LABELS } from './types';
 import BookForm from './components/BookForm';
 import CatalogOverview from './components/CatalogOverview';
+import { fetchSelectedKeywordCountsByBook } from '../kdp-optimizer/api';
 
 type Tab = 'overview' | 'books';
 type View =
@@ -16,6 +17,7 @@ type View =
 export default function CatalogModule() {
   const { user } = useAuth();
   const [books, setBooks] = useState<Book[]>([]);
+  const [kdpKeywordCounts, setKdpKeywordCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ mode: 'list', tab: 'overview' });
@@ -26,8 +28,15 @@ export default function CatalogModule() {
     if (!user) return;
     let cancelled = false;
     setLoading(true);
-    listBooks(user.id)
-      .then(rows => { if (!cancelled) setBooks(rows); })
+    Promise.all([
+      listBooks(user.id),
+      fetchSelectedKeywordCountsByBook(user.id).catch(() => ({} as Record<string, number>)),
+    ])
+      .then(([rows, counts]) => {
+        if (cancelled) return;
+        setBooks(rows);
+        setKdpKeywordCounts(counts);
+      })
       .catch(err => { if (!cancelled) setError(err.message ?? String(err)); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -171,7 +180,11 @@ export default function CatalogModule() {
       {loading ? (
         <div className="text-center py-16 text-slate-500 text-sm">Loading catalog…</div>
       ) : activeTab === 'overview' ? (
-        <CatalogOverview books={books} onOpenBook={book => setView({ mode: 'edit', book })} />
+        <CatalogOverview
+          books={books}
+          kdpKeywordCounts={kdpKeywordCounts}
+          onOpenBook={book => setView({ mode: 'edit', book })}
+        />
       ) : (
         <>
           {/* Search */}

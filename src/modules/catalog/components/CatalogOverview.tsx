@@ -8,6 +8,8 @@ import { STATUS_COLORS, STATUS_LABELS } from '../types';
 interface Props {
   books: Book[];
   onOpenBook: (book: Book) => void;
+  /** Map of catalog book.id -> count of selected KDP keywords, if any. */
+  kdpKeywordCounts?: Record<string, number>;
 }
 
 const STATUS_ORDER: BookStatus[] = ['idea', 'drafting', 'editing', 'pre_order', 'published', 'paused'];
@@ -71,7 +73,7 @@ interface ActionItem {
   reason: string;
 }
 
-function buildAwaitingAction(books: Book[]): ActionItem[] {
+function buildAwaitingAction(books: Book[], kdpCounts: Record<string, number>): ActionItem[] {
   const items: ActionItem[] = [];
   for (const b of books) {
     if (!b.cover_url) items.push({ book: b, reason: 'Missing cover' });
@@ -85,7 +87,14 @@ function buildAwaitingAction(books: Book[]): ActionItem[] {
     if ((b.status === 'drafting' || b.status === 'editing') && !b.target_word_count) {
       items.push({ book: b, reason: 'WIP without a target word count' });
     }
-    if (b.amazon_keywords.length === 0 && (b.status === 'pre_order' || b.status === 'published')) {
+    // Treat keywords from a linked KDP Optimizer book as satisfying this
+    // check too — no need to enter them twice.
+    const kdpCount = kdpCounts[b.id] ?? 0;
+    if (
+      b.amazon_keywords.length === 0 &&
+      kdpCount === 0 &&
+      (b.status === 'pre_order' || b.status === 'published')
+    ) {
       items.push({ book: b, reason: 'No Amazon keywords set' });
     }
   }
@@ -112,7 +121,7 @@ function bySeries(books: Book[]): { series: string; books: Book[] }[] {
     .sort((a, b) => a.series.localeCompare(b.series));
 }
 
-export default function CatalogOverview({ books, onOpenBook }: Props) {
+export default function CatalogOverview({ books, onOpenBook, kdpKeywordCounts = {} }: Props) {
   const statusCounts = useMemo(() => {
     const c: Record<BookStatus, number> = {
       idea: 0, drafting: 0, editing: 0, pre_order: 0, published: 0, paused: 0,
@@ -122,7 +131,7 @@ export default function CatalogOverview({ books, onOpenBook }: Props) {
   }, [books]);
 
   const upcoming = useMemo(() => buildUpcoming(books), [books]);
-  const awaiting = useMemo(() => buildAwaitingAction(books), [books]);
+  const awaiting = useMemo(() => buildAwaitingAction(books, kdpKeywordCounts), [books, kdpKeywordCounts]);
   const wips = useMemo(() => activeWips(books), [books]);
   const series = useMemo(() => bySeries(books), [books]);
 
