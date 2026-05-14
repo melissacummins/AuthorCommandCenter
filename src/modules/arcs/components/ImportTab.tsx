@@ -1,6 +1,10 @@
 import { useRef, useState } from 'react';
-import { AlertCircle, CheckCircle2, FileText, Upload } from 'lucide-react';
-import { importNotionJson, parseNotionCsv, type ImportSummary, type NotionArcRow } from '../api';
+import { AlertCircle, CheckCircle2, FileText, FileType2, Upload } from 'lucide-react';
+import {
+  backfillNotesByName, importNotionJson, parseNotionCsv,
+  type ImportSummary, type NotesBackfillEntry, type NotesBackfillSummary, type NotionArcRow,
+} from '../api';
+import { parseNotionMarkdown } from '../notion-md';
 
 interface Props {
   userId: string;
@@ -139,6 +143,115 @@ export default function ImportTab({ userId, onImported }: Props) {
           </div>
         )}
       </div>
+
+      <BackfillNotesPanel userId={userId} onImported={onImported} />
+    </div>
+  );
+}
+
+function BackfillNotesPanel({ userId, onImported }: { userId: string; onImported: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [summary, setSummary] = useState<NotesBackfillSummary | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [fileCount, setFileCount] = useState(0);
+  const mdRef = useRef<HTMLInputElement>(null);
+
+  async function onFiles(files: FileList) {
+    setBusy(true);
+    setError(null);
+    setSummary(null);
+    try {
+      const entries: NotesBackfillEntry[] = [];
+      for (const file of Array.from(files)) {
+        const text = await file.text();
+        const parsed = parseNotionMarkdown(text);
+        if (parsed) entries.push(parsed);
+      }
+      setFileCount(entries.length);
+      if (entries.length === 0) {
+        setError('No parseable markdown files found.');
+        return;
+      }
+      const s = await backfillNotesByName(userId, entries);
+      setSummary(s);
+      onImported();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+      if (mdRef.current) mdRef.current.value = '';
+    }
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+      <h3 className="font-semibold text-slate-800 mb-1 flex items-center gap-2">
+        <FileType2 className="w-4 h-4" /> Backfill notes from Notion Markdown export
+      </h3>
+      <p className="text-sm text-slate-500 mb-4">
+        In Notion: export the ARC database as <strong>"Markdown &amp; CSV"</strong> and unzip
+        the result. Then select <strong>every <code>.md</code> file</strong> from the export folder
+        below (shift-click to multi-select). Each file becomes one reader's notes; rows are matched
+        by exact name. Notes only — your other fields stay untouched.
+      </p>
+
+      <input
+        ref={mdRef}
+        type="file"
+        multiple
+        accept=".md,text/markdown"
+        className="hidden"
+        onChange={e => { if (e.target.files?.length) onFiles(e.target.files); }}
+      />
+      <button
+        type="button"
+        onClick={() => mdRef.current?.click()}
+        disabled={busy}
+        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-60 rounded-lg"
+      >
+        <Upload className="w-4 h-4" /> Select .md files
+      </button>
+
+      {busy && <p className="mt-3 text-xs text-slate-500">Parsing files and writing notes — this can take a moment for hundreds of files.</p>}
+
+      {error && (
+        <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700 flex items-start gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
+        </div>
+      )}
+
+      {summary && (
+        <div className="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+          <div className="flex items-center gap-2 font-medium mb-1">
+            <CheckCircle2 className="w-4 h-4" /> Backfill complete
+          </div>
+          <ul className="space-y-0.5 text-xs">
+            <li>Files parsed: <strong>{fileCount}</strong></li>
+            <li>Notes written: <strong>{summary.matched}</strong></li>
+            {summary.skippedEmpty > 0 && (
+              <li>Skipped (no body content): <strong>{summary.skippedEmpty}</strong></li>
+            )}
+            {summary.unmatched.length > 0 && (
+              <li className="text-amber-700">
+                Unmatched names ({summary.unmatched.length}) — these readers exist in your export but
+                no row in your ARCs table has that exact name:
+                <ul className="list-disc ml-5 max-h-40 overflow-auto">
+                  {summary.unmatched.slice(0, 25).map((n, i) => <li key={i}>{n}</li>)}
+                  {summary.unmatched.length > 25 && <li className="italic">…and {summary.unmatched.length - 25} more</li>}
+                </ul>
+              </li>
+            )}
+            {summary.errors.length > 0 && (
+              <li className="text-rose-700">
+                Errors ({summary.errors.length}):
+                <ul className="list-disc ml-5">
+                  {summary.errors.slice(0, 5).map((m, i) => <li key={i}>{m}</li>)}
+                </ul>
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
