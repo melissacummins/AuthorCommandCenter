@@ -1,5 +1,10 @@
-import { useRef, useState, type FormEvent } from 'react';
-import { BookOpen, Plus, Star, Trash2, Upload, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { BookOpen, Copy, ExternalLink, Plus, Star, Trash2, Upload, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '../../../contexts/AuthContext';
+import { fetchKdpDataForCatalogBook } from '../../kdp-optimizer/api';
+import type { KdpBook, Keyword } from '../../kdp-optimizer/types';
+import { getMetadataWords, optimizeKeywords } from '../../kdp-optimizer/utils';
 import type { Book, BookInsert, BookStatus, ReviewExcerpt } from '../types';
 import { STATUS_LABELS } from '../types';
 
@@ -71,12 +76,42 @@ const sectionCls = 'bg-white rounded-2xl border border-slate-200 p-5 space-y-4';
 const sectionTitle = 'text-sm font-semibold text-slate-800 uppercase tracking-wide';
 
 export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving }: BookFormProps) {
+  const { user } = useAuth();
   const [draft, setDraft] = useState<BookInsert>(initial ? fromBook(initial) : emptyDraft());
   const [tropesText, setTropesText] = useState((initial?.tropes ?? []).join('\n'));
   const [amazonKwText, setAmazonKwText] = useState((initial?.amazon_keywords ?? []).join('\n'));
   const [keywordsText, setKeywordsText] = useState((initial?.keywords ?? []).join('\n'));
   const [bisacText, setBisacText] = useState((initial?.bisac_categories ?? []).join('\n'));
   const [reviews, setReviews] = useState<ReviewExcerpt[]>(initial?.reviews ?? []);
+
+  // KDP data for the linked book. Loaded once when editing an existing
+  // catalog book; lets us surface the keywords selected in KDP
+  // Optimizer without forcing duplicate data entry here.
+  const [kdpData, setKdpData] = useState<{ kdpBook: KdpBook; keywords: Keyword[] } | null>(null);
+  useEffect(() => {
+    if (!user || !initial?.id) return;
+    let cancelled = false;
+    fetchKdpDataForCatalogBook(user.id, initial.id)
+      .then(d => { if (!cancelled) setKdpData(d); })
+      .catch(() => { /* surfacing the link is best-effort */ });
+    return () => { cancelled = true; };
+  }, [user, initial?.id]);
+
+  const kdpBoxes = useMemo(() => {
+    if (!kdpData || kdpData.keywords.length === 0) return [];
+    const kdp = kdpData.kdpBook;
+    // Use the catalog book's metadata as the source of truth — that's
+    // what's going to ship on the listing.
+    const meta = getMetadataWords({
+      title: draft.title,
+      subtitle: draft.subtitle,
+      series: draft.series,
+      amazon_categories: kdp.amazon_categories,
+    });
+    return optimizeKeywords(kdpData.keywords.map(k => k.text), meta);
+  }, [kdpData, draft.title, draft.subtitle, draft.series]);
+
+  const totalKdpVolume = kdpData?.keywords.reduce((s, k) => s + (k.search_volume || 0), 0) ?? 0;
 
   function addReview() {
     setReviews(r => [...r, { quote: '', source: '', rating: null }]);
@@ -365,10 +400,77 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         </div>
       </div>
 
+      {/* KDP Optimizer keywords (only when linked & has selections) */}
+      {kdpData && kdpData.keywords.length > 0 && (
+        <div className={sectionCls}>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className={sectionTitle}>Amazon keywords (from KDP Optimizer)</h3>
+            <Link
+              to="/kdp-optimizer"
+              className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800"
+            >
+              <ExternalLink className="w-3.5 h-3.5" /> Open KDP Optimizer
+            </Link>
+          </div>
+          <p className="text-xs text-slate-500 -mt-2">
+            Pulled from the linked KDP book — manage selections in KDP Optimizer. The boxes below
+            are computed from your selected keywords with words from this book's title, subtitle,
+            and series filtered out.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2 space-y-2">
+              <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Amazon keyword boxes ({Math.min(kdpBoxes.length, 7)}/7)
+              </h4>
+              {Array.from({ length: 7 }).map((_, i) => (
+                <KdpBoxRow key={i} index={i + 1} content={kdpBoxes[i] ?? ''} />
+              ))}
+              {kdpBoxes.length > 7 && (
+                <p className="text-xs text-rose-600">
+                  {kdpBoxes.length - 7} extra word group{kdpBoxes.length - 7 === 1 ? '' : 's'}{' '}
+                  couldn't fit in the 7 boxes. Trim selections in KDP Optimizer to fit.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+                Selected phrases
+              </h4>
+              <div className="text-2xl font-bold text-slate-800">{kdpData.keywords.length}</div>
+              <div className="text-xs text-slate-500">
+                Total search volume: <span className="font-semibold text-slate-700">{totalKdpVolume.toLocaleString()}</span>
+              </div>
+              <div className="max-h-48 overflow-auto border border-slate-100 rounded-lg bg-slate-50">
+                {kdpData.keywords
+                  .slice()
+                  .sort((a, b) => b.search_volume - a.search_volume)
+                  .slice(0, 25)
+                  .map(k => (
+                    <div key={k.id} className="px-2 py-1 text-xs text-slate-700 truncate">
+                      {k.text}
+                    </div>
+                  ))}
+                {kdpData.keywords.length > 25 && (
+                  <div className="px-2 py-1 text-xs text-slate-400">
+                    + {kdpData.keywords.length - 25} more
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Discovery */}
       <div className={sectionCls}>
         <h3 className={sectionTitle}>Discovery</h3>
-        <p className="text-xs text-slate-500 -mt-2">One entry per line.</p>
+        <p className="text-xs text-slate-500 -mt-2">
+          One entry per line.
+          {kdpData && kdpData.keywords.length > 0 && (
+            <> Amazon keywords below are a manual fallback used when no KDP Optimizer link exists.</>
+          )}
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className={labelCls}>Amazon keywords</label>
@@ -489,6 +591,44 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         </div>
       </div>
     </form>
+  );
+}
+
+function KdpBoxRow({ index, content }: { index: number; content: string }) {
+  const [copied, setCopied] = useState(false);
+  const isEmpty = content.length === 0;
+  function copy() {
+    if (!content) return;
+    navigator.clipboard.writeText(content);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-[10px] uppercase tracking-wider text-slate-500 w-12 shrink-0">
+        Box {index}
+      </span>
+      <input
+        readOnly
+        value={content}
+        placeholder="Empty"
+        className={`flex-1 px-3 py-1.5 rounded-md font-mono text-xs border ${
+          isEmpty ? 'bg-slate-50 border-slate-200' : 'bg-white border-indigo-200'
+        }`}
+      />
+      <span className="text-[10px] font-mono text-slate-400 w-12 text-right">
+        {content.length}/50
+      </span>
+      <button
+        type="button"
+        onClick={copy}
+        disabled={isEmpty}
+        title="Copy"
+        className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400"
+      >
+        {copied ? <span className="text-[10px] text-emerald-600">Copied</span> : <Copy className="w-3.5 h-3.5" />}
+      </button>
+    </div>
   );
 }
 
