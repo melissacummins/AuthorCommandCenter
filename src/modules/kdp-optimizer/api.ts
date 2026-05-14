@@ -553,3 +553,31 @@ export async function fetchSelectedKeywordCountsByBook(
   }
   return out;
 }
+
+// Fetch the KDP record linked to a given catalog book plus its
+// selected keyword rows. Used by the Catalog book form to surface
+// keywords pulled from KDP without forcing the user to enter them
+// twice.
+export async function fetchKdpDataForCatalogBook(
+  userId: string,
+  catalogBookId: string,
+): Promise<{ kdpBook: KdpBook; keywords: Keyword[] } | null> {
+  const { data: kdpRow, error: kdpErr } = await supabase
+    .from('kdp_books')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('book_id', catalogBookId)
+    .maybeSingle();
+  if (kdpErr) throw kdpErr;
+  if (!kdpRow) return null;
+  const ids: string[] = Array.isArray(kdpRow.selected_keyword_ids) ? kdpRow.selected_keyword_ids : [];
+  if (ids.length === 0) return { kdpBook: kdpRow as KdpBook, keywords: [] };
+
+  const { data: kws, error: kwErr } = await supabase
+    .from('keywords')
+    .select('*')
+    .eq('user_id', userId)
+    .in('id', ids);
+  if (kwErr) throw kwErr;
+  return { kdpBook: kdpRow as KdpBook, keywords: (kws ?? []) as Keyword[] };
+}
