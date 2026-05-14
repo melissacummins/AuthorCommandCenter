@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2,
+  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -95,13 +95,21 @@ const moduleByPath: Record<string, ModuleCard> = {
     gradient: 'from-indigo-500 to-indigo-600',
     shadow: 'shadow-indigo-500/25',
   },
+  '/arcs': {
+    name: 'ARCs',
+    description: 'Every ARC reader in one place — who got what, who reviewed, who is awaiting a copy.',
+    path: '/arcs',
+    icon: Users,
+    gradient: 'from-pink-500 to-pink-600',
+    shadow: 'shadow-pink-500/25',
+  },
 };
 
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/kdp-optimizer', '/links'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 export default function Home() {
