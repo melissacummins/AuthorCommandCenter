@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft, BookOpen, Filter, Mail, Megaphone, Plus, Search, Users,
+  ArrowLeft, BookOpen, Download, Filter, Mail, Megaphone, Plus, Search, Users,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { listBooks } from '../catalog/api';
@@ -85,6 +85,28 @@ export default function ARCsModule() {
       setError((e as Error).message);
     }
   }
+
+  function exportEmails() {
+    const withEmail = filtered.filter(r => r.email && r.email.trim());
+    if (withEmail.length === 0) return;
+    const escape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+    const rows = [
+      'email,name',
+      ...withEmail.map(r => `${escape(r.email!.trim())},${escape(r.name)}`),
+    ];
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `arc-readers_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const exportableCount = useMemo(
+    () => filtered.filter(r => r.email && r.email.trim()).length,
+    [filtered],
+  );
 
   async function applyBulk() {
     if (!bulkStatus || selectedIds.size === 0) return;
@@ -174,12 +196,31 @@ export default function ARCsModule() {
             who's awaiting a copy, and where they post.
           </p>
         </div>
-        <button
-          onClick={() => setView({ mode: 'new' })}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Add reader
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {view.tab !== 'import' && (
+            <button
+              onClick={exportEmails}
+              disabled={exportableCount === 0}
+              title={
+                exportableCount === 0
+                  ? 'No readers with email in the current view'
+                  : `Export ${exportableCount} email${exportableCount === 1 ? '' : 's'} as CSV for Bookfunnel`
+              }
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm"
+            >
+              <Download className="w-4 h-4" /> Export emails
+              {exportableCount > 0 && (
+                <span className="text-xs text-slate-500">({exportableCount})</span>
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => setView({ mode: 'new' })}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> Add reader
+          </button>
+        </div>
       </div>
 
       {/* Tab strip */}
