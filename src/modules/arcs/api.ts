@@ -52,6 +52,8 @@ export type BulkBookField = 'applied_for' | 'received' | 'awaiting_review_for' |
 // Add or remove a book title from the given array field across many readers.
 // Reads current arrays first so we can preserve uniqueness (add) or filter
 // (remove) per-row, since each reader has a different existing list.
+// Updates run in parallel — sequential per-row writes were too slow on large
+// selections (each round-trip is ~150ms; 50 readers ≈ 7s sequential).
 export async function bulkUpdateBookField(
   ids: string[],
   field: BulkBookField,
@@ -64,25 +66,28 @@ export async function bulkUpdateBookField(
     .select(`id, ${field}`)
     .in('id', ids);
   if (error) throw error;
-  let changed = 0;
+
+  type Row = { id: string } & Record<string, string[] | null>;
+  const rows = (data ?? []) as Row[];
+
+  const updates: Array<{ id: string; next: string[] }> = [];
   let unchanged = 0;
-  for (const row of (data ?? []) as Array<{ id: string } & Record<string, string[]>>) {
-    const current = (row[field] as string[]) ?? [];
-    const next = action === 'add'
-      ? (current.includes(book) ? current : [...current, book])
-      : current.filter(b => b !== book);
-    if (next.length === current.length && (action === 'add' ? current.includes(book) : !current.includes(book))) {
-      unchanged++;
-      continue;
-    }
-    const { error: upErr } = await supabase
-      .from('arc_readers')
-      .update({ [field]: next })
-      .eq('id', row.id);
-    if (upErr) throw upErr;
-    changed++;
+  for (const row of rows) {
+    const current = (row[field] as string[] | null) ?? [];
+    const has = current.includes(book);
+    if (action === 'add' && has) { unchanged++; continue; }
+    if (action === 'remove' && !has) { unchanged++; continue; }
+    const next = action === 'add' ? [...current, book] : current.filter(b => b !== book);
+    updates.push({ id: row.id, next });
   }
-  return { changed, unchanged };
+
+  const results = await Promise.all(updates.map(u =>
+    supabase.from('arc_readers').update({ [field]: u.next }).eq('id', u.id)
+  ));
+  const firstErr = results.find(r => r.error)?.error;
+  if (firstErr) throw firstErr;
+
+  return { changed: updates.length, unchanged };
 }
 
 // ============================================
