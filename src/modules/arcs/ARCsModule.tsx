@@ -86,28 +86,6 @@ export default function ARCsModule() {
     }
   }
 
-  function exportEmails() {
-    const withEmail = filtered.filter(r => r.email && r.email.trim());
-    if (withEmail.length === 0) return;
-    const escape = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-    const rows = [
-      'email,name',
-      ...withEmail.map(r => `${escape(r.email!.trim())},${escape(r.name)}`),
-    ];
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `arc-readers_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  const exportableCount = useMemo(
-    () => filtered.filter(r => r.email && r.email.trim()).length,
-    [filtered],
-  );
-
   async function applyBulk() {
     if (!bulkStatus || selectedIds.size === 0) return;
     setSaving(true);
