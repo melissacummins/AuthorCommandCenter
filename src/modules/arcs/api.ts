@@ -53,6 +53,8 @@ export async function bulkUpdateStatus(ids: string[], status: ArcStatus): Promis
 // Shape we accept (matches what a Notion export → JSON looks like for
 // this database). All fields optional except Name.
 export interface NotionArcRow {
+  // Common Notion-export keys are listed for autocomplete, but the importer
+  // tolerates any header that matches a known alias (see HEADER_ALIASES).
   id?: string;
   Name?: string;
   'Email Address'?: string;
@@ -70,7 +72,6 @@ export interface NotionArcRow {
   'Join my newsletter?'?: boolean | string;
   'Join my Promo team'?: string[] | string | boolean;
   notes?: string;
-  // Free-form extras get dropped into notes.
   [extra: string]: unknown;
 }
 
@@ -97,26 +98,70 @@ function toBool(v: boolean | string | string[] | undefined): boolean {
   return false;
 }
 
+// Look a value up in a row by trying each alias in order. Falls back to a
+// case-insensitive match, then a substring match (aliases >= 4 chars only,
+// to avoid 'fb'/'tt'/'ig' colliding with unrelated columns).
+function pickRaw(row: NotionArcRow, aliases: string[]): unknown {
+  for (const a of aliases) {
+    if (a in row && row[a] !== undefined && row[a] !== null && row[a] !== '') return row[a];
+  }
+  const keys = Object.keys(row);
+  const lowered = keys.map(k => k.toLowerCase().trim());
+  for (const a of aliases) {
+    const al = a.toLowerCase().trim();
+    const i = lowered.findIndex(k => k === al);
+    if (i >= 0 && row[keys[i]] !== undefined && row[keys[i]] !== '') return row[keys[i]];
+  }
+  for (const a of aliases) {
+    if (a.length < 4) continue;
+    const al = a.toLowerCase().trim();
+    const i = lowered.findIndex(k => k.includes(al));
+    if (i >= 0 && row[keys[i]] !== undefined && row[keys[i]] !== '') return row[keys[i]];
+  }
+  return undefined;
+}
+
+function pickStr(row: NotionArcRow, aliases: string[]): string {
+  const v = pickRaw(row, aliases);
+  if (typeof v === 'string') return v.trim();
+  if (Array.isArray(v)) return v.join(', ').trim();
+  return '';
+}
+
 function rowToInsert(row: NotionArcRow): ArcReaderInsert | null {
-  const name = (row.Name ?? '').trim();
+  const name = pickStr(row, ['Name', 'Full Name']);
   if (!name) return null;
-  const status = (row.Status && NOTION_STATUS_MAP[row.Status]) ?? 'new';
+  const statusStr = pickStr(row, ['Status']);
+  const status = (statusStr && NOTION_STATUS_MAP[statusStr]) ?? 'new';
   return {
     name,
-    email: (row['Email Address'] ?? '').trim() || null,
-    primary_sm: (row['Primary SM'] ?? '').trim() || null,
-    ig_profile_url: (row['IG profile link'] ?? '').trim() || null,
-    tt_profile_url: (row['TT profile link'] ?? '').trim() || null,
-    goodreads_profile_url: (row['Goodreads profile link'] ?? '').trim() || null,
-    blog_url: (row['Blog link'] ?? '').trim() || null,
+    email: pickStr(row, ['Email Address', 'Email']) || null,
+    primary_sm: pickStr(row, ['Primary SM', 'Primary Social']) || null,
+    ig_profile_url: pickStr(row, ['IG profile link', 'Instagram', 'Instagram profile link']) || null,
+    tt_profile_url: pickStr(row, ['TT profile link', 'Tiktok', 'Tiktok profile link', 'TikTok']) || null,
+    threads_profile_url: pickStr(row, ['Threads', 'Threads profile link']) || null,
+    fb_profile_url: pickStr(row, ['Facebook', 'Facebook profile link', 'FB profile link']) || null,
+    goodreads_profile_url: pickStr(row, ['Goodreads profile link', 'Goodreads']) || null,
+    amazon_reviewer_url: pickStr(row, ['Amazon Reviewer profile link', 'Amazon Reviewer', 'Amazon']) || null,
+    blog_url: pickStr(row, ['Blog link', 'Blog', 'Website']) || null,
     status,
-    applied_for: toArr(row['Application for']),
-    received: toArr(row.Received),
-    reviewed: toArr(row.Reviewed),
-    awaiting_review_for: toArr(row['Awaiting Review for']),
-    place_to_review: toArr(row['Place to Review']),
-    newsletter_subscribed: toBool(row['Join my newsletter?']),
-    promo_team: toBool(row['Join my Promo team']),
+    applied_for: toArr(pickRaw(row, ['Application for', 'Applied for']) as string | string[] | undefined),
+    received: toArr(pickRaw(row, ['Received']) as string | string[] | undefined),
+    reviewed: toArr(pickRaw(row, ['Reviewed']) as string | string[] | undefined),
+    awaiting_review_for: toArr(pickRaw(row, ['Awaiting Review for']) as string | string[] | undefined),
+    place_to_review: toArr(pickRaw(row, [
+      'Place to Review',
+      'Places to Review',
+      'Where do you plan to post your review?',
+      'Where will you review',
+      'post your review',
+    ]) as string | string[] | undefined),
+    newsletter_subscribed: toBool(pickRaw(row, [
+      'Join my newsletter?',
+      'Would you like to join my newsletter?',
+      'Newsletter',
+    ]) as boolean | string | string[] | undefined),
+    promo_team: toBool(pickRaw(row, ['Join my Promo team', 'Promo team']) as boolean | string | string[] | undefined),
     notes: (row.notes ?? '') as string || null,
     external_id: (row.id ?? '').toString() || null,
   };

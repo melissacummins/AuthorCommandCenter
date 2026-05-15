@@ -30,7 +30,10 @@ function emptyDraft(): ArcReaderInsert {
     primary_sm: null,
     ig_profile_url: null,
     tt_profile_url: null,
+    threads_profile_url: null,
+    fb_profile_url: null,
     goodreads_profile_url: null,
+    amazon_reviewer_url: null,
     blog_url: null,
     status: 'new',
     applied_for: [],
@@ -123,8 +126,20 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
             <input className={inputCls} value={draft.tt_profile_url ?? ''} onChange={e => setText('tt_profile_url', e.target.value)} />
           </div>
           <div>
+            <label className={labelCls}>Threads URL</label>
+            <input className={inputCls} value={draft.threads_profile_url ?? ''} onChange={e => setText('threads_profile_url', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Facebook URL</label>
+            <input className={inputCls} value={draft.fb_profile_url ?? ''} onChange={e => setText('fb_profile_url', e.target.value)} />
+          </div>
+          <div>
             <label className={labelCls}>Goodreads URL</label>
             <input className={inputCls} value={draft.goodreads_profile_url ?? ''} onChange={e => setText('goodreads_profile_url', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Amazon reviewer URL</label>
+            <input className={inputCls} value={draft.amazon_reviewer_url ?? ''} onChange={e => setText('amazon_reviewer_url', e.target.value)} />
           </div>
           <div>
             <label className={labelCls}>Blog URL</label>

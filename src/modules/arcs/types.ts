@@ -19,7 +19,10 @@ export interface ArcReader {
   primary_sm: string | null;
   ig_profile_url: string | null;
   tt_profile_url: string | null;
+  threads_profile_url: string | null;
+  fb_profile_url: string | null;
   goodreads_profile_url: string | null;
+  amazon_reviewer_url: string | null;
   blog_url: string | null;
   status: ArcStatus;
   applied_for: string[];
