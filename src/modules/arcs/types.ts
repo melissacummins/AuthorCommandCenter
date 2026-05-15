@@ -28,7 +28,6 @@ export interface ArcReader {
   applied_for: string[];
   received: string[];
   reviewed: string[];
-  awaiting_review_for: string[];
   place_to_review: string[];
   newsletter_subscribed: boolean;
   promo_team: boolean;

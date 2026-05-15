@@ -39,7 +39,6 @@ function emptyDraft(): ArcReaderInsert {
     applied_for: [],
     received: [],
     reviewed: [],
-    awaiting_review_for: [],
     place_to_review: [],
     newsletter_subscribed: false,
     promo_team: false,
@@ -69,11 +68,10 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
       ...draft.applied_for,
       ...draft.received,
       ...draft.reviewed,
-      ...draft.awaiting_review_for,
     ]);
     for (const t of fromCatalog) fromHistory.add(t);
     return Array.from(fromHistory).sort();
-  }, [catalogBooks, draft.applied_for, draft.received, draft.reviewed, draft.awaiting_review_for]);
+  }, [catalogBooks, draft.applied_for, draft.received, draft.reviewed]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -154,7 +152,6 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
         <p className="text-xs text-slate-500 -mt-2">Click books to toggle for each column.</p>
         <BookChecklist label="Applied for" books={allBookTitles} selected={draft.applied_for} onToggle={v => toggleArr('applied_for', v)} catalogBooks={catalogBooks} />
         <BookChecklist label="Received" books={allBookTitles} selected={draft.received} onToggle={v => toggleArr('received', v)} catalogBooks={catalogBooks} />
-        <BookChecklist label="Awaiting review for" books={allBookTitles} selected={draft.awaiting_review_for} onToggle={v => toggleArr('awaiting_review_for', v)} catalogBooks={catalogBooks} />
         <BookChecklist label="Reviewed" books={allBookTitles} selected={draft.reviewed} onToggle={v => toggleArr('reviewed', v)} catalogBooks={catalogBooks} />
       </div>
 
