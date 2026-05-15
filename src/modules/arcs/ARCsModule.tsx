@@ -6,8 +6,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { listBooks } from '../catalog/api';
 import type { Book } from '../catalog/types';
 import {
-  bulkUpdateStatus, createArcReader, deleteArcReader, listArcReaders, updateArcReader,
+  bulkUpdateBookField, bulkUpdateStatus, createArcReader, deleteArcReader, listArcReaders, updateArcReader,
 } from './api';
+import type { BulkBookField } from './api';
 import type { ArcReader, ArcReaderInsert, ArcStatus } from './types';
 import { STATUS_COLORS, STATUS_LABELS, STATUS_ORDER } from './types';
 import ImportTab from './components/ImportTab';
@@ -33,6 +34,9 @@ export default function ARCsModule() {
   const [statusFilter, setStatusFilter] = useState<ArcStatus | 'all'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<ArcStatus | ''>('');
+  const [bulkField, setBulkField] = useState<BulkBookField | ''>('');
+  const [bulkBook, setBulkBook] = useState<string>('');
+  const [bulkAction, setBulkAction] = useState<'add' | 'remove'>('add');
 
   async function reload() {
     if (!user) return;
@@ -101,6 +105,23 @@ export default function ARCsModule() {
     }
   }
 
+  async function applyBulkBook() {
+    if (!bulkField || !bulkBook || selectedIds.size === 0) return;
+    setSaving(true);
+    try {
+      await bulkUpdateBookField(Array.from(selectedIds), bulkField, bulkBook, bulkAction);
+      await reload();
+      setSelectedIds(new Set());
+      setBulkField('');
+      setBulkBook('');
+      setBulkAction('add');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   // Filter readers based on current tab + filter + query
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -128,6 +149,20 @@ export default function ARCsModule() {
     () => filtered.filter(r => r.email && r.email.trim()).length,
     [filtered],
   );
+
+  // Catalog titles + any title that appears on a reader (covers shorts/novellas
+  // not in the catalog yet). Stable alpha-sorted.
+  const allBookTitles = useMemo(() => {
+    const set = new Set<string>();
+    for (const b of catalogBooks) if (b.title) set.add(b.title);
+    for (const r of readers) {
+      for (const t of r.applied_for) set.add(t);
+      for (const t of r.received) set.add(t);
+      for (const t of r.awaiting_review_for) set.add(t);
+      for (const t of r.reviewed) set.add(t);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [catalogBooks, readers]);
 
   function exportEmails() {
     const withEmail = filtered.filter(r => r.email && r.email.trim());
@@ -282,31 +317,71 @@ export default function ARCsModule() {
           </div>
 
           {selectedIds.size > 0 && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex flex-wrap items-center gap-3 text-sm mb-3">
-              <span className="font-medium text-indigo-800">{selectedIds.size} selected</span>
-              <select
-                value={bulkStatus}
-                onChange={e => setBulkStatus(e.target.value as ArcStatus)}
-                className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
-              >
-                <option value="">Change status to…</option>
-                {STATUS_ORDER.map(s => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-                ))}
-              </select>
-              <button
-                onClick={applyBulk}
-                disabled={!bulkStatus || saving}
-                className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
-              >
-                Apply
-              </button>
-              <button
-                onClick={() => setSelectedIds(new Set())}
-                className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg ml-auto"
-              >
-                Clear selection
-              </button>
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-sm mb-3 space-y-2">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="font-medium text-indigo-800">{selectedIds.size} selected</span>
+                <select
+                  value={bulkStatus}
+                  onChange={e => setBulkStatus(e.target.value as ArcStatus)}
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
+                >
+                  <option value="">Change status to…</option>
+                  {STATUS_ORDER.map(s => (
+                    <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={applyBulk}
+                  disabled={!bulkStatus || saving}
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+                >
+                  Apply
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg ml-auto"
+                >
+                  Clear selection
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-indigo-200">
+                <select
+                  value={bulkAction}
+                  onChange={e => setBulkAction(e.target.value as 'add' | 'remove')}
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
+                >
+                  <option value="add">Add</option>
+                  <option value="remove">Remove</option>
+                </select>
+                <select
+                  value={bulkField}
+                  onChange={e => setBulkField(e.target.value as BulkBookField | '')}
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
+                >
+                  <option value="">Field…</option>
+                  <option value="applied_for">Applied for</option>
+                  <option value="received">Received</option>
+                  <option value="awaiting_review_for">Awaiting review for</option>
+                  <option value="reviewed">Reviewed</option>
+                </select>
+                <select
+                  value={bulkBook}
+                  onChange={e => setBulkBook(e.target.value)}
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white max-w-xs"
+                >
+                  <option value="">Book…</option>
+                  {allBookTitles.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={applyBulkBook}
+                  disabled={!bulkField || !bulkBook || saving}
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+                >
+                  Apply
+                </button>
+              </div>
             </div>
           )}
 

@@ -47,6 +47,44 @@ export async function bulkUpdateStatus(ids: string[], status: ArcStatus): Promis
   if (error) throw error;
 }
 
+export type BulkBookField = 'applied_for' | 'received' | 'awaiting_review_for' | 'reviewed';
+
+// Add or remove a book title from the given array field across many readers.
+// Reads current arrays first so we can preserve uniqueness (add) or filter
+// (remove) per-row, since each reader has a different existing list.
+export async function bulkUpdateBookField(
+  ids: string[],
+  field: BulkBookField,
+  book: string,
+  action: 'add' | 'remove',
+): Promise<{ changed: number; unchanged: number }> {
+  if (ids.length === 0 || !book) return { changed: 0, unchanged: 0 };
+  const { data, error } = await supabase
+    .from('arc_readers')
+    .select(`id, ${field}`)
+    .in('id', ids);
+  if (error) throw error;
+  let changed = 0;
+  let unchanged = 0;
+  for (const row of (data ?? []) as Array<{ id: string } & Record<string, string[]>>) {
+    const current = (row[field] as string[]) ?? [];
+    const next = action === 'add'
+      ? (current.includes(book) ? current : [...current, book])
+      : current.filter(b => b !== book);
+    if (next.length === current.length && (action === 'add' ? current.includes(book) : !current.includes(book))) {
+      unchanged++;
+      continue;
+    }
+    const { error: upErr } = await supabase
+      .from('arc_readers')
+      .update({ [field]: next })
+      .eq('id', row.id);
+    if (upErr) throw upErr;
+    changed++;
+  }
+  return { changed, unchanged };
+}
+
 // ============================================
 // Notion JSON import
 // ============================================
