@@ -47,7 +47,7 @@ export async function bulkUpdateStatus(ids: string[], status: ArcStatus): Promis
   if (error) throw error;
 }
 
-export type BulkBookField = 'applied_for' | 'received' | 'awaiting_review_for' | 'reviewed';
+export type BulkBookField = 'applied_for' | 'received' | 'reviewed';
 
 // Add or remove a book title from the given array field across many readers.
 // Reads current arrays first so we can preserve uniqueness (add) or filter
@@ -110,7 +110,6 @@ export interface NotionArcRow {
   'Application for'?: string[] | string;
   Received?: string[] | string;
   Reviewed?: string[] | string;
-  'Awaiting Review for'?: string[] | string;
   'Place to Review'?: string[] | string;
   'Join my newsletter?'?: boolean | string;
   'Join my Promo team'?: string[] | string | boolean;
@@ -191,7 +190,6 @@ function rowToInsert(row: NotionArcRow): ArcReaderInsert | null {
     applied_for: toArr(pickRaw(row, ['Application for', 'Applied for']) as string | string[] | undefined),
     received: toArr(pickRaw(row, ['Received']) as string | string[] | undefined),
     reviewed: toArr(pickRaw(row, ['Reviewed']) as string | string[] | undefined),
-    awaiting_review_for: toArr(pickRaw(row, ['Awaiting Review for']) as string | string[] | undefined),
     place_to_review: toArr(pickRaw(row, [
       'Place to Review',
       'Places to Review',

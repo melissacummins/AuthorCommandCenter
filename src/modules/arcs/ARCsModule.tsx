@@ -158,7 +158,6 @@ export default function ARCsModule() {
     for (const r of readers) {
       for (const t of r.applied_for) set.add(t);
       for (const t of r.received) set.add(t);
-      for (const t of r.awaiting_review_for) set.add(t);
       for (const t of r.reviewed) set.add(t);
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
@@ -361,7 +360,6 @@ export default function ARCsModule() {
                   <option value="">Field…</option>
                   <option value="applied_for">Applied for</option>
                   <option value="received">Received</option>
-                  <option value="awaiting_review_for">Awaiting review for</option>
                   <option value="reviewed">Reviewed</option>
                 </select>
                 <select
@@ -411,7 +409,6 @@ export default function ARCsModule() {
                       <th className="px-3 py-2">Status</th>
                       <th className="px-3 py-2">Received</th>
                       <th className="px-3 py-2">Reviewed</th>
-                      <th className="px-3 py-2">Awaiting</th>
                       <th className="px-3 py-2 whitespace-nowrap">Opt-ins</th>
                     </tr>
                   </thead>
@@ -447,7 +444,6 @@ export default function ARCsModule() {
                         </td>
                         <td className="px-3 py-2"><BookCount count={r.received.length} /></td>
                         <td className="px-3 py-2"><BookCount count={r.reviewed.length} /></td>
-                        <td className="px-3 py-2"><BookCount count={r.awaiting_review_for.length} /></td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2 text-slate-500">
                             {r.newsletter_subscribed && <Mail className="w-4 h-4 text-emerald-500" />}

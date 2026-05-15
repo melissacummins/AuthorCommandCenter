@@ -374,7 +374,6 @@ export async function applyApplicantDecisions(
         applied_for: selectedBookTitle ? [selectedBookTitle] : [],
         received: [],
         reviewed: [],
-        awaiting_review_for: [],
         place_to_review: applicant.place_to_review,
         newsletter_subscribed: applicant.newsletter_subscribed,
         promo_team: applicant.promo_team,
