@@ -124,7 +124,7 @@ export default function ARCsModule() {
 
   // Filter readers based on current tab + filter + query
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase().replace(/^@+/, '');
     return readers.filter(r => {
       const t = view.mode === 'list' ? view.tab : 'all';
       if (t === 'pending') {
@@ -136,9 +136,21 @@ export default function ARCsModule() {
       }
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
       if (q) {
-        const hay = [r.name, r.email ?? '', r.primary_sm ?? '', ...r.applied_for, ...r.received, ...r.reviewed]
-          .join(' ')
-          .toLowerCase();
+        const hay = [
+          r.name,
+          r.email ?? '',
+          r.primary_sm ?? '',
+          r.ig_profile_url ?? '',
+          r.tt_profile_url ?? '',
+          r.threads_profile_url ?? '',
+          r.fb_profile_url ?? '',
+          r.goodreads_profile_url ?? '',
+          r.amazon_reviewer_url ?? '',
+          r.blog_url ?? '',
+          ...r.applied_for,
+          ...r.received,
+          ...r.reviewed,
+        ].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -293,7 +305,7 @@ export default function ARCsModule() {
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search name, email, or book title"
+                placeholder="Search name, email, handle, or book title"
                 className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300"
               />
             </div>
