@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users,
+  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -103,13 +103,21 @@ const moduleByPath: Record<string, ModuleCard> = {
     gradient: 'from-pink-500 to-pink-600',
     shadow: 'shadow-pink-500/25',
   },
+  '/media': {
+    name: 'Media',
+    description: 'Generate Pinterest pins, new release art, social images, and short video clips with AI.',
+    path: '/media',
+    icon: ImagePlus,
+    gradient: 'from-fuchsia-500 to-purple-600',
+    shadow: 'shadow-fuchsia-500/25',
+  },
 };
 
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/kdp-optimizer', '/links', '/arcs'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 export default function Home() {

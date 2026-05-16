@@ -14,6 +14,7 @@ import FinStreamModule from './modules/finstream/FinStreamModule';
 import KDPOptimizerModule from './modules/kdp-optimizer/KDPOptimizerModule';
 import LinkShortenerModule from './modules/link-shortener/LinkShortenerModule';
 import ARCsModule from './modules/arcs/ARCsModule';
+import MediaModule from './modules/media/MediaModule';
 import SettingsModule from './modules/settings/SettingsModule';
 import ShopifyCallback from './modules/orders/components/ShopifyCallback';
 
@@ -50,6 +51,7 @@ function ProtectedRoutes() {
         <Route path="kdp-optimizer" element={<KDPOptimizerModule />} />
         <Route path="links" element={<LinkShortenerModule />} />
         <Route path="arcs" element={<ARCsModule />} />
+        <Route path="media" element={<MediaModule />} />
         <Route path="settings" element={<SettingsModule />} />
         <Route path="shopify/callback" element={<ShopifyCallback />} />
         <Route path="*" element={<Navigate to="/" replace />} />
