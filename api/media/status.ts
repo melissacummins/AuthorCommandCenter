@@ -2,7 +2,37 @@
 // the matching media_generations row when the job finishes. Called by
 // the client every few seconds while a video is rendering.
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createDecipheriv, scryptSync } from 'node:crypto';
+
+// Same lookup logic as api/media/generate.ts — duplicated here because
+// the api/_lib pattern doesn't reliably bundle on Vercel (see the note
+// in api/_lib/branded-pages.ts).
+async function resolveFalKey(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const masterSecret = process.env.FAL_KEY_ENCRYPTION_SECRET;
+  if (masterSecret && masterSecret.length >= 32) {
+    const { data } = await supabase
+      .from('user_fal_keys')
+      .select('encrypted_key, nonce, auth_tag')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (data?.encrypted_key && data.nonce && data.auth_tag) {
+      try {
+        const key = scryptSync(masterSecret, 'media-fal-key-v1', 32);
+        const iv = Buffer.from(data.nonce, 'base64');
+        const ciphertext = Buffer.from(data.encrypted_key, 'base64');
+        const authTag = Buffer.from(data.auth_tag, 'base64');
+        const decipher = createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+        const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+        return plain.toString('utf8');
+      } catch {
+        return null;
+      }
+    }
+  }
+  return process.env.FAL_KEY ?? null;
+}
 
 type VercelRequest = {
   method?: string;
@@ -49,8 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const falKey = process.env.FAL_KEY;
-  if (!supabaseUrl || !serviceKey || !falKey) {
+  if (!supabaseUrl || !serviceKey) {
     res.status(500).json({ error: 'Service not configured' });
     return;
   }
@@ -96,6 +125,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   if (!gen.fal_request_id || !gen.fal_model_endpoint) {
     res.status(200).json({ generation: gen });
+    return;
+  }
+
+  const falKey = await resolveFalKey(supabase, userId);
+  if (!falKey) {
+    res.status(400).json({ error: 'No Fal API key configured', code: 'NO_FAL_KEY' });
     return;
   }
 

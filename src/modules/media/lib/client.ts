@@ -50,6 +50,41 @@ export async function pollGenerationStatus(id: string): Promise<MediaGeneration>
   return data.generation as MediaGeneration;
 }
 
+export interface FalKeyStatus {
+  has_key: boolean;
+  hint: string | null;
+  updated_at: string | null;
+}
+
+export async function getFalKeyStatus(): Promise<FalKeyStatus> {
+  const headers = await authHeader();
+  const res = await fetch('/api/media/key', { headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Key status failed (${res.status})`);
+  return data as FalKeyStatus;
+}
+
+export async function setFalKey(key: string): Promise<FalKeyStatus> {
+  const headers = await authHeader();
+  const res = await fetch('/api/media/key', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Failed to save key (${res.status})`);
+  return { has_key: true, hint: data.hint ?? null, updated_at: new Date().toISOString() };
+}
+
+export async function removeFalKey(): Promise<void> {
+  const headers = await authHeader();
+  const res = await fetch('/api/media/key', { method: 'DELETE', headers });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(typeof data?.error === 'string' ? data.error : `Failed to remove key (${res.status})`);
+  }
+}
+
 export async function uploadInputImage(file: File): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user?.id;
