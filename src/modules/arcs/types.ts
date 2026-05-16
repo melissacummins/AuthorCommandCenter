@@ -54,6 +54,29 @@ export const STATUS_ORDER: ArcStatus[] = [
   'not_pending_anything',
 ];
 
+// Statuses that move automatically when per-book arrays change.
+// Other statuses (didnt_review, not_moving_forward, etc.) are explicit
+// user decisions and we leave them alone.
+export const FUNNEL_STATUSES: readonly ArcStatus[] = [
+  'new', 'awaiting_arc', 'awaiting_review', 'current_arc_member',
+];
+
+export function isFunnelStatus(s: ArcStatus): boolean {
+  return (FUNNEL_STATUSES as readonly ArcStatus[]).includes(s);
+}
+
+// Highest funnel state implied by the reader's per-book arrays.
+export function impliedFunnelStatus(
+  applied_for: string[],
+  received: string[],
+  reviewed: string[],
+): ArcStatus {
+  if (reviewed.length > 0) return 'current_arc_member';
+  if (received.length > 0) return 'awaiting_review';
+  if (applied_for.length > 0) return 'awaiting_arc';
+  return 'new';
+}
+
 export const STATUS_LABELS: Record<ArcStatus, string> = {
   new: 'New',
   current_arc_member: 'Current ARC Member',

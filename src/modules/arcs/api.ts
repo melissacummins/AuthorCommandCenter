@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type { ArcReader, ArcReaderInsert, ArcReaderUpdate, ArcStatus } from './types';
-import { NOTION_STATUS_MAP } from './types';
+import { impliedFunnelStatus, isFunnelStatus, NOTION_STATUS_MAP } from './types';
 
 export async function listArcReaders(userId: string): Promise<ArcReader[]> {
   const { data, error } = await supabase
@@ -50,10 +50,14 @@ export async function bulkUpdateStatus(ids: string[], status: ArcStatus): Promis
 export type BulkBookField = 'applied_for' | 'received' | 'reviewed';
 
 // Add or remove a book title from the given array field across many readers.
-// Reads current arrays first so we can preserve uniqueness (add) or filter
-// (remove) per-row, since each reader has a different existing list.
-// Updates run in parallel — sequential per-row writes were too slow on large
-// selections (each round-trip is ~150ms; 50 readers ≈ 7s sequential).
+// Reads current arrays + status first so we can:
+//   - preserve uniqueness on add / filter on remove per-row
+//   - auto-toggle the funnel status (new → awaiting_arc → awaiting_review
+//     → current_arc_member) based on what arrays are populated after the
+//     change. Statuses outside the funnel set are user decisions and are
+//     left alone.
+// Updates run in parallel — sequential per-row writes were too slow on
+// large selections (each round-trip is ~150ms; 50 readers ≈ 7s sequential).
 export async function bulkUpdateBookField(
   ids: string[],
   field: BulkBookField,
@@ -63,26 +67,45 @@ export async function bulkUpdateBookField(
   if (ids.length === 0 || !book) return { changed: 0, unchanged: 0 };
   const { data, error } = await supabase
     .from('arc_readers')
-    .select(`id, ${field}`)
+    .select('id, status, applied_for, received, reviewed')
     .in('id', ids);
   if (error) throw error;
 
-  type Row = { id: string } & Record<string, string[] | null>;
+  type Row = {
+    id: string;
+    status: ArcStatus;
+    applied_for: string[] | null;
+    received: string[] | null;
+    reviewed: string[] | null;
+  };
   const rows = (data ?? []) as Row[];
 
-  const updates: Array<{ id: string; next: string[] }> = [];
+  const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
   let unchanged = 0;
   for (const row of rows) {
     const current = (row[field] as string[] | null) ?? [];
     const has = current.includes(book);
     if (action === 'add' && has) { unchanged++; continue; }
     if (action === 'remove' && !has) { unchanged++; continue; }
-    const next = action === 'add' ? [...current, book] : current.filter(b => b !== book);
-    updates.push({ id: row.id, next });
+    const nextArr = action === 'add' ? [...current, book] : current.filter(b => b !== book);
+
+    const arrays = {
+      applied_for: row.applied_for ?? [],
+      received: row.received ?? [],
+      reviewed: row.reviewed ?? [],
+      [field]: nextArr,
+    } as Record<BulkBookField, string[]>;
+
+    const patch: Record<string, unknown> = { [field]: nextArr };
+    if (isFunnelStatus(row.status)) {
+      const implied = impliedFunnelStatus(arrays.applied_for, arrays.received, arrays.reviewed);
+      if (implied !== row.status) patch.status = implied;
+    }
+    updates.push({ id: row.id, patch });
   }
 
   const results = await Promise.all(updates.map(u =>
-    supabase.from('arc_readers').update({ [field]: u.next }).eq('id', u.id)
+    supabase.from('arc_readers').update(u.patch).eq('id', u.id)
   ));
   const firstErr = results.find(r => r.error)?.error;
   if (firstErr) throw firstErr;

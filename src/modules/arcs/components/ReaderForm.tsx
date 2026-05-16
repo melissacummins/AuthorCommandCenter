@@ -2,7 +2,9 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { Book } from '../../catalog/types';
 import type { ArcReader, ArcReaderInsert, ArcStatus } from '../types';
-import { PLACES, STATUS_LABELS, STATUS_ORDER } from '../types';
+import { impliedFunnelStatus, isFunnelStatus, PLACES, STATUS_LABELS, STATUS_ORDER } from '../types';
+
+const BOOK_FIELDS = new Set(['applied_for', 'received', 'reviewed']);
 
 interface Props {
   initial: ArcReader | null;
@@ -58,7 +60,17 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
     setDraft(d => {
       const arr = (d[key] as string[]) ?? [];
       const next = arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
-      return { ...d, [key]: next };
+      const patch: Partial<ArcReaderInsert> = { [key]: next };
+      if (BOOK_FIELDS.has(key as string) && isFunnelStatus(d.status)) {
+        const arrays = {
+          applied_for: d.applied_for,
+          received: d.received,
+          reviewed: d.reviewed,
+          [key]: next,
+        } as Record<'applied_for' | 'received' | 'reviewed', string[]>;
+        patch.status = impliedFunnelStatus(arrays.applied_for, arrays.received, arrays.reviewed);
+      }
+      return { ...d, ...patch };
     });
   }
 
