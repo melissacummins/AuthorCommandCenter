@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users
+  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -19,6 +19,7 @@ const modules = [
   { name: 'KDP Optimizer', path: '/kdp-optimizer', icon: Search, color: 'text-rose-400' },
   { name: 'Link Shortener', path: '/links', icon: Link2, color: 'text-indigo-400' },
   { name: 'ARCs', path: '/arcs', icon: Users, color: 'text-pink-400' },
+  { name: 'Media', path: '/media', icon: ImagePlus, color: 'text-fuchsia-400' },
   { name: 'Settings', path: '/settings', icon: Settings, color: 'text-slate-300' },
 ];
 
@@ -28,7 +29,7 @@ const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/kdp-optimizer', '/links', '/arcs'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 const moduleByPath = Object.fromEntries(modules.map(m => [m.path, m]));
