@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings,
+  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, Key, ExternalLink, Check,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { MODELS, findModel } from './lib/models';
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
-import { requestGeneration, pollGenerationStatus, uploadInputImage } from './lib/client';
+import {
+  requestGeneration, pollGenerationStatus, uploadInputImage,
+  getFalKeyStatus, setFalKey, removeFalKey, type FalKeyStatus,
+} from './lib/client';
 import type { MediaCollection, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
 
 const POLL_INTERVAL_MS = 4000;
@@ -46,6 +49,7 @@ export default function MediaModule() {
   const [stylePresets, setStylePresets] = useState<MediaStylePreset[]>([]);
   const [settings, setSettings] = useState<MediaSettings | null>(null);
   const [monthlySpent, setMonthlySpent] = useState(0);
+  const [keyStatus, setKeyStatus] = useState<FalKeyStatus | null>(null);
 
   const [filterCollectionId, setFilterCollectionId] = useState<string | null>(null);
   const [stylesDrawerOpen, setStylesDrawerOpen] = useState(false);
@@ -88,6 +92,12 @@ export default function MediaModule() {
     setStylePresets((styleRes.data ?? []) as MediaStylePreset[]);
     setSettings((settingsRes.data ?? null) as MediaSettings | null);
     setMonthlySpent(((monthRes.data ?? []) as { cost_cents: number | null }[]).reduce((s, r) => s + (r.cost_cents ?? 0), 0));
+
+    try {
+      setKeyStatus(await getFalKeyStatus());
+    } catch {
+      setKeyStatus({ has_key: false, hint: null, updated_at: null });
+    }
   }, [userId]);
 
   useEffect(() => {
@@ -267,6 +277,16 @@ export default function MediaModule() {
     if (data) setSettings(data as MediaSettings);
   }
 
+  async function handleSaveFalKey(rawKey: string) {
+    const status = await setFalKey(rawKey);
+    setKeyStatus(status);
+  }
+
+  async function handleRemoveFalKey() {
+    await removeFalKey();
+    setKeyStatus({ has_key: false, hint: null, updated_at: null });
+  }
+
   async function handleMoveToCollection(generationId: string, collectionId: string | null) {
     const { error: upErr } = await supabase
       .from('media_generations')
@@ -330,6 +350,25 @@ export default function MediaModule() {
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <span className="flex-1">{error}</span>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {keyStatus && !keyStatus.has_key && (
+        <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
+          <Key className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
+          <div className="flex-1">
+            <p className="font-semibold">Add your Fal.AI API key to get started.</p>
+            <p className="text-amber-800/80 text-xs mt-1">
+              Each generation is billed to your own Fal account, not ours.{' '}
+              <a href="https://fal.ai/dashboard/keys" target="_blank" rel="noreferrer" className="underline font-medium inline-flex items-center gap-0.5">
+                Get a key <ExternalLink className="w-3 h-3" />
+              </a>
+              , then paste it in settings.
+            </p>
+          </div>
+          <button onClick={() => setSettingsDrawerOpen(true)} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shrink-0">
+            Add key
+          </button>
         </div>
       )}
 
@@ -496,7 +535,7 @@ export default function MediaModule() {
 
           <button
             onClick={handleGenerate}
-            disabled={generating || !prompt.trim() || uploading}
+            disabled={generating || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-semibold shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</> : <><Wand2 className="w-4 h-4" /> Generate (~{formatCents(model.estimatedCostCents)})</>}
@@ -574,8 +613,11 @@ export default function MediaModule() {
       {settingsDrawerOpen && (
         <SettingsDrawer
           cap={cap}
+          keyStatus={keyStatus}
           onClose={() => setSettingsDrawerOpen(false)}
           onSave={handleSaveSettings}
+          onSaveKey={handleSaveFalKey}
+          onRemoveKey={handleRemoveFalKey}
         />
       )}
     </div>
@@ -779,39 +821,134 @@ function CollectionsDrawer({
 }
 
 function SettingsDrawer({
-  cap, onClose, onSave,
+  cap, keyStatus, onClose, onSave, onSaveKey, onRemoveKey,
 }: {
   cap: number;
+  keyStatus: FalKeyStatus | null;
   onClose: () => void;
   onSave: (capCents: number) => Promise<void>;
+  onSaveKey: (key: string) => Promise<void>;
+  onRemoveKey: () => Promise<void>;
 }) {
   const [dollars, setDollars] = useState((cap / 100).toFixed(2));
+  const [rawKey, setRawKey] = useState('');
+  const [savingKey, setSavingKey] = useState(false);
+  const [removingKey, setRemovingKey] = useState(false);
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [keySaved, setKeySaved] = useState(false);
+
+  async function submitKey() {
+    setKeyError(null);
+    setKeySaved(false);
+    setSavingKey(true);
+    try {
+      await onSaveKey(rawKey.trim());
+      setRawKey('');
+      setKeySaved(true);
+    } catch (err) {
+      setKeyError(err instanceof Error ? err.message : 'Failed to save key');
+    } finally {
+      setSavingKey(false);
+    }
+  }
+
+  async function removeKey() {
+    if (!window.confirm('Remove your stored Fal API key? You will need to paste it again to generate.')) return;
+    setRemovingKey(true);
+    try {
+      await onRemoveKey();
+      setKeySaved(false);
+    } catch (err) {
+      setKeyError(err instanceof Error ? err.message : 'Failed to remove key');
+    } finally {
+      setRemovingKey(false);
+    }
+  }
+
   return (
-    <Drawer title="Spend settings" onClose={onClose}>
-      <p className="text-sm text-slate-500 mb-4">Set a monthly spending cap. New generations are refused when the next request would exceed this amount. Costs are estimates based on Fal's published rates.</p>
-      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Monthly cap (USD)</label>
-      <div className="flex gap-2">
-        <span className="self-center text-slate-500">$</span>
+    <Drawer title="Media settings" onClose={onClose}>
+      {/* Fal API key */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <Key className="w-4 h-4 text-slate-500" />
+          <h4 className="font-semibold text-slate-800">Fal.AI API key</h4>
+        </div>
+        <p className="text-sm text-slate-500 mb-3">
+          Each generation is billed to your own Fal account.{' '}
+          <a href="https://fal.ai/dashboard/keys" target="_blank" rel="noreferrer" className="text-fuchsia-600 hover:text-fuchsia-700 underline inline-flex items-center gap-0.5">
+            Get a key <ExternalLink className="w-3 h-3" />
+          </a>
+          . Keys are encrypted with AES-256-GCM before being stored — only the server can decrypt them on demand.
+        </p>
+
+        {keyStatus?.has_key ? (
+          <div className="mb-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-800">
+            <Check className="w-4 h-4 shrink-0" />
+            <span className="flex-1">Key saved (ends in <code className="font-mono">{keyStatus.hint}</code>)</span>
+            <button
+              onClick={removeKey}
+              disabled={removingKey}
+              className="text-xs text-emerald-700 hover:text-red-600 underline disabled:opacity-50"
+            >
+              {removingKey ? 'Removing…' : 'Remove'}
+            </button>
+          </div>
+        ) : (
+          <div className="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>No key saved — generation is disabled until you add one.</span>
+          </div>
+        )}
+
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+          {keyStatus?.has_key ? 'Replace key' : 'Paste your key'}
+        </label>
         <input
-          type="number"
-          min={0}
-          step={0.5}
-          value={dollars}
-          onChange={(e) => setDollars(e.target.value)}
-          className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"
+          type="password"
+          value={rawKey}
+          onChange={(e) => { setRawKey(e.target.value); setKeySaved(false); setKeyError(null); }}
+          placeholder="key_xxxx…  or  xxxxxxxx:xxxxxxxx…"
+          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"
+          autoComplete="off"
         />
+        {keyError && <p className="text-xs text-red-600 mt-1">{keyError}</p>}
+        {keySaved && <p className="text-xs text-emerald-700 mt-1">Saved.</p>}
+        <button
+          onClick={submitKey}
+          disabled={savingKey || rawKey.trim().length < 16}
+          className="mt-2 px-4 py-2 rounded-lg bg-fuchsia-600 text-white text-sm font-semibold hover:bg-fuchsia-700 disabled:opacity-50"
+        >
+          {savingKey ? 'Saving…' : 'Save key'}
+        </button>
       </div>
-      <button
-        onClick={async () => {
-          const cents = Math.max(0, Math.round(parseFloat(dollars) * 100));
-          await onSave(cents);
-          onClose();
-        }}
-        className="mt-4 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm"
-      >
-        Save
-      </button>
-      <p className="text-[11px] text-slate-400 mt-3">Set to $0 to disable the cap entirely.</p>
+
+      <div className="border-t border-slate-100 pt-5">
+        <h4 className="font-semibold text-slate-800 mb-1">Monthly spend cap</h4>
+        <p className="text-sm text-slate-500 mb-3">New generations are refused when the next request would exceed this amount. Costs are estimates based on Fal's published rates.</p>
+        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Monthly cap (USD)</label>
+        <div className="flex gap-2">
+          <span className="self-center text-slate-500">$</span>
+          <input
+            type="number"
+            min={0}
+            step={0.5}
+            value={dollars}
+            onChange={(e) => setDollars(e.target.value)}
+            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"
+          />
+        </div>
+        <button
+          onClick={async () => {
+            const cents = Math.max(0, Math.round(parseFloat(dollars) * 100));
+            await onSave(cents);
+            onClose();
+          }}
+          className="mt-3 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm"
+        >
+          Save cap
+        </button>
+        <p className="text-[11px] text-slate-400 mt-3">Set to $0 to disable the cap entirely.</p>
+      </div>
     </Drawer>
   );
 }

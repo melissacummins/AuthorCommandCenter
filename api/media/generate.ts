@@ -6,11 +6,15 @@
 // run via Fal's queue and need a follow-up poll via /api/media/status).
 //
 // Required env vars (server-side only):
-//   SUPABASE_URL                — same value as VITE_SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY   — service role, never shipped to browser
-//   FAL_KEY                     — Fal.AI API key
+//   SUPABASE_URL                  — same value as VITE_SUPABASE_URL
+//   SUPABASE_SERVICE_ROLE_KEY     — service role, never shipped to browser
+//   FAL_KEY_ENCRYPTION_SECRET     — master secret for decrypting user-stored Fal keys
+//   FAL_KEY (optional)            — fallback Fal key used only when the
+//                                   caller hasn't stored their own. Leave
+//                                   unset in a multi-tenant deployment.
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createDecipheriv, scryptSync } from 'node:crypto';
 
 type VercelRequest = {
   method?: string;
@@ -94,6 +98,35 @@ async function getMonthlyCapCents(supabase: SupabaseClient, userId: string): Pro
   return 2000; // matches DB default
 }
 
+// Pulls the caller's stored Fal key (decrypted) or falls back to the
+// platform FAL_KEY env var. Returns null when neither is available so
+// the handler can surface a friendly "add your key" error.
+export async function resolveFalKey(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  const masterSecret = process.env.FAL_KEY_ENCRYPTION_SECRET;
+  if (masterSecret && masterSecret.length >= 32) {
+    const { data } = await supabase
+      .from('user_fal_keys')
+      .select('encrypted_key, nonce, auth_tag')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (data?.encrypted_key && data.nonce && data.auth_tag) {
+      try {
+        const key = scryptSync(masterSecret, 'media-fal-key-v1', 32);
+        const iv = Buffer.from(data.nonce, 'base64');
+        const ciphertext = Buffer.from(data.encrypted_key, 'base64');
+        const authTag = Buffer.from(data.auth_tag, 'base64');
+        const decipher = createDecipheriv('aes-256-gcm', key, iv);
+        decipher.setAuthTag(authTag);
+        const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+        return plain.toString('utf8');
+      } catch {
+        return null;
+      }
+    }
+  }
+  return process.env.FAL_KEY ?? null;
+}
+
 function buildFalPayload(model: ModelDef, body: GenerateRequestBody): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     prompt: body.full_prompt ?? body.prompt,
@@ -161,9 +194,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const falKey = process.env.FAL_KEY;
-  if (!supabaseUrl || !serviceKey || !falKey) {
-    res.status(500).json({ error: 'Service not configured (missing SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or FAL_KEY)' });
+  if (!supabaseUrl || !serviceKey) {
+    res.status(500).json({ error: 'Service not configured (missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY)' });
     return;
   }
 
@@ -183,6 +215,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
   const userId = userData.user.id;
+
+  const falKey = await resolveFalKey(supabase, userId);
+  if (!falKey) {
+    res.status(400).json({ error: 'No Fal API key configured. Add yours in Media settings to get started.', code: 'NO_FAL_KEY' });
+    return;
+  }
 
   let body: GenerateRequestBody;
   try {
