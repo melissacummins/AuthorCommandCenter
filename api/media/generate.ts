@@ -41,19 +41,79 @@ interface ModelDef {
 }
 
 // Server-side copy of the curated model catalogue. Kept in sync with
-// src/modules/media/lib/models.ts — anything not in this list is
-// rejected so a client can't ask us to call an arbitrary Fal endpoint.
+// src/modules/media/lib/models.ts. When the requested model id is not
+// in this map we fall through to media_custom_models so users can run
+// any fal-ai/* endpoint they've added themselves.
 const MODELS: Record<string, ModelDef> = {
-  'nano-banana':          { id: 'nano-banana',          endpoint: 'fal-ai/nano-banana',                                kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4 },
-  'nano-banana-edit':     { id: 'nano-banana-edit',     endpoint: 'fal-ai/nano-banana/edit',                           kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 4 },
-  'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                   kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3 },
-  'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                                kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 6 },
-  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1',                                kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 7 },
-  'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                                 kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5 },
-  'kling-video':          { id: 'kling-video',          endpoint: 'fal-ai/kling-video/v2/master/text-to-video',        kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 140 },
-  'kling-image-to-video': { id: 'kling-image-to-video', endpoint: 'fal-ai/kling-video/v2/master/image-to-video',       kind: 'video', isAsync: true,  acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 140 },
-  'ltx-video':            { id: 'ltx-video',            endpoint: 'fal-ai/ltx-video',                                  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 20 },
+  // Image generation
+  'nano-banana':          { id: 'nano-banana',          endpoint: 'fal-ai/nano-banana',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'flux-pro-v11':         { id: 'flux-pro-v11',         endpoint: 'fal-ai/flux-pro/v1.1',                            kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
+  'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
+  'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 6   },
+  'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
+  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1',                              kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 7   },
+  'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
+  'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3   },
+  'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8   },
+  'flux-lora':            { id: 'flux-lora',            endpoint: 'fal-ai/flux-lora',                                kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'imagen3':              { id: 'imagen3',              endpoint: 'fal-ai/imagen3',                                  kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'ideogram-v2':          { id: 'ideogram-v2',          endpoint: 'fal-ai/ideogram/v2',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
+  'ideogram-v2-turbo':    { id: 'ideogram-v2-turbo',    endpoint: 'fal-ai/ideogram/v2-turbo',                        kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3   },
+  'sd35-large':           { id: 'sd35-large',           endpoint: 'fal-ai/stable-diffusion-v35-large',               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'sd35-medium':          { id: 'sd35-medium',          endpoint: 'fal-ai/stable-diffusion-v35-medium',              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 2   },
+  'sana':                 { id: 'sana',                 endpoint: 'fal-ai/sana',                                     kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
+  'bria-t2i':             { id: 'bria-t2i',             endpoint: 'fal-ai/bria/text-to-image/base',                  kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'photon-1':             { id: 'photon-1',             endpoint: 'fal-ai/luma-photon',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'hidream':              { id: 'hidream',              endpoint: 'fal-ai/hidream-i1-full',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'qwen-image':           { id: 'qwen-image',           endpoint: 'fal-ai/qwen-image',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3   },
+
+  // Image editing
+  'nano-banana-edit':     { id: 'nano-banana-edit',     endpoint: 'fal-ai/nano-banana/edit',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 4   },
+  'flux-kontext':         { id: 'flux-kontext',         endpoint: 'fal-ai/flux-pro/kontext',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 6   },
+  'ideogram-v3-edit':     { id: 'ideogram-v3-edit',     endpoint: 'fal-ai/ideogram/v3/edit',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 6   },
+  'flux-i2i':             { id: 'flux-i2i',             endpoint: 'fal-ai/flux/dev/image-to-image',                  kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 3   },
+  'bria-eraser':          { id: 'bria-eraser',          endpoint: 'fal-ai/bria/eraser',                              kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 4   },
+  'birefnet-bg-remove':   { id: 'birefnet-bg-remove',   endpoint: 'fal-ai/birefnet',                                 kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 1   },
+  'clarity-upscaler':     { id: 'clarity-upscaler',     endpoint: 'fal-ai/clarity-upscaler',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 3   },
+  'aura-sr':              { id: 'aura-sr',              endpoint: 'fal-ai/aura-sr',                                  kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 2   },
+
+  // Video
+  'kling-video':          { id: 'kling-video',          endpoint: 'fal-ai/kling-video/v2/master/text-to-video',      kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 140 },
+  'kling-image-to-video': { id: 'kling-image-to-video', endpoint: 'fal-ai/kling-video/v2/master/image-to-video',     kind: 'video', isAsync: true,  acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 140 },
+  'veo3-fast':            { id: 'veo3-fast',            endpoint: 'fal-ai/veo3/fast',                                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 200 },
+  'ltx-video':            { id: 'ltx-video',            endpoint: 'fal-ai/ltx-video',                                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 20  },
+  'kling-v16-std':        { id: 'kling-v16-std',        endpoint: 'fal-ai/kling-video/v1.6/standard/text-to-video',  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 35  },
+  'wan-t2v':              { id: 'wan-t2v',              endpoint: 'fal-ai/wan/v2.2-5b/text-to-video',                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 60  },
+  'wan-i2v':              { id: 'wan-i2v',              endpoint: 'fal-ai/wan/v2.2-5b/image-to-video',               kind: 'video', isAsync: true,  acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 60  },
+  'minimax-hailuo-02':    { id: 'minimax-hailuo-02',    endpoint: 'fal-ai/minimax/hailuo-02',                        kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 80  },
+  'hunyuan-video':        { id: 'hunyuan-video',        endpoint: 'fal-ai/hunyuan-video',                            kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 80  },
+  'ltx-distilled':        { id: 'ltx-distilled',        endpoint: 'fal-ai/ltx-video-13b-distilled',                  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 35  },
 };
+
+// Loads a user's custom model definition. Anything outside the curated
+// MODELS map falls through to here so users can run any fal-ai/*
+// endpoint they've added in their settings. We still require the
+// endpoint to start with `fal-ai/` (also enforced by a DB check
+// constraint) to keep this from becoming an SSRF tool.
+async function loadCustomModel(supabase: SupabaseClient, userId: string, modelId: string): Promise<ModelDef | null> {
+  const { data } = await supabase
+    .from('media_custom_models')
+    .select('id, label, endpoint, kind, is_async, accepts_input_image, supports_custom_size, estimated_cost_cents')
+    .eq('user_id', userId)
+    .eq('id', modelId)
+    .maybeSingle();
+  if (!data) return null;
+  if (typeof data.endpoint !== 'string' || !data.endpoint.startsWith('fal-ai/')) return null;
+  return {
+    id: data.id as string,
+    endpoint: data.endpoint as string,
+    kind: data.kind as 'image' | 'video',
+    isAsync: !!data.is_async,
+    acceptsInputImage: !!data.accepts_input_image,
+    supportsCustomSize: !!data.supports_custom_size,
+    estimatedCostCents: (data.estimated_cost_cents as number) ?? 5,
+  };
+}
 
 interface GenerateRequestBody {
   model: string;
@@ -234,7 +294,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: 'Prompt is required' });
     return;
   }
-  const model = MODELS[body.model];
+  const model: ModelDef | null = MODELS[body.model] ?? await loadCustomModel(supabase, userId, body.model);
   if (!model) {
     res.status(400).json({ error: `Unknown model: ${body.model}` });
     return;

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, Key, ExternalLink, Check,
+  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, Key, ExternalLink, Check, Layers,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,7 +10,7 @@ import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
   getFalKeyStatus, setFalKey, removeFalKey, type FalKeyStatus,
 } from './lib/client';
-import type { MediaCollection, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
+import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
 
 const POLL_INTERVAL_MS = 4000;
 
@@ -47,6 +47,9 @@ export default function MediaModule() {
   const [history, setHistory] = useState<MediaGeneration[]>([]);
   const [collections, setCollections] = useState<MediaCollection[]>([]);
   const [stylePresets, setStylePresets] = useState<MediaStylePreset[]>([]);
+  const [customModels, setCustomModels] = useState<MediaCustomModel[]>([]);
+  const [showAllModels, setShowAllModels] = useState(false);
+  const [customModelsDrawerOpen, setCustomModelsDrawerOpen] = useState(false);
   const [settings, setSettings] = useState<MediaSettings | null>(null);
   const [monthlySpent, setMonthlySpent] = useState(0);
   const [keyStatus, setKeyStatus] = useState<FalKeyStatus | null>(null);
@@ -59,7 +62,49 @@ export default function MediaModule() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollersRef = useRef<Map<string, number>>(new Map());
 
-  const model = useMemo(() => findModel(modelId) ?? MODELS[0], [modelId]);
+  // Unified "effective model" — covers both curated (MODELS) and
+  // user-defined custom models so the rest of the UI doesn't care
+  // where the model came from.
+  const model = useMemo(() => {
+    const curated = findModel(modelId);
+    if (curated) {
+      return {
+        id: curated.id,
+        label: curated.label,
+        kind: curated.kind,
+        acceptsInputImage: curated.acceptsInputImage,
+        supportsCustomSize: curated.supportsCustomSize,
+        description: curated.description,
+        estimatedCostCents: curated.estimatedCostCents,
+        isCustom: false,
+      };
+    }
+    const custom = customModels.find((c) => c.id === modelId);
+    if (custom) {
+      return {
+        id: custom.id,
+        label: custom.label,
+        kind: custom.kind,
+        acceptsInputImage: custom.accepts_input_image,
+        supportsCustomSize: custom.supports_custom_size,
+        description: custom.description ?? `Custom: ${custom.endpoint}`,
+        estimatedCostCents: custom.estimated_cost_cents,
+        isCustom: true,
+      };
+    }
+    // Fall back to the first featured curated model.
+    const first = MODELS.find((m) => m.isFeatured) ?? MODELS[0];
+    return {
+      id: first.id,
+      label: first.label,
+      kind: first.kind,
+      acceptsInputImage: first.acceptsInputImage,
+      supportsCustomSize: first.supportsCustomSize,
+      description: first.description,
+      estimatedCostCents: first.estimatedCostCents,
+      isCustom: false,
+    };
+  }, [modelId, customModels]);
   const sizePreset = useMemo<SizePreset | null>(
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
     [sizePresetId],
@@ -79,12 +124,13 @@ export default function MediaModule() {
   const loadAll = useCallback(async () => {
     if (!userId) return;
 
-    const [genRes, colRes, styleRes, settingsRes, monthRes] = await Promise.all([
+    const [genRes, colRes, styleRes, settingsRes, monthRes, customRes] = await Promise.all([
       supabase.from('media_generations').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(80),
       supabase.from('media_collections').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('media_style_presets').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('media_settings').select('*').eq('user_id', userId).maybeSingle(),
       supabase.from('media_generations').select('cost_cents').eq('user_id', userId).gte('created_at', startOfMonthIso()),
+      supabase.from('media_custom_models').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
     ]);
 
     setHistory((genRes.data ?? []) as MediaGeneration[]);
@@ -92,6 +138,7 @@ export default function MediaModule() {
     setStylePresets((styleRes.data ?? []) as MediaStylePreset[]);
     setSettings((settingsRes.data ?? null) as MediaSettings | null);
     setMonthlySpent(((monthRes.data ?? []) as { cost_cents: number | null }[]).reduce((s, r) => s + (r.cost_cents ?? 0), 0));
+    setCustomModels((customRes.data ?? []) as MediaCustomModel[]);
 
     try {
       setKeyStatus(await getFalKeyStatus());
@@ -287,6 +334,30 @@ export default function MediaModule() {
     setKeyStatus({ has_key: false, hint: null, updated_at: null });
   }
 
+  async function handleSaveCustomModel(input: Omit<MediaCustomModel, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+    if (!userId) return;
+    if (!input.endpoint.startsWith('fal-ai/')) {
+      throw new Error('Endpoint must start with fal-ai/ (e.g. fal-ai/flux-pro/v1.1).');
+    }
+    const { data, error: insertErr } = await supabase
+      .from('media_custom_models')
+      .insert({ user_id: userId, ...input, updated_at: new Date().toISOString() })
+      .select()
+      .single();
+    if (insertErr) throw new Error(insertErr.message);
+    if (data) setCustomModels((prev) => [...prev, data as MediaCustomModel]);
+  }
+
+  async function handleDeleteCustomModel(id: string) {
+    const { error: delErr } = await supabase.from('media_custom_models').delete().eq('id', id);
+    if (delErr) { setError(delErr.message); return; }
+    setCustomModels((prev) => prev.filter((c) => c.id !== id));
+    if (modelId === id) {
+      const fallback = MODELS.find((m) => m.isFeatured) ?? MODELS[0];
+      setModelId(fallback.id);
+    }
+  }
+
   async function handleMoveToCollection(generationId: string, collectionId: string | null) {
     const { error: upErr } = await supabase
       .from('media_generations')
@@ -377,23 +448,68 @@ export default function MediaModule() {
         <div className="bg-white rounded-2xl border border-slate-200 p-5 h-fit space-y-4">
           {/* Model */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Model</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Model</label>
+              <button onClick={() => setCustomModelsDrawerOpen(true)} className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1">
+                <Layers className="w-3 h-3" /> Custom models
+              </button>
+            </div>
             <select
               value={modelId}
               onChange={(e) => setModelId(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
             >
-              <optgroup label="Image">
-                {MODELS.filter((m) => m.kind === 'image').map((m) => (
-                  <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
-                ))}
-              </optgroup>
-              <optgroup label="Video">
-                {MODELS.filter((m) => m.kind === 'video').map((m) => (
-                  <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
-                ))}
-              </optgroup>
+              {(() => {
+                // Pick the visible curated set. If the user picked an
+                // extended model the dropdown auto-expands so the
+                // selection remains visible.
+                const selectedCurated = MODELS.find((m) => m.id === modelId);
+                const forceShowAll = showAllModels || (selectedCurated && !selectedCurated.isFeatured);
+                const visibleCurated = MODELS.filter((m) => forceShowAll || m.isFeatured);
+                return (
+                  <>
+                    <optgroup label="Image — generate">
+                      {visibleCurated.filter((m) => m.group === 'image').map((m) => (
+                        <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Image — edit">
+                      {visibleCurated.filter((m) => m.group === 'image-edit').map((m) => (
+                        <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                      ))}
+                    </optgroup>
+                    {forceShowAll && visibleCurated.some((m) => m.group === 'image-upscale') && (
+                      <optgroup label="Image — upscale & utility">
+                        {visibleCurated.filter((m) => m.group === 'image-upscale').map((m) => (
+                          <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                    <optgroup label="Video">
+                      {visibleCurated.filter((m) => m.group === 'video').map((m) => (
+                        <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                      ))}
+                    </optgroup>
+                    {customModels.length > 0 && (
+                      <optgroup label="Your custom models">
+                        {customModels.map((c) => (
+                          <option key={c.id} value={c.id}>{c.label} — ~{formatCents(c.estimated_cost_cents)}</option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </>
+                );
+              })()}
             </select>
+            <label className="flex items-center gap-1.5 mt-1.5 text-[11px] text-slate-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={showAllModels}
+                onChange={(e) => setShowAllModels(e.target.checked)}
+                className="rounded"
+              />
+              Show all models ({MODELS.length} total)
+            </label>
             <p className="text-[11px] text-slate-400 mt-1">{model.description}</p>
           </div>
 
@@ -618,6 +734,14 @@ export default function MediaModule() {
           onSave={handleSaveSettings}
           onSaveKey={handleSaveFalKey}
           onRemoveKey={handleRemoveFalKey}
+        />
+      )}
+      {customModelsDrawerOpen && (
+        <CustomModelsDrawer
+          models={customModels}
+          onClose={() => setCustomModelsDrawerOpen(false)}
+          onSave={handleSaveCustomModel}
+          onDelete={handleDeleteCustomModel}
         />
       )}
     </div>
@@ -948,6 +1072,144 @@ function SettingsDrawer({
           Save cap
         </button>
         <p className="text-[11px] text-slate-400 mt-3">Set to $0 to disable the cap entirely.</p>
+      </div>
+    </Drawer>
+  );
+}
+
+function CustomModelsDrawer({
+  models, onClose, onSave, onDelete,
+}: {
+  models: MediaCustomModel[];
+  onClose: () => void;
+  onSave: (input: Omit<MediaCustomModel, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+}) {
+  const [label, setLabel] = useState('');
+  const [endpoint, setEndpoint] = useState('fal-ai/');
+  const [kind, setKind] = useState<'image' | 'video'>('image');
+  const [isAsync, setIsAsync] = useState(false);
+  const [acceptsInputImage, setAcceptsInputImage] = useState(false);
+  const [supportsCustomSize, setSupportsCustomSize] = useState(true);
+  const [costDollars, setCostDollars] = useState('0.05');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function submit() {
+    setErr(null);
+    setSaving(true);
+    try {
+      await onSave({
+        label: label.trim(),
+        endpoint: endpoint.trim(),
+        kind,
+        is_async: isAsync,
+        accepts_input_image: acceptsInputImage,
+        supports_custom_size: supportsCustomSize,
+        estimated_cost_cents: Math.max(0, Math.round(parseFloat(costDollars) * 100)),
+        description: description.trim() || null,
+      });
+      setLabel(''); setEndpoint('fal-ai/'); setKind('image'); setIsAsync(false);
+      setAcceptsInputImage(false); setSupportsCustomSize(true); setCostDollars('0.05'); setDescription('');
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Drawer title="Custom models" onClose={onClose}>
+      <p className="text-sm text-slate-500 mb-4">
+        Add any Fal.AI model that isn't in the built-in dropdown. Paste the endpoint from{' '}
+        <a href="https://fal.ai/models" target="_blank" rel="noreferrer" className="text-fuchsia-600 underline inline-flex items-center gap-0.5">
+          fal.ai/models <ExternalLink className="w-3 h-3" />
+        </a>
+        {' '}— e.g. <code className="font-mono text-xs bg-slate-100 px-1 rounded">fal-ai/flux-pro/v1.1</code>.
+      </p>
+
+      <div className="space-y-2 mb-5">
+        {models.length === 0 && <p className="text-sm text-slate-400 italic">No custom models yet.</p>}
+        {models.map((m) => (
+          <div key={m.id} className="border border-slate-200 rounded-xl p-3">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-sm text-slate-800">{m.label}</div>
+                <code className="text-[11px] text-slate-500 font-mono">{m.endpoint}</code>
+              </div>
+              <button onClick={() => onDelete(m.id)} className="text-slate-400 hover:text-red-500 shrink-0">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex flex-wrap gap-1.5 mt-1.5 text-[11px]">
+              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{m.kind}</span>
+              {m.is_async && <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">async</span>}
+              {m.accepts_input_image && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">input image</span>}
+              {m.supports_custom_size && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">custom size</span>}
+              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">~${(m.estimated_cost_cents / 100).toFixed(2)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-slate-100 pt-4 space-y-3">
+        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Add new model</h4>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Display name</label>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Flux Pro v1.1" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Fal endpoint</label>
+          <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} placeholder="fal-ai/flux-pro/v1.1" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono" />
+          <p className="text-[11px] text-slate-400 mt-1">Must start with <code className="font-mono">fal-ai/</code>.</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kind</label>
+            <select value={kind} onChange={(e) => { const k = e.target.value as 'image' | 'video'; setKind(k); setIsAsync(k === 'video'); }} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
+              <option value="image">Image</option>
+              <option value="video">Video</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Est. cost (USD)</label>
+            <input type="number" min={0} step={0.01} value={costDollars} onChange={(e) => setCostDollars(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-1.5 text-sm">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={isAsync} onChange={(e) => setIsAsync(e.target.checked)} />
+            <span>Async (uses Fal's queue — required for most video and slow image models)</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={acceptsInputImage} onChange={(e) => setAcceptsInputImage(e.target.checked)} />
+            <span>Accepts input image (editor / image-to-image / img-to-video)</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={supportsCustomSize} onChange={(e) => setSupportsCustomSize(e.target.checked)} />
+            <span>Supports custom width/height</span>
+          </label>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Description (optional)</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What this model is good for" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm resize-y" />
+        </div>
+
+        {err && <p className="text-xs text-red-600">{err}</p>}
+
+        <button
+          disabled={saving || !label.trim() || !endpoint.startsWith('fal-ai/') || endpoint.length < 8}
+          onClick={submit}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm disabled:opacity-50"
+        >
+          <Plus className="w-4 h-4" /> {saving ? 'Saving…' : 'Add model'}
+        </button>
       </div>
     </Drawer>
   );

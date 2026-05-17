@@ -44,3 +44,18 @@ export interface MediaSettings {
   monthly_cap_cents: number;
   updated_at: string;
 }
+
+export interface MediaCustomModel {
+  id: string;
+  user_id: string;
+  label: string;
+  endpoint: string;
+  kind: 'image' | 'video';
+  is_async: boolean;
+  accepts_input_image: boolean;
+  supports_custom_size: boolean;
+  estimated_cost_cents: number;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
