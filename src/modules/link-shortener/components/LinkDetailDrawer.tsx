@@ -27,6 +27,8 @@ interface Props {
 
 type Tab = 'edit' | 'qr' | 'conversions' | 'clicks';
 
+const CLICK_FETCH_LIMIT = 200;
+
 export default function LinkDetailDrawer({
   link, allLinks, folders, onClose, onUpdated, onDeleted, onAddVariant,
 }: Props) {
@@ -50,8 +52,15 @@ export default function LinkDetailDrawer({
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedVariantSlug, setCopiedVariantSlug] = useState<string | null>(null);
-  const [clicks, setClicks] = useState<LinkClick[]>([]);
+
+  // Click rows are split into two buckets so a flood of recent bot clicks
+  // can't push older human clicks past a row-level fetch limit. Non-bots
+  // are fetched eagerly when the tab opens; bots are fetched lazily on the
+  // first "Show bots" toggle.
+  const [nonBotClicks, setNonBotClicks] = useState<LinkClick[]>([]);
+  const [botClicks, setBotClicks] = useState<LinkClick[]>([]);
   const [loadingClicks, setLoadingClicks] = useState(true);
+  const [loadingBots, setLoadingBots] = useState(false);
   const [showBots, setShowBots] = useState(false);
 
   useEffect(() => {
@@ -70,6 +79,8 @@ export default function LinkDetailDrawer({
     setBioStyle(link.bio_style ?? 'card');
     setError(null);
     setShowBots(false);
+    setNonBotClicks([]);
+    setBotClicks([]);
   }, [link.id]);
 
   const variants = useMemo(
@@ -92,19 +103,45 @@ export default function LinkDetailDrawer({
     return ids;
   }, [link.id, variants]);
 
+  // Eager non-bot fetch when the Clicks tab opens.
   useEffect(() => {
     if (!user || tab !== 'clicks') return;
     setLoadingClicks(true);
-    Promise.all(linkIdsToFetch.map((id) => listClicks(user.id, { linkId: id, limit: 100 })))
+    Promise.all(
+      linkIdsToFetch.map((id) =>
+        listClicks(user.id, { linkId: id, limit: CLICK_FETCH_LIMIT, isBot: false }),
+      ),
+    )
       .then((results) => {
         const merged = results.flat().sort((a, b) =>
           new Date(b.clicked_at).getTime() - new Date(a.clicked_at).getTime(),
         );
-        setClicks(merged.slice(0, 200));
+        setNonBotClicks(merged);
       })
-      .catch(() => setClicks([]))
+      .catch(() => setNonBotClicks([]))
       .finally(() => setLoadingClicks(false));
   }, [linkIdsToFetch, user, tab]);
+
+  // Lazy bot fetch the first time the user reveals them. Subsequent toggles
+  // reuse the already-fetched data.
+  useEffect(() => {
+    if (!user || tab !== 'clicks' || !showBots) return;
+    if (botClicks.length > 0 || loadingBots) return;
+    setLoadingBots(true);
+    Promise.all(
+      linkIdsToFetch.map((id) =>
+        listClicks(user.id, { linkId: id, limit: CLICK_FETCH_LIMIT, isBot: true }),
+      ),
+    )
+      .then((results) => {
+        const merged = results.flat().sort((a, b) =>
+          new Date(b.clicked_at).getTime() - new Date(a.clicked_at).getTime(),
+        );
+        setBotClicks(merged);
+      })
+      .catch(() => setBotClicks([]))
+      .finally(() => setLoadingBots(false));
+  }, [showBots, linkIdsToFetch, user, tab, botClicks.length, loadingBots]);
 
   const detectedPlatform = useMemo(
     () => detectSocialPlatform(destination || link.destination_url),
@@ -131,14 +168,24 @@ export default function LinkDetailDrawer({
     return dates.sort().reverse()[0];
   }, [link.last_clicked_at, variants]);
 
-  const visibleClicks = useMemo(
-    () => (showBots ? clicks : clicks.filter((c) => !c.is_bot)),
-    [clicks, showBots],
-  );
-  const botClickCount = useMemo(
-    () => clicks.reduce((sum, c) => sum + (c.is_bot ? 1 : 0), 0),
-    [clicks],
-  );
+  // Use the materialized counters on short_links so we know the bot count
+  // without fetching click rows. Avoids the "100-row window" miscount.
+  const botClickCount = useMemo(() => {
+    const directBots = (link.click_count ?? 0) - (link.non_bot_click_count ?? 0);
+    const variantBots = variants.reduce(
+      (sum, v) => sum + ((v.click_count ?? 0) - (v.non_bot_click_count ?? 0)),
+      0,
+    );
+    return Math.max(0, directBots + variantBots);
+  }, [link, variants]);
+
+  const visibleClicks = useMemo(() => {
+    if (!showBots) return nonBotClicks;
+    const merged = [...nonBotClicks, ...botClicks];
+    return merged.sort((a, b) =>
+      new Date(b.clicked_at).getTime() - new Date(a.clicked_at).getTime(),
+    );
+  }, [showBots, nonBotClicks, botClicks]);
 
   const hasChanges =
     label !== link.label ||
@@ -596,11 +643,13 @@ export default function LinkDetailDrawer({
               </div>
               {loadingClicks ? (
                 <div className="text-sm text-slate-400">Loading…</div>
-              ) : visibleClicks.length === 0 ? (
+              ) : visibleClicks.length === 0 && !loadingBots ? (
                 <div className="text-sm text-slate-400">
-                  {clicks.length === 0
+                  {totalClicks === 0 && botClickCount === 0
                     ? 'No clicks yet.'
-                    : 'No human clicks yet — only bots so far. Click "Show bots" to see them.'}
+                    : showBots
+                      ? 'No clicks to show.'
+                      : 'No human clicks yet — only bots so far. Click "Show bots" to see them.'}
                 </div>
               ) : (
                 <div className="space-y-1 max-h-[60vh] overflow-y-auto pr-1">
@@ -632,6 +681,9 @@ export default function LinkDetailDrawer({
                       </span>
                     </div>
                   ))}
+                  {showBots && loadingBots && (
+                    <div className="text-xs text-slate-400 text-center py-2">Loading bot clicks…</div>
+                  )}
                 </div>
               )}
             </div>
