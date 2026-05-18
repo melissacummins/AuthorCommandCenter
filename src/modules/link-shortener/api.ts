@@ -165,7 +165,7 @@ export async function deleteFolder(id: string): Promise<void> {
 
 export async function listClicks(
   userId: string,
-  opts: { linkId?: string; sinceDays?: number; limit?: number } = {},
+  opts: { linkId?: string; sinceDays?: number; limit?: number; isBot?: boolean } = {},
 ): Promise<LinkClick[]> {
   let query = supabase
     .from('link_clicks')
@@ -173,6 +173,7 @@ export async function listClicks(
     .eq('user_id', userId)
     .order('clicked_at', { ascending: false });
   if (opts.linkId) query = query.eq('link_id', opts.linkId);
+  if (typeof opts.isBot === 'boolean') query = query.eq('is_bot', opts.isBot);
   if (opts.sinceDays) {
     const since = new Date(Date.now() - opts.sinceDays * 24 * 60 * 60 * 1000).toISOString();
     query = query.gte('clicked_at', since);
