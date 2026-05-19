@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus,
+  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -111,13 +111,21 @@ const moduleByPath: Record<string, ModuleCard> = {
     gradient: 'from-fuchsia-500 to-purple-600',
     shadow: 'shadow-fuchsia-500/25',
   },
+  '/social-media': {
+    name: 'Social Media',
+    description: 'Connect Pinterest, Instagram, TikTok, and more to track per-post stats and tie them back to the book they\'re promoting.',
+    path: '/social-media',
+    icon: Share2,
+    gradient: 'from-violet-500 to-fuchsia-600',
+    shadow: 'shadow-violet-500/25',
+  },
 };
 
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/kdp-optimizer', '/links', '/arcs'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 export default function Home() {
