@@ -8,6 +8,9 @@ import {
   updateTrackedBook,
 } from '../api';
 import type { TrackedBook, QuarterlyUpdate } from '../types';
+import { displayTitle } from '../types';
+import { usePenNames } from '../../../contexts/PenNameContext';
+import PenNameChip from '../../../components/PenNameChip';
 import BookTimeline from './BookTimeline';
 import QuarterlyUpdatesPanel from './QuarterlyUpdatesPanel';
 import KlaviyoListPicker from './KlaviyoListPicker';
@@ -21,6 +24,10 @@ interface Props {
 
 export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Props) {
   const { user } = useAuth();
+  const { penNames } = usePenNames();
+  const penName = book.catalog_book?.pen_name_id
+    ? penNames.find(p => p.id === book.catalog_book?.pen_name_id) ?? null
+    : null;
   const [updates, setUpdates] = useState<QuarterlyUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +82,7 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
 
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span
               className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                 book.status === 'paid_off'
@@ -85,9 +92,10 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
             >
               {book.status === 'paid_off' ? 'Paid off' : 'Active'}
             </span>
+            {penName && <PenNameChip name={penName.name} color={penName.color} />}
             <span className="text-sm text-slate-500">Launched: {launchLabel}</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">{book.title}</h1>
+          <h1 className="text-2xl font-bold text-slate-800">{displayTitle(book)}</h1>
         </div>
         <button
           onClick={onEdit}

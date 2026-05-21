@@ -17,10 +17,15 @@ function sumCostBreakdown(items: CostLineItem[] | undefined): number {
   return items.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 }
 
+// Joined select: pulls the linked Catalog book (title + pen_name_id)
+// in a single round-trip so the list/detail UI can attribute books to
+// their pen name without a second query per row.
+const BOOK_SELECT = '*, catalog_book:books!catalog_book_id(id, title, pen_name_id)';
+
 export async function listTrackedBooks(userId: string): Promise<TrackedBook[]> {
   const { data, error } = await supabase
     .from('tracked_books')
-    .select('*')
+    .select(BOOK_SELECT)
     .eq('user_id', userId)
     .order('status', { ascending: true })
     .order('launch_date', { ascending: false, nullsFirst: false })
@@ -45,7 +50,7 @@ export async function createTrackedBook(userId: string, input: TrackedBookInsert
       notes: input.notes ?? null,
       legacy_id: input.legacy_id ?? null,
     })
-    .select('*')
+    .select(BOOK_SELECT)
     .single();
   if (error) throw error;
   return data as TrackedBook;
@@ -60,7 +65,7 @@ export async function updateTrackedBook(id: string, patch: TrackedBookUpdate): P
     .from('tracked_books')
     .update(next)
     .eq('id', id)
-    .select('*')
+    .select(BOOK_SELECT)
     .single();
   if (error) throw error;
   return data as TrackedBook;
@@ -121,7 +126,7 @@ export async function deleteQuarterlyUpdate(userId: string, id: string, bookId: 
 export async function recomputeBookPayoff(userId: string, bookId: string): Promise<TrackedBook> {
   const { data: bookRow, error: bookErr } = await supabase
     .from('tracked_books')
-    .select('*')
+    .select(BOOK_SELECT)
     .eq('id', bookId)
     .eq('user_id', userId)
     .single();
@@ -169,7 +174,7 @@ export async function recomputeBookPayoff(userId: string, bookId: string): Promi
     .from('tracked_books')
     .update(next)
     .eq('id', bookId)
-    .select('*')
+    .select(BOOK_SELECT)
     .single();
   if (upErr) throw upErr;
   return updatedRow as TrackedBook;
@@ -273,17 +278,61 @@ export interface ImportResult {
   updatesWritten: number;
   booksUpdated: number;
   booksInserted: number;
+  catalogCreated: number;
 }
 
 export async function importLegacyBooks(
   userId: string,
   parsed: ParsedBook[],
+  // Pen name to attach to any *newly created* Catalog books during this
+  // import. Existing matches by legacy_id keep their current catalog link
+  // (and thus their existing pen name) — passing this only affects rows
+  // that need a fresh Catalog entry.
+  defaultPenNameId: string | null,
   onProgress?: (done: number, total: number) => void,
 ): Promise<ImportResult> {
   let booksWritten = 0;
   let updatesWritten = 0;
   let booksUpdated = 0;
   let booksInserted = 0;
+  let catalogCreated = 0;
+
+  // Look up existing Catalog books by (lowercased) title so we can match
+  // legacy entries that the user has already entered into Catalog
+  // manually. Title is a soft match; legacy_id is the strong match for
+  // existing tracker rows.
+  const { data: catalogRows } = await supabase
+    .from('books')
+    .select('id, title, pen_name_id')
+    .eq('user_id', userId);
+  const catalogByTitle = new Map<string, { id: string; title: string; pen_name_id: string | null }>();
+  for (const c of (catalogRows ?? []) as Array<{ id: string; title: string; pen_name_id: string | null }>) {
+    catalogByTitle.set(c.title.trim().toLowerCase(), c);
+  }
+
+  async function resolveCatalogId(title: string, existingCatalogId: string | null): Promise<string> {
+    if (existingCatalogId) return existingCatalogId;
+    const hit = catalogByTitle.get(title.trim().toLowerCase());
+    if (hit) return hit.id;
+    // Create a minimal Catalog row attached to the chosen pen name.
+    // Status defaults to 'published' since legacy imports are real shipped
+    // books with quarterly profit history; the user can refine later.
+    const { data: created, error: createErr } = await supabase
+      .from('books')
+      .insert({
+        user_id: userId,
+        title: title.trim(),
+        status: 'published',
+        pen_name_id: defaultPenNameId,
+      })
+      .select('id')
+      .single();
+    if (createErr) throw createErr;
+    catalogCreated += 1;
+    const id = (created as { id: string }).id;
+    catalogByTitle.set(title.trim().toLowerCase(), { id, title, pen_name_id: defaultPenNameId });
+    return id;
+  }
 
   for (let i = 0; i < parsed.length; i += 1) {
     const { book, updates } = parsed[i];
@@ -292,11 +341,13 @@ export async function importLegacyBooks(
     if (book.legacy_id != null) {
       const { data: existing } = await supabase
         .from('tracked_books')
-        .select('*')
+        .select('id, catalog_book_id')
         .eq('user_id', userId)
         .eq('legacy_id', book.legacy_id)
         .maybeSingle();
       if (existing) {
+        const existingRow = existing as { id: string; catalog_book_id: string | null };
+        const catalogId = await resolveCatalogId(book.title, existingRow.catalog_book_id);
         const { data: updated, error: upErr } = await supabase
           .from('tracked_books')
           .update({
@@ -305,10 +356,11 @@ export async function importLegacyBooks(
             dev_cost: book.dev_cost ?? sumCostBreakdown(book.cost_breakdown),
             cost_breakdown: book.cost_breakdown ?? [],
             status: book.status ?? 'active',
+            catalog_book_id: catalogId,
             updated_at: new Date().toISOString(),
           })
-          .eq('id', (existing as TrackedBook).id)
-          .select('*')
+          .eq('id', existingRow.id)
+          .select(BOOK_SELECT)
           .single();
         if (upErr) throw upErr;
         row = updated as TrackedBook;
@@ -316,7 +368,8 @@ export async function importLegacyBooks(
       }
     }
     if (!row) {
-      row = await createTrackedBook(userId, book);
+      const catalogId = await resolveCatalogId(book.title, null);
+      row = await createTrackedBook(userId, { ...book, catalog_book_id: catalogId });
       booksInserted += 1;
     }
     booksWritten += 1;
@@ -342,5 +395,5 @@ export async function importLegacyBooks(
     if (onProgress) onProgress(i + 1, parsed.length);
   }
 
-  return { booksWritten, updatesWritten, booksUpdated, booksInserted };
+  return { booksWritten, updatesWritten, booksUpdated, booksInserted, catalogCreated };
 }

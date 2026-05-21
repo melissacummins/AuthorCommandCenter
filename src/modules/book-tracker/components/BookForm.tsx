@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { TrackedBook, TrackedBookInsert, CostLineItem } from '../types';
 import CostBreakdownEditor from './CostBreakdownEditor';
+import CatalogBookPicker from '../../../components/CatalogBookPicker';
 
 interface Props {
   initial?: TrackedBook | null;
@@ -19,6 +20,7 @@ function fromBook(b: TrackedBook): TrackedBookInsert {
     cost_breakdown: b.cost_breakdown ?? [],
     status: b.status,
     notes: b.notes,
+    catalog_book_id: b.catalog_book?.id ?? null,
   };
 }
 
@@ -30,6 +32,7 @@ function emptyDraft(): TrackedBookInsert {
     cost_breakdown: [],
     status: 'active',
     notes: null,
+    catalog_book_id: null,
   };
 }
 
@@ -42,7 +45,7 @@ export default function BookForm({ initial, saving, onCancel, onSubmit, onDelete
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!draft.title.trim()) return;
+    if (!draft.catalog_book_id) return;
     onSubmit({
       ...draft,
       title: draft.title.trim(),
@@ -59,15 +62,15 @@ export default function BookForm({ initial, saving, onCancel, onSubmit, onDelete
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
-        <input
-          type="text"
-          required
-          value={draft.title}
-          onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg"
-          placeholder="e.g. Night Shade"
+        <label className="block text-sm font-medium text-slate-700 mb-1">Book</label>
+        <CatalogBookPicker
+          value={draft.catalog_book_id ?? null}
+          onChange={(id, book) => setDraft(d => ({ ...d, catalog_book_id: id, title: book.title }))}
+          placeholder="Pick from Catalog or add a new book…"
         />
+        <p className="text-xs text-slate-400 mt-1">
+          Books in the Tracker reference your Catalog so title and pen name stay in sync. Add a new one inline above if it isn't there yet.
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -134,7 +137,7 @@ export default function BookForm({ initial, saving, onCancel, onSubmit, onDelete
           </button>
           <button
             type="submit"
-            disabled={saving || !draft.title.trim()}
+            disabled={saving || !draft.catalog_book_id}
             className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 shadow-sm"
           >
             {saving ? 'Saving…' : initial ? 'Save changes' : 'Add book'}

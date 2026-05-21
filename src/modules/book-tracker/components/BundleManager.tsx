@@ -10,7 +10,7 @@ import {
   removeBookFromBundle,
 } from '../api';
 import type { BookBundle, BundleMember, TrackedBook } from '../types';
-import { parseTitleEdition, EDITION_LABELS } from '../types';
+import { parseTitleEdition, EDITION_LABELS, displayTitle } from '../types';
 
 interface Props {
   books: TrackedBook[];
@@ -26,7 +26,7 @@ interface BundleWithMembers {
 function detectTranslationGroups(books: TrackedBook[]): Map<string, TrackedBook[]> {
   const groups = new Map<string, TrackedBook[]>();
   for (const b of books) {
-    const { base } = parseTitleEdition(b.title);
+    const { base } = parseTitleEdition(displayTitle(b));
     if (!groups.has(base)) groups.set(base, []);
     groups.get(base)!.push(b);
   }
@@ -279,11 +279,11 @@ function BundleCard({
 
       <div className="space-y-1.5 mb-3">
         {members.map(m => {
-          const ed = parseTitleEdition(m.title).edition;
+          const ed = parseTitleEdition(displayTitle(m)).edition;
           return (
             <div key={m.id} className="flex items-center justify-between gap-2 px-3 py-1.5 bg-slate-50 rounded-lg text-sm">
               <span className="text-slate-700 truncate">
-                {m.title}
+                {displayTitle(m)}
                 {ed && <span className="text-slate-400 ml-2 text-xs">{EDITION_LABELS[ed] ?? ed}</span>}
               </span>
               <span className={`text-xs ${m.status === 'paid_off' ? 'text-emerald-600' : 'text-slate-500'}`}>
@@ -318,7 +318,7 @@ function BundleCard({
           >
             <option value="" disabled>Pick a book to add…</option>
             {candidates.map(b => (
-              <option key={b.id} value={b.id}>{b.title}</option>
+              <option key={b.id} value={b.id}>{displayTitle(b)}</option>
             ))}
           </select>
           <button
