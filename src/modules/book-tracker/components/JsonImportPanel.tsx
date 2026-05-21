@@ -1,6 +1,8 @@
 import { useRef, useState, type ChangeEvent } from 'react';
 import { Upload, ArrowLeft, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePenNames } from '../../../contexts/PenNameContext';
+import { penNameClasses } from '../../../components/PenNameChip';
 import { parseLegacyExport, type ParseResult } from '../import';
 import { importLegacyBooks } from '../api';
 
@@ -18,8 +20,14 @@ type Phase =
 
 export default function JsonImportPanel({ onBack, onComplete }: Props) {
   const { user } = useAuth();
+  const { penNames, selectedPenNameId } = usePenNames();
   const fileRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  // Pen name to assign to any *new* Catalog books created during import.
+  // Defaults to the active header selection so it matches the user's
+  // current working context. Books matched by legacy_id or by Catalog
+  // title keep their existing pen name.
+  const [importPenNameId, setImportPenNameId] = useState<string | null>(selectedPenNameId);
 
   async function handleFile(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -40,12 +48,13 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
     const { result } = phase;
     setPhase({ kind: 'importing', done: 0, total: result.parsed.length });
     try {
-      const r = await importLegacyBooks(user.id, result.parsed, (done, total) => {
+      const r = await importLegacyBooks(user.id, result.parsed, importPenNameId, (done, total) => {
         setPhase({ kind: 'importing', done, total });
       });
+      const catalogNote = r.catalogCreated > 0 ? ` Created ${r.catalogCreated} new Catalog entries.` : '';
       setPhase({
         kind: 'done',
-        msg: `Imported ${r.booksWritten} books (${r.booksInserted} new, ${r.booksUpdated} updated) with ${r.updatesWritten} quarterly entries.`,
+        msg: `Imported ${r.booksWritten} books (${r.booksInserted} new, ${r.booksUpdated} updated) with ${r.updatesWritten} quarterly entries.${catalogNote}`,
       });
       onComplete();
     } catch (err: any) {
@@ -96,6 +105,43 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
               <Stat label="Active" value={phase.result.summary.active} />
               <Stat label="Paid off" value={phase.result.summary.paidOff} />
               <Stat label="Quarterly updates" value={phase.result.summary.totalUpdates} />
+            </div>
+
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Pen name for new books
+              </label>
+              <p className="text-xs text-slate-500 mb-2">
+                Any imported title that isn't already in Catalog will be created and attached to this pen name. Books that already exist by title or legacy id keep their current attribution.
+              </p>
+              {penNames.length === 0 ? (
+                <p className="text-sm text-slate-500 italic">
+                  No pen names yet — imported books will be unassigned. Add pen names in{' '}
+                  <a href="/settings" className="text-purple-600 hover:underline">Settings</a>{' '}
+                  and re-run the import to attribute them.
+                </p>
+              ) : (
+                <select
+                  value={importPenNameId ?? ''}
+                  onChange={e => setImportPenNameId(e.target.value || null)}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                >
+                  <option value="">— Unassigned —</option>
+                  {penNames.map(pn => (
+                    <option key={pn.id} value={pn.id}>{pn.name}</option>
+                  ))}
+                </select>
+              )}
+              {importPenNameId && (() => {
+                const pn = penNames.find(p => p.id === importPenNameId);
+                if (!pn) return null;
+                const c = penNameClasses(pn.color);
+                return (
+                  <span className={`mt-2 inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} /> New books → {pn.name}
+                  </span>
+                );
+              })()}
             </div>
 
             {phase.result.summary.warnings.length > 0 && (

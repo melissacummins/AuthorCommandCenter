@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { BookOpen, Copy, ExternalLink, Plus, Star, Trash2, Upload, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { usePenNames } from '../../../contexts/PenNameContext';
+import { penNameClasses } from '../../../components/PenNameChip';
 import { fetchKdpDataForCatalogBook } from '../../kdp-optimizer/api';
 import type { KdpBook, Keyword } from '../../kdp-optimizer/types';
 import { getMetadataWords, optimizeKeywords } from '../../kdp-optimizer/utils';
@@ -22,6 +24,7 @@ function emptyDraft(): BookInsert {
     subtitle: null,
     series: null,
     series_position: null,
+    pen_name_id: null,
     status: 'idea',
     publish_date: null,
     pre_order_date: null,
@@ -77,7 +80,16 @@ const sectionTitle = 'text-sm font-semibold text-slate-800 uppercase tracking-wi
 
 export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving }: BookFormProps) {
   const { user } = useAuth();
-  const [draft, setDraft] = useState<BookInsert>(initial ? fromBook(initial) : emptyDraft());
+  const { penNames, selectedPenNameId } = usePenNames();
+  // New books default to the currently-selected pen name from the header
+  // so the picker acts as a "working pen name" the user doesn't have to
+  // reselect for every new entry.
+  const [draft, setDraft] = useState<BookInsert>(() => {
+    if (initial) return fromBook(initial);
+    const d = emptyDraft();
+    if (selectedPenNameId) d.pen_name_id = selectedPenNameId;
+    return d;
+  });
   const [tropesText, setTropesText] = useState((initial?.tropes ?? []).join('\n'));
   const [amazonKwText, setAmazonKwText] = useState((initial?.amazon_keywords ?? []).join('\n'));
   const [keywordsText, setKeywordsText] = useState((initial?.keywords ?? []).join('\n'));
@@ -266,6 +278,35 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
               onChange={e => setNum('series_position', e.target.value)}
             />
           </div>
+        </div>
+        <div>
+          <label className={labelCls}>Pen name</label>
+          {penNames.length === 0 ? (
+            <p className="text-xs text-slate-500">
+              No pen names yet — add one in <a href="/settings" className="text-indigo-600 hover:underline">Settings</a>.
+            </p>
+          ) : (
+            <select
+              className={inputCls}
+              value={draft.pen_name_id ?? ''}
+              onChange={e => set('pen_name_id', e.target.value || null)}
+            >
+              <option value="">— Unassigned —</option>
+              {penNames.map(pn => (
+                <option key={pn.id} value={pn.id}>{pn.name}</option>
+              ))}
+            </select>
+          )}
+          {draft.pen_name_id && (
+            <div className="mt-1">
+              {(() => {
+                const pn = penNames.find(p => p.id === draft.pen_name_id);
+                if (!pn) return null;
+                const c = penNameClasses(pn.color);
+                return <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}><span className={`w-1.5 h-1.5 rounded-full ${c.dot}`} />{pn.name}</span>;
+              })()}
+            </div>
+          )}
         </div>
         <div>
           <label className={labelCls}>Status</label>

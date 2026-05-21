@@ -14,11 +14,20 @@ export interface CostLineItem {
   amount: number;
 }
 
+// Lightweight projection of the linked Catalog book — just what the
+// tracker UI needs to display title + pen name attribution.
+export interface TrackedBookCatalogRef {
+  id: string;
+  title: string;
+  pen_name_id: string | null;
+}
+
 export interface TrackedBook {
   id: string;
   user_id: string;
   legacy_id: number | null;
   title: string;
+  catalog_book?: TrackedBookCatalogRef | null;
   launch_date: string | null;
   dev_cost: number;
   cost_breakdown: CostLineItem[];
@@ -32,6 +41,14 @@ export interface TrackedBook {
   notes: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Helper for the UI that picks the display title — prefers the linked
+// Catalog book's title (which is the source of truth going forward),
+// falls back to the tracker's own title for legacy imports that weren't
+// catalog-linked.
+export function displayTitle(book: { title: string; catalog_book?: TrackedBookCatalogRef | null }): string {
+  return book.catalog_book?.title || book.title;
 }
 
 export interface TrackedBookInsert {

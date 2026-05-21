@@ -20,6 +20,7 @@ export interface Book {
   subtitle: string | null;
   series: string | null;
   series_position: number | null;
+  pen_name_id: string | null;
 
   status: BookStatus;
   publish_date: string | null;

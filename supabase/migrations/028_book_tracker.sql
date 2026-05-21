@@ -43,6 +43,28 @@ CREATE TABLE IF NOT EXISTS tracked_books (
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Heal any pre-existing stub `tracked_books` table from a prior manual
+-- experiment so the partial-unique-index below doesn't fail with
+-- "column legacy_id does not exist". CREATE TABLE IF NOT EXISTS skips
+-- when the table is already present; the ADD COLUMN guards bring it up
+-- to spec. Title gets a default '' just to satisfy NOT NULL while
+-- ALTERing any existing rows; new inserts always provide a title.
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS legacy_id         BIGINT;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS title             TEXT NOT NULL DEFAULT '';
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS launch_date       DATE;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS dev_cost          NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS cost_breakdown    JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS cumulative_profit NUMERIC(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS status            TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS payoff_date       DATE;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS payoff_quarter    TEXT;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS months_to_payoff  INTEGER;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS catalog_book_id   UUID REFERENCES books(id) ON DELETE SET NULL;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS klaviyo_list_id   TEXT;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS notes             TEXT;
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW();
+ALTER TABLE tracked_books ADD COLUMN IF NOT EXISTS updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 CREATE UNIQUE INDEX IF NOT EXISTS tracked_books_user_legacy_id_key
   ON tracked_books (user_id, legacy_id)
   WHERE legacy_id IS NOT NULL;
@@ -76,6 +98,13 @@ CREATE TABLE IF NOT EXISTS quarterly_updates (
   recorded_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Heal pre-existing stub (same pattern as tracked_books above).
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS tracked_book_id UUID REFERENCES tracked_books(id) ON DELETE CASCADE;
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS quarter_label   TEXT NOT NULL DEFAULT '';
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS sort_key        TEXT NOT NULL DEFAULT '';
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS profit          NUMERIC(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS recorded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS quarterly_updates_book_idx
   ON quarterly_updates (tracked_book_id, sort_key);
 CREATE INDEX IF NOT EXISTS quarterly_updates_user_idx
@@ -104,6 +133,10 @@ CREATE TABLE IF NOT EXISTS book_bundles (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE book_bundles ADD COLUMN IF NOT EXISTS name        TEXT NOT NULL DEFAULT '';
+ALTER TABLE book_bundles ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE book_bundles ADD COLUMN IF NOT EXISTS created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 ALTER TABLE book_bundles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "book_bundles: owner read"   ON book_bundles;
@@ -123,6 +156,10 @@ CREATE TABLE IF NOT EXISTS tracked_book_bundle_members (
   user_id             UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   PRIMARY KEY (bundle_id, tracked_book_id)
 );
+
+ALTER TABLE tracked_book_bundle_members ADD COLUMN IF NOT EXISTS bundle_id       UUID REFERENCES book_bundles(id) ON DELETE CASCADE;
+ALTER TABLE tracked_book_bundle_members ADD COLUMN IF NOT EXISTS tracked_book_id UUID REFERENCES tracked_books(id) ON DELETE CASCADE;
+ALTER TABLE tracked_book_bundle_members ADD COLUMN IF NOT EXISTS user_id         UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS tracked_book_bundle_members_book_idx
   ON tracked_book_bundle_members (tracked_book_id);

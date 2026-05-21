@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Library, Plus, BookOpen, ArrowLeft, Search } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePenNames } from '../../contexts/PenNameContext';
 import { createBook, deleteBook, listBooks, removeBookCover, updateBook, uploadBookCover } from './api';
 import type { Book, BookInsert } from './types';
 import { STATUS_COLORS, STATUS_LABELS } from './types';
 import BookForm from './components/BookForm';
 import CatalogOverview from './components/CatalogOverview';
+import PenNameChip from '../../components/PenNameChip';
 import { fetchSelectedKeywordCountsByBook } from '../kdp-optimizer/api';
 
 type Tab = 'overview' | 'books';
@@ -16,6 +18,8 @@ type View =
 
 export default function CatalogModule() {
   const { user } = useAuth();
+  const { selectedPenNameId, penNames } = usePenNames();
+  const penNameById = useMemo(() => new Map(penNames.map(p => [p.id, p])), [penNames]);
   const [books, setBooks] = useState<Book[]>([]);
   const [kdpKeywordCounts, setKdpKeywordCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -44,13 +48,16 @@ export default function CatalogModule() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return books;
-    return books.filter(b =>
+    const byPen = selectedPenNameId
+      ? books.filter(b => b.pen_name_id === selectedPenNameId)
+      : books;
+    if (!q) return byPen;
+    return byPen.filter(b =>
       [b.title, b.subtitle, b.series, ...(b.tropes ?? [])]
         .filter(Boolean)
         .some(v => (v as string).toLowerCase().includes(q))
     );
-  }, [books, query]);
+  }, [books, query, selectedPenNameId]);
 
   async function handleCreate(input: BookInsert, coverFile: File | null) {
     if (!user) return;
@@ -205,7 +212,12 @@ export default function CatalogModule() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filtered.map(book => (
-                <BookCard key={book.id} book={book} onClick={() => setView({ mode: 'edit', book })} />
+                <BookCard
+                  key={book.id}
+                  book={book}
+                  penName={penNameById.get(book.pen_name_id ?? '')}
+                  onClick={() => setView({ mode: 'edit', book })}
+                />
               ))}
             </div>
           )}
@@ -230,7 +242,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-function BookCard({ book, onClick }: { book: Book; onClick: () => void }) {
+function BookCard({ book, penName, onClick }: { book: Book; penName?: { name: string; color: import('../../lib/penNames').PenNameColor }; onClick: () => void }) {
   const seriesLine = book.series
     ? book.series + (book.series_position ? ` · #${book.series_position}` : '')
     : null;
@@ -256,6 +268,11 @@ function BookCard({ book, onClick }: { book: Book; onClick: () => void }) {
           </span>
         </div>
         <h3 className="font-semibold text-slate-800 leading-tight break-words">{book.title}</h3>
+        {penName && (
+          <div className="mt-1.5">
+            <PenNameChip name={penName.name} color={penName.color} />
+          </div>
+        )}
       </div>
     </button>
   );

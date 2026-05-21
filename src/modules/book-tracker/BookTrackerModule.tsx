@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpen, Plus, Upload, Layers, Search, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePenNames } from '../../contexts/PenNameContext';
+import PenNameChip from '../../components/PenNameChip';
 import {
   listTrackedBooks,
   createTrackedBook,
@@ -8,6 +10,7 @@ import {
   deleteTrackedBook,
 } from './api';
 import type { TrackedBook, TrackedBookInsert } from './types';
+import { displayTitle } from './types';
 import BookForm from './components/BookForm';
 import BookDetail from './components/BookDetail';
 import BundleManager from './components/BundleManager';
@@ -24,6 +27,7 @@ type View =
 
 export default function BookTrackerModule() {
   const { user } = useAuth();
+  const { selectedPenNameId, penNames } = usePenNames();
   const [books, setBooks] = useState<TrackedBook[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,9 +149,19 @@ export default function BookTrackerModule() {
     );
   }
 
+  // Filter by selected pen name via the linked catalog book. Books
+  // without a catalog link don't have a pen name to filter by, so they
+  // only appear under "All pen names".
+  const visibleBooks = selectedPenNameId
+    ? books.filter(b => b.catalog_book?.pen_name_id === selectedPenNameId)
+    : books;
+
+  const penNameById = new Map(penNames.map(p => [p.id, p]));
+
   // List view
   return <BookList
-    books={books}
+    books={visibleBooks}
+    penNameById={penNameById}
     loading={loading}
     error={error}
     tab={view.tab}
@@ -166,6 +180,7 @@ export default function BookTrackerModule() {
 
 interface ListProps {
   books: TrackedBook[];
+  penNameById: Map<string, { name: string; color: import('../../lib/penNames').PenNameColor }>;
   loading: boolean;
   error: string | null;
   tab: Tab;
@@ -179,13 +194,13 @@ interface ListProps {
 }
 
 function BookList({
-  books, loading, error, tab, query, onTabChange, onQueryChange, onNew, onImport, onBundles, onOpen,
+  books, penNameById, loading, error, tab, query, onTabChange, onQueryChange, onNew, onImport, onBundles, onOpen,
 }: ListProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return books
       .filter(b => (tab === 'paid_off' ? b.status === 'paid_off' : b.status === 'active'))
-      .filter(b => (q ? b.title.toLowerCase().includes(q) : true));
+      .filter(b => (q ? displayTitle(b).toLowerCase().includes(q) : true));
   }, [books, tab, query]);
 
   const activeCount = books.filter(b => b.status === 'active').length;
@@ -287,13 +302,24 @@ function BookList({
             <tbody>
               {filtered.map(b => {
                 const net = b.cumulative_profit - b.dev_cost;
+                const pn = b.catalog_book?.pen_name_id ? penNameById.get(b.catalog_book.pen_name_id) : null;
                 return (
                   <tr
                     key={b.id}
                     onClick={() => onOpen(b)}
                     className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
                   >
-                    <td className="px-4 py-2.5 font-medium text-slate-800">{b.title}</td>
+                    <td className="px-4 py-2.5 font-medium text-slate-800">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{displayTitle(b)}</span>
+                        {pn && <PenNameChip name={pn.name} color={pn.color} />}
+                        {!b.catalog_book && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                            Not in Catalog
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-2.5 text-slate-600">
                       {b.launch_date
                         ? new Date(b.launch_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })

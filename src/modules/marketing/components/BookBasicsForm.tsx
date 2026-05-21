@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Heart } from 'lucide-react';
+import { usePenNames } from '../../../contexts/PenNameContext';
+import { penNameClasses } from '../../../components/PenNameChip';
 
 const SUBGENRES = [
   'Dark Mafia Romance', 'Dark Vampire Romance', 'Monster Romance',
@@ -31,6 +33,17 @@ export default function BookBasicsForm({
   selectedTropes, setSelectedTropes,
 }: Props) {
   const [customTrope, setCustomTrope] = useState('');
+  const { penNames, selectedPenName } = usePenNames();
+
+  // Auto-fill pen name from the header picker if the user hasn't typed
+  // one yet — the picker reflects the working pen name, so it's the
+  // sensible default.
+  useEffect(() => {
+    if (!penName && selectedPenName) setPenName(selectedPenName.name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPenName?.id]);
+
+  const matchedPen = penNames.find(pn => pn.name.toLowerCase() === penName.toLowerCase());
 
   function toggleTrope(trope: string) {
     setSelectedTropes(
@@ -71,11 +84,37 @@ export default function BookBasicsForm({
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-600 mb-1">Pen Name</label>
-            <input
-              type="text" value={penName} onChange={e => setPenName(e.target.value)}
-              placeholder="e.g., Melissa Cummins"
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pink-400"
-            />
+            {penNames.length > 0 ? (
+              <>
+                <select
+                  value={matchedPen?.name ?? ''}
+                  onChange={e => setPenName(e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pink-400 bg-white"
+                >
+                  <option value="">— Select pen name —</option>
+                  {penNames.map(pn => (
+                    <option key={pn.id} value={pn.name}>{pn.name}</option>
+                  ))}
+                </select>
+                {matchedPen && (
+                  <span className={`mt-1 inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full ${penNameClasses(matchedPen.color).bg} ${penNameClasses(matchedPen.color).text}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${penNameClasses(matchedPen.color).dot}`} />
+                    {matchedPen.name}
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <input
+                  type="text" value={penName} onChange={e => setPenName(e.target.value)}
+                  placeholder="e.g., Melissa Cummins"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pink-400"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Add pen names in <a href="/settings" className="text-pink-600 hover:underline">Settings</a> to pick them here.
+                </p>
+              </>
+            )}
           </div>
         </div>
       </section>
