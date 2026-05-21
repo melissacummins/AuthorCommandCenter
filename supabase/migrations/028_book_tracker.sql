@@ -98,6 +98,13 @@ CREATE TABLE IF NOT EXISTS quarterly_updates (
   recorded_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Heal pre-existing stub (same pattern as tracked_books above).
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS tracked_book_id UUID REFERENCES tracked_books(id) ON DELETE CASCADE;
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS quarter_label   TEXT NOT NULL DEFAULT '';
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS sort_key        TEXT NOT NULL DEFAULT '';
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS profit          NUMERIC(14,2) NOT NULL DEFAULT 0;
+ALTER TABLE quarterly_updates ADD COLUMN IF NOT EXISTS recorded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 CREATE INDEX IF NOT EXISTS quarterly_updates_book_idx
   ON quarterly_updates (tracked_book_id, sort_key);
 CREATE INDEX IF NOT EXISTS quarterly_updates_user_idx
@@ -126,6 +133,10 @@ CREATE TABLE IF NOT EXISTS book_bundles (
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE book_bundles ADD COLUMN IF NOT EXISTS name        TEXT NOT NULL DEFAULT '';
+ALTER TABLE book_bundles ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE book_bundles ADD COLUMN IF NOT EXISTS created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW();
+
 ALTER TABLE book_bundles ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "book_bundles: owner read"   ON book_bundles;
@@ -145,6 +156,10 @@ CREATE TABLE IF NOT EXISTS tracked_book_bundle_members (
   user_id             UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   PRIMARY KEY (bundle_id, tracked_book_id)
 );
+
+ALTER TABLE tracked_book_bundle_members ADD COLUMN IF NOT EXISTS bundle_id       UUID REFERENCES book_bundles(id) ON DELETE CASCADE;
+ALTER TABLE tracked_book_bundle_members ADD COLUMN IF NOT EXISTS tracked_book_id UUID REFERENCES tracked_books(id) ON DELETE CASCADE;
+ALTER TABLE tracked_book_bundle_members ADD COLUMN IF NOT EXISTS user_id         UUID REFERENCES auth.users(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS tracked_book_bundle_members_book_idx
   ON tracked_book_bundle_members (tracked_book_id);
