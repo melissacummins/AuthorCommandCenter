@@ -16,6 +16,7 @@ import {
   daysSinceLastBackup,
 } from './backup';
 import type { BackupFile } from './tables';
+import KlaviyoSection from './KlaviyoSection';
 
 type Status = { kind: 'idle' } | { kind: 'busy'; msg: string } | { kind: 'ok'; msg: string } | { kind: 'error'; msg: string };
 
@@ -125,6 +126,8 @@ export default function SettingsModule() {
           </div>
         </div>
       )}
+
+      <KlaviyoSection />
 
       <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
         <div className="flex items-center gap-3 mb-2">
