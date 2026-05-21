@@ -1,0 +1,146 @@
+import { useEffect, useState, type FormEvent } from 'react';
+import { Trash2 } from 'lucide-react';
+import type { TrackedBook, TrackedBookInsert, CostLineItem } from '../types';
+import CostBreakdownEditor from './CostBreakdownEditor';
+
+interface Props {
+  initial?: TrackedBook | null;
+  saving?: boolean;
+  onCancel: () => void;
+  onSubmit: (input: TrackedBookInsert) => Promise<void> | void;
+  onDelete?: () => Promise<void> | void;
+}
+
+function fromBook(b: TrackedBook): TrackedBookInsert {
+  return {
+    title: b.title,
+    launch_date: b.launch_date,
+    dev_cost: b.dev_cost,
+    cost_breakdown: b.cost_breakdown ?? [],
+    status: b.status,
+    notes: b.notes,
+  };
+}
+
+function emptyDraft(): TrackedBookInsert {
+  return {
+    title: '',
+    launch_date: null,
+    dev_cost: 0,
+    cost_breakdown: [],
+    status: 'active',
+    notes: null,
+  };
+}
+
+export default function BookForm({ initial, saving, onCancel, onSubmit, onDelete }: Props) {
+  const [draft, setDraft] = useState<TrackedBookInsert>(() => (initial ? fromBook(initial) : emptyDraft()));
+
+  useEffect(() => {
+    setDraft(initial ? fromBook(initial) : emptyDraft());
+  }, [initial]);
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!draft.title.trim()) return;
+    onSubmit({
+      ...draft,
+      title: draft.title.trim(),
+      // dev_cost auto-derives from cost_breakdown if user left it at 0
+      dev_cost:
+        (draft.cost_breakdown ?? []).reduce((s, c) => s + (Number(c.amount) || 0), 0) || draft.dev_cost || 0,
+    });
+  }
+
+  function setCost(items: CostLineItem[]) {
+    setDraft(d => ({ ...d, cost_breakdown: items }));
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Title</label>
+        <input
+          type="text"
+          required
+          value={draft.title}
+          onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+          placeholder="e.g. Night Shade"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Launch date</label>
+          <input
+            type="date"
+            value={draft.launch_date ?? ''}
+            onChange={e => setDraft(d => ({ ...d, launch_date: e.target.value || null }))}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+          <select
+            value={draft.status ?? 'active'}
+            onChange={e => setDraft(d => ({ ...d, status: e.target.value as 'active' | 'paid_off' }))}
+            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+          >
+            <option value="active">Active (not paid off)</option>
+            <option value="paid_off">Paid off</option>
+          </select>
+          <p className="text-xs text-slate-400 mt-1">
+            Status auto-flips to "paid off" when cumulative profit clears dev cost.
+          </p>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-2">Cost breakdown</label>
+        <CostBreakdownEditor items={draft.cost_breakdown ?? []} onChange={setCost} />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+        <textarea
+          value={draft.notes ?? ''}
+          onChange={e => setDraft(d => ({ ...d, notes: e.target.value || null }))}
+          rows={3}
+          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+          placeholder="Anything you want to remember about this title's dev costs…"
+        />
+      </div>
+
+      <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+        <div>
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50"
+            >
+              <Trash2 className="w-4 h-4" /> Delete
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={saving || !draft.title.trim()}
+            className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 shadow-sm"
+          >
+            {saving ? 'Saving…' : initial ? 'Save changes' : 'Add book'}
+          </button>
+        </div>
+      </div>
+    </form>
+  );
+}
