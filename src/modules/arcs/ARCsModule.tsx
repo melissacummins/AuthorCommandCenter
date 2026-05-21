@@ -6,13 +6,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { listBooks } from '../catalog/api';
 import type { Book } from '../catalog/types';
 import {
-  bulkUpdateBookField, bulkUpdateStatus, createArcReader, deleteArcReader, listArcReaders, updateArcReader,
+  addReaderBook, bulkUpdateReaderBook, bulkUpdateStatus, createArcReader, deleteArcReader,
+  dismissUnmatchedTitle, getArcReader, listArcReaders, removeReaderBook, updateArcReader,
 } from './api';
-import type { BulkBookField } from './api';
-import type { ArcReader, ArcReaderInsert, ArcStatus } from './types';
-import { STATUS_COLORS, STATUS_LABELS, STATUS_ORDER } from './types';
+import type { ArcReader, ArcStatus, ReaderBookRelationship } from './types';
+import { readerBookCount, STATUS_COLORS, STATUS_LABELS, STATUS_ORDER } from './types';
 import ImportTab from './components/ImportTab';
-import ReaderForm from './components/ReaderForm';
+import ReaderForm, { type ReaderFormSubmit } from './components/ReaderForm';
 
 type View =
   | { mode: 'list'; tab: Tab }
@@ -34,8 +34,9 @@ export default function ARCsModule() {
   const [statusFilter, setStatusFilter] = useState<ArcStatus | 'all'>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatus, setBulkStatus] = useState<ArcStatus | ''>('');
-  const [bulkField, setBulkField] = useState<BulkBookField | ''>('');
-  const [bulkBook, setBulkBook] = useState<string>('');
+  const [bulkField, setBulkField] = useState<ReaderBookRelationship | ''>('');
+  // Catalog book_id selected for bulk operations (was a free-text title pre-Phase-2).
+  const [bulkBookId, setBulkBookId] = useState<string>('');
   const [bulkAction, setBulkAction] = useState<'add' | 'remove'>('add');
 
   async function reload() {
@@ -53,12 +54,37 @@ export default function ARCsModule() {
   }
   useEffect(() => { reload(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user]);
 
-  async function handleCreate(input: ArcReaderInsert) {
+  // Walk the desired final book_id list against the current junction
+  // state and emit add/remove calls for the deltas. Avoids no-op writes
+  // and lets the form treat its book lists as plain UI state.
+  async function reconcileBookHistory(
+    userId: string,
+    readerId: string,
+    desired: ReaderFormSubmit['bookHistory'],
+    initial: ArcReader | null,
+  ) {
+    const current = {
+      applied:  new Set((initial?.reader_books ?? []).filter(b => b.relationship === 'applied').map(b => b.book_id)),
+      received: new Set((initial?.reader_books ?? []).filter(b => b.relationship === 'received').map(b => b.book_id)),
+      reviewed: new Set((initial?.reader_books ?? []).filter(b => b.relationship === 'reviewed').map(b => b.book_id)),
+    };
+    const ops: Promise<void>[] = [];
+    (['applied', 'received', 'reviewed'] as const).forEach(rel => {
+      const want = new Set(desired[rel]);
+      for (const id of want) if (!current[rel].has(id)) ops.push(addReaderBook(userId, readerId, id, rel));
+      for (const id of current[rel]) if (!want.has(id)) ops.push(removeReaderBook(readerId, id, rel));
+    });
+    await Promise.all(ops);
+  }
+
+  async function handleCreate(submit: ReaderFormSubmit) {
     if (!user) return;
     setSaving(true);
     try {
-      const created = await createArcReader(user.id, input);
-      setReaders(prev => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      const created = await createArcReader(user.id, submit.reader);
+      await reconcileBookHistory(user.id, created.id, submit.bookHistory, null);
+      const fresh = await getArcReader(created.id);
+      if (fresh) setReaders(prev => [...prev, fresh].sort((a, b) => a.name.localeCompare(b.name)));
       setView({ mode: 'list', tab: 'all' });
     } catch (e) {
       setError((e as Error).message);
@@ -67,16 +93,29 @@ export default function ARCsModule() {
     }
   }
 
-  async function handleUpdate(id: string, input: ArcReaderInsert) {
+  async function handleUpdate(id: string, submit: ReaderFormSubmit, initial: ArcReader) {
+    if (!user) return;
     setSaving(true);
     try {
-      const updated = await updateArcReader(id, input);
-      setReaders(prev => prev.map(r => (r.id === id ? updated : r)).sort((a, b) => a.name.localeCompare(b.name)));
+      await updateArcReader(id, submit.reader);
+      await reconcileBookHistory(user.id, id, submit.bookHistory, initial);
+      const fresh = await getArcReader(id);
+      if (fresh) setReaders(prev => prev.map(r => (r.id === id ? fresh : r)).sort((a, b) => a.name.localeCompare(b.name)));
       setView({ mode: 'list', tab: 'all' });
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDismissUnmatched(readerId: string, title: string, relationship: ReaderBookRelationship) {
+    try {
+      await dismissUnmatchedTitle(readerId, relationship, title);
+      const fresh = await getArcReader(readerId);
+      if (fresh) setReaders(prev => prev.map(r => (r.id === readerId ? fresh : r)));
+    } catch (e) {
+      setError((e as Error).message);
     }
   }
 
@@ -106,14 +145,20 @@ export default function ARCsModule() {
   }
 
   async function applyBulkBook() {
-    if (!bulkField || !bulkBook || selectedIds.size === 0) return;
+    if (!user || !bulkField || !bulkBookId || selectedIds.size === 0) return;
     setSaving(true);
     try {
-      await bulkUpdateBookField(Array.from(selectedIds), bulkField, bulkBook, bulkAction);
+      await bulkUpdateReaderBook(
+        user.id,
+        Array.from(selectedIds),
+        bulkBookId,
+        bulkField,
+        bulkAction,
+      );
       await reload();
       setSelectedIds(new Set());
       setBulkField('');
-      setBulkBook('');
+      setBulkBookId('');
       setBulkAction('add');
     } catch (e) {
       setError((e as Error).message);
@@ -132,7 +177,7 @@ export default function ARCsModule() {
       } else if (t === 'current') {
         if (r.status !== 'current_arc_member') return false;
       } else if (t === 'reviewed') {
-        if (r.reviewed.length === 0) return false;
+        if (readerBookCount(r, 'reviewed') === 0) return false;
       }
       if (statusFilter !== 'all' && r.status !== statusFilter) return false;
       if (q) {
@@ -147,6 +192,10 @@ export default function ARCsModule() {
           r.goodreads_profile_url ?? '',
           r.amazon_reviewer_url ?? '',
           r.blog_url ?? '',
+          // Search book titles via the joined junction (and the legacy
+          // arrays during the cutover so backfilled but un-relinked
+          // titles still surface).
+          ...(r.reader_books ?? []).map(rb => rb.book_title),
           ...r.applied_for,
           ...r.received,
           ...r.reviewed,
@@ -161,19 +210,6 @@ export default function ARCsModule() {
     () => filtered.filter(r => r.email && r.email.trim()).length,
     [filtered],
   );
-
-  // Catalog titles + any title that appears on a reader (covers shorts/novellas
-  // not in the catalog yet). Stable alpha-sorted.
-  const allBookTitles = useMemo(() => {
-    const set = new Set<string>();
-    for (const b of catalogBooks) if (b.title) set.add(b.title);
-    for (const r of readers) {
-      for (const t of r.applied_for) set.add(t);
-      for (const t of r.received) set.add(t);
-      for (const t of r.reviewed) set.add(t);
-    }
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [catalogBooks, readers]);
 
   function exportEmails() {
     const withEmail = filtered.filter(r => r.email && r.email.trim());
@@ -221,8 +257,9 @@ export default function ARCsModule() {
           catalogBooks={catalogBooks}
           saving={saving}
           onCancel={() => setView({ mode: 'list', tab: 'all' })}
-          onSubmit={input => (isEdit && initial ? handleUpdate(initial.id, input) : handleCreate(input))}
+          onSubmit={submit => (isEdit && initial ? handleUpdate(initial.id, submit, initial) : handleCreate(submit))}
           onDelete={isEdit && initial ? () => handleDelete(initial.id) : undefined}
+          onDismissUnmatched={isEdit && initial ? (title, rel) => handleDismissUnmatched(initial.id, title, rel) : undefined}
         />
       </div>
     );
@@ -366,27 +403,27 @@ export default function ARCsModule() {
                 </select>
                 <select
                   value={bulkField}
-                  onChange={e => setBulkField(e.target.value as BulkBookField | '')}
+                  onChange={e => setBulkField(e.target.value as ReaderBookRelationship | '')}
                   className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
                 >
                   <option value="">Field…</option>
-                  <option value="applied_for">Applied for</option>
+                  <option value="applied">Applied for</option>
                   <option value="received">Received</option>
                   <option value="reviewed">Reviewed</option>
                 </select>
                 <select
-                  value={bulkBook}
-                  onChange={e => setBulkBook(e.target.value)}
+                  value={bulkBookId}
+                  onChange={e => setBulkBookId(e.target.value)}
                   className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white max-w-xs"
                 >
                   <option value="">Book…</option>
-                  {allBookTitles.map(t => (
-                    <option key={t} value={t}>{t}</option>
+                  {catalogBooks.map(b => (
+                    <option key={b.id} value={b.id}>{b.title}</option>
                   ))}
                 </select>
                 <button
                   onClick={applyBulkBook}
-                  disabled={!bulkField || !bulkBook || saving}
+                  disabled={!bulkField || !bulkBookId || saving}
                   className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
                 >
                   Apply
@@ -454,8 +491,8 @@ export default function ARCsModule() {
                             {STATUS_LABELS[r.status]}
                           </span>
                         </td>
-                        <td className="px-3 py-2"><BookCount count={r.received.length} /></td>
-                        <td className="px-3 py-2"><BookCount count={r.reviewed.length} /></td>
+                        <td className="px-3 py-2"><BookCount count={readerBookCount(r, 'received')} /></td>
+                        <td className="px-3 py-2"><BookCount count={readerBookCount(r, 'reviewed')} /></td>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-2 text-slate-500">
                             {r.newsletter_subscribed && <Mail className="w-4 h-4 text-emerald-500" />}

@@ -4,6 +4,7 @@ import {
   similarity, tokenOverlap,
 } from './match';
 import type { ArcReader } from './types';
+import { linkReaderBooksFromTitles } from './api';
 
 // ============================================
 // Flexible CSV parsing
@@ -380,10 +381,26 @@ export async function applyApplicantDecisions(
         notes: applicant.notes,
         external_id: null,
       };
-      const { error } = await supabase.from('arc_readers').insert(payload);
+      const { data: inserted, error } = await supabase
+        .from('arc_readers')
+        .insert(payload)
+        .select('id')
+        .single();
       if (error) {
         summary.errors.push(`${applicant.name}: ${error.message}`);
         continue;
+      }
+      // Link the applied-for book to the junction. linkReaderBooksFromTitles
+      // also stashes the title in unmatched_titles when no Catalog match,
+      // so the UI can surface it for cleanup.
+      if (selectedBookTitle) {
+        try {
+          await linkReaderBooksFromTitles(userId, (inserted as { id: string }).id, {
+            applied: [selectedBookTitle],
+          });
+        } catch (linkErr: any) {
+          summary.errors.push(`${applicant.name}: linked reader but couldn't attach book — ${linkErr?.message ?? linkErr}`);
+        }
       }
       summary.created++;
       continue;
@@ -421,8 +438,16 @@ export async function applyApplicantDecisions(
     if (applicant.notes && !((reader.notes ?? '').includes(applicant.notes))) {
       patch.notes = reader.notes ? `${reader.notes}\n\n${applicant.notes}` : applicant.notes;
     }
+    // Always run the junction link for merges so adding a book to an
+    // existing reader works even when the rest of the row didn't change.
+    if (selectedBookTitle) {
+      try {
+        await linkReaderBooksFromTitles(userId, d.readerId, { applied: [selectedBookTitle] });
+      } catch (linkErr: any) {
+        summary.errors.push(`${applicant.name}: ${linkErr?.message ?? linkErr}`);
+      }
+    }
     if (Object.keys(patch).length === 0) {
-      // Nothing changed — count as merged anyway (book may already be in applied_for).
       summary.merged++;
       continue;
     }

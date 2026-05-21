@@ -1,18 +1,30 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { Book } from '../../catalog/types';
-import type { ArcReader, ArcReaderInsert, ArcStatus } from '../types';
-import { impliedFunnelStatus, isFunnelStatus, PLACES, STATUS_LABELS, STATUS_ORDER } from '../types';
+import type { ArcReader, ArcReaderInsert, ArcStatus, ReaderBookRelationship, UnmatchedTitles } from '../types';
+import { impliedFunnelStatusFromReader, isFunnelStatus, PLACES, STATUS_LABELS, STATUS_ORDER } from '../types';
+import ReaderBookSection from './ReaderBookSection';
 
-const BOOK_FIELDS = new Set(['applied_for', 'received', 'reviewed']);
+// Submit shape: basic reader fields + the desired final state of each
+// book-history bucket as book_ids. The parent diffs against the
+// existing junction and writes through the API helpers.
+export interface ReaderFormSubmit {
+  reader: ArcReaderInsert;
+  bookHistory: {
+    applied: string[];
+    received: string[];
+    reviewed: string[];
+  };
+}
 
 interface Props {
   initial: ArcReader | null;
   catalogBooks: Book[];
   saving?: boolean;
-  onSubmit: (input: ArcReaderInsert) => Promise<void> | void;
+  onSubmit: (input: ReaderFormSubmit) => Promise<void> | void;
   onCancel: () => void;
   onDelete?: () => Promise<void> | void;
+  onDismissUnmatched?: (title: string, relationship: ReaderBookRelationship) => Promise<void> | void;
 }
 
 const labelCls = 'block text-xs font-medium text-slate-700 mb-1';
@@ -49,46 +61,58 @@ function emptyDraft(): ArcReaderInsert {
   };
 }
 
-export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, onCancel, onDelete }: Props) {
+export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, onCancel, onDelete, onDismissUnmatched }: Props) {
   const [draft, setDraft] = useState<ArcReaderInsert>(initial ? fromReader(initial) : emptyDraft());
+
+  // Form-local copy of the junction split by relationship. Initialized
+  // from the joined reader_books on edit, empty on create. On submit
+  // the parent diffs against `initial?.reader_books` to compute the
+  // add/remove calls.
+  const [appliedIds, setAppliedIds] = useState<string[]>(
+    () => (initial?.reader_books ?? []).filter(rb => rb.relationship === 'applied').map(rb => rb.book_id),
+  );
+  const [receivedIds, setReceivedIds] = useState<string[]>(
+    () => (initial?.reader_books ?? []).filter(rb => rb.relationship === 'received').map(rb => rb.book_id),
+  );
+  const [reviewedIds, setReviewedIds] = useState<string[]>(
+    () => (initial?.reader_books ?? []).filter(rb => rb.relationship === 'reviewed').map(rb => rb.book_id),
+  );
+
+  const unmatched: UnmatchedTitles = initial?.unmatched_titles ?? {};
 
   function setText(key: keyof ArcReaderInsert, raw: string) {
     setDraft(d => ({ ...d, [key]: raw === '' ? null : raw }));
   }
 
-  function toggleArr(key: keyof ArcReaderInsert, value: string) {
-    setDraft(d => {
-      const arr = (d[key] as string[]) ?? [];
-      const next = arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
-      const patch: Partial<ArcReaderInsert> = { [key]: next };
-      if (BOOK_FIELDS.has(key as string) && isFunnelStatus(d.status)) {
-        const arrays = {
-          applied_for: d.applied_for,
-          received: d.received,
-          reviewed: d.reviewed,
-          [key]: next,
-        } as Record<'applied_for' | 'received' | 'reviewed', string[]>;
-        patch.status = impliedFunnelStatus(arrays.applied_for, arrays.received, arrays.reviewed);
-      }
-      return { ...d, ...patch };
+  // Auto-flip the funnel status when the form's book-history counts
+  // imply a different funnel state — same behavior the previous
+  // toggleArr had, but derived from junction-local state.
+  const impliedStatus = useMemo(() => {
+    if (!isFunnelStatus(draft.status)) return draft.status;
+    return impliedFunnelStatusFromReader({
+      ...(initial ?? ({} as ArcReader)),
+      status: draft.status,
+      reader_books: [
+        ...appliedIds.map(id => ({ id: '', reader_id: '', book_id: id, relationship: 'applied' as const, recorded_at: '', book_title: '', pen_name_id: null })),
+        ...receivedIds.map(id => ({ id: '', reader_id: '', book_id: id, relationship: 'received' as const, recorded_at: '', book_title: '', pen_name_id: null })),
+        ...reviewedIds.map(id => ({ id: '', reader_id: '', book_id: id, relationship: 'reviewed' as const, recorded_at: '', book_title: '', pen_name_id: null })),
+      ],
     });
-  }
+  }, [draft.status, appliedIds, receivedIds, reviewedIds, initial]);
 
-  const allBookTitles = useMemo(() => {
-    const fromCatalog = catalogBooks.map(b => b.title);
-    const fromHistory = new Set<string>([
-      ...draft.applied_for,
-      ...draft.received,
-      ...draft.reviewed,
-    ]);
-    for (const t of fromCatalog) fromHistory.add(t);
-    return Array.from(fromHistory).sort();
-  }, [catalogBooks, draft.applied_for, draft.received, draft.reviewed]);
+  // When the implied status changes and the user hasn't manually
+  // picked a non-funnel status, surface it via the status dropdown.
+  if (isFunnelStatus(draft.status) && impliedStatus !== draft.status) {
+    setDraft(d => ({ ...d, status: impliedStatus }));
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!draft.name.trim()) return;
-    await onSubmit(draft);
+    await onSubmit({
+      reader: draft,
+      bookHistory: { applied: appliedIds, received: receivedIds, reviewed: reviewedIds },
+    });
   }
 
   return (
@@ -161,10 +185,39 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
       {/* Per-book history */}
       <div className={sectionCls}>
         <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">Per-book history</h3>
-        <p className="text-xs text-slate-500 -mt-2">Click books to toggle for each column.</p>
-        <BookChecklist label="Applied for" books={allBookTitles} selected={draft.applied_for} onToggle={v => toggleArr('applied_for', v)} catalogBooks={catalogBooks} />
-        <BookChecklist label="Received" books={allBookTitles} selected={draft.received} onToggle={v => toggleArr('received', v)} catalogBooks={catalogBooks} />
-        <BookChecklist label="Reviewed" books={allBookTitles} selected={draft.reviewed} onToggle={v => toggleArr('reviewed', v)} catalogBooks={catalogBooks} />
+        <p className="text-xs text-slate-500 -mt-2">
+          Books from Catalog. Reader status auto-flips as you move titles through Applied → Received → Reviewed.
+        </p>
+        <ReaderBookSection
+          label="Applied for"
+          relationship="applied"
+          bookIds={appliedIds}
+          catalogBooks={catalogBooks}
+          unmatched={unmatched.applied}
+          onAdd={id => setAppliedIds(prev => prev.includes(id) ? prev : [...prev, id])}
+          onRemove={id => setAppliedIds(prev => prev.filter(b => b !== id))}
+          onDismissUnmatched={onDismissUnmatched ? t => onDismissUnmatched(t, 'applied') : undefined}
+        />
+        <ReaderBookSection
+          label="Received"
+          relationship="received"
+          bookIds={receivedIds}
+          catalogBooks={catalogBooks}
+          unmatched={unmatched.received}
+          onAdd={id => setReceivedIds(prev => prev.includes(id) ? prev : [...prev, id])}
+          onRemove={id => setReceivedIds(prev => prev.filter(b => b !== id))}
+          onDismissUnmatched={onDismissUnmatched ? t => onDismissUnmatched(t, 'received') : undefined}
+        />
+        <ReaderBookSection
+          label="Reviewed"
+          relationship="reviewed"
+          bookIds={reviewedIds}
+          catalogBooks={catalogBooks}
+          unmatched={unmatched.reviewed}
+          onAdd={id => setReviewedIds(prev => prev.includes(id) ? prev : [...prev, id])}
+          onRemove={id => setReviewedIds(prev => prev.filter(b => b !== id))}
+          onDismissUnmatched={onDismissUnmatched ? t => onDismissUnmatched(t, 'reviewed') : undefined}
+        />
       </div>
 
       {/* Where they review */}
@@ -237,44 +290,3 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
   );
 }
 
-function BookChecklist({
-  label, books, selected, onToggle, catalogBooks,
-}: {
-  label: string;
-  books: string[];
-  selected: string[];
-  onToggle: (book: string) => void;
-  catalogBooks: Book[];
-}) {
-  const catalogTitles = new Set(catalogBooks.map(b => b.title));
-  return (
-    <div>
-      <div className="text-xs font-medium text-slate-700 mb-1">{label}</div>
-      <div className="flex flex-wrap gap-1.5">
-        {books.length === 0 ? (
-          <span className="text-xs text-slate-400">No books yet — add to your Catalog or another reader's history first.</span>
-        ) : (
-          books.map(b => {
-            const on = selected.includes(b);
-            const linked = catalogTitles.has(b);
-            return (
-              <button
-                key={b}
-                type="button"
-                onClick={() => onToggle(b)}
-                className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                  on
-                    ? 'bg-indigo-100 text-indigo-800 border-indigo-200'
-                    : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
-                } ${linked ? '' : 'italic'}`}
-                title={linked ? 'Linked to Catalog' : 'Not in Catalog'}
-              >
-                {b}
-              </button>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
