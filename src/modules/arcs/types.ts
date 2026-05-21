@@ -1,3 +1,29 @@
+export type ReaderBookRelationship = 'applied' | 'received' | 'reviewed';
+
+// One row out of the arc_reader_books junction joined with books.
+// Used to render per-reader book history and (later) timeline events.
+export interface ReaderBook {
+  id: string;
+  reader_id: string;
+  book_id: string;
+  relationship: ReaderBookRelationship;
+  recorded_at: string;
+  // Joined fields from books / pen_names so the UI doesn't need a
+  // second lookup per row.
+  book_title: string;
+  pen_name_id: string | null;
+}
+
+// Free-text titles from the legacy applied_for/received/reviewed
+// columns that couldn't be matched to any Catalog book at backfill.
+// The UI surfaces these so the user can either add the book to Catalog
+// and link it, or dismiss the entry.
+export interface UnmatchedTitles {
+  applied?: string[];
+  received?: string[];
+  reviewed?: string[];
+}
+
 export type ArcStatus =
   | 'new'
   | 'current_arc_member'
@@ -25,9 +51,20 @@ export interface ArcReader {
   amazon_reviewer_url: string | null;
   blog_url: string | null;
   status: ArcStatus;
+  // Legacy free-text columns. New code reads/writes the junction
+  // (reader_books below) — these stay populated only from historical
+  // data and are not touched by the current UI. Will be dropped once
+  // we're confident the cutover is clean.
   applied_for: string[];
   received: string[];
   reviewed: string[];
+  // Joined from arc_reader_books on the way out — present when the
+  // listArcReaders / getArcReader queries hydrate it; undefined on
+  // raw inserts.
+  reader_books?: ReaderBook[];
+  // Backfill leftovers from migration 031 — titles that couldn't be
+  // matched to Catalog. Surfaced in the UI for manual cleanup.
+  unmatched_titles?: UnmatchedTitles;
   place_to_review: string[];
   newsletter_subscribed: boolean;
   promo_team: boolean;
@@ -37,8 +74,21 @@ export interface ArcReader {
   updated_at: string;
 }
 
-export type ArcReaderInsert = Omit<ArcReader, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
+export type ArcReaderInsert = Omit<ArcReader, 'id' | 'user_id' | 'created_at' | 'updated_at' | 'reader_books' | 'unmatched_titles'>;
 export type ArcReaderUpdate = Partial<ArcReaderInsert>;
+
+// Convenience accessors used by status implication + filter logic that
+// previously inspected the TEXT[] arrays directly. New code reads
+// these instead of reader.applied_for etc.
+export function readerBookIds(reader: ArcReader, relationship: ReaderBookRelationship): string[] {
+  return (reader.reader_books ?? [])
+    .filter(rb => rb.relationship === relationship)
+    .map(rb => rb.book_id);
+}
+
+export function readerBookCount(reader: ArcReader, relationship: ReaderBookRelationship): number {
+  return (reader.reader_books ?? []).filter(rb => rb.relationship === relationship).length;
+}
 
 export const STATUS_ORDER: ArcStatus[] = [
   'new',
@@ -65,15 +115,30 @@ export function isFunnelStatus(s: ArcStatus): boolean {
   return (FUNNEL_STATUSES as readonly ArcStatus[]).includes(s);
 }
 
-// Highest funnel state implied by the reader's per-book arrays.
+// Highest funnel state implied by the reader's per-book history.
+// Accepts either the new junction rows or the legacy TEXT[] arrays so
+// callers in the middle of the cutover can pass whichever they have.
 export function impliedFunnelStatus(
-  applied_for: string[],
-  received: string[],
-  reviewed: string[],
+  applied: ReaderBook[] | string[],
+  received: ReaderBook[] | string[],
+  reviewed: ReaderBook[] | string[],
 ): ArcStatus {
   if (reviewed.length > 0) return 'current_arc_member';
   if (received.length > 0) return 'awaiting_review';
-  if (applied_for.length > 0) return 'awaiting_arc';
+  if (applied.length > 0) return 'awaiting_arc';
+  return 'new';
+}
+
+// Variant that takes the joined reader directly — preferred for new
+// code so the call site doesn't have to filter by relationship itself.
+export function impliedFunnelStatusFromReader(reader: ArcReader): ArcStatus {
+  const rbs = reader.reader_books ?? [];
+  const r = rbs.filter(b => b.relationship === 'reviewed');
+  if (r.length > 0) return 'current_arc_member';
+  const rc = rbs.filter(b => b.relationship === 'received');
+  if (rc.length > 0) return 'awaiting_review';
+  const a = rbs.filter(b => b.relationship === 'applied');
+  if (a.length > 0) return 'awaiting_arc';
   return 'new';
 }
 
