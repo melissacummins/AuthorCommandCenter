@@ -17,6 +17,7 @@ import {
 } from './backup';
 import type { BackupFile } from './tables';
 import KlaviyoSection from './KlaviyoSection';
+import PenNamesSection from './PenNamesSection';
 
 type Status = { kind: 'idle' } | { kind: 'busy'; msg: string } | { kind: 'ok'; msg: string } | { kind: 'error'; msg: string };
 
@@ -126,6 +127,8 @@ export default function SettingsModule() {
           </div>
         </div>
       )}
+
+      <PenNamesSection />
 
       <KlaviyoSection />
 

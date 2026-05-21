@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PenNameProvider } from './contexts/PenNameContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Home from './pages/Home';
@@ -38,9 +39,10 @@ function ProtectedRoutes() {
   }
 
   return (
-    <Layout>
-      <Routes>
-        <Route index element={<Home />} />
+    <PenNameProvider>
+      <Layout>
+        <Routes>
+          <Route index element={<Home />} />
         <Route path="inventory" element={<InventoryModule />} />
         <Route path="cross-sell" element={<CrossSellModule />} />
         <Route path="book-tracker" element={<BookTrackerModule />} />
@@ -56,9 +58,10 @@ function ProtectedRoutes() {
         <Route path="social-media" element={<SocialMediaModule />} />
         <Route path="settings" element={<SettingsModule />} />
         <Route path="shopify/callback" element={<ShopifyCallback />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </Layout>
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Layout>
+    </PenNameProvider>
   );
 }
 
