@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { usePenNames } from '../../contexts/PenNameContext';
 import { createBook, deleteBook, listBooks, removeBookCover, updateBook, uploadBookCover } from './api';
 import type { Book, BookInsert } from './types';
-import { STATUS_COLORS, STATUS_LABELS } from './types';
+import { STATUS_COLORS, STATUS_LABELS, languageLabel } from './types';
 import BookForm from './components/BookForm';
 import CatalogOverview from './components/CatalogOverview';
 import PenNameChip from '../../components/PenNameChip';
@@ -58,6 +58,24 @@ export default function CatalogModule() {
         .some(v => (v as string).toLowerCase().includes(q))
     );
   }, [books, query, selectedPenNameId]);
+
+  // Group books into parents + their translation children. The list
+  // view renders one card per parent with the language chips nested
+  // underneath; orphaned translations (parent filtered out) still
+  // render as top-level so they aren't lost.
+  const grouped = useMemo(() => {
+    const childrenByParent = new Map<string, Book[]>();
+    for (const b of filtered) {
+      if (b.parent_book_id) {
+        const list = childrenByParent.get(b.parent_book_id) ?? [];
+        list.push(b);
+        childrenByParent.set(b.parent_book_id, list);
+      }
+    }
+    const visibleIds = new Set(filtered.map(b => b.id));
+    const parents = filtered.filter(b => !b.parent_book_id || !visibleIds.has(b.parent_book_id));
+    return parents.map(p => ({ parent: p, children: childrenByParent.get(p.id) ?? [] }));
+  }, [filtered]);
 
   async function handleCreate(input: BookInsert, coverFile: File | null) {
     if (!user) return;
@@ -211,12 +229,14 @@ export default function CatalogModule() {
             <EmptyState onAdd={() => setView({ mode: 'new' })} hasBooks={books.length > 0} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {filtered.map(book => (
+              {grouped.map(({ parent, children }) => (
                 <BookCard
-                  key={book.id}
-                  book={book}
-                  penName={penNameById.get(book.pen_name_id ?? '')}
-                  onClick={() => setView({ mode: 'edit', book })}
+                  key={parent.id}
+                  book={parent}
+                  translations={children}
+                  penName={penNameById.get(parent.pen_name_id ?? '')}
+                  onClick={() => setView({ mode: 'edit', book: parent })}
+                  onClickTranslation={t => setView({ mode: 'edit', book: t })}
                 />
               ))}
             </div>
@@ -242,39 +262,73 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-function BookCard({ book, penName, onClick }: { book: Book; penName?: { name: string; color: import('../../lib/penNames').PenNameColor }; onClick: () => void }) {
+function BookCard({
+  book, translations = [], penName, onClick, onClickTranslation,
+}: {
+  book: Book;
+  translations?: Book[];
+  penName?: { name: string; color: import('../../lib/penNames').PenNameColor };
+  onClick: () => void;
+  onClickTranslation?: (t: Book) => void;
+}) {
   const seriesLine = book.series
     ? book.series + (book.series_position ? ` · #${book.series_position}` : '')
     : null;
   return (
-    <button
-      onClick={onClick}
-      className="text-left bg-white rounded-2xl border border-slate-200 p-5 hover:shadow-md hover:border-slate-300 transition-all flex gap-4 items-center"
-    >
-      <div className="w-16 h-24 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
-        {book.cover_url ? (
-          <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <BookOpen className="w-6 h-6 text-indigo-400" />
-        )}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          {seriesLine && (
-            <p className="text-xs text-indigo-600 font-medium truncate">{seriesLine}</p>
+    <div className="bg-white rounded-2xl border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all">
+      <button
+        onClick={onClick}
+        className="text-left p-5 w-full flex gap-4 items-center"
+      >
+        <div className="w-16 h-24 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
+          {book.cover_url ? (
+            <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
+          ) : (
+            <BookOpen className="w-6 h-6 text-indigo-400" />
           )}
-          <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[book.status]}`}>
-            {STATUS_LABELS[book.status]}
-          </span>
         </div>
-        <h3 className="font-semibold text-slate-800 leading-tight break-words">{book.title}</h3>
-        {penName && (
-          <div className="mt-1.5">
-            <PenNameChip name={penName.name} color={penName.color} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            {seriesLine && (
+              <p className="text-xs text-indigo-600 font-medium truncate">{seriesLine}</p>
+            )}
+            <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[book.status]}`}>
+              {STATUS_LABELS[book.status]}
+            </span>
           </div>
-        )}
-      </div>
-    </button>
+          <h3 className="font-semibold text-slate-800 leading-tight break-words">{book.title}</h3>
+          {penName && (
+            <div className="mt-1.5">
+              <PenNameChip name={penName.name} color={penName.color} />
+            </div>
+          )}
+        </div>
+      </button>
+
+      {translations.length > 0 && (
+        <div className="border-t border-slate-100 px-5 py-2.5">
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-1.5">
+            Translations
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {translations.map(t => (
+              <button
+                key={t.id}
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onClickTranslation?.(t); }}
+                className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200"
+                title={t.title}
+              >
+                <span className="font-medium">{languageLabel(t.language) ?? '—'}</span>
+                <span className={`text-[10px] px-1 py-0.5 rounded ${STATUS_COLORS[t.status]}`}>
+                  {STATUS_LABELS[t.status]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

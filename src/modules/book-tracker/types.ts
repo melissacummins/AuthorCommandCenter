@@ -81,20 +81,6 @@ export interface QuarterlyUpdateInsert {
   profit: number;
 }
 
-export interface BookBundle {
-  id: string;
-  user_id: string;
-  name: string;
-  description: string | null;
-  created_at: string;
-}
-
-export interface BundleMember {
-  bundle_id: string;
-  tracked_book_id: string;
-  user_id: string;
-}
-
 // Normalize a free-form quarter label into a sortable string. Accepts:
 //   "Q4 2024"           -> "2024-Q4"
 //   "Q1 2022"           -> "2022-Q1"

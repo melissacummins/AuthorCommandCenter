@@ -21,6 +21,14 @@ export interface Book {
   series: string | null;
   series_position: number | null;
   pen_name_id: string | null;
+  // Two-letter language code (ISO 639-1) when known: en, de, fr, etc.
+  // null means "unknown / inherits from parent" — the default for
+  // originals (which are usually English for our user).
+  language: string | null;
+  // When this book is a translation, points at the original. The UI
+  // collapses translations under the parent in list views and shows
+  // the language attribution on the detail header.
+  parent_book_id: string | null;
 
   status: BookStatus;
   publish_date: string | null;
@@ -72,6 +80,70 @@ export const STATUS_LABELS: Record<BookStatus, string> = {
   published: 'Published',
   paused: 'Paused',
 };
+
+// Languages we offer in the dropdown. Two-letter codes match what
+// stores like Amazon use; the label is for the UI. 'en' isn't listed
+// since the assumption is "original = English" — translations are
+// what we tag explicitly.
+export const TRANSLATION_LANGUAGES: Array<{ code: string; label: string }> = [
+  { code: 'de', label: 'German' },
+  { code: 'fr', label: 'French' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'it', label: 'Italian' },
+  { code: 'pt', label: 'Portuguese' },
+  { code: 'nl', label: 'Dutch' },
+  { code: 'pl', label: 'Polish' },
+  { code: 'sv', label: 'Swedish' },
+  { code: 'da', label: 'Danish' },
+  { code: 'no', label: 'Norwegian' },
+  { code: 'fi', label: 'Finnish' },
+  { code: 'cs', label: 'Czech' },
+  { code: 'hu', label: 'Hungarian' },
+  { code: 'ja', label: 'Japanese' },
+  { code: 'ko', label: 'Korean' },
+  { code: 'zh', label: 'Chinese' },
+];
+
+const LANGUAGE_LABELS: Record<string, string> = Object.fromEntries(
+  TRANSLATION_LANGUAGES.map(l => [l.code, l.label]),
+);
+
+export function languageLabel(code: string | null | undefined): string | null {
+  if (!code) return null;
+  return LANGUAGE_LABELS[code] ?? code.toUpperCase();
+}
+
+// Detect a translation suffix on a title (e.g. "Night Shade - GE",
+// "Crowned In Blood - FR") so the UI can auto-suggest linking to a
+// parent. Returns the base title and the inferred language code or
+// null when nothing matches.
+const SUFFIX_TO_LANG: Record<string, string> = {
+  GE: 'de', DE: 'de',
+  FR: 'fr',
+  ES: 'es', SP: 'es',
+  IT: 'it',
+  PT: 'pt',
+  NL: 'nl',
+  PL: 'pl',
+  SE: 'sv', SV: 'sv',
+  DK: 'da', DA: 'da',
+  NO: 'no', NB: 'no',
+  FI: 'fi',
+  CZ: 'cs', CS: 'cs',
+  HU: 'hu',
+  JP: 'ja', JA: 'ja',
+  KR: 'ko', KO: 'ko',
+  CN: 'zh', ZH: 'zh',
+};
+
+export function detectTranslationSuffix(title: string): { baseTitle: string; languageCode: string } | null {
+  const m = title.match(/^(.+?)\s+-\s+([A-Za-z]{2,3})\s*$/);
+  if (!m) return null;
+  const code = SUFFIX_TO_LANG[m[2].toUpperCase()];
+  if (!code) return null;
+  return { baseTitle: m[1].trim(), languageCode: code };
+}
+
 
 export const STATUS_COLORS: Record<BookStatus, string> = {
   idea: 'bg-slate-100 text-slate-700',
