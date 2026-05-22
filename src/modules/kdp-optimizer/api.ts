@@ -320,6 +320,40 @@ export async function mergeTropes(
   return { targetTropeId: targetId };
 }
 
+// Create a new KDP book from a Catalog book. Defaults title/subtitle/
+// series from the linked Catalog row so the user doesn't have to retype
+// them — the Optimizer can still override per-book if KDP-specific
+// wording differs.
+export async function createKdpBookFromCatalog(
+  userId: string,
+  catalogBookId: string,
+): Promise<KdpBook> {
+  const { data: catalogBook, error: bookErr } = await supabase
+    .from('books')
+    .select('id, title, subtitle, series')
+    .eq('id', catalogBookId)
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (bookErr) throw bookErr;
+  const seed = (catalogBook ?? {}) as { title?: string; subtitle?: string | null; series?: string | null };
+  const { data, error } = await supabase
+    .from('kdp_books')
+    .insert({
+      user_id: userId,
+      book_id: catalogBookId,
+      title: seed.title ?? '',
+      subtitle: seed.subtitle ?? null,
+      series: seed.series ?? '',
+      amazon_categories: '',
+      assigned_trope_ids: [],
+      selected_keyword_ids: [],
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as KdpBook;
+}
+
 export async function updateKdpBook(
   id: string,
   patch: Partial<Pick<KdpBook, 'book_id' | 'title' | 'subtitle' | 'series' | 'amazon_categories' | 'assigned_trope_ids' | 'selected_keyword_ids'>>,

@@ -6,6 +6,9 @@ import type { KdpBook, Keyword, ScoreColor, Trope } from '../types';
 import {
   analyzeKeywordCoverage, cleanKeywordText, getMetadataWords, isStopWord, optimizeKeywords,
 } from '../utils';
+import CatalogBookPicker from '../../../components/CatalogBookPicker';
+import PenNameChip from '../../../components/PenNameChip';
+import { usePenNames } from '../../../contexts/PenNameContext';
 
 interface Props {
   book: KdpBook;
@@ -28,6 +31,24 @@ const fmtCurrency = (n: number) => `$${n.toFixed(2)}`;
 
 export default function BookOptimizer({ book, tropes, keywords, catalogBooks, onBack, onSaved }: Props) {
   const [draft, setDraft] = useState<KdpBook>(book);
+  const { penNames } = usePenNames();
+
+  // When linked to a Catalog book, treat that as the source of truth
+  // for display + metadata indexing. The KDP row's own title/subtitle/
+  // series stay as a fallback for unlinked books and as the value the
+  // BookOptimizer saves to (so existing data still round-trips even if
+  // the user later unlinks).
+  const linkedCatalog = draft.book_id
+    ? catalogBooks.find(b => b.id === draft.book_id) ?? null
+    : null;
+  const effective = {
+    title: linkedCatalog?.title ?? draft.title,
+    subtitle: linkedCatalog?.subtitle ?? draft.subtitle,
+    series: linkedCatalog?.series ?? draft.series,
+  };
+  const linkedPenName = linkedCatalog?.pen_name_id
+    ? penNames.find(p => p.id === linkedCatalog.pen_name_id) ?? null
+    : null;
   const [filterText, setFilterText] = useState('');
   const [showAssignTropes, setShowAssignTropes] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -63,7 +84,13 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
     return Array.from(map.values());
   }, [keywords, assignedSet, selectedSet]);
 
-  const metadataWords = useMemo(() => getMetadataWords(draft), [draft]);
+  // Metadata indexing uses the effective (Catalog-preferred) title so
+  // crossed-out keywords reflect what's actually on the live listing,
+  // not stale KDP-row values.
+  const metadataWords = useMemo(
+    () => getMetadataWords({ ...draft, ...effective }),
+    [draft, effective.title, effective.subtitle, effective.series],
+  );
 
   // Effective coverage = metadata + words from already-selected
   // keywords. Used for visual strike-through; the optimizer itself
@@ -141,11 +168,14 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
           <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-2">
             <ArrowLeft className="w-4 h-4" /> Back to KDP books
           </button>
-          <h2 className="text-2xl font-bold text-slate-800">{draft.title}</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-2xl font-bold text-slate-800">{effective.title || '(untitled)'}</h2>
+            {linkedPenName && <PenNameChip name={linkedPenName.name} color={linkedPenName.color} />}
+          </div>
           <div className="text-sm text-slate-500 flex flex-wrap items-center gap-2">
-            {draft.subtitle && <span>{draft.subtitle}</span>}
-            {draft.subtitle && draft.series && <span>•</span>}
-            {draft.series && <span className="text-slate-400">{draft.series}</span>}
+            {effective.subtitle && <span>{effective.subtitle}</span>}
+            {effective.subtitle && effective.series && <span>•</span>}
+            {effective.series && <span className="text-slate-400">{effective.series}</span>}
           </div>
         </div>
         <button
@@ -165,16 +195,22 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
       <div className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Linked Catalog book</label>
-          <select
-            value={draft.book_id ?? ''}
-            onChange={e => setDraft(d => ({ ...d, book_id: e.target.value || null }))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
-          >
-            <option value="">— Not linked —</option>
-            {catalogBooks.map(b => (
-              <option key={b.id} value={b.id}>{b.title}</option>
-            ))}
-          </select>
+          <CatalogBookPicker
+            value={draft.book_id ?? null}
+            onChange={(id, book) => setDraft(d => ({
+              ...d,
+              book_id: id,
+              // Mirror the linked book's metadata into the KDP row on
+              // link so unlinking later doesn't leave us with stale
+              // empty title/series. The UI continues to display from
+              // `effective` (Catalog-preferred) while linked.
+              title: book.title || d.title,
+              subtitle: book.subtitle ?? d.subtitle,
+              series: book.series ?? d.series,
+            }))}
+            filterByPenName={false}
+            placeholder="Not linked"
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">Amazon categories</label>
