@@ -32,8 +32,18 @@ const inputCls =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-white';
 const sectionCls = 'bg-white rounded-2xl border border-slate-200 p-5 space-y-4';
 
+// Project an ArcReader down to the insert shape. The joined
+// `reader_books` rows and the backfill `unmatched_titles` JSONB are
+// derived state — they must NOT round-trip back into an UPDATE on
+// arc_readers (no such columns exist there). updateArcReader also
+// sanitizes defensively, but stripping here keeps form-local state
+// honest with the type signature.
 function fromReader(r: ArcReader): ArcReaderInsert {
-  const { id: _id, user_id: _u, created_at: _c, updated_at: _up, ...rest } = r;
+  const {
+    id: _id, user_id: _u, created_at: _c, updated_at: _up,
+    reader_books: _rb, unmatched_titles: _ut,
+    ...rest
+  } = r;
   return rest;
 }
 

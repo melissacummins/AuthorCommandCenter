@@ -95,10 +95,36 @@ export async function createArcReader(userId: string, input: ArcReaderInsert): P
   return reader;
 }
 
+// Strict allowlist of arc_readers columns we let the client update.
+// Anything not in this set (notably the joined `reader_books` rows and
+// the `unmatched_titles` JSONB, which are managed via dedicated
+// endpoints) is dropped before the UPDATE — passing them through
+// would 400 with "could not find the 'reader_books' column".
+const ARC_READER_UPDATABLE: ReadonlyArray<keyof ArcReaderUpdate> = [
+  'name', 'email', 'primary_sm',
+  'ig_profile_url', 'tt_profile_url', 'threads_profile_url',
+  'fb_profile_url', 'goodreads_profile_url', 'amazon_reviewer_url',
+  'blog_url',
+  'status',
+  'applied_for', 'received', 'reviewed',
+  'place_to_review',
+  'newsletter_subscribed', 'promo_team',
+  'notes',
+  'external_id',
+];
+
+function sanitizeReaderPatch(patch: ArcReaderUpdate): Partial<ArcReaderUpdate> {
+  const clean: Record<string, unknown> = {};
+  for (const key of ARC_READER_UPDATABLE) {
+    if (key in patch) clean[key] = (patch as Record<string, unknown>)[key];
+  }
+  return clean as Partial<ArcReaderUpdate>;
+}
+
 export async function updateArcReader(id: string, patch: ArcReaderUpdate): Promise<ArcReader> {
   const { data, error } = await supabase
     .from('arc_readers')
-    .update(patch)
+    .update(sanitizeReaderPatch(patch))
     .eq('id', id)
     .select('id')
     .single();
