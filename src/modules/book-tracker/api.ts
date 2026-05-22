@@ -5,8 +5,6 @@ import type {
   TrackedBookUpdate,
   QuarterlyUpdate,
   QuarterlyUpdateInsert,
-  BookBundle,
-  BundleMember,
   CostLineItem,
 } from './types';
 import { normalizeQuarterSortKey } from './types';
@@ -201,70 +199,6 @@ function monthsBetween(startIso: string, endIso: string): number {
   let months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
   if (end.getDate() < start.getDate()) months -= 1;
   return Math.max(0, months);
-}
-
-
-// Bundles
-
-export async function listBundles(userId: string): Promise<BookBundle[]> {
-  const { data, error } = await supabase
-    .from('book_bundles')
-    .select('*')
-    .eq('user_id', userId)
-    .order('name', { ascending: true });
-  if (error) throw error;
-  return (data ?? []) as BookBundle[];
-}
-
-export async function createBundle(userId: string, name: string, description?: string | null): Promise<BookBundle> {
-  const { data, error } = await supabase
-    .from('book_bundles')
-    .insert({ user_id: userId, name, description: description ?? null })
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data as BookBundle;
-}
-
-export async function updateBundle(id: string, patch: { name?: string; description?: string | null }): Promise<BookBundle> {
-  const { data, error } = await supabase
-    .from('book_bundles')
-    .update(patch)
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data as BookBundle;
-}
-
-export async function deleteBundle(id: string): Promise<void> {
-  const { error } = await supabase.from('book_bundles').delete().eq('id', id);
-  if (error) throw error;
-}
-
-export async function listBundleMembers(userId: string): Promise<BundleMember[]> {
-  const { data, error } = await supabase
-    .from('tracked_book_bundle_members')
-    .select('*')
-    .eq('user_id', userId);
-  if (error) throw error;
-  return (data ?? []) as BundleMember[];
-}
-
-export async function addBookToBundle(userId: string, bundleId: string, trackedBookId: string): Promise<void> {
-  const { error } = await supabase
-    .from('tracked_book_bundle_members')
-    .upsert({ user_id: userId, bundle_id: bundleId, tracked_book_id: trackedBookId });
-  if (error) throw error;
-}
-
-export async function removeBookFromBundle(bundleId: string, trackedBookId: string): Promise<void> {
-  const { error } = await supabase
-    .from('tracked_book_bundle_members')
-    .delete()
-    .eq('bundle_id', bundleId)
-    .eq('tracked_book_id', trackedBookId);
-  if (error) throw error;
 }
 
 

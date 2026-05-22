@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { BookOpen, Plus, Upload, Layers, Search, ArrowLeft } from 'lucide-react';
+import { BookOpen, Plus, Upload, Search, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePenNames } from '../../contexts/PenNameContext';
 import PenNameChip from '../../components/PenNameChip';
@@ -13,7 +13,6 @@ import type { TrackedBook, TrackedBookInsert } from './types';
 import { displayTitle } from './types';
 import BookForm from './components/BookForm';
 import BookDetail from './components/BookDetail';
-import BundleManager from './components/BundleManager';
 import JsonImportPanel from './components/JsonImportPanel';
 
 type Tab = 'active' | 'paid_off';
@@ -22,7 +21,6 @@ type View =
   | { mode: 'new' }
   | { mode: 'edit'; book: TrackedBook }
   | { mode: 'detail'; book: TrackedBook }
-  | { mode: 'bundles' }
   | { mode: 'import' };
 
 export default function BookTrackerModule() {
@@ -97,10 +95,6 @@ export default function BookTrackerModule() {
 
   // Routing
 
-  if (view.mode === 'bundles') {
-    return <BundleManager books={books} onBack={() => setView({ mode: 'list', tab: 'active' })} />;
-  }
-
   if (view.mode === 'import') {
     return (
       <JsonImportPanel
@@ -170,7 +164,6 @@ export default function BookTrackerModule() {
     onQueryChange={setQuery}
     onNew={() => setView({ mode: 'new' })}
     onImport={() => setView({ mode: 'import' })}
-    onBundles={() => setView({ mode: 'bundles' })}
     onOpen={book => setView({ mode: 'detail', book })}
   />;
 }
@@ -189,12 +182,11 @@ interface ListProps {
   onQueryChange: (q: string) => void;
   onNew: () => void;
   onImport: () => void;
-  onBundles: () => void;
   onOpen: (book: TrackedBook) => void;
 }
 
 function BookList({
-  books, penNameById, loading, error, tab, query, onTabChange, onQueryChange, onNew, onImport, onBundles, onOpen,
+  books, penNameById, loading, error, tab, query, onTabChange, onQueryChange, onNew, onImport, onOpen,
 }: ListProps) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -224,12 +216,6 @@ function BookList({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={onBundles}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
-          >
-            <Layers className="w-4 h-4" /> Bundles
-          </button>
           <button
             onClick={onImport}
             className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"

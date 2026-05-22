@@ -8,7 +8,9 @@ import { fetchKdpDataForCatalogBook } from '../../kdp-optimizer/api';
 import type { KdpBook, Keyword } from '../../kdp-optimizer/types';
 import { getMetadataWords, optimizeKeywords } from '../../kdp-optimizer/utils';
 import type { Book, BookInsert, BookStatus, ReviewExcerpt } from '../types';
-import { STATUS_LABELS } from '../types';
+import { STATUS_LABELS, TRANSLATION_LANGUAGES, languageLabel, detectTranslationSuffix } from '../types';
+import { listBooks } from '../api';
+import { Languages, Link2 } from 'lucide-react';
 
 interface BookFormProps {
   initial?: Book | null;
@@ -24,6 +26,8 @@ function emptyDraft(): BookInsert {
     subtitle: null,
     series: null,
     series_position: null,
+    language: null,
+    parent_book_id: null,
     pen_name_id: null,
     status: 'idea',
     publish_date: null,
@@ -108,6 +112,42 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       .catch(() => { /* surfacing the link is best-effort */ });
     return () => { cancelled = true; };
   }, [user, initial?.id]);
+
+  // Catalog books — used to populate the 'Translation of' picker and
+  // to auto-suggest a parent based on the current book's title suffix.
+  // Fetched on mount; the list only changes when the user creates
+  // books elsewhere, which is rare enough during a form edit that we
+  // don't refresh on every parent_book_id change.
+  const [catalogBooks, setCatalogBooks] = useState<Book[]>([]);
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    listBooks(user.id)
+      .then(rows => { if (!cancelled) setCatalogBooks(rows); })
+      .catch(() => { /* best-effort — the manual picker still works without the auto-suggest */ });
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Auto-suggest a translation parent: if the current title looks
+  // like "Original - GE" / "Original - FR" / etc. AND there's a
+  // matching original in the catalog AND we don't already have a
+  // parent set, surface a one-click link banner.
+  const translationSuggestion = useMemo(() => {
+    if (draft.parent_book_id) return null;
+    const suffix = detectTranslationSuffix(draft.title);
+    if (!suffix) return null;
+    const parent = catalogBooks.find(
+      b => b.id !== initial?.id
+        && b.parent_book_id === null
+        && b.title.trim().toLowerCase() === suffix.baseTitle.toLowerCase(),
+    );
+    if (!parent) return null;
+    return { parent, languageCode: suffix.languageCode };
+  }, [catalogBooks, draft.title, draft.parent_book_id, initial?.id]);
+
+  const parentBook = draft.parent_book_id
+    ? catalogBooks.find(b => b.id === draft.parent_book_id) ?? null
+    : null;
 
   const kdpBoxes = useMemo(() => {
     if (!kdpData || kdpData.keywords.length === 0) return [];
@@ -308,6 +348,71 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
             </div>
           )}
         </div>
+
+        {/* Translation hierarchy. A book can be a translation of
+            another Catalog book; we offer a one-click suggestion when
+            the title has a recognized suffix like "- GE" / "- FR" and
+            a matching original exists in the catalog. */}
+        <div>
+          <label className={labelCls}>
+            <Languages className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />
+            Translation of (optional)
+          </label>
+
+          {translationSuggestion && (
+            <div className="mb-2 flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 text-xs text-indigo-800">
+              <Link2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+              <div className="flex-1">
+                Looks like a {languageLabel(translationSuggestion.languageCode)} translation of{' '}
+                <strong>{translationSuggestion.parent.title}</strong>.
+              </div>
+              <button
+                type="button"
+                onClick={() => setDraft(d => ({
+                  ...d,
+                  parent_book_id: translationSuggestion.parent.id,
+                  language: translationSuggestion.languageCode,
+                }))}
+                className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Link it
+              </button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <select
+              className={inputCls}
+              value={draft.parent_book_id ?? ''}
+              onChange={e => set('parent_book_id', e.target.value || null)}
+            >
+              <option value="">— Not a translation —</option>
+              {catalogBooks
+                .filter(b => b.id !== initial?.id && b.parent_book_id === null)
+                .map(b => (
+                  <option key={b.id} value={b.id}>{b.title}</option>
+                ))}
+            </select>
+            <select
+              className={inputCls}
+              value={draft.language ?? ''}
+              onChange={e => set('language', e.target.value || null)}
+              disabled={!draft.parent_book_id}
+            >
+              <option value="">— Language —</option>
+              {TRANSLATION_LANGUAGES.map(l => (
+                <option key={l.code} value={l.code}>{l.label}</option>
+              ))}
+            </select>
+          </div>
+          {parentBook && (
+            <p className="text-xs text-slate-500 mt-1.5">
+              {languageLabel(draft.language) ?? 'Language not set'} translation of{' '}
+              <strong className="text-slate-700">{parentBook.title}</strong>
+            </p>
+          )}
+        </div>
+
         <div>
           <label className={labelCls}>Status</label>
           <select
