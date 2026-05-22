@@ -3,21 +3,25 @@ import {
   Search, BookOpen, Tag, Upload, Plus, Trash2, Edit3, Link as LinkIcon, Sparkles, GitMerge,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePenNames } from '../../contexts/PenNameContext';
 import { listBooks } from '../catalog/api';
 import type { Book } from '../catalog/types';
 import {
-  createTrope, deleteTrope, listKdpBooks, listKeywords, listTropes, mergeTropes,
+  createKdpBookFromCatalog, createTrope, deleteTrope, listKdpBooks, listKeywords, listTropes, mergeTropes,
   smartImportKeywords, updateTrope,
 } from './api';
 import type { KdpBook, Keyword, Trope } from './types';
 import BookOptimizer from './components/BookOptimizer';
 import ImportTab from './components/ImportTab';
 import TropeDetail from './components/TropeDetail';
+import CatalogBookPicker from '../../components/CatalogBookPicker';
+import PenNameChip from '../../components/PenNameChip';
 
 type Tab = 'overview' | 'books' | 'tropes' | 'import';
 
 export default function KDPOptimizerModule() {
   const { user } = useAuth();
+  const { selectedPenNameId, penNames } = usePenNames();
   const [tab, setTab] = useState<Tab>('overview');
   const [tropes, setTropes] = useState<Trope[]>([]);
   const [keywords, setKeywords] = useState<Keyword[]>([]);
@@ -132,7 +136,19 @@ export default function KDPOptimizerModule() {
           kdpBooks={kdpBooks}
           catalogBooks={catalogBooks}
           tropeCounts={tropeCounts(kdpBooks)}
+          selectedPenNameId={selectedPenNameId}
+          penNames={penNames}
           onOpen={b => setActiveBook(b)}
+          onCreateFromCatalog={async catalogBookId => {
+            if (!user) return;
+            try {
+              const created = await createKdpBookFromCatalog(user.id, catalogBookId);
+              setKdpBooks(prev => [...prev, created]);
+              setActiveBook(created);
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
         />
       ) : tab === 'tropes' ? (
         <TropesTab
@@ -269,56 +285,122 @@ function StatCard({ label, value, icon: Icon, color }: { label: string; value: n
 // BOOKS TAB
 // ============================================
 function BooksTab({
-  kdpBooks, catalogBooks, tropeCounts, onOpen,
+  kdpBooks, catalogBooks, tropeCounts, selectedPenNameId, penNames, onOpen, onCreateFromCatalog,
 }: {
   kdpBooks: KdpBook[];
   catalogBooks: Book[];
   tropeCounts: Record<string, { tropes: number; keywords: number }>;
+  selectedPenNameId: string | null;
+  penNames: import('../../lib/penNames').PenName[];
   onOpen: (b: KdpBook) => void;
+  onCreateFromCatalog: (catalogBookId: string) => Promise<void>;
 }) {
   const catalogById = useMemo(() => new Map(catalogBooks.map(b => [b.id, b])), [catalogBooks]);
+  const penNameById = useMemo(() => new Map(penNames.map(p => [p.id, p])), [penNames]);
+  const [adding, setAdding] = useState(false);
 
-  if (kdpBooks.length === 0) {
-    return (
-      <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 text-sm text-slate-500">
-        No KDP books yet. Import on the Import tab to bring yours in.
-      </div>
-    );
-  }
+  // Filter KDP books by the active pen name via the linked Catalog
+  // book. Books without a Catalog link don't have a pen name to filter
+  // by, so they only appear under "All pen names".
+  const filteredBooks = selectedPenNameId
+    ? kdpBooks.filter(b => {
+        const linked = b.book_id ? catalogById.get(b.book_id) : null;
+        return linked?.pen_name_id === selectedPenNameId;
+      })
+    : kdpBooks;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {kdpBooks.map(b => {
-        const counts = tropeCounts[b.id] ?? { tropes: 0, keywords: 0 };
-        const linked = b.book_id ? catalogById.get(b.book_id) : null;
-        return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">
+          {selectedPenNameId
+            ? `Showing books for the active pen name. Pen-name-less KDP books show under "All pen names".`
+            : kdpBooks.length > 0
+              ? `${kdpBooks.length} ${kdpBooks.length === 1 ? 'book' : 'books'} tracked.`
+              : 'Pick a Catalog book to start optimizing keywords for it.'}
+        </p>
+        {!adding && (
           <button
-            key={b.id}
-            onClick={() => onOpen(b)}
-            className="text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all"
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700"
           >
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h3 className="font-semibold text-slate-800 truncate">{b.title}</h3>
-              {linked ? (
-                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  <LinkIcon className="w-3 h-3" /> Linked
-                </span>
-              ) : (
-                <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                  Not linked
-                </span>
-              )}
-            </div>
-            {b.subtitle && <p className="text-xs text-slate-500 line-clamp-1">{b.subtitle}</p>}
-            {b.series && <p className="text-xs text-indigo-600 font-medium mt-1">{b.series}</p>}
-            <div className="flex items-center gap-3 text-xs text-slate-500 mt-3">
-              <span>{counts.tropes} tropes</span>
-              <span>·</span>
-              <span>{counts.keywords} keywords selected</span>
-            </div>
+            <Plus className="w-4 h-4" /> Optimize a new book
           </button>
-        );
-      })}
+        )}
+      </div>
+
+      {adding && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-2">
+          <div className="flex-1">
+            <CatalogBookPicker
+              value={null}
+              onChange={async bookId => {
+                setAdding(false);
+                await onCreateFromCatalog(bookId);
+              }}
+              placeholder="Pick a Catalog book to optimize…"
+            />
+          </div>
+          <button
+            onClick={() => setAdding(false)}
+            className="text-sm text-slate-500 hover:text-slate-700"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {filteredBooks.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 text-sm text-slate-500">
+          {kdpBooks.length === 0
+            ? 'No KDP books yet. Pick a Catalog book above, or import on the Import tab to bring yours in.'
+            : 'No books for the active pen name.'}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {filteredBooks.map(b => {
+            const counts = tropeCounts[b.id] ?? { tropes: 0, keywords: 0 };
+            const linked = b.book_id ? catalogById.get(b.book_id) : null;
+            const penName = linked?.pen_name_id ? penNameById.get(linked.pen_name_id) : null;
+            // Prefer the Catalog title when linked — that's the source of truth.
+            const displayTitle = linked?.title ?? b.title;
+            const displaySubtitle = linked?.subtitle ?? b.subtitle;
+            const displaySeries = linked?.series ?? b.series;
+            return (
+              <button
+                key={b.id}
+                onClick={() => onOpen(b)}
+                className="text-left bg-white rounded-2xl border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all"
+              >
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <h3 className="font-semibold text-slate-800 truncate">{displayTitle}</h3>
+                  {linked ? (
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      <LinkIcon className="w-3 h-3" /> Linked
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      Not linked
+                    </span>
+                  )}
+                </div>
+                {displaySubtitle && <p className="text-xs text-slate-500 line-clamp-1">{displaySubtitle}</p>}
+                {displaySeries && <p className="text-xs text-indigo-600 font-medium mt-1">{displaySeries}</p>}
+                {penName && (
+                  <div className="mt-2">
+                    <PenNameChip name={penName.name} color={penName.color} />
+                  </div>
+                )}
+                <div className="flex items-center gap-3 text-xs text-slate-500 mt-3">
+                  <span>{counts.tropes} tropes</span>
+                  <span>·</span>
+                  <span>{counts.keywords} keywords selected</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
