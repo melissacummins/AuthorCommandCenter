@@ -61,6 +61,39 @@ export async function listKlaviyoLists(): Promise<KlaviyoList[]> {
   return (data?.lists ?? []) as KlaviyoList[];
 }
 
+// One sent email campaign as projected by /api/klaviyo/campaigns.
+// metrics is null when the list endpoint returned a campaign without
+// stats — refresh by calling getKlaviyoCampaign(id).
+export interface KlaviyoCampaign {
+  id: string;
+  name: string;
+  subject: string;
+  status: string;
+  sent_at: string | null;
+  metrics: {
+    sent: number;
+    opened: number;
+    clicked: number;
+    unsubscribed: number;
+  } | null;
+}
+
+export async function listKlaviyoCampaigns(): Promise<KlaviyoCampaign[]> {
+  const headers = await authHeader();
+  const res = await fetch('/api/klaviyo/campaigns', { headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Failed to load campaigns (${res.status})`);
+  return (data?.campaigns ?? []) as KlaviyoCampaign[];
+}
+
+export async function getKlaviyoCampaign(campaignId: string): Promise<KlaviyoCampaign | null> {
+  const headers = await authHeader();
+  const res = await fetch(`/api/klaviyo/campaigns?campaign_id=${encodeURIComponent(campaignId)}`, { headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Failed to load campaign (${res.status})`);
+  return (data?.campaign ?? null) as KlaviyoCampaign | null;
+}
+
 export async function getKlaviyoListCount(listId: string): Promise<number | null> {
   const headers = await authHeader();
   const res = await fetch(`/api/klaviyo/lists?list_id=${encodeURIComponent(listId)}`, { headers });
