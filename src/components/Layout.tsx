@@ -3,13 +3,14 @@ import { useAuth } from '../contexts/AuthContext';
 import PenNamePicker from './PenNamePicker';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2
+  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 const modules = [
   { name: 'Home', path: '/', icon: Home, color: 'text-amber-400' },
   { name: 'Catalog', path: '/catalog', icon: Library, color: 'text-indigo-400' },
+  { name: 'Timeline', path: '/timeline', icon: Clock, color: 'text-indigo-400' },
   { name: 'Book Tracker', path: '/book-tracker', icon: BookOpen, color: 'text-purple-400' },
   { name: 'Profit', path: '/profit-track', icon: DollarSign, color: 'text-green-400' },
   { name: 'Financials', path: '/finstream', icon: Wallet, color: 'text-cyan-400' },
@@ -28,7 +29,7 @@ const modules = [
 // Sidebar sections — each section header groups the module paths that
 // follow it. Home and Settings live outside any section.
 const sections: { label: string; paths: string[] }[] = [
-  { label: 'Catalog',    paths: ['/catalog'] },
+  { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
   { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/kdp-optimizer', '/links', '/arcs'] },

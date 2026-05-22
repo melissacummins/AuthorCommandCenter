@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2,
+  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -21,6 +21,14 @@ const moduleByPath: Record<string, ModuleCard> = {
     path: '/catalog',
     icon: Library,
     gradient: 'from-indigo-500 to-violet-600',
+    shadow: 'shadow-indigo-500/25',
+  },
+  '/timeline': {
+    name: 'Timeline',
+    description: 'Per-book story of sales, ad spend, promos, newsletters, and launches in chronological order.',
+    path: '/timeline',
+    icon: Clock,
+    gradient: 'from-indigo-500 to-blue-600',
     shadow: 'shadow-indigo-500/25',
   },
   '/book-tracker': {
@@ -122,7 +130,7 @@ const moduleByPath: Record<string, ModuleCard> = {
 };
 
 const sections: { label: string; paths: string[] }[] = [
-  { label: 'Catalog',    paths: ['/catalog'] },
+  { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
   { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/kdp-optimizer', '/links', '/arcs'] },

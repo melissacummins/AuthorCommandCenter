@@ -18,6 +18,7 @@ import ARCsModule from './modules/arcs/ARCsModule';
 import MediaModule from './modules/media/MediaModule';
 import SocialMediaModule from './modules/social-media/SocialMediaModule';
 import SettingsModule from './modules/settings/SettingsModule';
+import TimelineModule from './modules/timeline/TimelineModule';
 import ShopifyCallback from './modules/orders/components/ShopifyCallback';
 
 function ProtectedRoutes() {
@@ -47,6 +48,7 @@ function ProtectedRoutes() {
         <Route path="cross-sell" element={<CrossSellModule />} />
         <Route path="book-tracker" element={<BookTrackerModule />} />
         <Route path="catalog" element={<CatalogModule />} />
+        <Route path="timeline" element={<TimelineModule />} />
         <Route path="profit-track" element={<ProfitTrackModule />} />
         <Route path="ad-alchemy" element={<AdAlchemyModule />} />
         <Route path="marketing" element={<MarketingModule />} />
