@@ -240,7 +240,12 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
               <button
                 key={p}
                 type="button"
-                onClick={() => toggleArr('place_to_review', p)}
+                onClick={() => setDraft(d => ({
+                  ...d,
+                  place_to_review: d.place_to_review.includes(p)
+                    ? d.place_to_review.filter(x => x !== p)
+                    : [...d.place_to_review, p],
+                }))}
                 className={`text-xs px-2 py-1 rounded-full border transition-colors ${
                   on ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                 }`}
