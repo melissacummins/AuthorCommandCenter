@@ -332,11 +332,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data: link, error } = await supabase
+    // Slugs are unique per user, so resolve which user owns this domain
+    // before looking up the slug. Falls back to the legacy single-tenant
+    // BIO_USER_ID env var (so path-based /l/:slug on the app domain still
+    // resolves the owner's links).
+    const host = (header(req, 'host') || '').toLowerCase().split(':')[0];
+    let ownerId: string | null = null;
+    if (host) {
+      const { data: dom } = await supabase
+        .from('custom_domains')
+        .select('user_id')
+        .eq('domain', host)
+        .eq('verified', true)
+        .maybeSingle();
+      if (dom) ownerId = dom.user_id;
+    }
+    if (!ownerId) ownerId = process.env.BIO_USER_ID || null;
+
+    let linkQuery = supabase
       .from('short_links')
       .select('id, user_id, destination_url, channel, is_active, archived_at, starts_at, expires_at, expired_redirect_url')
-      .eq('slug', slug)
-      .maybeSingle();
+      .eq('slug', slug);
+    if (ownerId) linkQuery = linkQuery.eq('user_id', ownerId);
+    const { data: link, error } = await linkQuery.maybeSingle();
 
     if (error || !link) {
       sendHtml(res, notFoundPage('This short link does not exist or was removed.'), 404);

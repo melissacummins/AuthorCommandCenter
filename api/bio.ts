@@ -338,30 +338,61 @@ function sendHtml(res: VercelResponse, html: string, status: number, cacheable: 
   res.status(status).send(html);
 }
 
-export default async function handler(_req: VercelRequest, res: VercelResponse) {
+function hostHeader(req: VercelRequest): string {
+  const v = req.headers['host'];
+  const raw = Array.isArray(v) ? v[0] : v;
+  return (raw ?? '').toLowerCase().split(':')[0];
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const userId = process.env.BIO_USER_ID;
-    const title = process.env.BIO_TITLE || 'Links';
-    const subtitle = process.env.BIO_SUBTITLE || '';
+    const envOwner = process.env.BIO_USER_ID || null;
+    let title = 'Links';
+    let subtitle = '';
 
     if (!supabaseUrl || !serviceKey) {
       sendHtml(res, renderPage({ title, subtitle: 'Bio page is not configured yet.', logoUrl: null, iconLinks: [], cardItems: [], ogImageByDest: new Map() }), 500, false);
-      return;
-    }
-    if (!userId) {
-      sendHtml(
-        res,
-        renderPage({ title, subtitle: 'Set the BIO_USER_ID environment variable in Vercel to display links here.', logoUrl: null, iconLinks: [], cardItems: [], ogImageByDest: new Map() }),
-        200, false,
-      );
       return;
     }
 
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    // Resolve which user's bio to render from the domain the page was served
+    // on. Falls back to the legacy single-tenant BIO_USER_ID env var so the
+    // owner's existing setup keeps working even before a domain is seeded.
+    const host = hostHeader(req);
+    let userId: string | null = null;
+    if (host) {
+      const { data: dom } = await supabase
+        .from('custom_domains')
+        .select('user_id')
+        .eq('domain', host)
+        .eq('verified', true)
+        .maybeSingle();
+      if (dom) userId = dom.user_id;
+    }
+    if (!userId) userId = envOwner;
+
+    if (!userId) {
+      sendHtml(
+        res,
+        renderPage({ title, subtitle: 'This domain is not connected to a bio page yet.', logoUrl: null, iconLinks: [], cardItems: [], ogImageByDest: new Map() }),
+        200, false,
+      );
+      return;
+    }
+
+    // Title/subtitle defaults: the owner keeps their env-configured heading;
+    // everyone else defaults to a generic heading. Per-user bio_settings
+    // override either below.
+    if (userId === envOwner) {
+      title = process.env.BIO_TITLE || 'Links';
+      subtitle = process.env.BIO_SUBTITLE || '';
+    }
 
     // Fetch links + blocks + settings in parallel.
     const linksPromise = supabase
@@ -387,7 +418,7 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
 
     const settingsPromise = supabase
       .from('bio_settings')
-      .select('logo_url')
+      .select('logo_url, bio_title, bio_subtitle')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -403,6 +434,8 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     }
 
     const logoUrl = settingsRes.data?.logo_url ?? null;
+    if (settingsRes.data?.bio_title?.trim()) title = settingsRes.data.bio_title.trim();
+    if (settingsRes.data?.bio_subtitle?.trim()) subtitle = settingsRes.data.bio_subtitle.trim();
     const blocks = ((blocksRes as { data: BioBlockRow[] | null }).data ?? []) as BioBlockRow[];
 
     const now = Date.now();

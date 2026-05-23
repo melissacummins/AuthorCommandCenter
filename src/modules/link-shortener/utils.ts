@@ -11,7 +11,17 @@ export function generateSlug(length = 7): string {
   return out.join('');
 }
 
+// Set at runtime to the signed-in user's verified custom domain so copied
+// short URLs reflect THEIR domain rather than a global env default. Null
+// clears the override and falls back to the env / app-domain behavior.
+let baseOverride: string | null = null;
+
+export function setShortLinkBase(base: string | null): void {
+  baseOverride = base ? base.replace(/\/$/, '') : null;
+}
+
 export function getShortLinkBase(): string {
+  if (baseOverride) return baseOverride;
   const fromEnv = (import.meta.env.VITE_SHORT_LINK_BASE_URL as string | undefined)?.trim();
   if (fromEnv) return fromEnv.replace(/\/$/, '');
   if (typeof window !== 'undefined') return `${window.location.origin}/l`;

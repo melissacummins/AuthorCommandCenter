@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { ShieldCheck, UserPlus, Check, Loader2, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import { ShieldCheck, UserPlus, Check, Loader2, Trash2, ToggleLeft, ToggleRight, Globe, CheckCircle, Star } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
 import type { AppMember, AppModule, MemberPlan, MemberStatus } from '../../lib/access';
+import type { CustomDomain } from '../link-shortener/types';
 
 // Owner-only control panel: manage who can get into the app (allowlist) and
 // flip which feature areas are live for alpha / lifetime members.
@@ -10,6 +11,7 @@ export default function AdminSection() {
   const { isAdmin, refreshAccess } = useAuth();
   const [members, setMembers] = useState<AppMember[]>([]);
   const [modules, setModules] = useState<AppModule[]>([]);
+  const [domains, setDomains] = useState<CustomDomain[]>([]);
   const [loading, setLoading] = useState(true);
   const [newEmail, setNewEmail] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -23,12 +25,14 @@ export default function AdminSection() {
 
   async function load() {
     setLoading(true);
-    const [membersRes, modulesRes] = await Promise.all([
+    const [membersRes, modulesRes, domainsRes] = await Promise.all([
       supabase.from('app_members').select('*').order('created_at', { ascending: true }),
       supabase.from('app_modules').select('*').order('label'),
+      supabase.from('custom_domains').select('*').order('created_at', { ascending: true }),
     ]);
     setMembers((membersRes.data as AppMember[] | null) ?? []);
     setModules((modulesRes.data as AppModule[] | null) ?? []);
+    setDomains((domainsRes.data as CustomDomain[] | null) ?? []);
     setLoading(false);
   }
 
@@ -71,6 +75,27 @@ export default function AdminSection() {
       .eq('key', mod.key);
     await load();
     await refreshAccess();
+  }
+
+  async function verifyDomain(d: CustomDomain) {
+    await supabase
+      .from('custom_domains')
+      .update({ verified: true, updated_at: new Date().toISOString() })
+      .eq('id', d.id);
+    await load();
+  }
+
+  async function setPrimaryDomain(d: CustomDomain) {
+    // One primary per user: clear the user's others, then set this one.
+    await supabase.from('custom_domains').update({ is_primary: false }).eq('user_id', d.user_id);
+    await supabase.from('custom_domains').update({ is_primary: true }).eq('id', d.id);
+    await load();
+  }
+
+  async function deleteDomain(d: CustomDomain) {
+    if (!confirm(`Remove ${d.domain}? Links served from it will stop working.`)) return;
+    await supabase.from('custom_domains').delete().eq('id', d.id);
+    await load();
   }
 
   return (
@@ -199,6 +224,56 @@ export default function AdminSection() {
                 </div>
               ))}
             </div>
+          </div>
+
+          {/* Custom domains */}
+          <div>
+            <h3 className="font-medium text-slate-800 mb-1 flex items-center gap-2">
+              <Globe className="w-4 h-4 text-indigo-600" /> Custom domains
+            </h3>
+            <p className="text-xs text-slate-500 mb-3">
+              When a member connects a domain, attach it in the Vercel dashboard, confirm their DNS
+              points to it, then mark it verified here to switch it on.
+            </p>
+            {domains.length === 0 ? (
+              <p className="text-sm text-slate-400">No domains requested yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {domains.map((d) => (
+                  <div key={d.id} className="flex flex-wrap items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-slate-800 truncate font-mono">{d.domain}</p>
+                      <span className={`text-[11px] font-medium ${d.verified ? 'text-emerald-700' : 'text-amber-700'}`}>
+                        {d.verified ? 'verified' : 'pending'}{d.is_primary ? ' · primary' : ''}
+                      </span>
+                    </div>
+                    {!d.verified && (
+                      <button
+                        onClick={() => verifyDomain(d)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" /> Verify
+                      </button>
+                    )}
+                    {d.verified && !d.is_primary && (
+                      <button
+                        onClick={() => setPrimaryDomain(d)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                      >
+                        <Star className="w-3.5 h-3.5" /> Make primary
+                      </button>
+                    )}
+                    <button
+                      onClick={() => deleteDomain(d)}
+                      className="p-1.5 text-rose-500 border border-rose-200 rounded-lg hover:bg-rose-50"
+                      title="Remove domain"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
