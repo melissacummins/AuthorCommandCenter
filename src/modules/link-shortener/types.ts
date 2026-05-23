@@ -90,6 +90,19 @@ export interface AttributionSettings {
 export interface BioSettings {
   user_id: string;
   logo_url: string | null;
+  bio_title: string | null;
+  bio_subtitle: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomDomain {
+  id: string;
+  user_id: string;
+  domain: string;
+  verified: boolean;
+  is_primary: boolean;
+  verification_token: string;
   created_at: string;
   updated_at: string;
 }

@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase';
 import type {
   AttributionSettings, BioBlock, BioBlockInsert, BioBlockUpdate, BioSettings,
-  ConversionInsert, LinkClick, LinkConversion, LinkFolder,
+  ConversionInsert, CustomDomain, LinkClick, LinkConversion, LinkFolder,
   ShortLink, ShortLinkInsert, ShortLinkUpdate,
 } from './types';
 import { generateSlug, isValidSlug } from './utils';
@@ -263,7 +263,7 @@ export async function getBioSettings(userId: string): Promise<BioSettings | null
 
 export async function upsertBioSettings(
   userId: string,
-  patch: Partial<Pick<BioSettings, 'logo_url'>>,
+  patch: Partial<Pick<BioSettings, 'logo_url' | 'bio_title' | 'bio_subtitle'>>,
 ): Promise<BioSettings> {
   const { data, error } = await supabase
     .from('bio_settings')
@@ -309,6 +309,56 @@ export async function updateBioBlock(id: string, patch: BioBlockUpdate): Promise
 export async function deleteBioBlock(id: string): Promise<void> {
   const { error } = await supabase.from('bio_blocks').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ============ Custom domains ============
+
+export async function listCustomDomains(userId: string): Promise<CustomDomain[]> {
+  const { data, error } = await supabase
+    .from('custom_domains')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as CustomDomain[];
+}
+
+export async function addCustomDomain(userId: string, domain: string): Promise<CustomDomain> {
+  // Normalize: strip protocol, path, whitespace, and a leading "www.".
+  const clean = domain
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/.*$/, '')
+    .replace(/^www\./, '');
+  const { data, error } = await supabase
+    .from('custom_domains')
+    .insert({ user_id: userId, domain: clean })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as CustomDomain;
+}
+
+export async function deleteCustomDomain(id: string): Promise<void> {
+  const { error } = await supabase.from('custom_domains').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// The verified domain to use when building short URLs for this user, or null
+// if they have not connected one yet. Prefers a domain flagged primary.
+export async function getPrimaryDomain(userId: string): Promise<string | null> {
+  const { data, error } = await supabase
+    .from('custom_domains')
+    .select('domain, is_primary, created_at')
+    .eq('user_id', userId)
+    .eq('verified', true)
+    .order('is_primary', { ascending: false })
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data?.domain ?? null;
 }
 
 function safeExt(file: File): string {

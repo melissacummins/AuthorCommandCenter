@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
-  Plus, Link2, BarChart3, Loader2, ExternalLink, Check, Settings2, X, Layout,
+  Plus, Link2, BarChart3, Loader2, ExternalLink, Check, Settings2, X, Layout, Globe,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  deleteLink as apiDeleteLink, listClicks, listFolders, listLinks, updateLink,
+  deleteLink as apiDeleteLink, getPrimaryDomain, listClicks, listFolders, listLinks, updateLink,
 } from './api';
+import DomainSettings from './components/DomainSettings';
 import LinksTable from './components/LinksTable';
 import CreateLinkModal from './components/CreateLinkModal';
 import LinkDetailDrawer from './components/LinkDetailDrawer';
@@ -14,10 +15,10 @@ import FoldersSidebar from './components/FoldersSidebar';
 import QRCodeBlock from './components/QRCodeBlock';
 import AttributionSetupModal from './components/AttributionSetupModal';
 import BioPagePanel from './components/BioPagePanel';
-import { buildShortUrl, shortHostname } from './utils';
+import { buildShortUrl, setShortLinkBase, shortHostname } from './utils';
 import type { LinkClick, LinkFolder, ShortLink } from './types';
 
-type Tab = 'links' | 'analytics' | 'bio';
+type Tab = 'links' | 'analytics' | 'bio' | 'domain';
 
 export default function LinkShortenerModule() {
   const { user } = useAuth();
@@ -65,7 +66,23 @@ export default function LinkShortenerModule() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const baseDomain = useMemo(() => shortHostname(), []);
+  const [baseDomain, setBaseDomain] = useState(() => shortHostname());
+
+  // Point copied short URLs at the user's own verified domain (if any) rather
+  // than a global default, so each member sees their own brand.
+  const refreshBase = useCallback(() => {
+    if (!user) return;
+    getPrimaryDomain(user.id)
+      .then((domain) => {
+        setShortLinkBase(domain ? `https://${domain}` : `${window.location.origin}/l`);
+        setBaseDomain(shortHostname());
+      })
+      .catch(() => undefined);
+  }, [user]);
+
+  useEffect(() => {
+    refreshBase();
+  }, [refreshBase]);
 
   function handleCreated(link: ShortLink) {
     setLinks((prev) => [link, ...prev]);
@@ -117,6 +134,7 @@ export default function LinkShortenerModule() {
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
           <TabButton active={tab === 'links'} onClick={() => setTab('links')} icon={<Link2 className="w-4 h-4" />} label="Links" />
           <TabButton active={tab === 'bio'} onClick={() => setTab('bio')} icon={<Layout className="w-4 h-4" />} label="Bio page" />
+          <TabButton active={tab === 'domain'} onClick={() => setTab('domain')} icon={<Globe className="w-4 h-4" />} label="Domain" />
           <TabButton active={tab === 'analytics'} onClick={() => setTab('analytics')} icon={<BarChart3 className="w-4 h-4" />} label="Analytics" />
         </div>
 
@@ -193,6 +211,8 @@ export default function LinkShortenerModule() {
         </div>
       ) : tab === 'bio' ? (
         <BioPagePanel links={links} onUpdated={handleUpdated} />
+      ) : tab === 'domain' ? (
+        <DomainSettings onPrimaryChange={refreshBase} />
       ) : loadingAnalytics ? (
         <div className="flex items-center justify-center py-24 text-slate-400">
           <Loader2 className="w-6 h-6 animate-spin" />
