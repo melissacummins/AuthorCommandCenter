@@ -14,7 +14,7 @@ export default function BookAnalysisStep({ onComplete }: Props) {
   // Basics (user provides)
   const [bookTitle, setBookTitle] = useState('');
   const [series, setSeries] = useState('');
-  const [penName, setPenName] = useState('Melissa Cummins');
+  const [penName, setPenName] = useState('');
   const [subgenre, setSubgenre] = useState('');
   const [heatLevel, setHeatLevel] = useState('');
   const [selectedTropes, setSelectedTropes] = useState<string[]>([]);

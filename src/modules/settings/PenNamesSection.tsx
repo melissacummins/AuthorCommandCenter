@@ -164,7 +164,7 @@ function PenNameRowEdit({
           type="text"
           value={name}
           onChange={e => setName(e.target.value)}
-          placeholder="e.g. Melissa Cummins"
+          placeholder="e.g. your pen name"
           className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-sm"
         />
         <button

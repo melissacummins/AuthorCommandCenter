@@ -451,8 +451,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const og = await getOg(supabase, link.destination_url);
       if (og) {
         const proto = header(req, 'x-forwarded-proto') || 'https';
-        const host = header(req, 'host') || 'read.melissacummins.com';
-        const shortUrl = `${proto}://${host}/${slug}`;
+        const host = header(req, 'host');
+        const shortUrl = host ? `${proto}://${host}/${slug}` : destination;
         sendHtml(res, ogPreviewHtml(shortUrl, destination, og), 200);
         return;
       }
