@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { moduleKeyForPath } from '../lib/access';
 import PenNamePicker from './PenNamePicker';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
@@ -72,10 +73,16 @@ function NavLink({
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, visibleModules } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
+
+  // Only show areas the current member is entitled to. A section disappears
+  // entirely once it has no visible modules.
+  const visibleSections = sections
+    .map(s => ({ ...s, paths: s.paths.filter(p => { const k = moduleKeyForPath(p); return k ? visibleModules.has(k) : true; }) }))
+    .filter(s => s.paths.length > 0);
 
   function toggleCollapsed() {
     const next = !collapsed;
@@ -132,7 +139,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         <nav className="flex-1 px-2 py-2 overflow-y-auto">
           <NavLink module={homeModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
 
-          {sections.map(section => (
+          {visibleSections.map(section => (
             <div key={section.label} className="mt-5">
               {!collapsed && (
                 <div className="flex items-center gap-2 px-3 pb-2">

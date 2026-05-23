@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { moduleKeyForPath } from '../lib/access';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
@@ -137,8 +138,15 @@ const sections: { label: string; paths: string[] }[] = [
 ];
 
 export default function Home() {
-  const { profile, user } = useAuth();
+  const { profile, user, visibleModules } = useAuth();
   const firstName = (profile?.full_name || user?.user_metadata?.full_name || 'there').split(' ')[0];
+
+  const visibleSections = sections
+    .map(section => ({
+      ...section,
+      paths: section.paths.filter(p => { const k = moduleKeyForPath(p); return k ? visibleModules.has(k) : true; }),
+    }))
+    .filter(section => section.paths.length > 0);
 
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
@@ -152,7 +160,17 @@ export default function Home() {
         </p>
       </div>
 
-      {sections.map(section => (
+      {visibleSections.length === 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
+          <h3 className="font-semibold text-slate-800 mb-1">You're all set up</h3>
+          <p className="text-sm text-slate-500">
+            Your tools are being switched on. Areas will appear here as they're released — check
+            back soon.
+          </p>
+        </div>
+      )}
+
+      {visibleSections.map(section => (
         <section key={section.label} className="mb-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
             {section.label}
@@ -184,13 +202,15 @@ export default function Home() {
       ))}
 
       {/* Info Banner */}
-      <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
-        <h3 className="font-semibold text-amber-800 mb-1">Data Migration</h3>
-        <p className="text-sm text-amber-700">
-          Each module includes import tools to bring in your existing data from your previous apps.
-          Your old apps and their data remain untouched.
-        </p>
-      </div>
+      {visibleSections.length > 0 && (
+        <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6">
+          <h3 className="font-semibold text-amber-800 mb-1">Data Migration</h3>
+          <p className="text-sm text-amber-700">
+            Each module includes import tools to bring in your existing data from your previous apps.
+            Your old apps and their data remain untouched.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

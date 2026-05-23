@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import type { ReactElement } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PenNameProvider } from './contexts/PenNameContext';
+import { GATED_MODULES } from './lib/access';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import AccessGate from './pages/AccessGate';
 import Home from './pages/Home';
 import InventoryModule from './modules/inventory/InventoryModule';
 import CrossSellModule from './modules/cross-sell/CrossSellModule';
@@ -21,10 +24,28 @@ import SettingsModule from './modules/settings/SettingsModule';
 import TimelineModule from './modules/timeline/TimelineModule';
 import ShopifyCallback from './modules/orders/components/ShopifyCallback';
 
-function ProtectedRoutes() {
-  const { user, loading } = useAuth();
+// Maps each gateable module key to its route element. Keys match GATED_MODULES.
+const GATED_ELEMENTS: Record<string, ReactElement> = {
+  'catalog': <CatalogModule />,
+  'timeline': <TimelineModule />,
+  'book-tracker': <BookTrackerModule />,
+  'profit-track': <ProfitTrackModule />,
+  'finstream': <FinStreamModule />,
+  'inventory': <InventoryModule />,
+  'cross-sell': <CrossSellModule />,
+  'ad-alchemy': <AdAlchemyModule />,
+  'marketing': <MarketingModule />,
+  'kdp-optimizer': <KDPOptimizerModule />,
+  'links': <LinkShortenerModule />,
+  'arcs': <ARCsModule />,
+  'media': <MediaModule />,
+  'social-media': <SocialMediaModule />,
+};
 
-  if (loading) {
+function ProtectedRoutes() {
+  const { user, loading, accessLoading, hasAccess, visibleModules } = useAuth();
+
+  if (loading || (user && accessLoading)) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-100">
         <div className="text-center">
@@ -39,27 +60,20 @@ function ProtectedRoutes() {
     return <Navigate to="/login" replace />;
   }
 
+  if (!hasAccess) {
+    return <AccessGate />;
+  }
+
   return (
     <PenNameProvider>
       <Layout>
         <Routes>
           <Route index element={<Home />} />
-        <Route path="inventory" element={<InventoryModule />} />
-        <Route path="cross-sell" element={<CrossSellModule />} />
-        <Route path="book-tracker" element={<BookTrackerModule />} />
-        <Route path="catalog" element={<CatalogModule />} />
-        <Route path="timeline" element={<TimelineModule />} />
-        <Route path="profit-track" element={<ProfitTrackModule />} />
-        <Route path="ad-alchemy" element={<AdAlchemyModule />} />
-        <Route path="marketing" element={<MarketingModule />} />
-        <Route path="finstream" element={<FinStreamModule />} />
-        <Route path="kdp-optimizer" element={<KDPOptimizerModule />} />
-        <Route path="links" element={<LinkShortenerModule />} />
-        <Route path="arcs" element={<ARCsModule />} />
-        <Route path="media" element={<MediaModule />} />
-        <Route path="social-media" element={<SocialMediaModule />} />
-        <Route path="settings" element={<SettingsModule />} />
-        <Route path="shopify/callback" element={<ShopifyCallback />} />
+          {GATED_MODULES.filter(m => visibleModules.has(m.key)).map(m => (
+            <Route key={m.key} path={m.path.replace(/^\//, '')} element={GATED_ELEMENTS[m.key]} />
+          ))}
+          <Route path="settings" element={<SettingsModule />} />
+          <Route path="shopify/callback" element={<ShopifyCallback />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
