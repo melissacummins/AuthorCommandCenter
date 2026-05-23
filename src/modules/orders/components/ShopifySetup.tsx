@@ -150,7 +150,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             type="text"
             value={storeUrl}
             onChange={(e) => setStoreUrl(e.target.value)}
-            placeholder="melissacummins.myshopify.com"
+            placeholder="your-store.myshopify.com"
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>

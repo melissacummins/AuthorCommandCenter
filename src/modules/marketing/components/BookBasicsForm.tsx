@@ -107,7 +107,7 @@ export default function BookBasicsForm({
               <>
                 <input
                   type="text" value={penName} onChange={e => setPenName(e.target.value)}
-                  placeholder="e.g., Melissa Cummins"
+                  placeholder="e.g., your pen name"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-pink-400"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">
