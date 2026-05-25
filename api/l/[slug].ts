@@ -138,12 +138,36 @@ function metaContent(html: string, prop: string): string | null {
   return null;
 }
 
+// Amazon product pages don't expose og:image — the cover lives in the main
+// product image's data-a-dynamic-image (a JSON map of {url: [w,h]}), with
+// data-old-hires / #landingImage as backups. Harmless on non-Amazon pages
+// (the patterns just won't match).
+function fallbackImage(html: string): string | null {
+  const dyn = html.match(/data-a-dynamic-image\s*=\s*"([^"]+)"/i);
+  if (dyn) {
+    try {
+      const map = JSON.parse(dyn[1].replace(/&quot;/g, '"')) as Record<string, unknown>;
+      const first = Object.keys(map)[0];
+      if (first) return first;
+    } catch { /* ignore malformed JSON */ }
+  }
+  const hires = html.match(/\bdata-old-hires\s*=\s*"([^"']+)"/i);
+  if (hires?.[1]) return hires[1];
+  const landing = html.match(/id="landingImage"[^>]*\bsrc\s*=\s*"([^"']+)"/i);
+  if (landing?.[1]) return landing[1];
+  const imgBlock = html.match(/id="imgTagWrapperId"[\s\S]{0,400}?<img[^>]*\bsrc\s*=\s*"([^"']+)"/i);
+  if (imgBlock?.[1]) return imgBlock[1];
+  return null;
+}
+
 function parseOg(html: string, baseUrl: string): OGData | null {
   const titleTagMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
   const titleTag = titleTagMatch ? titleTagMatch[1].trim() : null;
-  const title = metaContent(html, 'og:title') ?? metaContent(html, 'twitter:title') ?? titleTag;
+  let title = metaContent(html, 'og:title') ?? metaContent(html, 'twitter:title') ?? titleTag;
+  // Strip Amazon's storefront prefix so titles aren't "Amazon.com: <title>".
+  if (title) title = title.replace(/^Amazon\.com\s*:?\s*/i, '').trim();
   const description = metaContent(html, 'og:description') ?? metaContent(html, 'twitter:description') ?? metaContent(html, 'description');
-  const imageRaw = metaContent(html, 'og:image') ?? metaContent(html, 'twitter:image');
+  const imageRaw = metaContent(html, 'og:image') ?? metaContent(html, 'twitter:image') ?? fallbackImage(html);
   const siteName = metaContent(html, 'og:site_name');
   let image: string | null = null;
   if (imageRaw) {
@@ -440,7 +464,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       target = target.trim();
       if (!/^https?:\/\//i.test(target)) target = `https://${target}`;
-      const og = await getOg(supabase, target);
+      // Fetch fresh (not getOg) so the editor never serves a previously
+      // cached miss and doesn't pollute the share-preview cache.
+      const og = await fetchOg(target);
       res.setHeader('cache-control', 'no-store');
       res.status(200).json({ og: og ?? null });
       return;
