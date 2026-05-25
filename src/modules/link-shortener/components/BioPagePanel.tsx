@@ -9,7 +9,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical, ExternalLink, EyeOff, ArrowLeftRight, Layout, Upload, Trash2, Loader2,
-  Heading, Image as ImageIcon, Plus, Type, Check, ShoppingBag, X as XIcon,
+  Heading, Image as ImageIcon, Plus, Type, Check, ShoppingBag, X as XIcon, Mail,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { BioBlock, BioButton, BioSettings, ShortLink } from '../types';
@@ -18,6 +18,7 @@ import {
   reorderBioItems, updateBioBlock, updateLink, uploadBioImage, uploadBioLogo, upsertBioSettings,
 } from '../api';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
+import KlaviyoListPicker from '../../book-tracker/components/KlaviyoListPicker';
 import {
   detectSocialPlatform, SOCIAL_HEX, SOCIAL_NAMES, SIMPLEICONS_SLUG,
 } from '../socialIcons';
@@ -50,13 +51,18 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   const [logoError, setLogoError] = useState<string | null>(null);
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeError, setThemeError] = useState<string | null>(null);
-  const [adding, setAdding] = useState<'section' | 'image' | 'buttons' | null>(null);
+  const [pixelDraft, setPixelDraft] = useState('');
+  const [adding, setAdding] = useState<'section' | 'image' | 'buttons' | 'email' | null>(null);
 
   useEffect(() => {
     if (!user) return;
     getBioSettings(user.id).then(setBioSettings).catch(() => setBioSettings(null));
     listBioBlocks(user.id).then(setBlocks).catch(() => setBlocks([]));
   }, [user]);
+
+  useEffect(() => {
+    setPixelDraft(bioSettings?.meta_pixel_id ?? '');
+  }, [bioSettings?.meta_pixel_id]);
 
   const bioLinks = useMemo(
     () => links.filter((l) => l.show_on_bio && l.is_active && !l.archived_at && !l.parent_id),
@@ -123,7 +129,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     }
   }
 
-  async function saveAppearance(patch: { theme?: string; accent_color?: string | null }) {
+  async function saveAppearance(patch: { theme?: string; accent_color?: string | null; meta_pixel_id?: string | null }) {
     if (!user) return;
     setThemeBusy(true); setThemeError(null);
     try {
@@ -221,6 +227,21 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
       setBlocks((bs) => [...bs, created]);
     } catch (err) {
       console.error('add buttons failed', err);
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  async function handleAddEmail() {
+    if (!user) return;
+    setAdding('email');
+    try {
+      const created = await createBioBlock(user.id, {
+        type: 'email', title: 'Join my newsletter', body: '', button_label: 'Subscribe',
+      });
+      setBlocks((bs) => [...bs, created]);
+    } catch (err) {
+      console.error('add email block failed', err);
     } finally {
       setAdding(null);
     }
@@ -403,6 +424,26 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
         )}
       </Section>
 
+      <Section title="Tracking" hint="Add your Meta (Facebook) Pixel ID to retarget people who visit your bio page with ads.">
+        <div className="flex items-center gap-2 max-w-md">
+          <input
+            value={pixelDraft}
+            onChange={(e) => setPixelDraft(e.target.value)}
+            onBlur={() => {
+              const cleaned = pixelDraft.replace(/[^0-9]/g, '');
+              if (cleaned !== (bioSettings?.meta_pixel_id ?? '')) {
+                saveAppearance({ meta_pixel_id: cleaned || null });
+              }
+            }}
+            inputMode="numeric"
+            placeholder="Meta Pixel ID (e.g. 1234567890123456)"
+            className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 font-mono"
+          />
+          {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+        </div>
+        <p className="text-[11px] text-slate-400 mt-2">Find it in Meta Events Manager → Data sources. Leave blank to turn tracking off.</p>
+      </Section>
+
       <Section
         title="Social icons"
         hint="Compact circles displayed at the top of your bio page. Platform is auto-detected from the destination URL."
@@ -467,6 +508,13 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             >
               <ShoppingBag className="w-3.5 h-3.5" /> Retailer buttons
             </button>
+            <button
+              onClick={handleAddEmail}
+              disabled={adding !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+            >
+              <Mail className="w-3.5 h-3.5" /> Email signup
+            </button>
           </div>
         )}
       >
@@ -507,6 +555,17 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                   if (item.block.type === 'buttons') {
                     return (
                       <SortableButtonsRow
+                        key={item.id}
+                        sortableId={item.id}
+                        block={item.block}
+                        onSave={(patch) => handleSaveBlock(item.block.id, patch)}
+                        onDelete={() => handleDeleteBlock(item.block.id)}
+                      />
+                    );
+                  }
+                  if (item.block.type === 'email') {
+                    return (
+                      <SortableEmailRow
                         key={item.id}
                         sortableId={item.id}
                         block={item.block}
@@ -782,6 +841,73 @@ function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowP
         >
           <Plus className="w-3 h-3" /> Add retailer
         </button>
+      </div>
+      <button
+        onClick={onDelete}
+        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        title="Delete block"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+function SortableEmailRow({ sortableId, block, onSave, onDelete }: SectionRowProps) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
+  const [title, setTitle] = useState(block.title ?? '');
+  const [body, setBody] = useState(block.body ?? '');
+  const [buttonLabel, setButtonLabel] = useState(block.button_label ?? '');
+  useEffect(() => {
+    setTitle(block.title ?? '');
+    setBody(block.body ?? '');
+    setButtonLabel(block.button_label ?? '');
+  }, [block.id]);
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-sky-50/40 border border-sky-200/60"
+    >
+      <DragHandle attributes={attributes} listeners={listeners} />
+      <div className="w-9 h-9 rounded-lg flex-shrink-0 grid place-items-center bg-sky-100 text-sky-700">
+        <Mail className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => onSave({ title })}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          placeholder="Heading (e.g. Join my newsletter)"
+          className="w-full text-sm font-semibold text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+        />
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onBlur={() => onSave({ body })}
+          rows={2}
+          placeholder="Optional text under the heading."
+          className="w-full text-xs text-slate-600 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 resize-none placeholder-slate-400"
+        />
+        <div className="flex items-center gap-2">
+          <label className="text-[11px] font-medium text-slate-500 shrink-0">Button</label>
+          <input
+            value={buttonLabel}
+            onChange={(e) => setButtonLabel(e.target.value)}
+            onBlur={() => onSave({ button_label: buttonLabel })}
+            placeholder="Subscribe"
+            className="w-40 px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-sky-400"
+          />
+        </div>
+        <KlaviyoListPicker
+          value={block.klaviyo_list_id ?? null}
+          onChange={(listId) => onSave({ klaviyo_list_id: listId })}
+        />
+        {!block.klaviyo_list_id && (
+          <p className="text-[11px] text-amber-700">Pick a Klaviyo list above — the form stays hidden on your bio page until one is set.</p>
+        )}
       </div>
       <button
         onClick={onDelete}
