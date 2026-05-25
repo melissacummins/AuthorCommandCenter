@@ -73,15 +73,15 @@ function NavLink({
 }
 
 export default function Layout({ children }: { children: ReactNode }) {
-  const { user, profile, signOut, visibleModules } = useAuth();
+  const { user, profile, signOut, sidebarModules } = useAuth();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem('sidebar-collapsed') === 'true');
 
-  // Only show areas the current member is entitled to. A section disappears
-  // entirely once it has no visible modules.
+  // Only show areas the user is entitled to AND hasn't personally hidden.
+  // A section disappears entirely once it has no visible modules.
   const visibleSections = sections
-    .map(s => ({ ...s, paths: s.paths.filter(p => { const k = moduleKeyForPath(p); return k ? visibleModules.has(k) : true; }) }))
+    .map(s => ({ ...s, paths: s.paths.filter(p => { const k = moduleKeyForPath(p); return k ? sidebarModules.has(k) : true; }) }))
     .filter(s => s.paths.length > 0);
 
   function toggleCollapsed() {

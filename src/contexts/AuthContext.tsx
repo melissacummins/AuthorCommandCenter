@@ -20,6 +20,12 @@ interface AuthContextType {
   isAdmin: boolean;
   hasAccess: boolean;
   visibleModules: Set<string>;
+  // Personal sidebar prefs: module keys the user has hidden from their
+  // own nav. Separate from access (visibleModules) — this is decluttering,
+  // not permission. `sidebarModules` = visibleModules minus these.
+  hiddenModules: Set<string>;
+  sidebarModules: Set<string>;
+  setModuleHidden: (key: string, hidden: boolean) => Promise<void>;
   refreshAccess: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
@@ -36,6 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [member, setMember] = useState<AppMember | null>(null);
   const [modules, setModules] = useState<AppModule[]>([]);
+  const [hiddenModuleKeys, setHiddenModuleKeys] = useState<string[]>([]);
   const [accessLoading, setAccessLoading] = useState(true);
 
   useEffect(() => {
@@ -81,13 +88,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   async function loadAccess(u: User) {
     setAccessLoading(true);
     const email = (u.email ?? '').toLowerCase();
-    const [memberRes, modulesRes] = await Promise.all([
+    const [memberRes, modulesRes, prefsRes] = await Promise.all([
       supabase.from('app_members').select('*').eq('email', email).maybeSingle(),
       supabase.from('app_modules').select('*'),
+      supabase.from('user_ui_preferences').select('hidden_modules').eq('user_id', u.id).maybeSingle(),
     ]);
     setMember((memberRes.data as AppMember | null) ?? null);
     setModules((modulesRes.data as AppModule[] | null) ?? []);
+    const hidden = (prefsRes.data as { hidden_modules?: unknown } | null)?.hidden_modules;
+    setHiddenModuleKeys(Array.isArray(hidden) ? hidden.filter((k): k is string => typeof k === 'string') : []);
     setAccessLoading(false);
+  }
+
+  // Persist a single module's hidden flag. Upsert only the
+  // hidden_modules column so we don't clobber hidden_profit_tabs on the
+  // same row (Supabase upsert only writes the columns in the payload).
+  async function setModuleHidden(key: string, hidden: boolean) {
+    if (!user) return;
+    const next = hidden
+      ? Array.from(new Set([...hiddenModuleKeys, key]))
+      : hiddenModuleKeys.filter(k => k !== key);
+    setHiddenModuleKeys(next); // optimistic
+    const { error } = await supabase
+      .from('user_ui_preferences')
+      .upsert({ user_id: user.id, hidden_modules: next, updated_at: new Date().toISOString() });
+    if (error) {
+      // Roll back on failure so the UI reflects reality.
+      setHiddenModuleKeys(hiddenModuleKeys);
+      throw error;
+    }
   }
 
   async function refreshAccess() {
@@ -100,6 +129,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isAdmin) return new Set(GATED_MODULES.map(m => m.key));
     return visibleModuleKeys(member, modules);
   }, [isAdmin, member, modules]);
+
+  const hiddenModules = useMemo(() => new Set(hiddenModuleKeys), [hiddenModuleKeys]);
+
+  // What actually renders in the sidebar: modules you're allowed to see,
+  // minus the ones you've personally hidden.
+  const sidebarModules = useMemo(() => {
+    const next = new Set(visibleModules);
+    for (const k of hiddenModules) next.delete(k);
+    return next;
+  }, [visibleModules, hiddenModules]);
 
   async function signInWithGoogle() {
     await supabase.auth.signInWithOAuth({
@@ -135,6 +174,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null);
     setMember(null);
     setModules([]);
+    setHiddenModuleKeys([]);
   }
 
   return (
@@ -148,6 +188,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isAdmin,
       hasAccess,
       visibleModules,
+      hiddenModules,
+      sidebarModules,
+      setModuleHidden,
       refreshAccess,
       signInWithGoogle,
       signInWithEmail,
