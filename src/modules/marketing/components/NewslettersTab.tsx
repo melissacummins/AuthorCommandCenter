@@ -171,7 +171,7 @@ export default function NewslettersTab() {
             <Mail className="w-5 h-5 text-purple-500" /> Newsletter events
           </h2>
           <p className="text-sm text-slate-500 mt-0.5">
-            Attribute each newsletter send to the book(s) it featured. Klaviyo campaigns pull metrics automatically; non-Klaviyo sends can be logged manually.
+            Log each newsletter send and attribute it to the book(s) it featured. Sends aren't pulled in automatically — click "Log a newsletter", pick a Klaviyo campaign (its subject, date, and open/click metrics fill in for you), or enter a non-Klaviyo send by hand.
           </p>
         </div>
         <button

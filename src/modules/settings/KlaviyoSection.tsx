@@ -65,7 +65,7 @@ export default function KlaviyoSection() {
         <h2 className="text-lg font-semibold text-slate-800">Klaviyo integration</h2>
       </div>
       <p className="text-sm text-slate-500 mb-5">
-        Add a Klaviyo Private API Key so the Command Center can show subscriber counts on book pages and (eventually) sync your audience. The key is encrypted server-side and never sent to the browser after you save it.
+        Add a Klaviyo Private API Key so the Command Center can read your lists, campaigns, and subscriber counts on demand — used when you log a newsletter (Marketing → Newsletters) so its subject, date, and open/click metrics fill in for you instead of being typed by hand. Nothing syncs automatically; the key just lets the app pull from Klaviyo when you ask it to. It's encrypted server-side and never sent to the browser after you save it.
       </p>
 
       {loading ? (
