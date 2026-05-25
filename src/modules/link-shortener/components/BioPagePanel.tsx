@@ -9,7 +9,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical, ExternalLink, EyeOff, ArrowLeftRight, Layout, Upload, Trash2, Loader2,
-  Heading, Image as ImageIcon, Plus, Type,
+  Heading, Image as ImageIcon, Plus, Type, Check,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { BioBlock, BioSettings, ShortLink } from '../types';
@@ -17,6 +17,7 @@ import {
   createBioBlock, deleteBioBlock, getBioSettings, listBioBlocks, removeBioLogo,
   reorderBioItems, updateBioBlock, updateLink, uploadBioImage, uploadBioLogo, upsertBioSettings,
 } from '../api';
+import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
 import {
   detectSocialPlatform, SOCIAL_HEX, SOCIAL_NAMES, SIMPLEICONS_SLUG,
 } from '../socialIcons';
@@ -47,6 +48,8 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   const [blocks, setBlocks] = useState<BioBlock[]>([]);
   const [logoBusy, setLogoBusy] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
+  const [themeBusy, setThemeBusy] = useState(false);
+  const [themeError, setThemeError] = useState<string | null>(null);
   const [adding, setAdding] = useState<'section' | 'image' | null>(null);
 
   useEffect(() => {
@@ -117,6 +120,19 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
       setLogoError(err instanceof Error ? err.message : 'Failed to remove logo');
     } finally {
       setLogoBusy(false);
+    }
+  }
+
+  async function saveAppearance(patch: { theme?: string; accent_color?: string | null }) {
+    if (!user) return;
+    setThemeBusy(true); setThemeError(null);
+    try {
+      const updated = await upsertBioSettings(user.id, patch);
+      setBioSettings(updated);
+    } catch (err) {
+      setThemeError(err instanceof Error ? err.message : 'Failed to save appearance');
+    } finally {
+      setThemeBusy(false);
     }
   }
 
@@ -310,6 +326,66 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
         {logoError && (
           <div className="mt-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
             {logoError}
+          </div>
+        )}
+      </Section>
+
+      <Section title="Theme" hint="Pick a look for your public bio page. The accent color tints links and buttons.">
+        <div className="flex flex-wrap gap-2">
+          {BIO_THEMES.map((th) => {
+            const active = (bioSettings?.theme ?? DEFAULT_BIO_THEME) === th.id;
+            return (
+              <button
+                key={th.id}
+                type="button"
+                onClick={() => saveAppearance({ theme: th.id })}
+                disabled={themeBusy}
+                aria-label={th.name}
+                className={`relative w-[88px] rounded-xl overflow-hidden border-2 transition disabled:opacity-60 ${
+                  active ? 'border-indigo-500' : 'border-transparent hover:border-slate-300'
+                }`}
+              >
+                <div style={{ background: th.bg }} className="h-12 flex items-end justify-center px-2 pb-1.5">
+                  <span style={{ background: th.surface }} className="block w-full h-3 rounded-sm shadow-sm" />
+                </div>
+                <div className="flex items-center justify-between px-2 py-1 bg-white">
+                  <span className="text-[11px] font-medium text-slate-700">{th.name}</span>
+                  <span style={{ background: th.accent }} className="w-2.5 h-2.5 rounded-full" />
+                </div>
+                {active && (
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-indigo-500 text-white grid place-items-center">
+                    <Check className="w-3 h-3" />
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-3 flex items-center gap-3">
+          <label className="text-xs font-medium text-slate-600">Accent color</label>
+          <input
+            type="color"
+            value={bioSettings?.accent_color || bioThemeById(bioSettings?.theme).accent}
+            onChange={(e) => saveAppearance({ accent_color: e.target.value })}
+            disabled={themeBusy}
+            className="w-9 h-9 rounded-lg border border-slate-200 bg-white cursor-pointer p-0.5"
+            title="Accent color"
+          />
+          {bioSettings?.accent_color && (
+            <button
+              type="button"
+              onClick={() => saveAppearance({ accent_color: null })}
+              disabled={themeBusy}
+              className="text-xs text-slate-500 hover:text-slate-700 hover:underline"
+            >
+              Use theme default
+            </button>
+          )}
+          {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+        </div>
+        {themeError && (
+          <div className="mt-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+            {themeError}
           </div>
         )}
       </Section>

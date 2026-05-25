@@ -263,7 +263,7 @@ export async function getBioSettings(userId: string): Promise<BioSettings | null
 
 export async function upsertBioSettings(
   userId: string,
-  patch: Partial<Pick<BioSettings, 'logo_url' | 'bio_title' | 'bio_subtitle'>>,
+  patch: Partial<Pick<BioSettings, 'logo_url' | 'bio_title' | 'bio_subtitle' | 'theme' | 'accent_color'>>,
 ): Promise<BioSettings> {
   const { data, error } = await supabase
     .from('bio_settings')

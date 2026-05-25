@@ -92,6 +92,8 @@ export interface BioSettings {
   logo_url: string | null;
   bio_title: string | null;
   bio_subtitle: string | null;
+  theme: string | null;
+  accent_color: string | null;
   created_at: string;
   updated_at: string;
 }

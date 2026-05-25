@@ -119,6 +119,44 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
 
+// ---------- Bio page themes ----------
+// Preset palettes. `accent_color` on bio_settings overrides `accent` per
+// user. Keep ids in sync with src/modules/link-shortener/bioThemes.ts
+// (that file only carries swatch colors for the picker; this is the source
+// of truth for what actually renders).
+interface Theme {
+  bg: string;      // body background (may be a gradient)
+  text: string;    // primary text
+  muted: string;   // secondary text
+  surface: string; // card background
+  border: string;  // card border
+  accent: string;  // links/buttons highlight
+  dark: boolean;
+}
+
+const THEMES: Record<string, Theme> = {
+  classic:  { bg: 'linear-gradient(180deg, #fafafc 0%, #eef2ff 60%, #f5f3ff 100%)', text: '#1e293b', muted: '#64748b', surface: '#ffffff', border: '#e2e8f0', accent: '#6366f1', dark: false },
+  midnight: { bg: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)',              text: '#e2e8f0', muted: '#94a3b8', surface: '#1e293b', border: '#334155', accent: '#818cf8', dark: true  },
+  blush:    { bg: 'linear-gradient(180deg, #fff5f7 0%, #ffe9ef 100%)',              text: '#4a2c33', muted: '#9b6b76', surface: '#ffffff', border: '#fbd5de', accent: '#e85d75', dark: false },
+  cream:    { bg: 'linear-gradient(180deg, #fdf8f0 0%, #f7ede0 100%)',              text: '#443726', muted: '#8a7a63', surface: '#fffdf8', border: '#ece0cf', accent: '#b5793f', dark: false },
+  forest:   { bg: 'linear-gradient(180deg, #f3f7f3 0%, #e4efe6 100%)',              text: '#1f2e22', muted: '#5b7060', surface: '#ffffff', border: '#d3e2d5', accent: '#2f7d4f', dark: false },
+  noir:     { bg: '#0a0a0a',                                                        text: '#f5f5f5', muted: '#a3a3a3', surface: '#171717', border: '#2a2a2a', accent: '#e5e5e5', dark: true  },
+};
+
+function normalizeHex(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const v = input.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{6}$/.test(v)) return `#${v.toLowerCase()}`;
+  if (/^[0-9a-fA-F]{3}$/.test(v)) return `#${v.split('').map((c) => c + c).join('').toLowerCase()}`;
+  return null;
+}
+
+function resolveTheme(themeId: string | null | undefined, accentOverride: string | null | undefined): Theme {
+  const base = THEMES[themeId ?? 'classic'] ?? THEMES.classic;
+  const accent = normalizeHex(accentOverride) ?? base.accent;
+  return { ...base, accent };
+}
+
 function renderIconLink(link: BioLink): string {
   const platform = detectPlatform(link.destination_url);
   const color = HEX[platform];
@@ -186,9 +224,11 @@ interface RenderOptions {
   iconLinks: BioLink[];
   cardItems: CardItem[];
   ogImageByDest: Map<string, string | null>;
+  theme?: Theme;
 }
 
-function renderPage({ title, subtitle, logoUrl, iconLinks, cardItems, ogImageByDest }: RenderOptions): string {
+function renderPage({ title, subtitle, logoUrl, iconLinks, cardItems, ogImageByDest, theme }: RenderOptions): string {
+  const t = theme ?? resolveTheme(null, null);
   const initial = title.trim().charAt(0).toUpperCase() || 'M';
   const headerVisual = logoUrl
     ? `<img class="logo" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(title)}" />`
@@ -216,34 +256,43 @@ ${logoUrl ? `<meta property="og:image" content="${escapeHtml(logoUrl)}" />` : ''
 <meta name="twitter:card" content="summary" />
 <title>${escapeHtml(title)}</title>
 <style>
-:root { color-scheme: light; }
+:root {
+  color-scheme: ${t.dark ? 'dark' : 'light'};
+  --bg: ${t.bg};
+  --text: ${t.text};
+  --muted: ${t.muted};
+  --surface: ${t.surface};
+  --border: ${t.border};
+  --accent: ${t.accent};
+  --accent-soft: ${t.accent}2e;
+}
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
   min-height: 100vh;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  background: linear-gradient(180deg, #fafafc 0%, #eef2ff 60%, #f5f3ff 100%);
-  color: #1e293b;
+  background: var(--bg);
+  color: var(--text);
   display: flex; flex-direction: column; align-items: center;
   padding: 48px 20px 64px;
 }
 .wrap { width: 100%; max-width: 480px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
 .dot {
   width: 88px; height: 88px; border-radius: 24px;
-  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  background: var(--accent);
   display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 36px;
-  letter-spacing: -0.02em; box-shadow: 0 18px 40px -16px rgba(99, 102, 241, 0.55);
+  letter-spacing: -0.02em; box-shadow: 0 18px 40px -16px var(--accent-soft);
 }
 .logo {
   width: 88px; height: 88px; border-radius: 24px;
   object-fit: cover;
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 18px 40px -16px rgba(15, 23, 42, 0.25);
   display: block;
 }
-h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: center; }
+h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: center; color: var(--text); }
 .subtitle {
-  margin: 0; color: #64748b; font-size: 15px; text-align: center;
+  margin: 0; color: var(--muted); font-size: 15px; text-align: center;
   max-width: 340px; line-height: 1.5;
 }
 .icons {
@@ -264,40 +313,40 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 .link {
   position: relative; display: flex; align-items: center; gap: 12px;
   padding: 14px 44px 14px 16px;
-  background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
   text-decoration: none; color: inherit;
   transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
 }
-.link:hover { transform: translateY(-1px); border-color: #c7d2fe; box-shadow: 0 12px 28px -16px rgba(99, 102, 241, 0.35); }
+.link:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 12px 28px -16px var(--accent-soft); }
 .link:active { transform: translateY(0); }
 .link-with-thumb { padding-left: 12px; }
 .link-thumb {
   width: 48px; height: 48px; object-fit: cover; border-radius: 10px;
-  flex-shrink: 0; background: #f1f5f9;
+  flex-shrink: 0; background: var(--border);
 }
-.link-label { font-weight: 600; font-size: 15px; color: #0f172a; line-height: 1.35; flex: 1; min-width: 0; }
+.link-label { font-weight: 600; font-size: 15px; color: var(--text); line-height: 1.35; flex: 1; min-width: 0; }
 .link-arrow {
   position: absolute; right: 18px; top: 50%; transform: translateY(-50%);
-  color: #cbd5e1; font-size: 18px;
+  color: var(--muted); font-size: 18px;
   transition: color 120ms ease, transform 120ms ease;
 }
-.link:hover .link-arrow { color: #6366f1; transform: translateY(-50%) translateX(2px); }
+.link:hover .link-arrow { color: var(--accent); transform: translateY(-50%) translateX(2px); }
 .section {
   width: 100%; text-align: center; padding: 8px 4px; margin: 6px 0 2px;
 }
 .section-title {
-  font-size: 17px; font-weight: 700; color: #1e293b;
+  font-size: 17px; font-weight: 700; color: var(--text);
   margin: 0 0 4px; letter-spacing: -0.01em;
 }
 .section-body {
-  font-size: 14px; color: #475569; line-height: 1.55; margin: 0;
+  font-size: 14px; color: var(--muted); line-height: 1.55; margin: 0;
   white-space: pre-line;
 }
 .hero-card {
   display: block; width: 100%; border-radius: 16px; overflow: hidden;
   text-decoration: none; color: white; position: relative;
-  background: #f1f5f9; box-shadow: 0 6px 20px -10px rgba(15, 23, 42, 0.18);
+  background: var(--surface); box-shadow: 0 6px 20px -10px rgba(15, 23, 42, 0.18);
   transition: transform 120ms ease, box-shadow 120ms ease;
 }
 .hero-card:hover { transform: translateY(-2px); box-shadow: 0 16px 32px -16px rgba(15, 23, 42, 0.3); }
@@ -308,8 +357,8 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
   background: linear-gradient(0deg, rgba(0,0,0,0.65), transparent);
   color: white;
 }
-.empty { margin-top: 12px; color: #94a3b8; font-size: 14px; text-align: center; }
-.foot { margin-top: 24px; font-size: 11px; color: #cbd5e1; letter-spacing: 0.06em; text-transform: uppercase; }
+.empty { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
+.foot { margin-top: 24px; font-size: 11px; color: var(--muted); opacity: 0.7; letter-spacing: 0.06em; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -418,7 +467,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const settingsPromise = supabase
       .from('bio_settings')
-      .select('logo_url, bio_title, bio_subtitle')
+      .select('logo_url, bio_title, bio_subtitle, theme, accent_color')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -436,6 +485,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const logoUrl = settingsRes.data?.logo_url ?? null;
     if (settingsRes.data?.bio_title?.trim()) title = settingsRes.data.bio_title.trim();
     if (settingsRes.data?.bio_subtitle?.trim()) subtitle = settingsRes.data.bio_subtitle.trim();
+    const theme = resolveTheme(settingsRes.data?.theme, settingsRes.data?.accent_color);
     const blocks = ((blocksRes as { data: BioBlockRow[] | null }).data ?? []) as BioBlockRow[];
 
     const now = Date.now();
@@ -487,7 +537,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return new Date(at).getTime() - new Date(bt).getTime();
     });
 
-    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, cardItems, ogImageByDest }), 200, true);
+    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, cardItems, ogImageByDest, theme }), 200, true);
   } catch (err) {
     console.error('bio handler error', err);
     try {
