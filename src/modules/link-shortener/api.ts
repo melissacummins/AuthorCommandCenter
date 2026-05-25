@@ -64,11 +64,11 @@ async function nextBioSortOrder(userId: string): Promise<number> {
 }
 
 export async function createLink(userId: string, input: ShortLinkInsert): Promise<ShortLink> {
-  // Default to placing new bio-enabled links at the bottom of the bio sort
-  // order so existing carefully-arranged sequences aren't disrupted by
-  // every new ARC variant or social link.
-  const showOnBio = input.show_on_bio !== false;
-  const payload: ShortLinkInsert & { user_id: string } = { ...input, user_id: userId };
+  // New links stay OFF the bio page unless explicitly opted in, so the bio
+  // page stays a curated set instead of collecting every ARC variant or
+  // one-off campaign link. Toggle a link on from its detail drawer.
+  const showOnBio = input.show_on_bio === true;
+  const payload: ShortLinkInsert & { user_id: string } = { ...input, show_on_bio: showOnBio, user_id: userId };
   if (input.bio_sort_order === undefined && showOnBio && !input.parent_id) {
     payload.bio_sort_order = await nextBioSortOrder(userId);
   }
