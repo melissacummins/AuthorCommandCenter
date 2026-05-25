@@ -7,7 +7,7 @@ import {
   deleteLink as apiDeleteLink, getPrimaryDomain, listBioViews, listClicks, listFolders, listLinks, updateLink,
 } from './api';
 import DomainSettings from './components/DomainSettings';
-import LandingPagesPanel from './components/LandingPagesPanel';
+import PagesTab from './components/PagesTab';
 import LinksTable from './components/LinksTable';
 import CreateLinkModal from './components/CreateLinkModal';
 import LinkDetailDrawer from './components/LinkDetailDrawer';
@@ -217,7 +217,7 @@ export default function LinkShortenerModule() {
       ) : tab === 'bio' ? (
         <BioPagePanel links={links} onUpdated={handleUpdated} />
       ) : tab === 'pages' ? (
-        <LandingPagesPanel />
+        <PagesTab />
       ) : tab === 'domain' ? (
         <DomainSettings onPrimaryChange={refreshBase} />
       ) : loadingAnalytics ? (

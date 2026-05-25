@@ -424,6 +424,112 @@ h1{margin:4px 0 0;font-size:25px;letter-spacing:-.015em;text-align:center;color:
 </html>`;
 }
 
+// Brand icon for a retailer link (duplicated from api/bio.ts; see bundler
+// note above). Known stores use Simple Icons; everything else falls back to
+// the destination favicon so a mark always renders.
+function lpRetailerIcon(url: string): string {
+  let host = '';
+  try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid */ }
+  const known: [RegExp, string][] = [
+    [/(^|\.)amazon\.|(^|\.)amzn\./, 'amazon'],
+    [/(^|\.)audible\./, 'audible'],
+    [/books\.apple\.com|itunes\.apple\.com|(^|\.)apple\.co$/, 'apple'],
+    [/play\.google\.com/, 'googleplay'],
+    [/(^|\.)goodreads\.com/, 'goodreads'],
+    [/(^|\.)smashwords\.com/, 'smashwords'],
+    [/(^|\.)kobo\.com/, 'rakutenkobo'],
+    [/barnesandnoble\.com|(^|\.)bn\.com/, 'barnesandnoble'],
+  ];
+  for (const [re, slug] of known) {
+    if (re.test(host)) return `https://cdn.simpleicons.org/${slug}`;
+  }
+  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
+}
+
+interface SeriesBookRow {
+  slug: string;
+  title: string | null;
+  description: string | null;
+  cover_image_url: string | null;
+  buttons: LpButton[] | null;
+}
+interface SeriesRow {
+  title: string | null;
+  description: string | null;
+  theme: string | null;
+  accent_color: string | null;
+}
+
+function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[]): string {
+  const t = lpTheme(series.theme, series.accent_color);
+  const title = (series.title || '').trim() || 'The series';
+  const desc = (series.description || '').trim();
+  const cards = books.map((b) => {
+    const bookTitle = (b.title || '').trim() || `/${b.slug}`;
+    const bookDesc = (b.description || '').trim();
+    const cover = b.cover_image_url && b.cover_image_url.trim() ? b.cover_image_url.trim() : null;
+    const stores = (Array.isArray(b.buttons) ? b.buttons : [])
+      .filter((x) => x && typeof x.url === 'string' && x.url.trim() && typeof x.label === 'string' && x.label.trim())
+      .map((x) => `<a class="store" href="${escapeHtml(x.url)}" rel="noopener nofollow"><img src="${escapeHtml(lpRetailerIcon(x.url))}" alt="" loading="lazy" /><span>${escapeHtml(x.label)}</span></a>`)
+      .join('');
+    const coverHtml = cover
+      ? `<a class="book-cover" href="/${escapeHtml(b.slug)}"><img src="${escapeHtml(cover)}" alt="${escapeHtml(bookTitle)}" loading="lazy" /></a>`
+      : `<a class="book-cover book-cover-empty" href="/${escapeHtml(b.slug)}"></a>`;
+    return `<div class="book">
+      ${coverHtml}
+      <div class="book-main">
+        <a class="book-title" href="/${escapeHtml(b.slug)}">${escapeHtml(bookTitle)}</a>
+        ${bookDesc ? `<p class="book-desc">${escapeHtml(bookDesc)}</p>` : ''}
+        ${stores ? `<div class="stores">${stores}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="${escapeHtml(desc || title)}" />
+<meta property="og:title" content="${escapeHtml(title)}" />
+<meta property="og:description" content="${escapeHtml(desc || '')}" />
+${books[0]?.cover_image_url ? `<meta property="og:image" content="${escapeHtml(books[0].cover_image_url)}" />` : ''}
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<title>${escapeHtml(title)}</title>
+<style>
+:root{color-scheme:${t.dark ? 'dark' : 'light'};--bg:${t.bg};--text:${t.text};--muted:${t.muted};--surface:${t.surface};--border:${t.border};--accent:${t.accent};--accent-soft:${t.accent}2e;}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:center;padding:48px 18px 64px}
+.wrap{width:100%;max-width:540px;display:flex;flex-direction:column;align-items:center;gap:8px}
+h1{margin:0;font-size:26px;letter-spacing:-.015em;text-align:center;color:var(--text)}
+.lede{margin:0 0 8px;color:var(--muted);font-size:15px;line-height:1.55;text-align:center;white-space:pre-line}
+.books{width:100%;display:flex;flex-direction:column;gap:14px;margin-top:8px}
+.book{display:flex;gap:14px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:14px}
+.book-cover{flex:0 0 auto;width:84px;display:block;border-radius:8px;overflow:hidden;background:var(--border)}
+.book-cover img{width:100%;height:auto;display:block}
+.book-cover-empty{height:118px}
+.book-main{flex:1;min-width:0}
+.book-title{display:block;font-weight:700;font-size:16px;color:var(--text);text-decoration:none;line-height:1.3}
+.book-title:hover{color:var(--accent)}
+.book-desc{margin:6px 0 0;color:var(--muted);font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.stores{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.store{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:10px;border:1px solid var(--border);background:var(--bg);color:var(--text);text-decoration:none;font-size:12px;font-weight:600;transition:border-color 120ms ease}
+.store:hover{border-color:var(--accent)}
+.store img{width:15px;height:15px;display:block}
+.foot{margin-top:26px;font-size:11px;color:var(--muted);opacity:.65;letter-spacing:.06em;text-transform:uppercase}
+@media(max-width:420px){.book-cover{width:68px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <h1>${escapeHtml(title)}</h1>
+  ${desc ? `<p class="lede">${escapeHtml(desc)}</p>` : ''}
+  <div class="books">${cards}</div>
+</main>
+</body>
+</html>`;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const slugParam = req.query.slug;
@@ -510,6 +616,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         res.status(200).send(renderLandingPage(page as LandingPageRow));
         return;
       }
+
+      // Or a series page — a bundle of landing pages at one slug.
+      let seriesQuery = supabase
+        .from('series_pages')
+        .select('title, description, page_ids, theme, accent_color')
+        .eq('slug', slug);
+      if (ownerId) seriesQuery = seriesQuery.eq('user_id', ownerId);
+      const { data: series } = await seriesQuery.maybeSingle();
+      if (series) {
+        const ids = Array.isArray(series.page_ids) ? (series.page_ids as string[]) : [];
+        let books: SeriesBookRow[] = [];
+        if (ids.length > 0) {
+          let booksQuery = supabase
+            .from('landing_pages')
+            .select('id, slug, title, description, cover_image_url, buttons')
+            .in('id', ids);
+          if (ownerId) booksQuery = booksQuery.eq('user_id', ownerId);
+          const { data: rows } = await booksQuery;
+          const byId = new Map((rows ?? []).map((r) => [r.id as string, r]));
+          books = ids
+            .map((id) => byId.get(id))
+            .filter((r): r is NonNullable<typeof r> => Boolean(r))
+            .map((r) => ({
+              slug: r.slug, title: r.title, description: r.description,
+              cover_image_url: r.cover_image_url, buttons: r.buttons as LpButton[] | null,
+            }));
+        }
+        res.setHeader('content-type', 'text/html; charset=utf-8');
+        res.setHeader('cache-control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=300');
+        res.status(200).send(renderSeriesPage(series as SeriesRow, books));
+        return;
+      }
+
       sendHtml(res, notFoundPage('This short link does not exist or was removed.'), 404);
       return;
     }

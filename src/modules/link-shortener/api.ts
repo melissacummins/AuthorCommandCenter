@@ -3,6 +3,7 @@ import type {
   AttributionSettings, BioBlock, BioBlockInsert, BioBlockUpdate, BioSettings, BioView,
   ConversionInsert, CustomDomain, LandingPage, LandingPageInsert, LandingPageUpdate,
   LinkClick, LinkConversion, LinkFolder,
+  SeriesPage, SeriesPageInsert, SeriesPageUpdate,
   ShortLink, ShortLinkInsert, ShortLinkUpdate,
 } from './types';
 import { generateSlug, isValidSlug } from './utils';
@@ -23,13 +24,15 @@ export async function isSlugAvailable(slug: string): Promise<boolean> {
   if (!isValidSlug(slug)) return false;
   // Short links and landing pages share one per-user slug namespace, so a
   // slug is only free if neither table (scoped to the user via RLS) uses it.
-  const [linkRes, pageRes] = await Promise.all([
+  const [linkRes, pageRes, seriesRes] = await Promise.all([
     supabase.from('short_links').select('id').eq('slug', slug).maybeSingle(),
     supabase.from('landing_pages').select('id').eq('slug', slug).maybeSingle(),
+    supabase.from('series_pages').select('id').eq('slug', slug).maybeSingle(),
   ]);
   if (linkRes.error) throw linkRes.error;
   if (pageRes.error) throw pageRes.error;
-  return !linkRes.data && !pageRes.data;
+  if (seriesRes.error) throw seriesRes.error;
+  return !linkRes.data && !pageRes.data && !seriesRes.data;
 }
 
 export async function generateUniqueSlug(maxAttempts = 5): Promise<string> {
@@ -390,6 +393,44 @@ export async function fetchOgForUrl(url: string): Promise<FetchedOg | null> {
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(typeof json?.error === 'string' ? json.error : `Lookup failed (${res.status})`);
   return (json?.og ?? null) as FetchedOg | null;
+}
+
+// ============ Series pages ============
+
+export async function listSeriesPages(userId: string): Promise<SeriesPage[]> {
+  const { data, error } = await supabase
+    .from('series_pages')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as SeriesPage[];
+}
+
+export async function createSeriesPage(userId: string, input: SeriesPageInsert): Promise<SeriesPage> {
+  const { data, error } = await supabase
+    .from('series_pages')
+    .insert({ ...input, user_id: userId })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as SeriesPage;
+}
+
+export async function updateSeriesPage(id: string, patch: SeriesPageUpdate): Promise<SeriesPage> {
+  const { data, error } = await supabase
+    .from('series_pages')
+    .update(patch)
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as SeriesPage;
+}
+
+export async function deleteSeriesPage(id: string): Promise<void> {
+  const { error } = await supabase.from('series_pages').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ============ Custom domains ============
