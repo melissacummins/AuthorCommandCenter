@@ -99,6 +99,16 @@ export interface BioSettings {
   updated_at: string;
 }
 
+export interface BioView {
+  id: string;
+  user_id: string;
+  referrer: string;
+  device_type: string;
+  country: string;
+  is_bot: boolean;
+  viewed_at: string;
+}
+
 export interface CustomDomain {
   id: string;
   user_id: string;

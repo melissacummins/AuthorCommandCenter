@@ -2,13 +2,14 @@ import { useMemo, useState, type ReactNode } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { MousePointerClick, Globe2, Link2, BarChart3 } from 'lucide-react';
-import type { LinkClick, ShortLink } from '../types';
+import { MousePointerClick, Globe2, Link2, BarChart3, Eye, Layout } from 'lucide-react';
+import type { BioView, LinkClick, ShortLink } from '../types';
 import { formatNumber } from '../utils';
 
 interface Props {
   links: ShortLink[];
   clicks: LinkClick[];
+  bioViews?: BioView[];
   rangeDays: number;
 }
 
@@ -45,13 +46,24 @@ function tally(
     .sort((a, b) => b.count - a.count);
 }
 
-export default function AnalyticsDashboard({ links, clicks, rangeDays }: Props) {
+export default function AnalyticsDashboard({ links, clicks, bioViews = [], rangeDays }: Props) {
   const humanClicks = useMemo(() => clicks.filter((c) => !c.is_bot), [clicks]);
   const linkBySlug = useMemo(() => {
     const m = new Map<string, ShortLink>();
     for (const l of links) m.set(l.slug, l);
     return m;
   }, [links]);
+
+  // Bio page engagement: real (non-bot) page views vs. clicks on links that
+  // are shown on the bio page. CTR is a rough engagement proxy, not a
+  // per-visitor funnel.
+  const bio = useMemo(() => {
+    const views = bioViews.filter((v) => !v.is_bot).length;
+    const bioSlugs = new Set(links.filter((l) => l.show_on_bio).map((l) => l.slug));
+    const bioClicks = humanClicks.filter((c) => bioSlugs.has(c.slug)).length;
+    const ctr = views > 0 ? Math.round((bioClicks / views) * 100) : 0;
+    return { views, bioClicks, ctr };
+  }, [bioViews, links, humanClicks]);
 
   const totals = useMemo(() => {
     const linkMap = new Map(links.map((l) => [l.id, l]));
@@ -138,6 +150,20 @@ export default function AnalyticsDashboard({ links, clicks, rangeDays }: Props) 
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+          <Layout className="w-4 h-4 text-indigo-500" /> Bio page
+        </h3>
+        <div className="grid grid-cols-3 gap-4">
+          <BioMetric icon={<Eye className="w-4 h-4" />} label="Page views" value={formatNumber(bio.views)} />
+          <BioMetric icon={<MousePointerClick className="w-4 h-4" />} label="Clicks on bio links" value={formatNumber(bio.bioClicks)} />
+          <BioMetric icon={<BarChart3 className="w-4 h-4" />} label="Click-through rate" value={`${bio.ctr}%`} />
+        </div>
+        <p className="text-xs text-slate-400 mt-3">
+          Views are real (non-bot) loads of your public bio page over the last {rangeDays} days. CTR is clicks on bio-listed links ÷ views.
+        </p>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-slate-700 mb-4">Clicks over time</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
@@ -196,6 +222,18 @@ function StatCard({ icon, label, value, sub }: { icon: ReactNode; label: string;
       </div>
       <div className="mt-2 text-2xl font-semibold text-slate-800 truncate">{value}</div>
       {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+function BioMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
+      <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium uppercase tracking-wide">
+        <span className="text-indigo-500">{icon}</span>
+        {label}
+      </div>
+      <div className="mt-1.5 text-xl font-semibold text-slate-800">{value}</div>
     </div>
   );
 }

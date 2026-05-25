@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  AttributionSettings, BioBlock, BioBlockInsert, BioBlockUpdate, BioSettings,
+  AttributionSettings, BioBlock, BioBlockInsert, BioBlockUpdate, BioSettings, BioView,
   ConversionInsert, CustomDomain, LinkClick, LinkConversion, LinkFolder,
   ShortLink, ShortLinkInsert, ShortLinkUpdate,
 } from './types';
@@ -182,6 +182,24 @@ export async function listClicks(
   const { data, error } = await query;
   if (error) throw error;
   return (data ?? []) as LinkClick[];
+}
+
+// ============ Bio page views ============
+
+export async function listBioViews(userId: string, opts: { sinceDays?: number; limit?: number } = {}): Promise<BioView[]> {
+  let query = supabase
+    .from('bio_views')
+    .select('*')
+    .eq('user_id', userId)
+    .order('viewed_at', { ascending: false });
+  if (opts.sinceDays) {
+    const since = new Date(Date.now() - opts.sinceDays * 24 * 60 * 60 * 1000).toISOString();
+    query = query.gte('viewed_at', since);
+  }
+  query = query.limit(opts.limit ?? 10000);
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as BioView[];
 }
 
 // ============ Conversions ============
