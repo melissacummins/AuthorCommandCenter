@@ -18,6 +18,7 @@ export interface ShortLink {
   bio_sort_order: number;
   bio_title: string;
   bio_style: 'card' | 'icon';
+  bio_featured: boolean;
   thumbnail_url: string | null;
   click_count: number;
   non_bot_click_count: number;
@@ -158,7 +159,7 @@ export type ShortLinkUpdate = Partial<
     ShortLink,
     'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active' | 'archived_at'
     | 'folder_id' | 'starts_at' | 'expires_at' | 'expired_redirect_url'
-    | 'show_on_bio' | 'bio_title' | 'bio_style' | 'bio_sort_order' | 'thumbnail_url'
+    | 'show_on_bio' | 'bio_title' | 'bio_style' | 'bio_featured' | 'bio_sort_order' | 'thumbnail_url'
   >
 >;
 

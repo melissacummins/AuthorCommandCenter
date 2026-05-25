@@ -34,6 +34,7 @@ interface BioLink {
   expires_at: string | null;
   bio_title: string | null;
   bio_style: 'card' | 'icon';
+  bio_featured: boolean;
   bio_sort_order: number;
   thumbnail_url: string | null;
   created_at: string;
@@ -170,7 +171,7 @@ function renderIconLink(link: BioLink): string {
   return `<a class="icon" href="/${escapeHtml(link.slug)}" aria-label="${escapeHtml(name)}" style="background:#${color}">${inner}</a>`;
 }
 
-function renderCardLink(link: BioLink, ogImageByDest: Map<string, string | null>): string {
+function renderCardLink(link: BioLink, ogImageByDest: Map<string, string | null>, featured = false): string {
   const display = (link.bio_title && link.bio_title.trim())
     || (link.label && link.label.trim())
     || link.slug;
@@ -178,7 +179,9 @@ function renderCardLink(link: BioLink, ogImageByDest: Map<string, string | null>
   const thumbHtml = thumb
     ? `<img class="link-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy" />`
     : '';
-  return `<a class="link${thumb ? ' link-with-thumb' : ''}" href="/${escapeHtml(link.slug)}">
+  const tag = featured ? `<span class="featured-tag">Featured</span>` : '';
+  return `<a class="link${thumb ? ' link-with-thumb' : ''}${featured ? ' link-featured' : ''}" href="/${escapeHtml(link.slug)}">
+    ${tag}
     ${thumbHtml}
     <span class="link-label">${escapeHtml(display)}</span>
     <span class="link-arrow" aria-hidden="true">→</span>
@@ -222,13 +225,15 @@ interface RenderOptions {
   subtitle: string;
   logoUrl: string | null;
   iconLinks: BioLink[];
+  featuredLinks?: BioLink[];
   cardItems: CardItem[];
   ogImageByDest: Map<string, string | null>;
   theme?: Theme;
 }
 
-function renderPage({ title, subtitle, logoUrl, iconLinks, cardItems, ogImageByDest, theme }: RenderOptions): string {
+function renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme }: RenderOptions): string {
   const t = theme ?? resolveTheme(null, null);
+  const featured = featuredLinks ?? [];
   const initial = title.trim().charAt(0).toUpperCase() || 'M';
   const headerVisual = logoUrl
     ? `<img class="logo" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(title)}" />`
@@ -236,10 +241,13 @@ function renderPage({ title, subtitle, logoUrl, iconLinks, cardItems, ogImageByD
   const iconsHtml = iconLinks.length
     ? `<div class="icons">${iconLinks.map(renderIconLink).join('')}</div>`
     : '';
+  const featuredHtml = featured.length
+    ? `<div class="links featured-group">${featured.map((l) => renderCardLink(l, ogImageByDest, true)).join('')}</div>`
+    : '';
   const cardsHtml = cardItems.length
     ? `<div class="links">${cardItems.map((i) => renderCardItem(i, ogImageByDest)).join('')}</div>`
     : '';
-  const empty = !iconLinks.length && !cardItems.length
+  const empty = !iconLinks.length && !cardItems.length && !featured.length
     ? `<p class="empty">No links to show right now — check back soon.</p>`
     : '';
 
@@ -320,6 +328,15 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 }
 .link:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 12px 28px -16px var(--accent-soft); }
 .link:active { transform: translateY(0); }
+.featured-group { margin-top: 12px; }
+.link-featured { border-color: var(--accent); border-width: 2px; box-shadow: 0 10px 28px -16px var(--accent-soft); }
+.link-featured .link-label { font-weight: 700; }
+.featured-tag {
+  position: absolute; top: -9px; left: 14px;
+  background: var(--accent); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 2px 8px; border-radius: 999px;
+}
 .link-with-thumb { padding-left: 12px; }
 .link-thumb {
   width: 48px; height: 48px; object-fit: cover; border-radius: 10px;
@@ -367,6 +384,7 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
   <h1>${escapeHtml(title)}</h1>
   ${subtitle ? `<p class="subtitle">${escapeHtml(subtitle)}</p>` : ''}
   ${iconsHtml}
+  ${featuredHtml}
   ${cardsHtml || empty}
   <div class="foot">All links</div>
 </main>
@@ -446,7 +464,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fetch links + blocks + settings in parallel.
     const linksPromise = supabase
       .from('short_links')
-      .select('slug, label, destination_url, starts_at, expires_at, bio_title, bio_style, bio_sort_order, thumbnail_url, created_at')
+      .select('slug, label, destination_url, starts_at, expires_at, bio_title, bio_style, bio_featured, bio_sort_order, thumbnail_url, created_at')
       .eq('user_id', userId)
       .eq('is_active', true)
       .eq('show_on_bio', true)
@@ -521,11 +539,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const iconLinks = liveLinks.filter((l) => l.bio_style === 'icon')
       .sort((a, b) => a.bio_sort_order - b.bio_sort_order);
 
+    // Featured links render in a highlighted group at the top, ahead of the
+    // normal card/section flow (and are excluded from it below).
+    const featuredLinks = liveLinks
+      .filter((l) => l.bio_featured && l.bio_style !== 'icon')
+      .sort((a, b) => a.bio_sort_order - b.bio_sort_order);
+
     // Build mixed card-section list, ordered by bio_sort_order across both
     // tables. Same sort order falls back to created_at oldest-first so
     // newer items don't jump above older ones unexpectedly.
     const cardLinkItems: CardItem[] = liveLinks
-      .filter((l) => l.bio_style !== 'icon')
+      .filter((l) => l.bio_style !== 'icon' && !l.bio_featured)
       .map((l) => ({ kind: 'link', data: l }));
     const blockItems: CardItem[] = blocks.map((b) => ({ kind: 'block', data: b }));
     const cardItems = [...cardLinkItems, ...blockItems].sort((a, b) => {
@@ -537,7 +561,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return new Date(at).getTime() - new Date(bt).getTime();
     });
 
-    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, cardItems, ogImageByDest, theme }), 200, true);
+    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme }), 200, true);
   } catch (err) {
     console.error('bio handler error', err);
     try {
