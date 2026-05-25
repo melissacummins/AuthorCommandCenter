@@ -47,12 +47,14 @@ interface BioButtonRow {
 
 interface BioBlockRow {
   id: string;
-  type: 'section' | 'image' | 'buttons';
+  type: 'section' | 'image' | 'buttons' | 'email';
   title: string | null;
   body: string | null;
   image_url: string | null;
   link_url: string | null;
   buttons: BioButtonRow[] | null;
+  klaviyo_list_id: string | null;
+  button_label: string | null;
   bio_sort_order: number;
   created_at: string;
 }
@@ -255,11 +257,29 @@ type CardItem =
   | { kind: 'link'; data: BioLink }
   | { kind: 'block'; data: BioBlockRow };
 
+function renderEmailBlock(block: BioBlockRow): string {
+  const listId = block.klaviyo_list_id?.trim();
+  if (!listId) return '';
+  const title = block.title?.trim();
+  const body = block.body?.trim();
+  const button = block.button_label?.trim() || 'Subscribe';
+  return `<form class="signup" data-list="${escapeHtml(listId)}">
+    ${title ? `<h2 class="section-title">${escapeHtml(title)}</h2>` : ''}
+    ${body ? `<p class="section-body">${escapeHtml(body)}</p>` : ''}
+    <div class="signup-row">
+      <input class="signup-input" type="email" name="email" required placeholder="you@email.com" autocomplete="email" />
+      <button class="signup-btn" type="submit">${escapeHtml(button)}</button>
+    </div>
+    <p class="signup-msg" hidden></p>
+  </form>`;
+}
+
 function renderCardItem(item: CardItem, ogImageByDest: Map<string, string | null>): string {
   if (item.kind === 'link') return renderCardLink(item.data, ogImageByDest);
   if (item.data.type === 'section') return renderSectionBlock(item.data);
   if (item.data.type === 'image') return renderImageBlock(item.data);
   if (item.data.type === 'buttons') return renderButtonsBlock(item.data);
+  if (item.data.type === 'email') return renderEmailBlock(item.data);
   return '';
 }
 
@@ -429,6 +449,30 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 .rbtn-icon { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
 .rbtn-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 360px) { .rbtns { grid-template-columns: 1fr; } }
+.signup {
+  width: 100%; margin-top: 6px; padding: 18px 16px; border-radius: 16px;
+  background: var(--surface); border: 1px solid var(--border); text-align: center;
+}
+.signup .section-title, .signup .section-body { margin-top: 0; }
+.signup-row { display: flex; gap: 8px; margin-top: 10px; }
+.signup-input {
+  flex: 1; min-width: 0; padding: 11px 13px; font-size: 14px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg); color: var(--text);
+}
+.signup-input:focus { outline: none; border-color: var(--accent); }
+.signup-btn {
+  padding: 11px 16px; font-size: 14px; font-weight: 600; white-space: nowrap;
+  border: 0; border-radius: 12px; cursor: pointer;
+  background: var(--accent); color: #fff;
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.signup-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px -16px var(--accent-soft); }
+.signup-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
+.signup-msg { margin: 10px 0 0; font-size: 13px; }
+.signup-msg.ok { color: var(--accent); }
+.signup-msg.err { color: #e11d48; }
+@media (max-width: 360px) { .signup-row { flex-direction: column; } }
 .empty { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
 .foot { margin-top: 24px; font-size: 11px; color: var(--muted); opacity: 0.7; letter-spacing: 0.06em; text-transform: uppercase; }
 </style>
@@ -444,6 +488,47 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
   <div class="foot">All links</div>
 </main>
 <img src="/api/bv" alt="" width="1" height="1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
+<script>
+(function () {
+  var forms = document.querySelectorAll('form.signup');
+  for (var i = 0; i < forms.length; i++) {
+    forms[i].addEventListener('submit', function (e) {
+      e.preventDefault();
+      var form = e.currentTarget;
+      var input = form.querySelector('.signup-input');
+      var btn = form.querySelector('.signup-btn');
+      var msg = form.querySelector('.signup-msg');
+      var email = (input && input.value || '').trim();
+      if (!email) return;
+      function show(text, ok) {
+        if (!msg) return;
+        msg.textContent = text;
+        msg.className = 'signup-msg ' + (ok ? 'ok' : 'err');
+        msg.hidden = false;
+      }
+      if (btn) { btn.disabled = true; }
+      fetch('/api/bio-subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, list: form.getAttribute('data-list') })
+      }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
+      }).then(function (res) {
+        if (res.ok) {
+          form.querySelector('.signup-row').style.display = 'none';
+          show("You're subscribed — thank you!", true);
+        } else {
+          show((res.d && res.d.error) || 'Something went wrong. Please try again.', false);
+          if (btn) { btn.disabled = false; }
+        }
+      }).catch(function () {
+        show('Something went wrong. Please try again.', false);
+        if (btn) { btn.disabled = false; }
+      });
+    });
+  }
+})();
+</script>
 </body>
 </html>`;
 }
@@ -530,7 +615,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const blocksPromise = supabase
       .from('bio_blocks')
-      .select('id, type, title, body, image_url, link_url, buttons, bio_sort_order, created_at')
+      .select('id, type, title, body, image_url, link_url, buttons, klaviyo_list_id, button_label, bio_sort_order, created_at')
       .eq('user_id', userId)
       .order('bio_sort_order', { ascending: true })
       .limit(100)
