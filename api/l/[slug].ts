@@ -310,6 +310,96 @@ function appendParams(url: string, params: Record<string, string>): string {
   }
 }
 
+function bearer(req: VercelRequest): string | null {
+  const raw = req.headers['authorization'] ?? req.headers['Authorization'];
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  if (!v || !v.toLowerCase().startsWith('bearer ')) return null;
+  return v.slice(7);
+}
+
+// ---- Landing pages ----
+// Theme palette is duplicated from api/bio.ts on purpose: api/_lib/* does
+// not bundle reliably on Vercel (see header note), so a shared module risks
+// FUNCTION_INVOCATION_FAILED. Keep these in sync with bio.ts THEMES.
+interface LpTheme { bg: string; text: string; muted: string; surface: string; border: string; accent: string; dark: boolean; }
+const LP_THEMES: Record<string, LpTheme> = {
+  classic:  { bg: 'linear-gradient(180deg, #fafafc 0%, #eef2ff 60%, #f5f3ff 100%)', text: '#1e293b', muted: '#64748b', surface: '#ffffff', border: '#e2e8f0', accent: '#6366f1', dark: false },
+  midnight: { bg: 'linear-gradient(180deg, #0f172a 0%, #1e1b4b 100%)',              text: '#e2e8f0', muted: '#94a3b8', surface: '#1e293b', border: '#334155', accent: '#818cf8', dark: true  },
+  blush:    { bg: 'linear-gradient(180deg, #fff5f7 0%, #ffe9ef 100%)',              text: '#4a2c33', muted: '#9b6b76', surface: '#ffffff', border: '#fbd5de', accent: '#e85d75', dark: false },
+  cream:    { bg: 'linear-gradient(180deg, #fdf8f0 0%, #f7ede0 100%)',              text: '#443726', muted: '#8a7a63', surface: '#fffdf8', border: '#ece0cf', accent: '#b5793f', dark: false },
+  forest:   { bg: 'linear-gradient(180deg, #f3f7f3 0%, #e4efe6 100%)',              text: '#1f2e22', muted: '#5b7060', surface: '#ffffff', border: '#d3e2d5', accent: '#2f7d4f', dark: false },
+  noir:     { bg: '#0a0a0a',                                                        text: '#f5f5f5', muted: '#a3a3a3', surface: '#171717', border: '#2a2a2a', accent: '#e5e5e5', dark: true  },
+};
+function lpHex(input: string | null | undefined): string | null {
+  if (!input) return null;
+  const v = input.trim().replace(/^#/, '');
+  if (/^[0-9a-fA-F]{6}$/.test(v)) return `#${v.toLowerCase()}`;
+  if (/^[0-9a-fA-F]{3}$/.test(v)) return `#${v.split('').map((c) => c + c).join('').toLowerCase()}`;
+  return null;
+}
+function lpTheme(themeId: string | null | undefined, accent: string | null | undefined): LpTheme {
+  const base = LP_THEMES[themeId ?? 'classic'] ?? LP_THEMES.classic;
+  return { ...base, accent: lpHex(accent) ?? base.accent };
+}
+
+interface LpButton { label: string; url: string }
+interface LandingPageRow {
+  slug: string;
+  title: string | null;
+  description: string | null;
+  cover_image_url: string | null;
+  buttons: LpButton[] | null;
+  theme: string | null;
+  accent_color: string | null;
+}
+
+function renderLandingPage(page: LandingPageRow): string {
+  const t = lpTheme(page.theme, page.accent_color);
+  const title = (page.title || '').trim() || 'Get the book';
+  const desc = (page.description || '').trim();
+  const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
+  const buttons = (Array.isArray(page.buttons) ? page.buttons : [])
+    .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim());
+  const btnHtml = buttons.map((b) =>
+    `<a class="rbtn" href="${escapeHtml(b.url)}" rel="noopener nofollow"><span>${escapeHtml(b.label)}</span></a>`,
+  ).join('');
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content="${escapeHtml(desc || title)}" />
+<meta property="og:title" content="${escapeHtml(title)}" />
+<meta property="og:description" content="${escapeHtml(desc || '')}" />
+${cover ? `<meta property="og:image" content="${escapeHtml(cover)}" />` : ''}
+<meta property="og:type" content="book" />
+<meta name="twitter:card" content="summary_large_image" />
+<title>${escapeHtml(title)}</title>
+<style>
+:root{color-scheme:${t.dark ? 'dark' : 'light'};--bg:${t.bg};--text:${t.text};--muted:${t.muted};--surface:${t.surface};--border:${t.border};--accent:${t.accent};--accent-soft:${t.accent}2e;}
+*{box-sizing:border-box}html,body{margin:0;padding:0}
+body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:center;padding:48px 20px 64px}
+.wrap{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:16px}
+.cover{width:200px;max-width:60%;border-radius:14px;box-shadow:0 24px 50px -20px rgba(15,23,42,.45);display:block}
+h1{margin:4px 0 0;font-size:25px;letter-spacing:-.015em;text-align:center;color:var(--text)}
+.desc{margin:0;color:var(--muted);font-size:15px;line-height:1.55;text-align:center;white-space:pre-line}
+.rbtns{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.rbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border-radius:14px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:15px;transition:transform 120ms ease,box-shadow 120ms ease}
+.rbtn:hover{transform:translateY(-1px);box-shadow:0 14px 30px -16px var(--accent-soft)}
+.foot{margin-top:24px;font-size:11px;color:var(--muted);opacity:.65;letter-spacing:.06em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<main class="wrap">
+  ${cover ? `<img class="cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)}" />` : ''}
+  <h1>${escapeHtml(title)}</h1>
+  ${desc ? `<p class="desc">${escapeHtml(desc)}</p>` : ''}
+  ${btnHtml ? `<div class="rbtns">${btnHtml}</div>` : ''}
+</main>
+</body>
+</html>`;
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const slugParam = req.query.slug;
@@ -331,6 +421,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabase = createClient(supabaseUrl, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    // Authenticated helper for the landing-page editor: fetch OpenGraph
+    // cover/title/description for a URL the author is adding. Requires a
+    // valid bearer token so this can't be used as an open SSRF fetcher.
+    const action = Array.isArray(req.query.action) ? req.query.action[0] : req.query.action;
+    if (action === 'fetch_og') {
+      const token = bearer(req);
+      const userRes = token ? await supabase.auth.getUser(token) : null;
+      if (!userRes?.data?.user) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+      let target = Array.isArray(req.query.url) ? req.query.url[0] : req.query.url;
+      if (!target || typeof target !== 'string') {
+        res.status(400).json({ error: 'Missing url' });
+        return;
+      }
+      target = target.trim();
+      if (!/^https?:\/\//i.test(target)) target = `https://${target}`;
+      const og = await getOg(supabase, target);
+      res.setHeader('cache-control', 'no-store');
+      res.status(200).json({ og: og ?? null });
+      return;
+    }
 
     // Slugs are unique per user, so resolve which user owns this domain
     // before looking up the slug. Falls back to the legacy single-tenant
@@ -357,6 +471,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data: link, error } = await linkQuery.maybeSingle();
 
     if (error || !link) {
+      // Not a short link — it might be a landing page (shared slug namespace).
+      let pageQuery = supabase
+        .from('landing_pages')
+        .select('slug, title, description, cover_image_url, buttons, theme, accent_color')
+        .eq('slug', slug);
+      if (ownerId) pageQuery = pageQuery.eq('user_id', ownerId);
+      const { data: page } = await pageQuery.maybeSingle();
+      if (page) {
+        res.setHeader('content-type', 'text/html; charset=utf-8');
+        res.setHeader('cache-control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=300');
+        res.status(200).send(renderLandingPage(page as LandingPageRow));
+        return;
+      }
       sendHtml(res, notFoundPage('This short link does not exist or was removed.'), 404);
       return;
     }

@@ -1,7 +1,8 @@
 import { supabase } from '../../lib/supabase';
 import type {
   AttributionSettings, BioBlock, BioBlockInsert, BioBlockUpdate, BioSettings, BioView,
-  ConversionInsert, CustomDomain, LinkClick, LinkConversion, LinkFolder,
+  ConversionInsert, CustomDomain, LandingPage, LandingPageInsert, LandingPageUpdate,
+  LinkClick, LinkConversion, LinkFolder,
   ShortLink, ShortLinkInsert, ShortLinkUpdate,
 } from './types';
 import { generateSlug, isValidSlug } from './utils';
@@ -20,13 +21,15 @@ export async function listLinks(userId: string): Promise<ShortLink[]> {
 
 export async function isSlugAvailable(slug: string): Promise<boolean> {
   if (!isValidSlug(slug)) return false;
-  const { data, error } = await supabase
-    .from('short_links')
-    .select('id')
-    .eq('slug', slug)
-    .maybeSingle();
-  if (error) throw error;
-  return !data;
+  // Short links and landing pages share one per-user slug namespace, so a
+  // slug is only free if neither table (scoped to the user via RLS) uses it.
+  const [linkRes, pageRes] = await Promise.all([
+    supabase.from('short_links').select('id').eq('slug', slug).maybeSingle(),
+    supabase.from('landing_pages').select('id').eq('slug', slug).maybeSingle(),
+  ]);
+  if (linkRes.error) throw linkRes.error;
+  if (pageRes.error) throw pageRes.error;
+  return !linkRes.data && !pageRes.data;
 }
 
 export async function generateUniqueSlug(maxAttempts = 5): Promise<string> {
@@ -327,6 +330,66 @@ export async function updateBioBlock(id: string, patch: BioBlockUpdate): Promise
 export async function deleteBioBlock(id: string): Promise<void> {
   const { error } = await supabase.from('bio_blocks').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ============ Landing pages ============
+
+export async function listLandingPages(userId: string): Promise<LandingPage[]> {
+  const { data, error } = await supabase
+    .from('landing_pages')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as LandingPage[];
+}
+
+export async function createLandingPage(userId: string, input: LandingPageInsert): Promise<LandingPage> {
+  const { data, error } = await supabase
+    .from('landing_pages')
+    .insert({ ...input, user_id: userId })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as LandingPage;
+}
+
+export async function updateLandingPage(id: string, patch: LandingPageUpdate): Promise<LandingPage> {
+  const { data, error } = await supabase
+    .from('landing_pages')
+    .update(patch)
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as LandingPage;
+}
+
+export async function deleteLandingPage(id: string): Promise<void> {
+  const { error } = await supabase.from('landing_pages').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export interface FetchedOg {
+  title: string | null;
+  description: string | null;
+  image: string | null;
+  siteName: string | null;
+}
+
+// Server-side OpenGraph fetch for the landing-page editor's auto-fill.
+// Routed through the existing /api/l function (authenticated) to avoid
+// adding a serverless function.
+export async function fetchOgForUrl(url: string): Promise<FetchedOg | null> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Not signed in');
+  const res = await fetch(`/api/l/_og?action=fetch_og&url=${encodeURIComponent(url)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof json?.error === 'string' ? json.error : `Lookup failed (${res.status})`);
+  return (json?.og ?? null) as FetchedOg | null;
 }
 
 // ============ Custom domains ============

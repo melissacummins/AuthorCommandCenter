@@ -100,6 +100,34 @@ export interface BioSettings {
   updated_at: string;
 }
 
+export interface LandingPage {
+  id: string;
+  user_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  cover_image_url: string | null;
+  source_url: string;
+  buttons: BioButton[];
+  theme: string | null;
+  accent_color: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type LandingPageInsert = {
+  slug: string;
+  title?: string;
+  description?: string;
+  cover_image_url?: string | null;
+  source_url?: string;
+  buttons?: BioButton[];
+  theme?: string;
+  accent_color?: string | null;
+};
+
+export type LandingPageUpdate = Partial<Omit<LandingPageInsert, 'slug'>> & { slug?: string };
+
 export interface BioView {
   id: string;
   user_id: string;

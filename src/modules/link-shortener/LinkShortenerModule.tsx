@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import {
-  Plus, Link2, BarChart3, Loader2, ExternalLink, Check, Settings2, X, Layout, Globe,
+  Plus, Link2, BarChart3, Loader2, ExternalLink, Check, Settings2, X, Layout, Globe, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   deleteLink as apiDeleteLink, getPrimaryDomain, listBioViews, listClicks, listFolders, listLinks, updateLink,
 } from './api';
 import DomainSettings from './components/DomainSettings';
+import LandingPagesPanel from './components/LandingPagesPanel';
 import LinksTable from './components/LinksTable';
 import CreateLinkModal from './components/CreateLinkModal';
 import LinkDetailDrawer from './components/LinkDetailDrawer';
@@ -18,7 +19,7 @@ import BioPagePanel from './components/BioPagePanel';
 import { buildShortUrl, setShortLinkBase, shortHostname } from './utils';
 import type { BioView, LinkClick, LinkFolder, ShortLink } from './types';
 
-type Tab = 'links' | 'analytics' | 'bio' | 'domain';
+type Tab = 'links' | 'analytics' | 'bio' | 'pages' | 'domain';
 
 export default function LinkShortenerModule() {
   const { user } = useAuth();
@@ -137,6 +138,7 @@ export default function LinkShortenerModule() {
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
           <TabButton active={tab === 'links'} onClick={() => setTab('links')} icon={<Link2 className="w-4 h-4" />} label="Links" />
           <TabButton active={tab === 'bio'} onClick={() => setTab('bio')} icon={<Layout className="w-4 h-4" />} label="Bio page" />
+          <TabButton active={tab === 'pages'} onClick={() => setTab('pages')} icon={<BookOpen className="w-4 h-4" />} label="Pages" />
           <TabButton active={tab === 'domain'} onClick={() => setTab('domain')} icon={<Globe className="w-4 h-4" />} label="Domain" />
           <TabButton active={tab === 'analytics'} onClick={() => setTab('analytics')} icon={<BarChart3 className="w-4 h-4" />} label="Analytics" />
         </div>
@@ -214,6 +216,8 @@ export default function LinkShortenerModule() {
         </div>
       ) : tab === 'bio' ? (
         <BioPagePanel links={links} onUpdated={handleUpdated} />
+      ) : tab === 'pages' ? (
+        <LandingPagesPanel />
       ) : tab === 'domain' ? (
         <DomainSettings onPrimaryChange={refreshBase} />
       ) : loadingAnalytics ? (
