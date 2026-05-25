@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  deleteLink as apiDeleteLink, getPrimaryDomain, listClicks, listFolders, listLinks, updateLink,
+  deleteLink as apiDeleteLink, getPrimaryDomain, listBioViews, listClicks, listFolders, listLinks, updateLink,
 } from './api';
 import DomainSettings from './components/DomainSettings';
 import LinksTable from './components/LinksTable';
@@ -16,7 +16,7 @@ import QRCodeBlock from './components/QRCodeBlock';
 import AttributionSetupModal from './components/AttributionSetupModal';
 import BioPagePanel from './components/BioPagePanel';
 import { buildShortUrl, setShortLinkBase, shortHostname } from './utils';
-import type { LinkClick, LinkFolder, ShortLink } from './types';
+import type { BioView, LinkClick, LinkFolder, ShortLink } from './types';
 
 type Tab = 'links' | 'analytics' | 'bio' | 'domain';
 
@@ -27,6 +27,7 @@ export default function LinkShortenerModule() {
   const [folders, setFolders] = useState<LinkFolder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<string | null | 'unassigned'>(null);
   const [clicks, setClicks] = useState<LinkClick[]>([]);
+  const [bioViews, setBioViews] = useState<BioView[]>([]);
   const [rangeDays, setRangeDays] = useState<number>(30);
   const [loading, setLoading] = useState(true);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
@@ -54,9 +55,11 @@ export default function LinkShortenerModule() {
   useEffect(() => {
     if (!user || tab !== 'analytics') return;
     setLoadingAnalytics(true);
-    listClicks(user.id, { sinceDays: rangeDays, limit: 10000 })
-      .then(setClicks)
-      .catch(() => setClicks([]))
+    Promise.all([
+      listClicks(user.id, { sinceDays: rangeDays, limit: 10000 }).catch(() => [] as LinkClick[]),
+      listBioViews(user.id, { sinceDays: rangeDays }).catch(() => [] as BioView[]),
+    ])
+      .then(([c, v]) => { setClicks(c); setBioViews(v); })
       .finally(() => setLoadingAnalytics(false));
   }, [user, tab, rangeDays]);
 
@@ -218,7 +221,7 @@ export default function LinkShortenerModule() {
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       ) : (
-        <AnalyticsDashboard links={links} clicks={clicks} rangeDays={rangeDays} />
+        <AnalyticsDashboard links={links} clicks={clicks} bioViews={bioViews} rangeDays={rangeDays} />
       )}
 
       {selected && (

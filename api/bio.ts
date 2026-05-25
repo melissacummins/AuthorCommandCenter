@@ -443,6 +443,7 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
   ${cardsHtml || empty}
   <div class="foot">All links</div>
 </main>
+<img src="/api/bv" alt="" width="1" height="1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
 </body>
 </html>`;
 }
