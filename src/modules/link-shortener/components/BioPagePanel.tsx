@@ -51,6 +51,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   const [logoError, setLogoError] = useState<string | null>(null);
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeError, setThemeError] = useState<string | null>(null);
+  const [pixelDraft, setPixelDraft] = useState('');
   const [adding, setAdding] = useState<'section' | 'image' | 'buttons' | 'email' | null>(null);
 
   useEffect(() => {
@@ -58,6 +59,10 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     getBioSettings(user.id).then(setBioSettings).catch(() => setBioSettings(null));
     listBioBlocks(user.id).then(setBlocks).catch(() => setBlocks([]));
   }, [user]);
+
+  useEffect(() => {
+    setPixelDraft(bioSettings?.meta_pixel_id ?? '');
+  }, [bioSettings?.meta_pixel_id]);
 
   const bioLinks = useMemo(
     () => links.filter((l) => l.show_on_bio && l.is_active && !l.archived_at && !l.parent_id),
@@ -124,7 +129,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     }
   }
 
-  async function saveAppearance(patch: { theme?: string; accent_color?: string | null }) {
+  async function saveAppearance(patch: { theme?: string; accent_color?: string | null; meta_pixel_id?: string | null }) {
     if (!user) return;
     setThemeBusy(true); setThemeError(null);
     try {
@@ -417,6 +422,26 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             {themeError}
           </div>
         )}
+      </Section>
+
+      <Section title="Tracking" hint="Add your Meta (Facebook) Pixel ID to retarget people who visit your bio page with ads.">
+        <div className="flex items-center gap-2 max-w-md">
+          <input
+            value={pixelDraft}
+            onChange={(e) => setPixelDraft(e.target.value)}
+            onBlur={() => {
+              const cleaned = pixelDraft.replace(/[^0-9]/g, '');
+              if (cleaned !== (bioSettings?.meta_pixel_id ?? '')) {
+                saveAppearance({ meta_pixel_id: cleaned || null });
+              }
+            }}
+            inputMode="numeric"
+            placeholder="Meta Pixel ID (e.g. 1234567890123456)"
+            className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 font-mono"
+          />
+          {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+        </div>
+        <p className="text-[11px] text-slate-400 mt-2">Find it in Meta Events Manager → Data sources. Leave blank to turn tracking off.</p>
       </Section>
 
       <Section

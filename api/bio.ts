@@ -283,6 +283,18 @@ function renderCardItem(item: CardItem, ogImageByDest: Map<string, string | null
   return '';
 }
 
+// Meta (Facebook) Pixel base code. Pixel IDs are numeric, so we sanitize
+// to digits before interpolating — no user text reaches the inline script.
+function metaPixelScript(rawId: string | null | undefined): string {
+  const id = (rawId ?? '').replace(/[^0-9]/g, '');
+  if (!id) return '';
+  return `<script>
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init','${id}');fbq('track','PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1" alt="" /></noscript>`;
+}
+
 interface RenderOptions {
   title: string;
   subtitle: string;
@@ -292,11 +304,13 @@ interface RenderOptions {
   cardItems: CardItem[];
   ogImageByDest: Map<string, string | null>;
   theme?: Theme;
+  metaPixelId?: string | null;
 }
 
-function renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme }: RenderOptions): string {
+function renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme, metaPixelId }: RenderOptions): string {
   const t = theme ?? resolveTheme(null, null);
   const featured = featuredLinks ?? [];
+  const pixelHtml = metaPixelScript(metaPixelId);
   const initial = title.trim().charAt(0).toUpperCase() || 'M';
   const headerVisual = logoUrl
     ? `<img class="logo" src="${escapeHtml(logoUrl)}" alt="${escapeHtml(title)}" />`
@@ -326,6 +340,7 @@ ${logoUrl ? `<meta property="og:image" content="${escapeHtml(logoUrl)}" />` : ''
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
 <title>${escapeHtml(title)}</title>
+${pixelHtml}
 <style>
 :root {
   color-scheme: ${t.dark ? 'dark' : 'light'};
@@ -626,7 +641,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const settingsPromise = supabase
       .from('bio_settings')
-      .select('logo_url, bio_title, bio_subtitle, theme, accent_color')
+      .select('logo_url, bio_title, bio_subtitle, theme, accent_color, meta_pixel_id')
       .eq('user_id', userId)
       .maybeSingle();
 
@@ -645,6 +660,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (settingsRes.data?.bio_title?.trim()) title = settingsRes.data.bio_title.trim();
     if (settingsRes.data?.bio_subtitle?.trim()) subtitle = settingsRes.data.bio_subtitle.trim();
     const theme = resolveTheme(settingsRes.data?.theme, settingsRes.data?.accent_color);
+    const metaPixelId = settingsRes.data?.meta_pixel_id ?? null;
     const blocks = ((blocksRes as { data: BioBlockRow[] | null }).data ?? []) as BioBlockRow[];
 
     const now = Date.now();
@@ -702,7 +718,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return new Date(at).getTime() - new Date(bt).getTime();
     });
 
-    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme }), 200, true);
+    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme, metaPixelId }), 200, true);
   } catch (err) {
     console.error('bio handler error', err);
     try {
