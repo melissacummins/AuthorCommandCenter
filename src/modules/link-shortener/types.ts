@@ -110,7 +110,12 @@ export interface CustomDomain {
   updated_at: string;
 }
 
-export type BioBlockType = 'section' | 'image';
+export type BioBlockType = 'section' | 'image' | 'buttons';
+
+export interface BioButton {
+  label: string;
+  url: string;
+}
 
 export interface BioBlock {
   id: string;
@@ -120,6 +125,7 @@ export interface BioBlock {
   body: string | null;
   image_url: string | null;
   link_url: string | null;
+  buttons: BioButton[];
   bio_sort_order: number;
   created_at: string;
   updated_at: string;
@@ -131,11 +137,12 @@ export type BioBlockInsert = {
   body?: string | null;
   image_url?: string | null;
   link_url?: string | null;
+  buttons?: BioButton[];
   bio_sort_order?: number;
 };
 
 export type BioBlockUpdate = Partial<
-  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'bio_sort_order'>
+  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'buttons' | 'bio_sort_order'>
 >;
 
 export type ShortLinkInsert = Pick<

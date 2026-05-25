@@ -40,13 +40,19 @@ interface BioLink {
   created_at: string;
 }
 
+interface BioButtonRow {
+  label: string;
+  url: string;
+}
+
 interface BioBlockRow {
   id: string;
-  type: 'section' | 'image';
+  type: 'section' | 'image' | 'buttons';
   title: string | null;
   body: string | null;
   image_url: string | null;
   link_url: string | null;
+  buttons: BioButtonRow[] | null;
   bio_sort_order: number;
   created_at: string;
 }
@@ -209,6 +215,42 @@ function renderImageBlock(block: BioBlockRow): string {
   return `<a class="hero-card" href="${escapeHtml(href)}">${inner}</a>`;
 }
 
+// Brand icon for a retailer button. Uses Simple Icons for stores we
+// recognize, and falls back to the destination's favicon so any retailer
+// still shows a real mark rather than a broken image.
+function retailerIconSrc(url: string): string {
+  let host = '';
+  try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid url */ }
+  const known: [RegExp, string][] = [
+    [/(^|\.)amazon\.|(^|\.)amzn\./, 'amazon'],
+    [/(^|\.)audible\./, 'audible'],
+    [/books\.apple\.com|itunes\.apple\.com|(^|\.)apple\.co$/, 'apple'],
+    [/play\.google\.com/, 'googleplay'],
+    [/(^|\.)goodreads\.com/, 'goodreads'],
+    [/(^|\.)smashwords\.com/, 'smashwords'],
+  ];
+  for (const [re, slug] of known) {
+    if (re.test(host)) return `https://cdn.simpleicons.org/${slug}`;
+  }
+  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
+}
+
+function renderButtonsBlock(block: BioBlockRow): string {
+  const buttons = (Array.isArray(block.buttons) ? block.buttons : [])
+    .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim());
+  if (buttons.length === 0) return '';
+  const title = block.title?.trim();
+  const head = title ? `<h2 class="section-title">${escapeHtml(title)}</h2>` : '';
+  const cells = buttons.map((b) => {
+    const icon = retailerIconSrc(b.url);
+    const iconHtml = icon ? `<img class="rbtn-icon" src="${escapeHtml(icon)}" alt="" loading="lazy" />` : '';
+    return `<a class="rbtn" href="${escapeHtml(b.url)}" rel="noopener nofollow">
+      ${iconHtml}<span class="rbtn-label">${escapeHtml(b.label)}</span>
+    </a>`;
+  }).join('');
+  return `${head}<div class="rbtns">${cells}</div>`;
+}
+
 type CardItem =
   | { kind: 'link'; data: BioLink }
   | { kind: 'block'; data: BioBlockRow };
@@ -217,6 +259,7 @@ function renderCardItem(item: CardItem, ogImageByDest: Map<string, string | null
   if (item.kind === 'link') return renderCardLink(item.data, ogImageByDest);
   if (item.data.type === 'section') return renderSectionBlock(item.data);
   if (item.data.type === 'image') return renderImageBlock(item.data);
+  if (item.data.type === 'buttons') return renderButtonsBlock(item.data);
   return '';
 }
 
@@ -374,6 +417,18 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
   background: linear-gradient(0deg, rgba(0,0,0,0.65), transparent);
   color: white;
 }
+.rbtns { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 6px; }
+.rbtn {
+  display: flex; align-items: center; justify-content: center; gap: 9px;
+  padding: 12px 14px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border); color: var(--text);
+  text-decoration: none; font-weight: 600; font-size: 14px;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+.rbtn:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 12px 28px -16px var(--accent-soft); }
+.rbtn-icon { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
+.rbtn-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 360px) { .rbtns { grid-template-columns: 1fr; } }
 .empty { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
 .foot { margin-top: 24px; font-size: 11px; color: var(--muted); opacity: 0.7; letter-spacing: 0.06em; text-transform: uppercase; }
 </style>
@@ -474,7 +529,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const blocksPromise = supabase
       .from('bio_blocks')
-      .select('id, type, title, body, image_url, link_url, bio_sort_order, created_at')
+      .select('id, type, title, body, image_url, link_url, buttons, bio_sort_order, created_at')
       .eq('user_id', userId)
       .order('bio_sort_order', { ascending: true })
       .limit(100)

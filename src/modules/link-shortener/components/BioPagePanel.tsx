@@ -9,10 +9,10 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical, ExternalLink, EyeOff, ArrowLeftRight, Layout, Upload, Trash2, Loader2,
-  Heading, Image as ImageIcon, Plus, Type, Check,
+  Heading, Image as ImageIcon, Plus, Type, Check, ShoppingBag, X as XIcon,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
-import type { BioBlock, BioSettings, ShortLink } from '../types';
+import type { BioBlock, BioButton, BioSettings, ShortLink } from '../types';
 import {
   createBioBlock, deleteBioBlock, getBioSettings, listBioBlocks, removeBioLogo,
   reorderBioItems, updateBioBlock, updateLink, uploadBioImage, uploadBioLogo, upsertBioSettings,
@@ -50,7 +50,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   const [logoError, setLogoError] = useState<string | null>(null);
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeError, setThemeError] = useState<string | null>(null);
-  const [adding, setAdding] = useState<'section' | 'image' | null>(null);
+  const [adding, setAdding] = useState<'section' | 'image' | 'buttons' | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -208,6 +208,19 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
       setBlocks((bs) => [...bs, created]);
     } catch (err) {
       console.error('add image card failed', err);
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  async function handleAddButtons() {
+    if (!user) return;
+    setAdding('buttons');
+    try {
+      const created = await createBioBlock(user.id, { type: 'buttons', title: 'Get the book', buttons: [] });
+      setBlocks((bs) => [...bs, created]);
+    } catch (err) {
+      console.error('add buttons failed', err);
     } finally {
       setAdding(null);
     }
@@ -447,6 +460,13 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             >
               <ImageIcon className="w-3.5 h-3.5" /> Image card
             </button>
+            <button
+              onClick={handleAddButtons}
+              disabled={adding !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> Retailer buttons
+            </button>
           </div>
         )}
       >
@@ -476,6 +496,17 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                   if (item.block.type === 'section') {
                     return (
                       <SortableSectionRow
+                        key={item.id}
+                        sortableId={item.id}
+                        block={item.block}
+                        onSave={(patch) => handleSaveBlock(item.block.id, patch)}
+                        onDelete={() => handleDeleteBlock(item.block.id)}
+                      />
+                    );
+                  }
+                  if (item.block.type === 'buttons') {
+                    return (
+                      <SortableButtonsRow
                         key={item.id}
                         sortableId={item.id}
                         block={item.block}
@@ -675,6 +706,87 @@ function SortableSectionRow({ sortableId, block, onSave, onDelete }: SectionRowP
         onClick={onDelete}
         className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
         title="Delete section"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowProps) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
+  const [title, setTitle] = useState(block.title ?? '');
+  const [buttons, setButtons] = useState<BioButton[]>(block.buttons ?? []);
+  useEffect(() => {
+    setTitle(block.title ?? '');
+    setButtons(block.buttons ?? []);
+  }, [block.id]);
+
+  function commit(next: BioButton[]) {
+    setButtons(next);
+    onSave({ buttons: next.filter((b) => b.label.trim() || b.url.trim()) });
+  }
+  function updateBtn(i: number, patch: Partial<BioButton>) {
+    setButtons((prev) => prev.map((b, idx) => (idx === i ? { ...b, ...patch } : b)));
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-emerald-50/40 border border-emerald-200/60"
+    >
+      <DragHandle attributes={attributes} listeners={listeners} />
+      <div className="w-9 h-9 rounded-lg flex-shrink-0 grid place-items-center bg-emerald-100 text-emerald-700">
+        <ShoppingBag className="w-4 h-4" />
+      </div>
+      <div className="flex-1 min-w-0 space-y-2">
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onBlur={() => onSave({ title })}
+          onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+          placeholder="Heading (optional, e.g. Get the book)"
+          className="w-full text-sm font-semibold text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+        />
+        <div className="space-y-1.5">
+          {buttons.map((b, i) => (
+            <div key={i} className="flex items-center gap-1.5">
+              <input
+                value={b.label}
+                onChange={(e) => updateBtn(i, { label: e.target.value })}
+                onBlur={() => commit(buttons)}
+                placeholder="Amazon"
+                className="w-28 px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              />
+              <input
+                value={b.url}
+                onChange={(e) => updateBtn(i, { url: e.target.value })}
+                onBlur={() => commit(buttons)}
+                placeholder="https://amazon.com/dp/…"
+                className="flex-1 min-w-0 px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+              />
+              <button
+                onClick={() => commit(buttons.filter((_, idx) => idx !== i))}
+                className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+                title="Remove"
+              >
+                <XIcon className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => commit([...buttons, { label: '', url: '' }])}
+          className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700 hover:underline"
+        >
+          <Plus className="w-3 h-3" /> Add retailer
+        </button>
+      </div>
+      <button
+        onClick={onDelete}
+        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        title="Delete block"
       >
         <Trash2 className="w-4 h-4" />
       </button>
