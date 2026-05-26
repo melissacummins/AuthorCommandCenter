@@ -128,6 +128,30 @@ export type LandingPageInsert = {
 
 export type LandingPageUpdate = Partial<Omit<LandingPageInsert, 'slug'>> & { slug?: string };
 
+export interface SeriesPage {
+  id: string;
+  user_id: string;
+  slug: string;
+  title: string;
+  description: string;
+  page_ids: string[];
+  theme: string | null;
+  accent_color: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type SeriesPageInsert = {
+  slug: string;
+  title?: string;
+  description?: string;
+  page_ids?: string[];
+  theme?: string;
+  accent_color?: string | null;
+};
+
+export type SeriesPageUpdate = Partial<Omit<SeriesPageInsert, 'slug'>> & { slug?: string };
+
 export interface BioView {
   id: string;
   user_id: string;
