@@ -581,7 +581,7 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 .biobook-body { padding: 4px 16px 16px; }
 .biobook-desc { margin: 8px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.55; white-space: pre-line; }
 .biobook-stores { display: flex; flex-wrap: wrap; gap: 10px; }
-.biobook-store { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); text-decoration: none; transition: border-color 120ms ease, transform 120ms ease; }
+.biobook-store { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); box-shadow: 0 2px 7px -2px rgba(15, 23, 42, 0.18); text-decoration: none; transition: border-color 120ms ease, transform 120ms ease; }
 .biobook-store:hover { border-color: var(--accent); transform: translateY(-1px); }
 .biobook-store img { width: 24px; height: 24px; display: block; }
 .empty { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
