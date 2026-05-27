@@ -360,6 +360,18 @@ function appendParams(url: string, params: Record<string, string>): string {
   }
 }
 
+// The page owner's uploaded bio logo, used as the favicon on their public
+// Book / series pages.
+async function ownerLogo(supabase: SupabaseClient, ownerId: string | null): Promise<string | null> {
+  if (!ownerId) return null;
+  try {
+    const { data } = await supabase.from('bio_settings').select('logo_url').eq('user_id', ownerId).maybeSingle();
+    return (data?.logo_url as string | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function bearer(req: VercelRequest): string | null {
   const raw = req.headers['authorization'] ?? req.headers['Authorization'];
   const v = Array.isArray(raw) ? raw[0] : raw;
@@ -406,7 +418,7 @@ interface LandingPageRow {
   accent_color: string | null;
 }
 
-function renderLandingPage(page: LandingPageRow): string {
+function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = null): string {
   const t = lpTheme(page.theme, page.accent_color);
   const title = (page.title || '').trim() || 'Get the book';
   const desc = pickBookText(page.page_text_mode, page.headline, page.description, page.page_text_custom);
@@ -425,6 +437,7 @@ function renderLandingPage(page: LandingPageRow): string {
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(desc || '')}" />
 ${cover ? `<meta property="og:image" content="${escapeHtml(cover)}" />` : ''}
+${faviconUrl ? `<link rel="icon" href="${escapeHtml(faviconUrl)}" />` : ''}
 <meta property="og:type" content="book" />
 <meta name="twitter:card" content="summary_large_image" />
 <title>${escapeHtml(title)}</title>
@@ -485,7 +498,7 @@ interface SeriesRow {
   card_text_mode: string | null;
 }
 
-function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[]): string {
+function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[], faviconUrl: string | null = null): string {
   const t = lpTheme(series.theme, series.accent_color);
   const title = (series.title || '').trim() || 'The series';
   const desc = (series.description || '').trim();
@@ -519,6 +532,7 @@ function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[]): string {
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(desc || '')}" />
 ${books[0]?.cover_image_url ? `<meta property="og:image" content="${escapeHtml(books[0].cover_image_url)}" />` : ''}
+${faviconUrl ? `<link rel="icon" href="${escapeHtml(faviconUrl)}" />` : ''}
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
 <title>${escapeHtml(title)}</title>
@@ -637,9 +651,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (ownerId) pageQuery = pageQuery.eq('user_id', ownerId);
       const { data: page } = await pageQuery.maybeSingle();
       if (page) {
+        const favicon = await ownerLogo(supabase, ownerId);
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.setHeader('cache-control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=300');
-        res.status(200).send(renderLandingPage(page as LandingPageRow));
+        res.status(200).send(renderLandingPage(page as LandingPageRow, favicon));
         return;
       }
 
@@ -669,9 +684,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               cover_image_url: r.cover_image_url, buttons: r.buttons as LpButton[] | null,
             }));
         }
+        const favicon = await ownerLogo(supabase, ownerId);
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.setHeader('cache-control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=300');
-        res.status(200).send(renderSeriesPage(series as SeriesRow, books));
+        res.status(200).send(renderSeriesPage(series as SeriesRow, books, favicon));
         return;
       }
 

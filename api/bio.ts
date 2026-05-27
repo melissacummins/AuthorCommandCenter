@@ -320,7 +320,7 @@ function renderBookBlock(block: BioBlockRow, page: BookPageRow | undefined): str
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const stores = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim())
-    .map((b) => `<a class="biobook-store" href="${escapeHtml(b.url)}" rel="noopener nofollow"><img src="${escapeHtml(retailerIconSrc(b.url))}" alt="" loading="lazy" /><span>${escapeHtml(b.label)}</span></a>`)
+    .map((b) => `<a class="biobook-store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(retailerIconSrc(b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" /></a>`)
     .join('');
   const coverHtml = cover ? `<img class="biobook-cover" src="${escapeHtml(cover)}" alt="" loading="lazy" />` : '';
   return `<details class="biobook">
@@ -402,6 +402,7 @@ function renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardIt
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(subtitle || '')}" />
 ${logoUrl ? `<meta property="og:image" content="${escapeHtml(logoUrl)}" />` : ''}
+${logoUrl ? `<link rel="icon" href="${escapeHtml(logoUrl)}" />` : ''}
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
 <title>${escapeHtml(title)}</title>
@@ -563,10 +564,10 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 .biobook[open] .biobook-chev { transform: rotate(180deg); }
 .biobook-body { padding: 4px 16px 16px; }
 .biobook-desc { margin: 8px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.55; white-space: pre-line; }
-.biobook-stores { display: flex; flex-wrap: wrap; gap: 8px; }
-.biobook-store { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; transition: border-color 120ms ease; }
-.biobook-store:hover { border-color: var(--accent); }
-.biobook-store img { width: 16px; height: 16px; display: block; }
+.biobook-stores { display: flex; flex-wrap: wrap; gap: 10px; }
+.biobook-store { display: inline-grid; place-items: center; width: 46px; height: 46px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); text-decoration: none; transition: border-color 120ms ease, transform 120ms ease; }
+.biobook-store:hover { border-color: var(--accent); transform: translateY(-1px); }
+.biobook-store img { width: 24px; height: 24px; display: block; }
 .empty { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
 .foot { margin-top: 24px; font-size: 11px; color: var(--muted); opacity: 0.7; letter-spacing: 0.06em; text-transform: uppercase; }
 </style>

@@ -12,18 +12,30 @@ import FormattedTextarea from './FormattedTextarea';
 import { isValidSlug, normalizeUrl, isValidUrl, buildShortUrl } from '../utils';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
 
-// Friendly button label guessed from a retailer URL's host.
+// Canonical retailer names offered in the picker, so labels are consistent
+// and match the store the link points at.
+const KNOWN_RETAILERS = [
+  'Amazon', 'Apple Books', 'Barnes & Noble', 'Kobo', 'Google Play Books',
+  'Overdrive', 'Bookshop.org', 'Audible', 'Smashwords', 'BookBub', 'Everand', 'Books2Read',
+];
+
+// Friendly button label guessed from a retailer URL's host (matches a
+// KNOWN_RETAILERS name when possible).
 function retailerLabel(url: string): string {
   try {
     const host = new URL(normalizeUrl(url)).hostname.replace(/^www\./, '').toLowerCase();
     if (host.includes('amazon') || host.includes('amzn')) return 'Amazon';
-    if (host.includes('books.apple') || host.includes('apple.')) return 'Apple Books';
-    if (host.includes('kobo')) return 'Kobo';
-    if (host.includes('barnesandnoble') || host.includes('bn.com')) return 'Barnes & Noble';
-    if (host.includes('play.google')) return 'Google Play';
     if (host.includes('audible')) return 'Audible';
+    if (host.includes('books.apple') || host.includes('apple.')) return 'Apple Books';
+    if (host.includes('barnesandnoble') || host.includes('bn.com')) return 'Barnes & Noble';
+    if (host.includes('kobo')) return 'Kobo';
+    if (host.includes('play.google')) return 'Google Play Books';
+    if (host.includes('overdrive') || host.includes('libbyapp')) return 'Overdrive';
+    if (host.includes('bookshop.org')) return 'Bookshop.org';
     if (host.includes('smashwords')) return 'Smashwords';
     if (host.includes('bookbub')) return 'BookBub';
+    if (host.includes('everand') || host.includes('scribd')) return 'Everand';
+    if (host.includes('books2read') || host.includes('books2read.com')) return 'Books2Read';
     return host.split('.')[0].replace(/^\w/, (c) => c.toUpperCase());
   } catch {
     return 'Buy now';
@@ -186,6 +198,8 @@ function LandingPageEditor({
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Rows the author switched to a custom (non-listed) retailer name.
+  const [customRows, setCustomRows] = useState<Record<number, boolean>>({});
 
   function set<K extends keyof DraftState>(key: K, value: DraftState[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -378,29 +392,55 @@ function LandingPageEditor({
             </button>
           </div>
           {draft.buttons.length === 0 ? (
-            <p className="text-xs text-slate-400">No buttons yet. Add one per store (Amazon, Apple, Kobo…).</p>
+            <p className="text-xs text-slate-400">No buttons yet. Add one per store (Amazon, Apple Books, Kobo…).</p>
           ) : (
             <div className="space-y-2">
-              {draft.buttons.map((b, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <GripVertical className="w-4 h-4 text-slate-300 shrink-0" />
-                  <input
-                    value={b.label}
-                    onChange={(e) => updateButton(i, { label: e.target.value })}
-                    placeholder="Label (e.g. Amazon)"
-                    className="w-36 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                  />
-                  <input
-                    value={b.url}
-                    onChange={(e) => updateButton(i, { url: e.target.value })}
-                    placeholder="https://…"
-                    className="flex-1 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-                  />
-                  <button onClick={() => removeButton(i)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 shrink-0">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+              {draft.buttons.map((b, i) => {
+                const isKnown = KNOWN_RETAILERS.includes(b.label);
+                const selectVal = isKnown ? b.label : (b.label || customRows[i] ? '__other__' : '');
+                return (
+                  <div key={i} className="flex items-center gap-2">
+                    <GripVertical className="w-4 h-4 text-slate-300 shrink-0" />
+                    <select
+                      value={selectVal}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v === '__other__') {
+                          setCustomRows((m) => ({ ...m, [i]: true }));
+                          updateButton(i, { label: '' });
+                        } else {
+                          setCustomRows((m) => ({ ...m, [i]: false }));
+                          updateButton(i, { label: v });
+                        }
+                      }}
+                      className="w-40 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    >
+                      <option value="">Choose retailer…</option>
+                      {KNOWN_RETAILERS.map((r) => (
+                        <option key={r} value={r}>{r}</option>
+                      ))}
+                      <option value="__other__">Other…</option>
+                    </select>
+                    {selectVal === '__other__' && (
+                      <input
+                        value={b.label}
+                        onChange={(e) => updateButton(i, { label: e.target.value })}
+                        placeholder="Name"
+                        className="w-28 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      />
+                    )}
+                    <input
+                      value={b.url}
+                      onChange={(e) => updateButton(i, { url: e.target.value })}
+                      placeholder="https://…"
+                      className="flex-1 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    />
+                    <button onClick={() => removeButton(i)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
