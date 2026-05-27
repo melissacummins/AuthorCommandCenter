@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MODELS, findModel, maxImagesForGroup } from './lib/models';
+import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages } from './lib/models';
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
@@ -73,6 +73,10 @@ export default function MediaModule() {
         label: curated.label,
         kind: curated.kind,
         acceptsInputImage: curated.acceptsInputImage,
+        canReference: supportsReferenceImages(curated),
+        // References are mandatory only for pure-edit models (an edit
+        // endpoint with no separate generation endpoint).
+        referenceRequired: curated.acceptsInputImage && !curated.editEndpoint,
         supportsCustomSize: curated.supportsCustomSize,
         description: curated.description,
         estimatedCostCents: curated.estimatedCostCents,
@@ -90,6 +94,8 @@ export default function MediaModule() {
         label: custom.label,
         kind: custom.kind,
         acceptsInputImage: custom.accepts_input_image,
+        canReference: custom.accepts_input_image,
+        referenceRequired: false,
         supportsCustomSize: custom.supports_custom_size,
         description: custom.description ?? `Custom: ${custom.endpoint}`,
         estimatedCostCents: custom.estimated_cost_cents,
@@ -104,6 +110,8 @@ export default function MediaModule() {
       label: first.label,
       kind: first.kind,
       acceptsInputImage: first.acceptsInputImage,
+      canReference: supportsReferenceImages(first),
+      referenceRequired: first.acceptsInputImage && !first.editEndpoint,
       supportsCustomSize: first.supportsCustomSize,
       description: first.description,
       estimatedCostCents: first.estimatedCostCents,
@@ -209,8 +217,8 @@ export default function MediaModule() {
       setError('Add a prompt first.');
       return;
     }
-    if (model.acceptsInputImage && model.id === 'nano-banana-edit' && inputImages.length === 0) {
-      setError('Nano Banana edit needs an uploaded image.');
+    if (model.referenceRequired && inputImages.length === 0) {
+      setError(`${model.label} needs at least one reference image.`);
       return;
     }
 
@@ -237,7 +245,7 @@ export default function MediaModule() {
         style_preset_id: selectedStyleId,
         width,
         height,
-        source_image_urls: model.acceptsInputImage ? inputImages.map((i) => i.url) : [],
+        source_image_urls: model.canReference ? inputImages.map((i) => i.url) : [],
         num_images: num,
         collection_id: selectedCollectionId,
       });
@@ -286,9 +294,9 @@ export default function MediaModule() {
         ? prev
         : [...prev, { url: gen.output_url as string, name: `generation-${gen.id.slice(0, 8)}` }]
     ));
-    // Auto-switch to nano-banana edit when the user picks "use as input"
-    // so the next click on Generate does the obvious thing.
-    if (!model.acceptsInputImage) setModelId('nano-banana-edit');
+    // If the current model can't take a reference, switch to one that
+    // can so the next Generate does the obvious thing.
+    if (!model.canReference) setModelId('nano-banana');
   }
 
   async function handleSaveStyle(name: string, snippet: string) {
@@ -615,10 +623,10 @@ export default function MediaModule() {
           )}
 
           {/* Reference / input images */}
-          {model.acceptsInputImage && (
+          {model.canReference && (
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Reference {inputImages.length === 1 ? 'image' : 'images'} {model.id === 'nano-banana-edit' ? '(required)' : '(optional)'}
+                Reference {inputImages.length === 1 ? 'image' : 'images'} {model.referenceRequired ? '(required)' : '(optional)'}
               </label>
               {inputImages.length > 0 && (
                 <div className="grid grid-cols-4 gap-2 mb-2">

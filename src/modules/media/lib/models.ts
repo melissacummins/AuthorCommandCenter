@@ -16,12 +16,23 @@ export interface ModelDef {
   kind: MediaKind;
   endpoint: string;
   acceptsInputImage: boolean;
+  // Optional image-editing endpoint. When set, this is a generation
+  // model that ALSO accepts reference images — attaching one routes the
+  // request to this endpoint (like ChatGPT). When unset and
+  // acceptsInputImage is true, `endpoint` is itself an edit endpoint.
+  editEndpoint?: string;
   supportsCustomSize: boolean;
   description: string;
   estimatedCostCents: number;
   isAsync: boolean;
   isFeatured: boolean;
   group: 'image' | 'image-edit' | 'image-upscale' | 'video';
+}
+
+// A model can take reference images if its base endpoint is an editor
+// (acceptsInputImage) or it has a dedicated editEndpoint to route to.
+export function supportsReferenceImages(m: { acceptsInputImage: boolean; editEndpoint?: string }): boolean {
+  return m.acceptsInputImage || !!m.editEndpoint;
 }
 
 export const MODELS: ModelDef[] = [
@@ -34,8 +45,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/nano-banana',
     acceptsInputImage: false,
+    editEndpoint: 'fal-ai/nano-banana/edit',
     supportsCustomSize: true,
-    description: "Google's Gemini image model. Great all-rounder, good prompt following.",
+    description: "Google's Gemini image model. Great all-rounder; attach a reference image to edit.",
     estimatedCostCents: 4,
     isAsync: false,
     isFeatured: true,
@@ -73,8 +85,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/ideogram/v3',
     acceptsInputImage: false,
+    editEndpoint: 'fal-ai/ideogram/v3/edit',
     supportsCustomSize: true,
-    description: 'Best-in-class for rendering text inside images — ideal for Pinterest pins with headlines.',
+    description: 'Best-in-class for text inside images — ideal for Pinterest pins. Attach a reference to edit.',
     estimatedCostCents: 6,
     isAsync: false,
     isFeatured: true,
@@ -99,8 +112,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/gpt-image-1/text-to-image',
     acceptsInputImage: false,
+    editEndpoint: 'fal-ai/gpt-image-1/edit-image',
     supportsCustomSize: true,
-    description: "The same model that powers ChatGPT's image generation. Excellent prompt adherence.",
+    description: "The same model that powers ChatGPT's image generation. Attach reference images to edit.",
     estimatedCostCents: 7,
     isAsync: false,
     isFeatured: true,
@@ -215,8 +229,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/flux/dev',
     acceptsInputImage: false,
+    editEndpoint: 'fal-ai/flux/dev/image-to-image',
     supportsCustomSize: true,
-    description: 'High-quality stylised image model. Strong for artistic / moody pieces.',
+    description: 'High-quality stylised image model. Attach a reference for image-to-image.',
     estimatedCostCents: 3,
     isAsync: false,
     isFeatured: false,
