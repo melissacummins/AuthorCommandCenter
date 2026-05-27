@@ -8,8 +8,7 @@ import {
   fetchOgForUrl, isSlugAvailable,
 } from '../api';
 import type { BioButton, BookTextMode, LandingPage } from '../types';
-
-const FORMAT_HINT = 'Formatting: **bold**, *italic*, and Enter for a new line.';
+import FormattedTextarea from './FormattedTextarea';
 import { isValidSlug, normalizeUrl, isValidUrl, buildShortUrl } from '../utils';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
 
@@ -306,36 +305,34 @@ function LandingPageEditor({
           />
         </Field>
 
-        <Field label="Title">
+        <Field label="Title (book name)" hint="The book's name — shown as the heading on the page and on bio book cards.">
           <input
             value={draft.title}
             onChange={(e) => set('title', e.target.value)}
-            placeholder="Book title"
+            placeholder="e.g. Vicious Beast"
             className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </Field>
 
         <Field label="Headline" hint="A short hook — used wherever you choose to show the headline instead of the full blurb.">
-          <textarea
+          <FormattedTextarea
             value={draft.headline}
-            onChange={(e) => set('headline', e.target.value)}
+            onChange={(v) => set('headline', v)}
             rows={2}
             placeholder="One irresistible line about the book."
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </Field>
 
-        <Field label="Description" hint={FORMAT_HINT}>
-          <textarea
+        <Field label="Description">
+          <FormattedTextarea
             value={draft.description}
-            onChange={(e) => set('description', e.target.value)}
+            onChange={(v) => set('description', v)}
             rows={4}
             placeholder="The full blurb for the book."
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </Field>
 
-        <Field label="What to show on this page" hint="Choose which text appears between the cover and the buttons.">
+        <Field label="What to show on this page" hint="Choose which text appears next to the cover.">
           <select
             value={draft.pageTextMode}
             onChange={(e) => set('pageTextMode', e.target.value as BookTextMode)}
@@ -347,13 +344,14 @@ function LandingPageEditor({
             <option value="none">No text</option>
           </select>
           {draft.pageTextMode === 'custom' && (
-            <textarea
-              value={draft.pageTextCustom}
-              onChange={(e) => set('pageTextCustom', e.target.value)}
-              rows={3}
-              placeholder="Custom text for this page."
-              className="mt-2 w-full px-3 py-2 text-sm rounded-lg border border-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            />
+            <div className="mt-2">
+              <FormattedTextarea
+                value={draft.pageTextCustom}
+                onChange={(v) => set('pageTextCustom', v)}
+                rows={3}
+                placeholder="Custom text for this page."
+              />
+            </div>
           )}
         </Field>
 

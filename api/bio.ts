@@ -312,8 +312,11 @@ function renderEmailBlock(block: BioBlockRow): string {
 // away. Uses native <details> so it needs no JavaScript.
 function renderBookBlock(block: BioBlockRow, page: BookPageRow | undefined): string {
   if (!page) return '';
+  // Header is always the book's name; the body shows the chosen text. Don't
+  // repeat the name in the body when they're the same text.
   const title = (block.title && block.title.trim()) || (page.title && page.title.trim()) || 'Get the book';
-  const desc = pickBookText(block.text_mode, page.headline, page.description, block.body);
+  let desc = pickBookText(block.text_mode, page.headline, page.description, block.body);
+  if (desc.trim() && desc.trim() === title.trim()) desc = '';
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const stores = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim())
