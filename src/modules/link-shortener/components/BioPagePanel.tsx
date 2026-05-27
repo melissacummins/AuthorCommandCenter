@@ -937,11 +937,14 @@ function SortableEmailRow({ sortableId, block, onSave, onDelete }: SectionRowPro
 function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: SectionRowProps & { landingPages: LandingPage[] }) {
   const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
   const selected = landingPages.find((p) => p.id === block.landing_page_id) ?? null;
+  const mode = block.text_mode ?? 'description';
+  const [customDraft, setCustomDraft] = useState(block.body ?? '');
+  useEffect(() => { setCustomDraft(block.body ?? ''); }, [block.id]);
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 px-3 py-3 rounded-xl bg-amber-50/40 border border-amber-200/60"
+      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-amber-50/40 border border-amber-200/60"
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       {selected?.cover_image_url ? (
@@ -949,7 +952,7 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
       ) : (
         <div className="w-9 h-12 rounded shrink-0 bg-amber-100 grid place-items-center text-amber-600"><BookOpen className="w-4 h-4" /></div>
       )}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 space-y-2">
         {landingPages.length === 0 ? (
           <p className="text-xs text-amber-700">Create a Book page first (Pages tab), then pick it here.</p>
         ) : (
@@ -964,7 +967,32 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
             ))}
           </select>
         )}
-        <p className="text-[11px] text-slate-400 mt-1">Shows as a card that expands to the blurb + retailer buttons, right on your bio page.</p>
+        {block.landing_page_id && (
+          <div className="flex items-center gap-2">
+            <label className="text-[11px] font-medium text-slate-500 shrink-0">When expanded, show</label>
+            <select
+              value={mode}
+              onChange={(e) => onSave({ text_mode: e.target.value })}
+              className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+            >
+              <option value="description">Full description</option>
+              <option value="headline">Headline only</option>
+              <option value="custom">Custom text</option>
+              <option value="none">No text</option>
+            </select>
+          </div>
+        )}
+        {block.landing_page_id && mode === 'custom' && (
+          <textarea
+            value={customDraft}
+            onChange={(e) => setCustomDraft(e.target.value)}
+            onBlur={() => onSave({ body: customDraft })}
+            rows={2}
+            placeholder="Custom text for this spot"
+            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+          />
+        )}
+        <p className="text-[11px] text-slate-400">Shows as a card that expands to your chosen text + retailer buttons, right on your bio page.</p>
       </div>
       <button
         onClick={onDelete}

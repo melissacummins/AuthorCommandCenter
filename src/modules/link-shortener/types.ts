@@ -100,12 +100,17 @@ export interface BioSettings {
   updated_at: string;
 }
 
+export type BookTextMode = 'headline' | 'description' | 'custom' | 'none';
+
 export interface LandingPage {
   id: string;
   user_id: string;
   slug: string;
   title: string;
+  headline: string;
   description: string;
+  page_text_mode: BookTextMode;
+  page_text_custom: string;
   cover_image_url: string | null;
   source_url: string;
   buttons: BioButton[];
@@ -118,7 +123,10 @@ export interface LandingPage {
 export type LandingPageInsert = {
   slug: string;
   title?: string;
+  headline?: string;
   description?: string;
+  page_text_mode?: BookTextMode;
+  page_text_custom?: string;
   cover_image_url?: string | null;
   source_url?: string;
   buttons?: BioButton[];
@@ -137,6 +145,7 @@ export interface SeriesPage {
   page_ids: string[];
   theme: string | null;
   accent_color: string | null;
+  card_text_mode: 'headline' | 'description' | 'none';
   created_at: string;
   updated_at: string;
 }
@@ -148,6 +157,7 @@ export type SeriesPageInsert = {
   page_ids?: string[];
   theme?: string;
   accent_color?: string | null;
+  card_text_mode?: 'headline' | 'description' | 'none';
 };
 
 export type SeriesPageUpdate = Partial<Omit<SeriesPageInsert, 'slug'>> & { slug?: string };
@@ -192,6 +202,7 @@ export interface BioBlock {
   klaviyo_list_id: string | null;
   button_label: string | null;
   landing_page_id: string | null;
+  text_mode: string | null;
   bio_sort_order: number;
   created_at: string;
   updated_at: string;
@@ -207,11 +218,12 @@ export type BioBlockInsert = {
   klaviyo_list_id?: string | null;
   button_label?: string | null;
   landing_page_id?: string | null;
+  text_mode?: string | null;
   bio_sort_order?: number;
 };
 
 export type BioBlockUpdate = Partial<
-  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'buttons' | 'klaviyo_list_id' | 'button_label' | 'landing_page_id' | 'bio_sort_order'>
+  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'buttons' | 'klaviyo_list_id' | 'button_label' | 'landing_page_id' | 'text_mode' | 'bio_sort_order'>
 >;
 
 export type ShortLinkInsert = Pick<

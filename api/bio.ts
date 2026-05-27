@@ -60,6 +60,7 @@ interface BioBlockRow {
   klaviyo_list_id: string | null;
   button_label: string | null;
   landing_page_id: string | null;
+  text_mode: string | null;
   bio_sort_order: number;
   created_at: string;
 }
@@ -70,6 +71,7 @@ interface BookPageRow {
   id: string;
   slug: string;
   title: string | null;
+  headline: string | null;
   description: string | null;
   cover_image_url: string | null;
   buttons: BioButtonRow[] | null;
@@ -142,6 +144,31 @@ function detectPlatform(url: string): Platform {
 
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+}
+
+// Inline formatting for author text: **bold**, *italic*, newlines. Escapes
+// HTML first so only these tokens produce markup.
+function formatText(s: string): string {
+  let h = escapeHtml(s);
+  h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  h = h.replace(/\r?\n/g, '<br />');
+  return h;
+}
+
+// Which block of text a book spot shows. Defaults to the full description.
+function pickBookText(
+  mode: string | null | undefined,
+  headline: string | null,
+  description: string | null,
+  custom: string | null,
+): string {
+  switch (mode) {
+    case 'headline': return (headline ?? '').trim();
+    case 'custom': return (custom ?? '').trim();
+    case 'none': return '';
+    default: return (description ?? '').trim();
+  }
 }
 
 // ---------- Bio page themes ----------
@@ -286,7 +313,7 @@ function renderEmailBlock(block: BioBlockRow): string {
 function renderBookBlock(block: BioBlockRow, page: BookPageRow | undefined): string {
   if (!page) return '';
   const title = (block.title && block.title.trim()) || (page.title && page.title.trim()) || 'Get the book';
-  const desc = (page.description || '').trim();
+  const desc = pickBookText(block.text_mode, page.headline, page.description, block.body);
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const stores = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim())
@@ -300,7 +327,7 @@ function renderBookBlock(block: BioBlockRow, page: BookPageRow | undefined): str
       <span class="biobook-chev" aria-hidden="true">&#9662;</span>
     </summary>
     <div class="biobook-body">
-      ${desc ? `<p class="biobook-desc">${escapeHtml(desc)}</p>` : ''}
+      ${desc ? `<p class="biobook-desc">${formatText(desc)}</p>` : ''}
       ${stores ? `<div class="biobook-stores">${stores}</div>` : '<p class="biobook-desc">No retailers added to this book yet.</p>'}
     </div>
   </details>`;
@@ -825,7 +852,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const blocksPromise = supabase
       .from('bio_blocks')
-      .select('id, type, title, body, image_url, link_url, buttons, klaviyo_list_id, button_label, landing_page_id, bio_sort_order, created_at')
+      .select('id, type, title, body, image_url, link_url, buttons, klaviyo_list_id, button_label, landing_page_id, text_mode, bio_sort_order, created_at')
       .eq('user_id', userId)
       .order('bio_sort_order', { ascending: true })
       .limit(100)
@@ -867,7 +894,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (bookIds.length > 0) {
       const { data: lps } = await supabase
         .from('landing_pages')
-        .select('id, slug, title, description, cover_image_url, buttons')
+        .select('id, slug, title, headline, description, cover_image_url, buttons')
         .eq('user_id', userId)
         .in('id', bookIds);
       for (const lp of lps ?? []) bookPages.set(lp.id as string, lp as BookPageRow);

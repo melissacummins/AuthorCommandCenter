@@ -7,7 +7,9 @@ import {
   listLandingPages, createLandingPage, updateLandingPage, deleteLandingPage,
   fetchOgForUrl, isSlugAvailable,
 } from '../api';
-import type { BioButton, LandingPage } from '../types';
+import type { BioButton, BookTextMode, LandingPage } from '../types';
+
+const FORMAT_HINT = 'Formatting: **bold**, *italic*, and Enter for a new line.';
 import { isValidSlug, normalizeUrl, isValidUrl, buildShortUrl } from '../utils';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
 
@@ -33,7 +35,10 @@ interface DraftState {
   slug: string;
   sourceUrl: string;
   title: string;
+  headline: string;
   description: string;
+  pageTextMode: BookTextMode;
+  pageTextCustom: string;
   coverUrl: string;
   buttons: BioButton[];
   theme: string;
@@ -41,7 +46,8 @@ interface DraftState {
 }
 
 const EMPTY_DRAFT: DraftState = {
-  slug: '', sourceUrl: '', title: '', description: '', coverUrl: '',
+  slug: '', sourceUrl: '', title: '', headline: '', description: '',
+  pageTextMode: 'description', pageTextCustom: '', coverUrl: '',
   buttons: [], theme: DEFAULT_BIO_THEME, accentColor: null,
 };
 
@@ -167,7 +173,10 @@ function LandingPageEditor({
           slug: page.slug,
           sourceUrl: page.source_url ?? '',
           title: page.title ?? '',
+          headline: page.headline ?? '',
           description: page.description ?? '',
+          pageTextMode: page.page_text_mode ?? 'description',
+          pageTextCustom: page.page_text_custom ?? '',
           coverUrl: page.cover_image_url ?? '',
           buttons: Array.isArray(page.buttons) ? page.buttons : [],
           theme: page.theme ?? DEFAULT_BIO_THEME,
@@ -239,7 +248,10 @@ function LandingPageEditor({
       const payload = {
         slug,
         title: draft.title.trim(),
+        headline: draft.headline.trim(),
         description: draft.description.trim(),
+        page_text_mode: draft.pageTextMode,
+        page_text_custom: draft.pageTextCustom.trim(),
         cover_image_url: draft.coverUrl.trim() || null,
         source_url: draft.sourceUrl.trim(),
         buttons,
@@ -303,14 +315,46 @@ function LandingPageEditor({
           />
         </Field>
 
-        <Field label="Description">
+        <Field label="Headline" hint="A short hook — used wherever you choose to show the headline instead of the full blurb.">
+          <textarea
+            value={draft.headline}
+            onChange={(e) => set('headline', e.target.value)}
+            rows={2}
+            placeholder="One irresistible line about the book."
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          />
+        </Field>
+
+        <Field label="Description" hint={FORMAT_HINT}>
           <textarea
             value={draft.description}
             onChange={(e) => set('description', e.target.value)}
-            rows={3}
-            placeholder="A short blurb or hook for the book."
+            rows={4}
+            placeholder="The full blurb for the book."
             className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
+        </Field>
+
+        <Field label="What to show on this page" hint="Choose which text appears between the cover and the buttons.">
+          <select
+            value={draft.pageTextMode}
+            onChange={(e) => set('pageTextMode', e.target.value as BookTextMode)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            <option value="description">Full description</option>
+            <option value="headline">Headline only</option>
+            <option value="custom">Custom text</option>
+            <option value="none">No text</option>
+          </select>
+          {draft.pageTextMode === 'custom' && (
+            <textarea
+              value={draft.pageTextCustom}
+              onChange={(e) => set('pageTextCustom', e.target.value)}
+              rows={3}
+              placeholder="Custom text for this page."
+              className="mt-2 w-full px-3 py-2 text-sm rounded-lg border border-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            />
+          )}
         </Field>
 
         <Field label="Cover image URL">
