@@ -123,8 +123,14 @@ interface GenerateRequestBody {
   width?: number;
   height?: number;
   source_image_url?: string | null;
+  source_image_urls?: string[];
+  num_images?: number;
   collection_id?: string | null;
 }
+
+// Hard ceiling on a single batch regardless of what the client asks
+// for — guards against a malformed request running up a huge bill.
+const MAX_BATCH = 10;
 
 function authHeader(req: VercelRequest): string | null {
   const raw = req.headers['authorization'] ?? req.headers['Authorization'];
@@ -187,7 +193,7 @@ export async function resolveFalKey(supabase: SupabaseClient, userId: string): P
   return process.env.FAL_KEY ?? null;
 }
 
-function buildFalPayload(model: ModelDef, body: GenerateRequestBody): Record<string, unknown> {
+function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: number): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     prompt: body.full_prompt ?? body.prompt,
   };
@@ -199,12 +205,23 @@ function buildFalPayload(model: ModelDef, body: GenerateRequestBody): Record<str
     payload.image_size = { width: body.width, height: body.height };
   }
 
-  if (model.acceptsInputImage && body.source_image_url) {
-    // Different endpoints use different field names. Send both — Fal
-    // ignores unknown fields, so this keeps us compatible across the
-    // catalogue without per-model branching.
-    payload.image_url = body.source_image_url;
-    payload.image_urls = [body.source_image_url];
+  // Batch count — only meaningful for image generation. Fal ignores
+  // unknown fields, but we still skip it for video to be safe.
+  if (model.kind === 'image' && numImages > 1) {
+    payload.num_images = numImages;
+  }
+
+  if (model.acceptsInputImage) {
+    const refs = (body.source_image_urls && body.source_image_urls.length > 0)
+      ? body.source_image_urls
+      : (body.source_image_url ? [body.source_image_url] : []);
+    if (refs.length > 0) {
+      // Different endpoints use different field names. Send both — Fal
+      // ignores unknown fields, so this keeps us compatible across the
+      // catalogue without per-model branching.
+      payload.image_url = refs[0];
+      payload.image_urls = refs;
+    }
   }
 
   return payload;
@@ -229,21 +246,27 @@ interface FalQueueResponse {
   status_url?: string;
 }
 
-function extractSyncOutputUrl(data: FalSyncResponse): { url: string | null; width: number | null; height: number | null } {
-  if (data.images && data.images.length > 0 && data.images[0].url) {
-    return {
-      url: data.images[0].url,
-      width: data.images[0].width ?? null,
-      height: data.images[0].height ?? null,
-    };
+interface ExtractedOutput {
+  url: string;
+  width: number | null;
+  height: number | null;
+}
+
+// Pulls every output image (or the single video) from a Fal response.
+function extractSyncOutputs(data: FalSyncResponse): ExtractedOutput[] {
+  const outputs: ExtractedOutput[] = [];
+  if (data.images && data.images.length > 0) {
+    for (const img of data.images) {
+      if (img.url) outputs.push({ url: img.url, width: img.width ?? null, height: img.height ?? null });
+    }
   }
-  if (data.image?.url) {
-    return { url: data.image.url, width: data.image.width ?? null, height: data.image.height ?? null };
+  if (outputs.length === 0 && data.image?.url) {
+    outputs.push({ url: data.image.url, width: data.image.width ?? null, height: data.image.height ?? null });
   }
-  if (data.video?.url) {
-    return { url: data.video.url, width: null, height: null };
+  if (outputs.length === 0 && data.video?.url) {
+    outputs.push({ url: data.video.url, width: null, height: null });
   }
-  return { url: null, width: null, height: null };
+  return outputs;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -299,10 +322,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: `Unknown model: ${body.model}` });
     return;
   }
-  if (model.acceptsInputImage && !body.source_image_url && body.model === 'nano-banana-edit') {
+  const hasInputImage = !!body.source_image_url || (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0);
+  if (model.acceptsInputImage && !hasInputImage && body.model === 'nano-banana-edit') {
     res.status(400).json({ error: 'Nano Banana edit requires a source image.' });
     return;
   }
+
+  // How many images to produce this request. Only image generation
+  // batches; video is always a single output.
+  const requestedNum = Number.isFinite(body.num_images) ? Math.floor(body.num_images as number) : 1;
+  const numImages = model.kind === 'image' ? Math.min(MAX_BATCH, Math.max(1, requestedNum)) : 1;
+  const totalCostCents = model.estimatedCostCents * numImages;
 
   // Spend cap check. If the next generation would push us past the
   // cap, refuse and let the UI surface the message.
@@ -310,18 +340,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     getMonthlySpendCents(supabase, userId),
     getMonthlyCapCents(supabase, userId),
   ]);
-  if (cap > 0 && spent + model.estimatedCostCents > cap) {
+  if (cap > 0 && spent + totalCostCents > cap) {
     res.status(402).json({
       error: 'Monthly spend cap reached',
       spent_cents: spent,
       cap_cents: cap,
-      estimated_cost_cents: model.estimatedCostCents,
+      estimated_cost_cents: totalCostCents,
     });
     return;
   }
 
+  const firstSource = body.source_image_url ?? (body.source_image_urls?.[0] ?? null);
   const fullPrompt = body.full_prompt?.trim() || body.prompt;
-  const falPayload = buildFalPayload(model, { ...body, full_prompt: fullPrompt });
+  const falPayload = buildFalPayload(model, { ...body, full_prompt: fullPrompt }, numImages);
 
   // Insert the row up front in 'pending' state. For sync models we
   // flip it to 'completed' as soon as Fal returns; for async (video)
@@ -338,7 +369,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       style_preset_id: body.style_preset_id ?? null,
       width: body.width ?? null,
       height: body.height ?? null,
-      source_image_url: body.source_image_url ?? null,
+      source_image_url: firstSource,
       fal_model_endpoint: model.endpoint,
       cost_cents: model.estimatedCostCents,
       status: 'pending',
@@ -374,8 +405,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const { url, width, height } = extractSyncOutputUrl(falJson);
-    if (!url) {
+    const outputs = extractSyncOutputs(falJson);
+    if (outputs.length === 0) {
       await supabase.from('media_generations').update({
         status: 'failed',
         error_message: 'Fal response did not include an output URL',
@@ -384,21 +415,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
+    const completedAt = new Date().toISOString();
+    const generations: unknown[] = [];
+
+    // First output reuses the row we already inserted.
+    const first = outputs[0];
     const { data: updated } = await supabase
       .from('media_generations')
       .update({
         status: 'completed',
-        output_url: url,
-        thumbnail_url: url,
-        width: width ?? body.width ?? null,
-        height: height ?? body.height ?? null,
-        completed_at: new Date().toISOString(),
+        output_url: first.url,
+        thumbnail_url: first.url,
+        width: first.width ?? body.width ?? null,
+        height: first.height ?? body.height ?? null,
+        completed_at: completedAt,
       })
       .eq('id', generationId)
       .select()
       .single();
+    if (updated) generations.push(updated);
 
-    res.status(200).json({ generation: updated ?? inserted });
+    // Remaining outputs become their own completed rows so each image
+    // is independently downloadable / deletable in the history grid.
+    // Cost is recorded per-image so the monthly spend total stays exact.
+    if (outputs.length > 1) {
+      const extraRows = outputs.slice(1).map((o) => ({
+        user_id: userId,
+        collection_id: body.collection_id ?? null,
+        kind: model.kind,
+        model: model.id,
+        prompt: body.prompt,
+        full_prompt: fullPrompt,
+        style_preset_id: body.style_preset_id ?? null,
+        width: o.width ?? body.width ?? null,
+        height: o.height ?? body.height ?? null,
+        source_image_url: firstSource,
+        fal_model_endpoint: model.endpoint,
+        cost_cents: model.estimatedCostCents,
+        status: 'completed' as const,
+        output_url: o.url,
+        thumbnail_url: o.url,
+        completed_at: completedAt,
+      }));
+      const { data: extras } = await supabase
+        .from('media_generations')
+        .insert(extraRows)
+        .select();
+      if (extras) generations.push(...extras);
+    }
+
+    res.status(200).json({ generations: generations.length > 0 ? generations : [updated ?? inserted] });
     return;
   }
 
@@ -430,5 +496,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .select()
     .single();
 
-  res.status(202).json({ generation: queued ?? inserted });
+  res.status(202).json({ generations: [queued ?? inserted] });
 }

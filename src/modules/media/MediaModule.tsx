@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MODELS, findModel } from './lib/models';
+import { MODELS, findModel, maxImagesForGroup } from './lib/models';
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
@@ -34,9 +34,9 @@ export default function MediaModule() {
   const [customHeight, setCustomHeight] = useState<number>(1024);
   const [useCustomSize, setUseCustomSize] = useState(false);
 
-  const [inputImageUrl, setInputImageUrl] = useState<string | null>(null);
-  const [inputImageName, setInputImageName] = useState<string | null>(null);
+  const [inputImages, setInputImages] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
@@ -76,11 +76,15 @@ export default function MediaModule() {
         supportsCustomSize: curated.supportsCustomSize,
         description: curated.description,
         estimatedCostCents: curated.estimatedCostCents,
+        maxImages: maxImagesForGroup(curated.kind, curated.group),
         isCustom: false,
       };
     }
     const custom = customModels.find((c) => c.id === modelId);
     if (custom) {
+      // Custom image generators (no input image) allow batches; edit /
+      // i2v style customs and video produce a single output.
+      const customMax = custom.kind === 'image' && !custom.accepts_input_image ? 4 : 1;
       return {
         id: custom.id,
         label: custom.label,
@@ -89,6 +93,7 @@ export default function MediaModule() {
         supportsCustomSize: custom.supports_custom_size,
         description: custom.description ?? `Custom: ${custom.endpoint}`,
         estimatedCostCents: custom.estimated_cost_cents,
+        maxImages: customMax,
         isCustom: true,
       };
     }
@@ -102,6 +107,7 @@ export default function MediaModule() {
       supportsCustomSize: first.supportsCustomSize,
       description: first.description,
       estimatedCostCents: first.estimatedCostCents,
+      maxImages: maxImagesForGroup(first.kind, first.group),
       isCustom: false,
     };
   }, [modelId, customModels]);
@@ -113,6 +119,11 @@ export default function MediaModule() {
     () => stylePresets.find((s) => s.id === selectedStyleId) ?? null,
     [selectedStyleId, stylePresets],
   );
+
+  // Keep the chosen quantity within the current model's max.
+  useEffect(() => {
+    setQuantity((q) => Math.min(Math.max(1, q), model.maxImages));
+  }, [model.maxImages]);
 
   const fullPrompt = useMemo(() => {
     if (!prompt.trim()) return '';
@@ -198,7 +209,7 @@ export default function MediaModule() {
       setError('Add a prompt first.');
       return;
     }
-    if (model.acceptsInputImage && model.id === 'nano-banana-edit' && !inputImageUrl) {
+    if (model.acceptsInputImage && model.id === 'nano-banana-edit' && inputImages.length === 0) {
       setError('Nano Banana edit needs an uploaded image.');
       return;
     }
@@ -218,20 +229,22 @@ export default function MediaModule() {
         }
       }
 
-      const gen = await requestGeneration({
+      const num = Math.min(Math.max(1, quantity), model.maxImages);
+      const gens = await requestGeneration({
         model: model.id,
         prompt: prompt.trim(),
         full_prompt: fullPrompt || prompt.trim(),
         style_preset_id: selectedStyleId,
         width,
         height,
-        source_image_url: model.acceptsInputImage ? inputImageUrl : null,
+        source_image_urls: model.acceptsInputImage ? inputImages.map((i) => i.url) : [],
+        num_images: num,
         collection_id: selectedCollectionId,
       });
 
-      setHistory((prev) => [gen, ...prev]);
-      setMonthlySpent((prev) => prev + (gen.cost_cents ?? 0));
-      if (gen.status === 'pending') startPolling(gen.id);
+      setHistory((prev) => [...gens, ...prev]);
+      setMonthlySpent((prev) => prev + gens.reduce((s, g) => s + (g.cost_cents ?? 0), 0));
+      gens.filter((g) => g.status === 'pending').forEach((g) => startPolling(g.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
     } finally {
@@ -239,13 +252,16 @@ export default function MediaModule() {
     }
   }
 
-  async function handleUploadInput(file: File) {
+  async function handleUploadInput(files: FileList) {
     setUploading(true);
     setError(null);
     try {
-      const url = await uploadInputImage(file);
-      setInputImageUrl(url);
-      setInputImageName(file.name);
+      const uploaded: { url: string; name: string }[] = [];
+      for (const file of Array.from(files)) {
+        const url = await uploadInputImage(file);
+        uploaded.push({ url, name: file.name });
+      }
+      setInputImages((prev) => [...prev, ...uploaded]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
     } finally {
@@ -265,8 +281,11 @@ export default function MediaModule() {
 
   async function handleUseAsInput(gen: MediaGeneration) {
     if (!gen.output_url) return;
-    setInputImageUrl(gen.output_url);
-    setInputImageName(`generation-${gen.id.slice(0, 8)}`);
+    setInputImages((prev) => (
+      prev.some((i) => i.url === gen.output_url)
+        ? prev
+        : [...prev, { url: gen.output_url as string, name: `generation-${gen.id.slice(0, 8)}` }]
+    ));
     // Auto-switch to nano-banana edit when the user picks "use as input"
     // so the next click on Generate does the obvious thing.
     if (!model.acceptsInputImage) setModelId('nano-banana-edit');
@@ -595,45 +614,50 @@ export default function MediaModule() {
             </div>
           )}
 
-          {/* Input image */}
+          {/* Reference / input images */}
           {model.acceptsInputImage && (
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                Input image {model.id === 'nano-banana-edit' ? '(required)' : '(optional)'}
+                Reference {inputImages.length === 1 ? 'image' : 'images'} {model.id === 'nano-banana-edit' ? '(required)' : '(optional)'}
               </label>
-              {inputImageUrl ? (
-                <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-200">
-                  <img src={inputImageUrl} alt="" className="w-12 h-12 object-cover rounded" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-600 truncate">{inputImageName ?? 'Uploaded image'}</p>
-                  </div>
-                  <button onClick={() => { setInputImageUrl(null); setInputImageName(null); }} className="text-slate-400 hover:text-red-500">
-                    <X className="w-4 h-4" />
-                  </button>
+              {inputImages.length > 0 && (
+                <div className="grid grid-cols-4 gap-2 mb-2">
+                  {inputImages.map((img, idx) => (
+                    <div key={img.url} className="relative group aspect-square">
+                      <img src={img.url} alt={img.name} className="w-full h-full object-cover rounded-lg border border-slate-200" />
+                      <button
+                        onClick={() => setInputImages((prev) => prev.filter((_, i) => i !== idx))}
+                        className="absolute -top-1.5 -right-1.5 bg-white border border-slate-200 rounded-full p-0.5 text-slate-400 hover:text-red-500 shadow-sm"
+                        title="Remove"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
-                  >
-                    {uploading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</> : <><Upload className="w-4 h-4" /> Upload image</>}
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp,image/gif"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUploadInput(file);
-                      e.target.value = '';
-                    }}
-                  />
-                </>
               )}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
+              >
+                {uploading
+                  ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
+                  : <><Upload className="w-4 h-4" /> {inputImages.length > 0 ? 'Add more images' : 'Upload reference images'}</>}
+              </button>
+              <p className="text-[11px] text-slate-400 mt-1">You can add several — they're all sent to the model as references.</p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) handleUploadInput(e.target.files);
+                  e.target.value = '';
+                }}
+              />
             </div>
           )}
 
@@ -649,12 +673,43 @@ export default function MediaModule() {
             />
           </div>
 
+          {/* Quantity */}
+          {model.kind === 'image' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">How many?</label>
+                <span className="text-[11px] text-slate-400">Up to {model.maxImages} per run</span>
+              </div>
+              {model.maxImages > 1 ? (
+                <div className="flex gap-1.5">
+                  {Array.from({ length: model.maxImages }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      onClick={() => setQuantity(n)}
+                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        quantity === n
+                          ? 'bg-fuchsia-600 text-white border-fuchsia-600'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-400">This model returns a single image per run.</p>
+              )}
+            </div>
+          )}
+
           <button
             onClick={handleGenerate}
             disabled={generating || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-semibold shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</> : <><Wand2 className="w-4 h-4" /> Generate (~{formatCents(model.estimatedCostCents)})</>}
+            {generating
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
+              : <><Wand2 className="w-4 h-4" /> Generate{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(model.estimatedCostCents * (model.kind === 'image' ? quantity : 1))})</>}
           </button>
         </div>
 

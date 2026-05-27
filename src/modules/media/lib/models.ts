@@ -550,3 +550,16 @@ export function findCuratedModel(id: string): ModelDef | undefined {
 
 // Back-compat for the previous import name used elsewhere.
 export const findModel = findCuratedModel;
+
+// Max images a model can produce in one request. Editing, upscaling and
+// video endpoints return a single output; plain image generation
+// supports batches. Used to cap the quantity selector in the UI.
+export function maxImagesForGroup(kind: MediaKind, group: ModelDef['group']): number {
+  if (kind === 'video') return 1;
+  if (group === 'image-edit' || group === 'image-upscale') return 1;
+  return 4;
+}
+
+export function maxImagesFor(m: ModelDef): number {
+  return maxImagesForGroup(m.kind, m.group);
+}
