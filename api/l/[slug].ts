@@ -424,25 +424,12 @@ h1{margin:4px 0 0;font-size:25px;letter-spacing:-.015em;text-align:center;color:
 </html>`;
 }
 
-// Brand icon for a retailer link (duplicated from api/bio.ts; see bundler
-// note above). Known stores use Simple Icons; everything else falls back to
-// the destination favicon so a mark always renders.
+// Brand icon for a retailer link. Uses each store's own favicon, which
+// always resolves (Simple Icons has dropped logos like Amazon's, which then
+// showed as broken images).
 function lpRetailerIcon(url: string): string {
   let host = '';
   try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid */ }
-  const known: [RegExp, string][] = [
-    [/(^|\.)amazon\.|(^|\.)amzn\./, 'amazon'],
-    [/(^|\.)audible\./, 'audible'],
-    [/books\.apple\.com|itunes\.apple\.com|(^|\.)apple\.co$/, 'apple'],
-    [/play\.google\.com/, 'googleplay'],
-    [/(^|\.)goodreads\.com/, 'goodreads'],
-    [/(^|\.)smashwords\.com/, 'smashwords'],
-    [/(^|\.)kobo\.com/, 'rakutenkobo'],
-    [/barnesandnoble\.com|(^|\.)bn\.com/, 'barnesandnoble'],
-  ];
-  for (const [re, slug] of known) {
-    if (re.test(host)) return `https://cdn.simpleicons.org/${slug}`;
-  }
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
 }
 

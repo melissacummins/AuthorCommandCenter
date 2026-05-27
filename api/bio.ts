@@ -221,23 +221,13 @@ function renderImageBlock(block: BioBlockRow): string {
   return `<a class="hero-card" href="${escapeHtml(href)}">${inner}</a>`;
 }
 
-// Brand icon for a retailer button. Uses Simple Icons for stores we
-// recognize, and falls back to the destination's favicon so any retailer
-// still shows a real mark rather than a broken image.
+// Brand icon for a retailer button. Uses each store's own favicon, which
+// always resolves — we previously used Simple Icons for known stores, but it
+// has dropped several brand logos (Amazon, etc.) that then 404'd as broken
+// images.
 function retailerIconSrc(url: string): string {
   let host = '';
   try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid url */ }
-  const known: [RegExp, string][] = [
-    [/(^|\.)amazon\.|(^|\.)amzn\./, 'amazon'],
-    [/(^|\.)audible\./, 'audible'],
-    [/books\.apple\.com|itunes\.apple\.com|(^|\.)apple\.co$/, 'apple'],
-    [/play\.google\.com/, 'googleplay'],
-    [/(^|\.)goodreads\.com/, 'goodreads'],
-    [/(^|\.)smashwords\.com/, 'smashwords'],
-  ];
-  for (const [re, slug] of known) {
-    if (re.test(host)) return `https://cdn.simpleicons.org/${slug}`;
-  }
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
 }
 
