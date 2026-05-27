@@ -51,7 +51,7 @@ interface BioButtonRow {
 
 interface BioBlockRow {
   id: string;
-  type: 'section' | 'image' | 'buttons' | 'email';
+  type: 'section' | 'image' | 'buttons' | 'email' | 'book';
   title: string | null;
   body: string | null;
   image_url: string | null;
@@ -59,8 +59,20 @@ interface BioBlockRow {
   buttons: BioButtonRow[] | null;
   klaviyo_list_id: string | null;
   button_label: string | null;
+  landing_page_id: string | null;
   bio_sort_order: number;
   created_at: string;
+}
+
+// A landing page referenced by a 'book' block, rendered inline as an
+// expandable card on the bio page.
+interface BookPageRow {
+  id: string;
+  slug: string;
+  title: string | null;
+  description: string | null;
+  cover_image_url: string | null;
+  buttons: BioButtonRow[] | null;
 }
 
 // ---------- Inlined social-platform detection ----------
@@ -268,12 +280,39 @@ function renderEmailBlock(block: BioBlockRow): string {
   </form>`;
 }
 
-function renderCardItem(item: CardItem, ogImageByDest: Map<string, string | null>): string {
+// Inline expandable book: cover + title collapsed; opens to the blurb +
+// retailer buttons (from the referenced landing page) without navigating
+// away. Uses native <details> so it needs no JavaScript.
+function renderBookBlock(block: BioBlockRow, page: BookPageRow | undefined): string {
+  if (!page) return '';
+  const title = (block.title && block.title.trim()) || (page.title && page.title.trim()) || 'Get the book';
+  const desc = (page.description || '').trim();
+  const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
+  const stores = (Array.isArray(page.buttons) ? page.buttons : [])
+    .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim())
+    .map((b) => `<a class="biobook-store" href="${escapeHtml(b.url)}" rel="noopener nofollow"><img src="${escapeHtml(retailerIconSrc(b.url))}" alt="" loading="lazy" /><span>${escapeHtml(b.label)}</span></a>`)
+    .join('');
+  const coverHtml = cover ? `<img class="biobook-cover" src="${escapeHtml(cover)}" alt="" loading="lazy" />` : '';
+  return `<details class="biobook">
+    <summary class="biobook-head">
+      ${coverHtml}
+      <span class="biobook-title">${escapeHtml(title)}</span>
+      <span class="biobook-chev" aria-hidden="true">&#9662;</span>
+    </summary>
+    <div class="biobook-body">
+      ${desc ? `<p class="biobook-desc">${escapeHtml(desc)}</p>` : ''}
+      ${stores ? `<div class="biobook-stores">${stores}</div>` : '<p class="biobook-desc">No retailers added to this book yet.</p>'}
+    </div>
+  </details>`;
+}
+
+function renderCardItem(item: CardItem, ogImageByDest: Map<string, string | null>, bookPages: Map<string, BookPageRow>): string {
   if (item.kind === 'link') return renderCardLink(item.data, ogImageByDest);
   if (item.data.type === 'section') return renderSectionBlock(item.data);
   if (item.data.type === 'image') return renderImageBlock(item.data);
   if (item.data.type === 'buttons') return renderButtonsBlock(item.data);
   if (item.data.type === 'email') return renderEmailBlock(item.data);
+  if (item.data.type === 'book') return renderBookBlock(item.data, item.data.landing_page_id ? bookPages.get(item.data.landing_page_id) : undefined);
   return '';
 }
 
@@ -297,13 +336,15 @@ interface RenderOptions {
   featuredLinks?: BioLink[];
   cardItems: CardItem[];
   ogImageByDest: Map<string, string | null>;
+  bookPages?: Map<string, BookPageRow>;
   theme?: Theme;
   metaPixelId?: string | null;
 }
 
-function renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme, metaPixelId }: RenderOptions): string {
+function renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, bookPages, theme, metaPixelId }: RenderOptions): string {
   const t = theme ?? resolveTheme(null, null);
   const featured = featuredLinks ?? [];
+  const books = bookPages ?? new Map<string, BookPageRow>();
   const pixelHtml = metaPixelScript(metaPixelId);
   const initial = title.trim().charAt(0).toUpperCase() || 'M';
   const headerVisual = logoUrl
@@ -316,7 +357,7 @@ function renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardIt
     ? `<div class="links featured-group">${featured.map((l) => renderCardLink(l, ogImageByDest, true)).join('')}</div>`
     : '';
   const cardsHtml = cardItems.length
-    ? `<div class="links">${cardItems.map((i) => renderCardItem(i, ogImageByDest)).join('')}</div>`
+    ? `<div class="links">${cardItems.map((i) => renderCardItem(i, ogImageByDest, books)).join('')}</div>`
     : '';
   const empty = !iconLinks.length && !cardItems.length && !featured.length
     ? `<p class="empty">No links to show right now — check back soon.</p>`
@@ -482,6 +523,20 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 .signup-msg.ok { color: var(--accent); }
 .signup-msg.err { color: #e11d48; }
 @media (max-width: 360px) { .signup-row { flex-direction: column; } }
+.biobook { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+.biobook[open] { box-shadow: 0 12px 28px -16px var(--accent-soft); }
+.biobook-head { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; list-style: none; }
+.biobook-head::-webkit-details-marker { display: none; }
+.biobook-cover { width: 40px; height: 56px; object-fit: cover; border-radius: 6px; background: var(--border); flex-shrink: 0; }
+.biobook-title { flex: 1; min-width: 0; font-weight: 600; font-size: 15px; color: var(--text); }
+.biobook-chev { color: var(--muted); font-size: 14px; transition: transform 150ms ease; }
+.biobook[open] .biobook-chev { transform: rotate(180deg); }
+.biobook-body { padding: 4px 16px 16px; }
+.biobook-desc { margin: 8px 0 12px; color: var(--muted); font-size: 13px; line-height: 1.55; white-space: pre-line; }
+.biobook-stores { display: flex; flex-wrap: wrap; gap: 8px; }
+.biobook-store { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: 13px; font-weight: 600; transition: border-color 120ms ease; }
+.biobook-store:hover { border-color: var(--accent); }
+.biobook-store img { width: 16px; height: 16px; display: block; }
 .empty { margin-top: 12px; color: var(--muted); font-size: 14px; text-align: center; }
 .foot { margin-top: 24px; font-size: 11px; color: var(--muted); opacity: 0.7; letter-spacing: 0.06em; text-transform: uppercase; }
 </style>
@@ -770,7 +825,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const blocksPromise = supabase
       .from('bio_blocks')
-      .select('id, type, title, body, image_url, link_url, buttons, klaviyo_list_id, button_label, bio_sort_order, created_at')
+      .select('id, type, title, body, image_url, link_url, buttons, klaviyo_list_id, button_label, landing_page_id, bio_sort_order, created_at')
       .eq('user_id', userId)
       .order('bio_sort_order', { ascending: true })
       .limit(100)
@@ -802,6 +857,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const theme = resolveTheme(settingsRes.data?.theme, settingsRes.data?.accent_color);
     const metaPixelId = settingsRes.data?.meta_pixel_id ?? null;
     const blocks = ((blocksRes as { data: BioBlockRow[] | null }).data ?? []) as BioBlockRow[];
+
+    // Resolve the landing pages referenced by any 'book' blocks so they can
+    // render inline as expandable cards.
+    const bookPages = new Map<string, BookPageRow>();
+    const bookIds = Array.from(new Set(
+      blocks.filter((b) => b.type === 'book' && b.landing_page_id).map((b) => b.landing_page_id as string),
+    ));
+    if (bookIds.length > 0) {
+      const { data: lps } = await supabase
+        .from('landing_pages')
+        .select('id, slug, title, description, cover_image_url, buttons')
+        .eq('user_id', userId)
+        .in('id', bookIds);
+      for (const lp of lps ?? []) bookPages.set(lp.id as string, lp as BookPageRow);
+    }
 
     const now = Date.now();
     const liveLinks: BioLink[] = (linksRes.data ?? []).filter((l) => {
@@ -858,7 +928,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return new Date(at).getTime() - new Date(bt).getTime();
     });
 
-    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, theme, metaPixelId }), 200, true);
+    sendHtml(res, renderPage({ title, subtitle, logoUrl, iconLinks, featuredLinks, cardItems, ogImageByDest, bookPages, theme, metaPixelId }), 200, true);
   } catch (err) {
     console.error('bio handler error', err);
     try {

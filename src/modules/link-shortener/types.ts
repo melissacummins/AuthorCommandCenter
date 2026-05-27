@@ -173,7 +173,7 @@ export interface CustomDomain {
   updated_at: string;
 }
 
-export type BioBlockType = 'section' | 'image' | 'buttons' | 'email';
+export type BioBlockType = 'section' | 'image' | 'buttons' | 'email' | 'book';
 
 export interface BioButton {
   label: string;
@@ -191,6 +191,7 @@ export interface BioBlock {
   buttons: BioButton[];
   klaviyo_list_id: string | null;
   button_label: string | null;
+  landing_page_id: string | null;
   bio_sort_order: number;
   created_at: string;
   updated_at: string;
@@ -205,11 +206,12 @@ export type BioBlockInsert = {
   buttons?: BioButton[];
   klaviyo_list_id?: string | null;
   button_label?: string | null;
+  landing_page_id?: string | null;
   bio_sort_order?: number;
 };
 
 export type BioBlockUpdate = Partial<
-  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'buttons' | 'klaviyo_list_id' | 'button_label' | 'bio_sort_order'>
+  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'buttons' | 'klaviyo_list_id' | 'button_label' | 'landing_page_id' | 'bio_sort_order'>
 >;
 
 export type ShortLinkInsert = Pick<

@@ -9,12 +9,12 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import {
   GripVertical, ExternalLink, EyeOff, ArrowLeftRight, Layout, Upload, Trash2, Loader2,
-  Heading, Image as ImageIcon, Plus, Type, Check, ShoppingBag, X as XIcon, Mail,
+  Heading, Image as ImageIcon, Plus, Type, Check, ShoppingBag, X as XIcon, Mail, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
-import type { BioBlock, BioButton, BioSettings, ShortLink } from '../types';
+import type { BioBlock, BioButton, BioSettings, LandingPage, ShortLink } from '../types';
 import {
-  createBioBlock, deleteBioBlock, getBioSettings, listBioBlocks, removeBioLogo,
+  createBioBlock, deleteBioBlock, getBioSettings, listBioBlocks, listLandingPages, removeBioLogo,
   reorderBioItems, updateBioBlock, updateLink, uploadBioImage, uploadBioLogo, upsertBioSettings,
 } from '../api';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
@@ -52,12 +52,14 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
   const [themeBusy, setThemeBusy] = useState(false);
   const [themeError, setThemeError] = useState<string | null>(null);
   const [pixelDraft, setPixelDraft] = useState('');
-  const [adding, setAdding] = useState<'section' | 'image' | 'buttons' | 'email' | null>(null);
+  const [adding, setAdding] = useState<'section' | 'image' | 'buttons' | 'email' | 'book' | null>(null);
+  const [landingPages, setLandingPages] = useState<LandingPage[]>([]);
 
   useEffect(() => {
     if (!user) return;
     getBioSettings(user.id).then(setBioSettings).catch(() => setBioSettings(null));
     listBioBlocks(user.id).then(setBlocks).catch(() => setBlocks([]));
+    listLandingPages(user.id).then(setLandingPages).catch(() => setLandingPages([]));
   }, [user]);
 
   useEffect(() => {
@@ -242,6 +244,19 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
       setBlocks((bs) => [...bs, created]);
     } catch (err) {
       console.error('add email block failed', err);
+    } finally {
+      setAdding(null);
+    }
+  }
+
+  async function handleAddBook() {
+    if (!user) return;
+    setAdding('book');
+    try {
+      const created = await createBioBlock(user.id, { type: 'book', landing_page_id: null });
+      setBlocks((bs) => [...bs, created]);
+    } catch (err) {
+      console.error('add book block failed', err);
     } finally {
       setAdding(null);
     }
@@ -515,6 +530,13 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             >
               <Mail className="w-3.5 h-3.5" /> Email signup
             </button>
+            <button
+              onClick={handleAddBook}
+              disabled={adding !== null}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+            >
+              <BookOpen className="w-3.5 h-3.5" /> Book
+            </button>
           </div>
         )}
       >
@@ -569,6 +591,18 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                         key={item.id}
                         sortableId={item.id}
                         block={item.block}
+                        onSave={(patch) => handleSaveBlock(item.block.id, patch)}
+                        onDelete={() => handleDeleteBlock(item.block.id)}
+                      />
+                    );
+                  }
+                  if (item.block.type === 'book') {
+                    return (
+                      <SortableBookRow
+                        key={item.id}
+                        sortableId={item.id}
+                        block={item.block}
+                        landingPages={landingPages}
                         onSave={(patch) => handleSaveBlock(item.block.id, patch)}
                         onDelete={() => handleDeleteBlock(item.block.id)}
                       />
@@ -908,6 +942,49 @@ function SortableEmailRow({ sortableId, block, onSave, onDelete }: SectionRowPro
         {!block.klaviyo_list_id && (
           <p className="text-[11px] text-amber-700">Pick a Klaviyo list above — the form stays hidden on your bio page until one is set.</p>
         )}
+      </div>
+      <button
+        onClick={onDelete}
+        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        title="Delete block"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: SectionRowProps & { landingPages: LandingPage[] }) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
+  const selected = landingPages.find((p) => p.id === block.landing_page_id) ?? null;
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 px-3 py-3 rounded-xl bg-amber-50/40 border border-amber-200/60"
+    >
+      <DragHandle attributes={attributes} listeners={listeners} />
+      {selected?.cover_image_url ? (
+        <img src={selected.cover_image_url} alt="" className="w-9 h-12 object-cover rounded shrink-0 bg-slate-100" />
+      ) : (
+        <div className="w-9 h-12 rounded shrink-0 bg-amber-100 grid place-items-center text-amber-600"><BookOpen className="w-4 h-4" /></div>
+      )}
+      <div className="flex-1 min-w-0">
+        {landingPages.length === 0 ? (
+          <p className="text-xs text-amber-700">Create a Book page first (Pages tab), then pick it here.</p>
+        ) : (
+          <select
+            value={block.landing_page_id ?? ''}
+            onChange={(e) => onSave({ landing_page_id: e.target.value || null })}
+            className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+          >
+            <option value="">— Pick a book page —</option>
+            {landingPages.map((p) => (
+              <option key={p.id} value={p.id}>{p.title || `/${p.slug}`}</option>
+            ))}
+          </select>
+        )}
+        <p className="text-[11px] text-slate-400 mt-1">Shows as a card that expands to the blurb + retailer buttons, right on your bio page.</p>
       </div>
       <button
         onClick={onDelete}
