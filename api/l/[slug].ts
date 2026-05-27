@@ -454,7 +454,7 @@ body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sy
 .wrap::after{content:"";display:block;clear:both}
 .cover{float:left;width:300px;max-width:44%;margin:0 38px 26px 0;border-radius:10px;box-shadow:0 30px 60px -22px rgba(15,23,42,.55);display:block}
 .kicker{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-.headline{margin:0 0 22px;font-size:38px;line-height:1.08;font-weight:800;letter-spacing:-.02em;color:var(--accent)}
+.headline{margin:0 0 22px;font-size:38px;line-height:1.08;font-weight:800;letter-spacing:-.02em;color:var(--text)}
 .headline--plain{color:var(--text)}
 .desc{margin:0;color:var(--text);font-size:16px;line-height:1.7}
 .desc strong{font-weight:700}
