@@ -59,8 +59,8 @@ function escapeHtml(s: string): string {
 // markup that survives.
 function formatText(s: string): string {
   let h = escapeHtml(s);
-  h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  h = h.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   h = h.replace(/\r?\n/g, '<br />');
   return h;
 }
@@ -421,21 +421,26 @@ interface LandingPageRow {
 function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = null): string {
   const t = lpTheme(page.theme, page.accent_color);
   const title = (page.title || '').trim() || 'Get the book';
-  const desc = pickBookText(page.page_text_mode, page.headline, page.description, page.page_text_custom);
+  const headline = (page.headline || '').trim();
+  let body = pickBookText(page.page_text_mode, page.headline, page.description, page.page_text_custom);
+  if (body && body.trim() === headline) body = ''; // headline is the hero; don't repeat it
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const buttons = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim());
   const storeHtml = buttons.map((b) =>
-    `<a class="store" href="${escapeHtml(b.url)}" rel="noopener nofollow"><img src="${escapeHtml(lpRetailerIcon(b.url))}" alt="" loading="lazy" /><span>${escapeHtml(b.label)}</span></a>`,
+    `<a class="store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(lpRetailerIcon(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" /></a>`,
   ).join('');
+  const heroHtml = headline
+    ? `<p class="kicker">${escapeHtml(title)}</p><h1 class="headline">${formatText(headline)}</h1>`
+    : `<h1 class="headline headline--plain">${escapeHtml(title)}</h1>`;
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta name="description" content="${escapeHtml(desc || title)}" />
+<meta name="description" content="${escapeHtml((body || headline || title).replace(/\s+/g, ' ').slice(0, 200))}" />
 <meta property="og:title" content="${escapeHtml(title)}" />
-<meta property="og:description" content="${escapeHtml(desc || '')}" />
+<meta property="og:description" content="${escapeHtml((headline || body || '').replace(/\s+/g, ' ').slice(0, 200))}" />
 ${cover ? `<meta property="og:image" content="${escapeHtml(cover)}" />` : ''}
 ${faviconUrl ? `<link rel="icon" href="${escapeHtml(faviconUrl)}" />` : ''}
 <meta property="og:type" content="book" />
@@ -444,42 +449,46 @@ ${faviconUrl ? `<link rel="icon" href="${escapeHtml(faviconUrl)}" />` : ''}
 <style>
 :root{color-scheme:${t.dark ? 'dark' : 'light'};--bg:${t.bg};--text:${t.text};--muted:${t.muted};--surface:${t.surface};--border:${t.border};--accent:${t.accent};--accent-soft:${t.accent}2e;}
 *{box-sizing:border-box}html,body{margin:0;padding:0}
-body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;align-items:flex-start;justify-content:center;padding:56px 20px 64px}
-.wrap{width:100%;max-width:720px}
-.book{display:flex;gap:28px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;box-shadow:0 20px 50px -28px rgba(15,23,42,.35)}
-.cover{flex:0 0 auto;width:210px;max-width:42%;border-radius:12px;box-shadow:0 18px 40px -20px rgba(15,23,42,.5);display:block}
-.info{flex:1;min-width:0;display:flex;flex-direction:column}
-h1{margin:0 0 12px;font-size:27px;letter-spacing:-.015em;color:var(--text);line-height:1.2}
-.desc{margin:0;color:var(--muted);font-size:15px;line-height:1.6}
-.stores{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
-.store{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);text-decoration:none;font-size:14px;font-weight:600;transition:border-color 120ms ease,transform 120ms ease}
-.store:hover{border-color:var(--accent);transform:translateY(-1px)}
-.store img{width:18px;height:18px;display:block}
-@media(max-width:560px){.book{flex-direction:column;align-items:center;text-align:center;padding:22px}.cover{width:190px;max-width:70%}h1{font-size:24px}.stores{justify-content:center}}
+body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;justify-content:center;padding:64px 24px 80px}
+.wrap{width:100%;max-width:880px}
+.wrap::after{content:"";display:block;clear:both}
+.cover{float:left;width:300px;max-width:44%;margin:0 38px 26px 0;border-radius:10px;box-shadow:0 30px 60px -22px rgba(15,23,42,.55);display:block}
+.kicker{margin:0 0 8px;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.headline{margin:0 0 22px;font-size:38px;line-height:1.08;font-weight:800;letter-spacing:-.02em;color:var(--accent)}
+.headline--plain{color:var(--text)}
+.desc{margin:0;color:var(--text);font-size:16px;line-height:1.7}
+.desc strong{font-weight:700}
+.stores{display:flex;flex-wrap:wrap;gap:12px;margin-top:28px}
+.store{display:inline-grid;place-items:center;width:54px;height:54px;border-radius:13px;border:1px solid var(--border);background:var(--surface);text-decoration:none;transition:border-color 120ms ease,transform 120ms ease}
+.store:hover{border-color:var(--accent);transform:translateY(-2px)}
+.store img{width:28px;height:28px;display:block}
+@media(max-width:620px){body{padding:40px 20px 64px}.cover{float:none;width:210px;max-width:62%;margin:0 auto 24px}.wrap{text-align:center}.headline{font-size:29px}.stores{justify-content:center}}
 </style>
 </head>
 <body>
 <main class="wrap">
-  <div class="book">
-    ${cover ? `<img class="cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)}" />` : ''}
-    <div class="info">
-      <h1>${escapeHtml(title)}</h1>
-      ${desc ? `<p class="desc">${formatText(desc)}</p>` : ''}
-      ${storeHtml ? `<div class="stores">${storeHtml}</div>` : ''}
-    </div>
-  </div>
+  ${cover ? `<img class="cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)}" />` : ''}
+  ${heroHtml}
+  ${body ? `<div class="desc">${formatText(body)}</div>` : ''}
+  ${storeHtml ? `<div class="stores">${storeHtml}</div>` : ''}
 </main>
 </body>
 </html>`;
 }
 
-// Brand icon for a retailer link. Uses each store's own favicon, which
-// always resolves (Simple Icons has dropped logos like Amazon's, which then
-// showed as broken images).
-function lpRetailerIcon(url: string): string {
-  let host = '';
-  try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid */ }
-  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
+// Brand icon for a retailer. Known stores map to their canonical domain so
+// the icon doesn't depend on the exact (sometimes affiliate/redirect) URL;
+// anything else falls back to the link's own host. Favicons always resolve.
+const RETAILER_DOMAINS: Record<string, string> = {
+  'amazon': 'amazon.com', 'apple books': 'books.apple.com', 'barnes & noble': 'barnesandnoble.com',
+  'kobo': 'kobo.com', 'google play books': 'play.google.com', 'overdrive': 'overdrive.com',
+  'bookshop.org': 'bookshop.org', 'audible': 'audible.com', 'smashwords': 'smashwords.com',
+  'bookbub': 'bookbub.com', 'everand': 'everand.com', 'books2read': 'books2read.com',
+};
+function lpRetailerIcon(label: string, url: string): string {
+  let host = RETAILER_DOMAINS[(label || '').trim().toLowerCase()] || '';
+  if (!host) { try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid */ } }
+  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128` : '';
 }
 
 interface SeriesBookRow {
@@ -509,7 +518,7 @@ function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[], faviconUrl:
     const cover = b.cover_image_url && b.cover_image_url.trim() ? b.cover_image_url.trim() : null;
     const stores = (Array.isArray(b.buttons) ? b.buttons : [])
       .filter((x) => x && typeof x.url === 'string' && x.url.trim() && typeof x.label === 'string' && x.label.trim())
-      .map((x) => `<a class="store" href="${escapeHtml(x.url)}" rel="noopener nofollow"><img src="${escapeHtml(lpRetailerIcon(x.url))}" alt="" loading="lazy" /><span>${escapeHtml(x.label)}</span></a>`)
+      .map((x) => `<a class="store" href="${escapeHtml(x.url)}" rel="noopener nofollow" title="${escapeHtml(x.label)}"><img src="${escapeHtml(lpRetailerIcon(x.label, x.url))}" alt="${escapeHtml(x.label)}" loading="lazy" /><span>${escapeHtml(x.label)}</span></a>`)
       .join('');
     const coverHtml = cover
       ? `<a class="book-cover" href="/${escapeHtml(b.slug)}"><img src="${escapeHtml(cover)}" alt="${escapeHtml(bookTitle)}" loading="lazy" /></a>`

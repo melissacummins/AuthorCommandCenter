@@ -150,8 +150,8 @@ function escapeHtml(s: string): string {
 // HTML first so only these tokens produce markup.
 function formatText(s: string): string {
   let h = escapeHtml(s);
-  h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  h = h.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*([^*]+)\*/g, '<em>$1</em>');
   h = h.replace(/\r?\n/g, '<br />');
   return h;
 }
@@ -260,14 +260,19 @@ function renderImageBlock(block: BioBlockRow): string {
   return `<a class="hero-card" href="${escapeHtml(href)}">${inner}</a>`;
 }
 
-// Brand icon for a retailer button. Uses each store's own favicon, which
-// always resolves — we previously used Simple Icons for known stores, but it
-// has dropped several brand logos (Amazon, etc.) that then 404'd as broken
-// images.
-function retailerIconSrc(url: string): string {
-  let host = '';
-  try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid url */ }
-  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
+// Brand icon for a retailer. Known stores map to their canonical domain so
+// the icon doesn't depend on the exact URL host; anything else falls back to
+// the link's own host. Favicons always resolve.
+const RETAILER_DOMAINS: Record<string, string> = {
+  'amazon': 'amazon.com', 'apple books': 'books.apple.com', 'barnes & noble': 'barnesandnoble.com',
+  'kobo': 'kobo.com', 'google play books': 'play.google.com', 'overdrive': 'overdrive.com',
+  'bookshop.org': 'bookshop.org', 'audible': 'audible.com', 'smashwords': 'smashwords.com',
+  'bookbub': 'bookbub.com', 'everand': 'everand.com', 'books2read': 'books2read.com',
+};
+function retailerIconSrc(label: string, url: string): string {
+  let host = RETAILER_DOMAINS[(label || '').trim().toLowerCase()] || '';
+  if (!host) { try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid url */ } }
+  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128` : '';
 }
 
 function renderButtonsBlock(block: BioBlockRow): string {
@@ -277,7 +282,7 @@ function renderButtonsBlock(block: BioBlockRow): string {
   const title = block.title?.trim();
   const head = title ? `<h2 class="section-title">${escapeHtml(title)}</h2>` : '';
   const cells = buttons.map((b) => {
-    const icon = retailerIconSrc(b.url);
+    const icon = retailerIconSrc(b.label, b.url);
     const iconHtml = icon ? `<img class="rbtn-icon" src="${escapeHtml(icon)}" alt="" loading="lazy" />` : '';
     return `<a class="rbtn" href="${escapeHtml(b.url)}" rel="noopener nofollow">
       ${iconHtml}<span class="rbtn-label">${escapeHtml(b.label)}</span>
@@ -320,7 +325,7 @@ function renderBookBlock(block: BioBlockRow, page: BookPageRow | undefined): str
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const stores = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim())
-    .map((b) => `<a class="biobook-store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(retailerIconSrc(b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" /></a>`)
+    .map((b) => `<a class="biobook-store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(retailerIconSrc(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" /></a>`)
     .join('');
   const coverHtml = cover ? `<img class="biobook-cover" src="${escapeHtml(cover)}" alt="" loading="lazy" />` : '';
   return `<details class="biobook">
