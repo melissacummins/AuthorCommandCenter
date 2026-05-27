@@ -272,7 +272,9 @@ async function handleLists(
 
     type ListItem = { id: string; name: string; created: string | null; updated: string | null };
     const lists: ListItem[] = [];
-    let nextUrl: string | null = 'https://a.klaviyo.com/api/lists/?page[size]=100&sort=name';
+    // Klaviyo's Lists endpoint caps page[size] at 10; the cursor loop below
+    // pages through all of them.
+    let nextUrl: string | null = 'https://a.klaviyo.com/api/lists/?page[size]=10&sort=name';
     while (nextUrl) {
       const listsRes = await fetch(nextUrl, {
         headers: {
