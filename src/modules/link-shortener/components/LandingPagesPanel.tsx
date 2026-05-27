@@ -1,11 +1,11 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import {
-  Plus, Loader2, Trash2, ExternalLink, ArrowLeft, Sparkles, GripVertical, X, Check,
+  Plus, Loader2, Trash2, ExternalLink, ArrowLeft, Sparkles, GripVertical, X, Check, Upload,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   listLandingPages, createLandingPage, updateLandingPage, deleteLandingPage,
-  fetchOgForUrl, isSlugAvailable,
+  fetchOgForUrl, isSlugAvailable, uploadBioImage,
 } from '../api';
 import type { BioButton, BookTextMode, LandingPage } from '../types';
 import FormattedTextarea from './FormattedTextarea';
@@ -197,9 +197,27 @@ function LandingPageEditor({
   );
   const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [coverBusy, setCoverBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Rows the author switched to a custom (non-listed) retailer name.
   const [customRows, setCustomRows] = useState<Record<number, boolean>>({});
+
+  async function handleCoverUpload(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !user) return;
+    if (file.size > 2 * 1024 * 1024) { setError('Cover must be 2MB or smaller.'); return; }
+    setCoverBusy(true);
+    setError(null);
+    try {
+      const url = await uploadBioImage(user.id, file);
+      set('coverUrl', url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Cover upload failed');
+    } finally {
+      setCoverBusy(false);
+    }
+  }
 
   function set<K extends keyof DraftState>(key: K, value: DraftState[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
@@ -369,16 +387,23 @@ function LandingPageEditor({
           )}
         </Field>
 
-        <Field label="Cover image URL">
+        <Field label="Cover image" hint="Upload a full-resolution cover for a crisp page. (Auto-fetched covers can be low-res.)">
           <div className="flex items-start gap-3">
-            <input
-              value={draft.coverUrl}
-              onChange={(e) => set('coverUrl', e.target.value)}
-              placeholder="https://…/cover.jpg"
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
-            />
+            <div className="flex-1 space-y-2">
+              <label className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer">
+                {coverBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                {draft.coverUrl ? 'Replace cover' : 'Upload cover'}
+                <input type="file" accept="image/*" className="hidden" disabled={coverBusy} onChange={handleCoverUpload} />
+              </label>
+              <input
+                value={draft.coverUrl}
+                onChange={(e) => set('coverUrl', e.target.value)}
+                placeholder="…or paste an image URL"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              />
+            </div>
             {draft.coverUrl.trim() && (
-              <img src={draft.coverUrl} alt="" className="w-12 h-16 object-cover rounded border border-slate-200 bg-slate-100 shrink-0" />
+              <img src={draft.coverUrl} alt="" className="w-16 h-24 object-cover rounded border border-slate-200 bg-slate-100 shrink-0" />
             )}
           </div>
         </Field>
