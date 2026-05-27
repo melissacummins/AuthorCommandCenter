@@ -137,8 +137,8 @@ export default function LinkShortenerModule() {
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
           <TabButton active={tab === 'links'} onClick={() => setTab('links')} icon={<Link2 className="w-4 h-4" />} label="Links" />
+          <TabButton active={tab === 'pages'} onClick={() => setTab('pages')} icon={<BookOpen className="w-4 h-4" />} label="Landing pages" />
           <TabButton active={tab === 'bio'} onClick={() => setTab('bio')} icon={<Layout className="w-4 h-4" />} label="Bio page" />
-          <TabButton active={tab === 'pages'} onClick={() => setTab('pages')} icon={<BookOpen className="w-4 h-4" />} label="Pages" />
           <TabButton active={tab === 'domain'} onClick={() => setTab('domain')} icon={<Globe className="w-4 h-4" />} label="Domain" />
           <TabButton active={tab === 'analytics'} onClick={() => setTab('analytics')} icon={<BarChart3 className="w-4 h-4" />} label="Analytics" />
         </div>

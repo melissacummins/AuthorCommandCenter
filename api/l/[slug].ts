@@ -360,6 +360,18 @@ function appendParams(url: string, params: Record<string, string>): string {
   }
 }
 
+// The page owner's uploaded bio logo, used as the favicon on their public
+// Book / series pages.
+async function ownerLogo(supabase: SupabaseClient, ownerId: string | null): Promise<string | null> {
+  if (!ownerId) return null;
+  try {
+    const { data } = await supabase.from('bio_settings').select('logo_url').eq('user_id', ownerId).maybeSingle();
+    return (data?.logo_url as string | null) ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function bearer(req: VercelRequest): string | null {
   const raw = req.headers['authorization'] ?? req.headers['Authorization'];
   const v = Array.isArray(raw) ? raw[0] : raw;
@@ -406,15 +418,15 @@ interface LandingPageRow {
   accent_color: string | null;
 }
 
-function renderLandingPage(page: LandingPageRow): string {
+function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = null): string {
   const t = lpTheme(page.theme, page.accent_color);
   const title = (page.title || '').trim() || 'Get the book';
   const desc = pickBookText(page.page_text_mode, page.headline, page.description, page.page_text_custom);
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const buttons = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim());
-  const btnHtml = buttons.map((b) =>
-    `<a class="rbtn" href="${escapeHtml(b.url)}" rel="noopener nofollow"><span>${escapeHtml(b.label)}</span></a>`,
+  const storeHtml = buttons.map((b) =>
+    `<a class="store" href="${escapeHtml(b.url)}" rel="noopener nofollow"><img src="${escapeHtml(lpRetailerIcon(b.url))}" alt="" loading="lazy" /><span>${escapeHtml(b.label)}</span></a>`,
   ).join('');
   return `<!doctype html>
 <html lang="en">
@@ -425,29 +437,37 @@ function renderLandingPage(page: LandingPageRow): string {
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(desc || '')}" />
 ${cover ? `<meta property="og:image" content="${escapeHtml(cover)}" />` : ''}
+${faviconUrl ? `<link rel="icon" href="${escapeHtml(faviconUrl)}" />` : ''}
 <meta property="og:type" content="book" />
 <meta name="twitter:card" content="summary_large_image" />
 <title>${escapeHtml(title)}</title>
 <style>
 :root{color-scheme:${t.dark ? 'dark' : 'light'};--bg:${t.bg};--text:${t.text};--muted:${t.muted};--surface:${t.surface};--border:${t.border};--accent:${t.accent};--accent-soft:${t.accent}2e;}
 *{box-sizing:border-box}html,body{margin:0;padding:0}
-body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;align-items:center;padding:48px 20px 64px}
-.wrap{width:100%;max-width:440px;display:flex;flex-direction:column;align-items:center;gap:16px}
-.cover{width:200px;max-width:60%;border-radius:14px;box-shadow:0 24px 50px -20px rgba(15,23,42,.45);display:block}
-h1{margin:4px 0 0;font-size:25px;letter-spacing:-.015em;text-align:center;color:var(--text)}
-.desc{margin:0;color:var(--muted);font-size:15px;line-height:1.55;text-align:center;white-space:pre-line}
-.rbtns{width:100%;display:flex;flex-direction:column;gap:10px;margin-top:6px}
-.rbtn{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px 16px;border-radius:14px;background:var(--accent);color:#fff;text-decoration:none;font-weight:600;font-size:15px;transition:transform 120ms ease,box-shadow 120ms ease}
-.rbtn:hover{transform:translateY(-1px);box-shadow:0 14px 30px -16px var(--accent-soft)}
-.foot{margin-top:24px;font-size:11px;color:var(--muted);opacity:.65;letter-spacing:.06em;text-transform:uppercase}
+body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;align-items:flex-start;justify-content:center;padding:56px 20px 64px}
+.wrap{width:100%;max-width:720px}
+.book{display:flex;gap:28px;align-items:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;box-shadow:0 20px 50px -28px rgba(15,23,42,.35)}
+.cover{flex:0 0 auto;width:210px;max-width:42%;border-radius:12px;box-shadow:0 18px 40px -20px rgba(15,23,42,.5);display:block}
+.info{flex:1;min-width:0;display:flex;flex-direction:column}
+h1{margin:0 0 12px;font-size:27px;letter-spacing:-.015em;color:var(--text);line-height:1.2}
+.desc{margin:0;color:var(--muted);font-size:15px;line-height:1.6}
+.stores{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+.store{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:var(--bg);color:var(--text);text-decoration:none;font-size:14px;font-weight:600;transition:border-color 120ms ease,transform 120ms ease}
+.store:hover{border-color:var(--accent);transform:translateY(-1px)}
+.store img{width:18px;height:18px;display:block}
+@media(max-width:560px){.book{flex-direction:column;align-items:center;text-align:center;padding:22px}.cover{width:190px;max-width:70%}h1{font-size:24px}.stores{justify-content:center}}
 </style>
 </head>
 <body>
 <main class="wrap">
-  ${cover ? `<img class="cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)}" />` : ''}
-  <h1>${escapeHtml(title)}</h1>
-  ${desc ? `<p class="desc">${formatText(desc)}</p>` : ''}
-  ${btnHtml ? `<div class="rbtns">${btnHtml}</div>` : ''}
+  <div class="book">
+    ${cover ? `<img class="cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)}" />` : ''}
+    <div class="info">
+      <h1>${escapeHtml(title)}</h1>
+      ${desc ? `<p class="desc">${formatText(desc)}</p>` : ''}
+      ${storeHtml ? `<div class="stores">${storeHtml}</div>` : ''}
+    </div>
+  </div>
 </main>
 </body>
 </html>`;
@@ -478,7 +498,7 @@ interface SeriesRow {
   card_text_mode: string | null;
 }
 
-function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[]): string {
+function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[], faviconUrl: string | null = null): string {
   const t = lpTheme(series.theme, series.accent_color);
   const title = (series.title || '').trim() || 'The series';
   const desc = (series.description || '').trim();
@@ -512,6 +532,7 @@ function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[]): string {
 <meta property="og:title" content="${escapeHtml(title)}" />
 <meta property="og:description" content="${escapeHtml(desc || '')}" />
 ${books[0]?.cover_image_url ? `<meta property="og:image" content="${escapeHtml(books[0].cover_image_url)}" />` : ''}
+${faviconUrl ? `<link rel="icon" href="${escapeHtml(faviconUrl)}" />` : ''}
 <meta property="og:type" content="website" />
 <meta name="twitter:card" content="summary" />
 <title>${escapeHtml(title)}</title>
@@ -630,9 +651,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (ownerId) pageQuery = pageQuery.eq('user_id', ownerId);
       const { data: page } = await pageQuery.maybeSingle();
       if (page) {
+        const favicon = await ownerLogo(supabase, ownerId);
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.setHeader('cache-control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=300');
-        res.status(200).send(renderLandingPage(page as LandingPageRow));
+        res.status(200).send(renderLandingPage(page as LandingPageRow, favicon));
         return;
       }
 
@@ -662,9 +684,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
               cover_image_url: r.cover_image_url, buttons: r.buttons as LpButton[] | null,
             }));
         }
+        const favicon = await ownerLogo(supabase, ownerId);
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.setHeader('cache-control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=300');
-        res.status(200).send(renderSeriesPage(series as SeriesRow, books));
+        res.status(200).send(renderSeriesPage(series as SeriesRow, books, favicon));
         return;
       }
 

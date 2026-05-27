@@ -19,6 +19,7 @@ import {
 } from '../api';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
 import KlaviyoListPicker from '../../book-tracker/components/KlaviyoListPicker';
+import FormattedTextarea from './FormattedTextarea';
 import {
   detectSocialPlatform, SOCIAL_HEX, SOCIAL_NAMES, SIMPLEICONS_SLUG,
 } from '../socialIcons';
@@ -983,13 +984,12 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
           </div>
         )}
         {block.landing_page_id && mode === 'custom' && (
-          <textarea
+          <FormattedTextarea
             value={customDraft}
-            onChange={(e) => setCustomDraft(e.target.value)}
-            onBlur={() => onSave({ body: customDraft })}
+            onChange={setCustomDraft}
+            onBlur={() => { if (customDraft !== (block.body ?? '')) onSave({ body: customDraft }); }}
             rows={2}
             placeholder="Custom text for this spot"
-            className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
           />
         )}
         <p className="text-[11px] text-slate-400">Shows as a card that expands to your chosen text + retailer buttons, right on your bio page.</p>
