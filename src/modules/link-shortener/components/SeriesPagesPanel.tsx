@@ -111,6 +111,7 @@ function SeriesEditor({
   const [description, setDescription] = useState(series?.description ?? '');
   const [theme, setTheme] = useState(series?.theme ?? DEFAULT_BIO_THEME);
   const [accentColor, setAccentColor] = useState<string | null>(series?.accent_color ?? null);
+  const [cardTextMode, setCardTextMode] = useState<'headline' | 'description' | 'none'>(series?.card_text_mode ?? 'description');
   const [selectedIds, setSelectedIds] = useState<string[]>(
     Array.isArray(series?.page_ids) ? series!.page_ids.filter((id) => books.some((b) => b.id === id)) : [],
   );
@@ -157,6 +158,7 @@ function SeriesEditor({
         page_ids: selectedIds,
         theme,
         accent_color: accentColor,
+        card_text_mode: cardTextMode,
       };
       const saved = series
         ? await updateSeriesPage(series.id, payload)
@@ -234,6 +236,21 @@ function SeriesEditor({
               ))}
             </select>
           )}
+        </div>
+
+        {/* Card text */}
+        <div>
+          <label className="text-sm font-medium text-slate-700">Text on each book card</label>
+          <p className="text-xs text-slate-400 mb-1">What shows next to each cover. Headline keeps cards short.</p>
+          <select
+            value={cardTextMode}
+            onChange={(e) => setCardTextMode(e.target.value as 'headline' | 'description' | 'none')}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          >
+            <option value="description">Each book's description</option>
+            <option value="headline">Each book's headline</option>
+            <option value="none">No text (cover + buttons only)</option>
+          </select>
         </div>
 
         {/* Theme */}

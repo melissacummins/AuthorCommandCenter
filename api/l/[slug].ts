@@ -54,6 +54,32 @@ function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
 }
 
+// Lightweight inline formatting for author-written text: **bold**, *italic*,
+// and newlines. HTML is escaped first so the markdown tokens are the only
+// markup that survives.
+function formatText(s: string): string {
+  let h = escapeHtml(s);
+  h = h.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  h = h.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  h = h.replace(/\r?\n/g, '<br />');
+  return h;
+}
+
+// Which block of text a book spot shows. Defaults to the full description.
+function pickBookText(
+  mode: string | null | undefined,
+  headline: string | null,
+  description: string | null,
+  custom: string | null,
+): string {
+  switch (mode) {
+    case 'headline': return (headline ?? '').trim();
+    case 'custom': return (custom ?? '').trim();
+    case 'none': return '';
+    default: return (description ?? '').trim();
+  }
+}
+
 function brandShell(title: string, heading: string, body: string): string {
   return `<!doctype html>
 <html lang="en">
@@ -370,7 +396,10 @@ interface LpButton { label: string; url: string }
 interface LandingPageRow {
   slug: string;
   title: string | null;
+  headline: string | null;
   description: string | null;
+  page_text_mode: string | null;
+  page_text_custom: string | null;
   cover_image_url: string | null;
   buttons: LpButton[] | null;
   theme: string | null;
@@ -380,7 +409,7 @@ interface LandingPageRow {
 function renderLandingPage(page: LandingPageRow): string {
   const t = lpTheme(page.theme, page.accent_color);
   const title = (page.title || '').trim() || 'Get the book';
-  const desc = (page.description || '').trim();
+  const desc = pickBookText(page.page_text_mode, page.headline, page.description, page.page_text_custom);
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const buttons = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim());
@@ -417,7 +446,7 @@ h1{margin:4px 0 0;font-size:25px;letter-spacing:-.015em;text-align:center;color:
 <main class="wrap">
   ${cover ? `<img class="cover" src="${escapeHtml(cover)}" alt="${escapeHtml(title)}" />` : ''}
   <h1>${escapeHtml(title)}</h1>
-  ${desc ? `<p class="desc">${escapeHtml(desc)}</p>` : ''}
+  ${desc ? `<p class="desc">${formatText(desc)}</p>` : ''}
   ${btnHtml ? `<div class="rbtns">${btnHtml}</div>` : ''}
 </main>
 </body>
@@ -436,6 +465,7 @@ function lpRetailerIcon(url: string): string {
 interface SeriesBookRow {
   slug: string;
   title: string | null;
+  headline: string | null;
   description: string | null;
   cover_image_url: string | null;
   buttons: LpButton[] | null;
@@ -445,15 +475,17 @@ interface SeriesRow {
   description: string | null;
   theme: string | null;
   accent_color: string | null;
+  card_text_mode: string | null;
 }
 
 function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[]): string {
   const t = lpTheme(series.theme, series.accent_color);
   const title = (series.title || '').trim() || 'The series';
   const desc = (series.description || '').trim();
+  const cardMode = series.card_text_mode ?? 'description';
   const cards = books.map((b) => {
     const bookTitle = (b.title || '').trim() || `/${b.slug}`;
-    const bookDesc = (b.description || '').trim();
+    const bookDesc = pickBookText(cardMode, b.headline, b.description, null);
     const cover = b.cover_image_url && b.cover_image_url.trim() ? b.cover_image_url.trim() : null;
     const stores = (Array.isArray(b.buttons) ? b.buttons : [])
       .filter((x) => x && typeof x.url === 'string' && x.url.trim() && typeof x.label === 'string' && x.label.trim())
@@ -466,7 +498,7 @@ function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[]): string {
       ${coverHtml}
       <div class="book-main">
         <a class="book-title" href="/${escapeHtml(b.slug)}">${escapeHtml(bookTitle)}</a>
-        ${bookDesc ? `<p class="book-desc">${escapeHtml(bookDesc)}</p>` : ''}
+        ${bookDesc ? `<p class="book-desc">${formatText(bookDesc)}</p>` : ''}
         ${stores ? `<div class="stores">${stores}</div>` : ''}
       </div>
     </div>`;
@@ -593,7 +625,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Not a short link — it might be a landing page (shared slug namespace).
       let pageQuery = supabase
         .from('landing_pages')
-        .select('slug, title, description, cover_image_url, buttons, theme, accent_color')
+        .select('slug, title, headline, description, page_text_mode, page_text_custom, cover_image_url, buttons, theme, accent_color')
         .eq('slug', slug);
       if (ownerId) pageQuery = pageQuery.eq('user_id', ownerId);
       const { data: page } = await pageQuery.maybeSingle();
@@ -607,7 +639,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Or a series page — a bundle of landing pages at one slug.
       let seriesQuery = supabase
         .from('series_pages')
-        .select('title, description, page_ids, theme, accent_color')
+        .select('title, description, page_ids, theme, accent_color, card_text_mode')
         .eq('slug', slug);
       if (ownerId) seriesQuery = seriesQuery.eq('user_id', ownerId);
       const { data: series } = await seriesQuery.maybeSingle();
@@ -617,7 +649,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (ids.length > 0) {
           let booksQuery = supabase
             .from('landing_pages')
-            .select('id, slug, title, description, cover_image_url, buttons')
+            .select('id, slug, title, headline, description, cover_image_url, buttons')
             .in('id', ids);
           if (ownerId) booksQuery = booksQuery.eq('user_id', ownerId);
           const { data: rows } = await booksQuery;
@@ -626,7 +658,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             .map((id) => byId.get(id))
             .filter((r): r is NonNullable<typeof r> => Boolean(r))
             .map((r) => ({
-              slug: r.slug, title: r.title, description: r.description,
+              slug: r.slug, title: r.title, headline: r.headline, description: r.description,
               cover_image_url: r.cover_image_url, buttons: r.buttons as LpButton[] | null,
             }));
         }
