@@ -51,7 +51,7 @@ const MODELS: Record<string, ModelDef> = {
   'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
   'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 6   },
   'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
-  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1',                              kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 7   },
+  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1/text-to-image',                kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 7   },
   'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3   },
   'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8   },
@@ -81,13 +81,12 @@ const MODELS: Record<string, ModelDef> = {
   'kling-video':          { id: 'kling-video',          endpoint: 'fal-ai/kling-video/v2/master/text-to-video',      kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 140 },
   'kling-image-to-video': { id: 'kling-image-to-video', endpoint: 'fal-ai/kling-video/v2/master/image-to-video',     kind: 'video', isAsync: true,  acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 140 },
   'veo3-fast':            { id: 'veo3-fast',            endpoint: 'fal-ai/veo3/fast',                                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 200 },
-  'ltx-video':            { id: 'ltx-video',            endpoint: 'fal-ai/ltx-video',                                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 20  },
+  'ltx-video':            { id: 'ltx-video',            endpoint: 'fal-ai/ltx-video-13b-distilled',                  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 20  },
   'kling-v16-std':        { id: 'kling-v16-std',        endpoint: 'fal-ai/kling-video/v1.6/standard/text-to-video',  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 35  },
   'wan-t2v':              { id: 'wan-t2v',              endpoint: 'fal-ai/wan/v2.2-5b/text-to-video',                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 60  },
   'wan-i2v':              { id: 'wan-i2v',              endpoint: 'fal-ai/wan/v2.2-5b/image-to-video',               kind: 'video', isAsync: true,  acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 60  },
   'minimax-hailuo-02':    { id: 'minimax-hailuo-02',    endpoint: 'fal-ai/minimax/hailuo-02',                        kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 80  },
   'hunyuan-video':        { id: 'hunyuan-video',        endpoint: 'fal-ai/hunyuan-video',                            kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 80  },
-  'ltx-distilled':        { id: 'ltx-distilled',        endpoint: 'fal-ai/ltx-video-13b-distilled',                  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 35  },
 };
 
 // Loads a user's custom model definition. Anything outside the curated
@@ -397,11 +396,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const falJson = (await falRes.json().catch(() => ({}))) as FalSyncResponse & { detail?: unknown };
     if (!falRes.ok) {
+      // Zero the cost on failure so a failed attempt doesn't eat the
+      // monthly budget, and surface a clearer message for a missing
+      // endpoint (Fal returns "Path / not found" with a 404).
+      const detailMsg = typeof falJson.detail === 'string' ? falJson.detail : `Fal HTTP ${falRes.status}`;
+      const friendly = falRes.status === 404
+        ? `This model is unavailable at "${model.endpoint}" (Fal returned 404). You weren't charged.`
+        : detailMsg;
       await supabase.from('media_generations').update({
         status: 'failed',
-        error_message: typeof falJson.detail === 'string' ? falJson.detail : `Fal HTTP ${falRes.status}`,
+        error_message: friendly,
+        cost_cents: 0,
       }).eq('id', generationId);
-      res.status(502).json({ error: 'Fal request failed', detail: falJson.detail ?? falJson, status: falRes.status });
+      res.status(502).json({ error: 'Fal request failed', detail: friendly, status: falRes.status });
       return;
     }
 
@@ -410,6 +417,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await supabase.from('media_generations').update({
         status: 'failed',
         error_message: 'Fal response did not include an output URL',
+        cost_cents: 0,
       }).eq('id', generationId);
       res.status(502).json({ error: 'No output URL in Fal response' });
       return;
@@ -481,11 +489,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const queueJson = (await queueRes.json().catch(() => ({}))) as FalQueueResponse & { detail?: unknown };
   if (!queueRes.ok || !queueJson.request_id) {
+    const detailMsg = typeof queueJson.detail === 'string' ? queueJson.detail : `Fal queue HTTP ${queueRes.status}`;
+    const friendly = queueRes.status === 404
+      ? `This model is unavailable at "${model.endpoint}" (Fal returned 404). You weren't charged.`
+      : detailMsg;
     await supabase.from('media_generations').update({
       status: 'failed',
-      error_message: typeof queueJson.detail === 'string' ? queueJson.detail : `Fal queue HTTP ${queueRes.status}`,
+      error_message: friendly,
+      cost_cents: 0,
     }).eq('id', generationId);
-    res.status(502).json({ error: 'Fal queue submission failed', detail: queueJson.detail ?? queueJson });
+    res.status(502).json({ error: 'Fal queue submission failed', detail: friendly });
     return;
   }
 
