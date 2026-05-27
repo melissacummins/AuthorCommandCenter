@@ -271,9 +271,20 @@ const RETAILER_DOMAINS: Record<string, string> = {
 };
 function retailerIconSrc(label: string, url: string): string {
   let host = RETAILER_DOMAINS[(label || '').trim().toLowerCase()] || '';
-  if (!host) { try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid url */ } }
+  if (!host) {
+    try {
+      const h = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+      const parts = h.split('.');
+      host = parts.length > 2 ? parts.slice(-2).join('.') : h; // registrable domain
+    } catch { /* invalid url */ }
+  }
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128` : '';
 }
+
+// Neutral globe shown when a favicon can't be fetched, so an icon never
+// renders broken.
+const FALLBACK_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5NGEzYjgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PGxpbmUgeDE9IjMiIHkxPSIxMiIgeDI9IjIxIiB5Mj0iMTIiLz48cGF0aCBkPSJNMTIgM2ExNSAxNSAwIDAgMSAwIDE4IDE1IDE1IDAgMCAxIDAtMTgiLz48L3N2Zz4=';
+const ICON_ONERR = `this.onerror=null;this.src='${FALLBACK_ICON}'`;
 
 function renderButtonsBlock(block: BioBlockRow): string {
   const buttons = (Array.isArray(block.buttons) ? block.buttons : [])
@@ -283,7 +294,7 @@ function renderButtonsBlock(block: BioBlockRow): string {
   const head = title ? `<h2 class="section-title">${escapeHtml(title)}</h2>` : '';
   const cells = buttons.map((b) => {
     const icon = retailerIconSrc(b.label, b.url);
-    const iconHtml = icon ? `<img class="rbtn-icon" src="${escapeHtml(icon)}" alt="" loading="lazy" />` : '';
+    const iconHtml = icon ? `<img class="rbtn-icon" src="${escapeHtml(icon)}" alt="" loading="lazy" onerror="${ICON_ONERR}" />` : '';
     return `<a class="rbtn" href="${escapeHtml(b.url)}" rel="noopener nofollow">
       ${iconHtml}<span class="rbtn-label">${escapeHtml(b.label)}</span>
     </a>`;
@@ -325,7 +336,7 @@ function renderBookBlock(block: BioBlockRow, page: BookPageRow | undefined): str
   const cover = page.cover_image_url && page.cover_image_url.trim() ? page.cover_image_url.trim() : null;
   const stores = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim())
-    .map((b) => `<a class="biobook-store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(retailerIconSrc(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" /></a>`)
+    .map((b) => `<a class="biobook-store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(retailerIconSrc(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" onerror="${ICON_ONERR}" /></a>`)
     .join('');
   const coverHtml = cover ? `<img class="biobook-cover" src="${escapeHtml(cover)}" alt="" loading="lazy" />` : '';
   return `<details class="biobook">

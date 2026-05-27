@@ -428,7 +428,7 @@ function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = nul
   const buttons = (Array.isArray(page.buttons) ? page.buttons : [])
     .filter((b) => b && typeof b.url === 'string' && b.url.trim() && typeof b.label === 'string' && b.label.trim());
   const storeHtml = buttons.map((b) =>
-    `<a class="store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(lpRetailerIcon(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" /></a>`,
+    `<a class="store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(lpRetailerIcon(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" onerror="${ICON_ONERR}" /></a>`,
   ).join('');
   const heroHtml = headline
     ? `<p class="kicker">${escapeHtml(title)}</p><h1 class="headline">${formatText(headline)}</h1>`
@@ -487,9 +487,22 @@ const RETAILER_DOMAINS: Record<string, string> = {
 };
 function lpRetailerIcon(label: string, url: string): string {
   let host = RETAILER_DOMAINS[(label || '').trim().toLowerCase()] || '';
-  if (!host) { try { host = new URL(url).hostname.toLowerCase().replace(/^www\./, ''); } catch { /* invalid */ } }
+  if (!host) {
+    try {
+      const h = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
+      const parts = h.split('.');
+      // Use the registrable domain (drop subdomains) so e.g.
+      // buy.bookfunnel.com -> bookfunnel.com, which the favicon service has.
+      host = parts.length > 2 ? parts.slice(-2).join('.') : h;
+    } catch { /* invalid */ }
+  }
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128` : '';
 }
+
+// Neutral globe shown when a favicon can't be fetched, so an icon never
+// renders broken.
+const FALLBACK_ICON = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5NGEzYjgiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSI5Ii8+PGxpbmUgeDE9IjMiIHkxPSIxMiIgeDI9IjIxIiB5Mj0iMTIiLz48cGF0aCBkPSJNMTIgM2ExNSAxNSAwIDAgMSAwIDE4IDE1IDE1IDAgMCAxIDAtMTgiLz48L3N2Zz4=';
+const ICON_ONERR = `this.onerror=null;this.src='${FALLBACK_ICON}'`;
 
 interface SeriesBookRow {
   slug: string;
@@ -518,7 +531,7 @@ function renderSeriesPage(series: SeriesRow, books: SeriesBookRow[], faviconUrl:
     const cover = b.cover_image_url && b.cover_image_url.trim() ? b.cover_image_url.trim() : null;
     const stores = (Array.isArray(b.buttons) ? b.buttons : [])
       .filter((x) => x && typeof x.url === 'string' && x.url.trim() && typeof x.label === 'string' && x.label.trim())
-      .map((x) => `<a class="store" href="${escapeHtml(x.url)}" rel="noopener nofollow" title="${escapeHtml(x.label)}"><img src="${escapeHtml(lpRetailerIcon(x.label, x.url))}" alt="${escapeHtml(x.label)}" loading="lazy" /><span>${escapeHtml(x.label)}</span></a>`)
+      .map((x) => `<a class="store" href="${escapeHtml(x.url)}" rel="noopener nofollow" title="${escapeHtml(x.label)}"><img src="${escapeHtml(lpRetailerIcon(x.label, x.url))}" alt="${escapeHtml(x.label)}" loading="lazy" onerror="${ICON_ONERR}" /><span>${escapeHtml(x.label)}</span></a>`)
       .join('');
     const coverHtml = cover
       ? `<a class="book-cover" href="/${escapeHtml(b.slug)}"><img src="${escapeHtml(cover)}" alt="${escapeHtml(bookTitle)}" loading="lazy" /></a>`
