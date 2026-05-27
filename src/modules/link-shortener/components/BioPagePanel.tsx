@@ -221,19 +221,6 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     }
   }
 
-  async function handleAddButtons() {
-    if (!user) return;
-    setAdding('buttons');
-    try {
-      const created = await createBioBlock(user.id, { type: 'buttons', title: 'Get the book', buttons: [] });
-      setBlocks((bs) => [...bs, created]);
-    } catch (err) {
-      console.error('add buttons failed', err);
-    } finally {
-      setAdding(null);
-    }
-  }
-
   async function handleAddEmail() {
     if (!user) return;
     setAdding('email');
@@ -515,13 +502,6 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
             >
               <ImageIcon className="w-3.5 h-3.5" /> Image card
-            </button>
-            <button
-              onClick={handleAddButtons}
-              disabled={adding !== null}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" /> Retailer buttons
             </button>
             <button
               onClick={handleAddEmail}

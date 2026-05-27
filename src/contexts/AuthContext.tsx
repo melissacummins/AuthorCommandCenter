@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 import type { Profile } from '../lib/types';
@@ -44,22 +44,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [modules, setModules] = useState<AppModule[]>([]);
   const [hiddenModuleKeys, setHiddenModuleKeys] = useState<string[]>([]);
   const [accessLoading, setAccessLoading] = useState(true);
+  // Tracks the currently-loaded user id so token refreshes (which fire on
+  // every tab refocus) don't re-create the user object or re-run access
+  // loading — that churn unmounts in-progress editors and loses unsaved work.
+  const loadedUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    function applySession(session: Session | null, force: boolean) {
+      const nextUserId = session?.user?.id ?? null;
       setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchProfile(session.user.id);
-        loadAccess(session.user);
-      } else {
-        setAccessLoading(false);
+      // Same user as already loaded (e.g. TOKEN_REFRESHED on refocus): just
+      // keep the refreshed session; don't touch user/profile/access state.
+      if (!force && nextUserId === loadedUserId.current) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
+      loadedUserId.current = nextUserId;
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchProfile(session.user.id);
@@ -68,9 +68,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setMember(null);
         setModules([]);
+        setHiddenModuleKeys([]);
         setAccessLoading(false);
       }
       setLoading(false);
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      applySession(session, true);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      applySession(session, false);
     });
 
     return () => subscription.unsubscribe();
