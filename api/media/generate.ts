@@ -193,16 +193,58 @@ export async function resolveFalKey(supabase: SupabaseClient, userId: string): P
   return process.env.FAL_KEY ?? null;
 }
 
+// Turns Fal's various error shapes into a single readable string.
+// Fal returns:
+//   - a plain string (older endpoints / 404s)
+//   - an array of Pydantic validation errors: [{loc, msg, type}, ...]
+//   - an object with `message` or nested error
+function formatFalError(detail: unknown, status: number): string {
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail
+      .map((d) => {
+        if (d && typeof d === 'object') {
+          const o = d as { loc?: unknown; msg?: unknown };
+          const loc = Array.isArray(o.loc) ? o.loc.filter((x) => x !== 'body').join('.') : '';
+          const msg = typeof o.msg === 'string' ? o.msg : JSON.stringify(d);
+          return loc ? `${loc}: ${msg}` : msg;
+        }
+        return String(d);
+      })
+      .join('; ');
+  }
+  if (detail && typeof detail === 'object') {
+    const o = detail as { message?: unknown; error?: unknown };
+    if (typeof o.message === 'string') return o.message;
+    if (typeof o.error === 'string') return o.error;
+    try { return JSON.stringify(detail); } catch { /* fall through */ }
+  }
+  return `Fal HTTP ${status}`;
+}
+
+function gptImage1Size(width: number, height: number): 'auto' | '1024x1024' | '1536x1024' | '1024x1536' {
+  if (!width || !height) return 'auto';
+  if (width === height) return '1024x1024';
+  return width > height ? '1536x1024' : '1024x1536';
+}
+
 function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: number): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     prompt: body.full_prompt ?? body.prompt,
   };
 
   if (model.supportsCustomSize && body.width && body.height) {
-    // Most Fal image endpoints take image_size as either a named preset
-    // or an object {width, height}. The object form is universally
-    // accepted by the models in our catalogue.
-    payload.image_size = { width: body.width, height: body.height };
+    // Most Fal image endpoints take image_size as `{width, height}`.
+    // GPT Image 1 is the exception — it only accepts a fixed enum
+    // ("1024x1024", "1536x1024", "1024x1536", "auto"). Map the picked
+    // size to the closest aspect ratio.
+    if (model.id === 'gpt-image-1') {
+      payload.image_size = gptImage1Size(body.width, body.height);
+    } else {
+      payload.image_size = { width: body.width, height: body.height };
+    }
+  } else if (model.id === 'gpt-image-1') {
+    payload.image_size = 'auto';
   }
 
   // Batch count — only meaningful for image generation. Fal ignores
@@ -406,10 +448,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Zero the cost on failure so a failed attempt doesn't eat the
       // monthly budget, and surface a clearer message for a missing
       // endpoint (Fal returns "Path / not found" with a 404).
-      const detailMsg = typeof falJson.detail === 'string' ? falJson.detail : `Fal HTTP ${falRes.status}`;
       const friendly = falRes.status === 404
         ? `This model is unavailable at "${effectiveEndpoint}" (Fal returned 404). You weren't charged.`
-        : detailMsg;
+        : `${formatFalError(falJson.detail, falRes.status)} — you weren't charged.`;
       await supabase.from('media_generations').update({
         status: 'failed',
         error_message: friendly,
@@ -496,10 +537,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const queueJson = (await queueRes.json().catch(() => ({}))) as FalQueueResponse & { detail?: unknown };
   if (!queueRes.ok || !queueJson.request_id) {
-    const detailMsg = typeof queueJson.detail === 'string' ? queueJson.detail : `Fal queue HTTP ${queueRes.status}`;
     const friendly = queueRes.status === 404
       ? `This model is unavailable at "${effectiveEndpoint}" (Fal returned 404). You weren't charged.`
-      : detailMsg;
+      : `${formatFalError(queueJson.detail, queueRes.status)} — you weren't charged.`;
     await supabase.from('media_generations').update({
       status: 'failed',
       error_message: friendly,
