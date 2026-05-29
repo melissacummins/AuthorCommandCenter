@@ -95,6 +95,35 @@ export async function removeFalKey(): Promise<void> {
   }
 }
 
+export async function getOpenaiKeyStatus(): Promise<FalKeyStatus> {
+  const headers = await authHeader();
+  const res = await fetch('/api/media/openai-key', { headers });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Key status failed (${res.status})`);
+  return data as FalKeyStatus;
+}
+
+export async function setOpenaiKey(key: string): Promise<FalKeyStatus> {
+  const headers = await authHeader();
+  const res = await fetch('/api/media/openai-key', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Failed to save key (${res.status})`);
+  return { has_key: true, hint: data.hint ?? null, updated_at: new Date().toISOString() };
+}
+
+export async function removeOpenaiKey(): Promise<void> {
+  const headers = await authHeader();
+  const res = await fetch('/api/media/openai-key', { method: 'DELETE', headers });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(typeof data?.error === 'string' ? data.error : `Failed to remove key (${res.status})`);
+  }
+}
+
 export async function uploadInputImage(file: File): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
   const userId = sessionData.session?.user?.id;

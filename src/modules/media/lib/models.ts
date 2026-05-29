@@ -46,25 +46,38 @@ export function supportsReferenceImages(m: { acceptsInputImage: boolean; editEnd
 // output size, so treat these as worst-case-for-1024 guardrails.
 export type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
 
-// Calibrated against Fal's quoted per-edit (~$0.28) and a real run
-// the user observed at $0.39. Fal's "auto" silently routes to "high",
-// so auto ≈ high on both sides.
+// Via Fal — includes Fal's markup over OpenAI's pass-through rate.
+// Calibrated against Fal's quoted ~$0.28/edit and a real run at $0.39.
+// Fal silently routes `quality: auto` to `high`, so auto ≈ high.
 const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = {
-  low: 3,
-  medium: 8,
-  high: 20,
-  auto: 20,
+  low: 3, medium: 8, high: 20, auto: 20,
 };
 const GPT_IMAGE_1_EDIT_CENTS: Record<GptImage1Quality, number> = {
-  low: 10,
-  medium: 25,
-  high: 40,
-  auto: 40,
+  low: 10, medium: 25, high: 40, auto: 40,
+};
+// Via OpenAI direct — no markup. Source: OpenAI gpt-image-1 pricing
+// (per output @ 1024×1024): low $0.011 / medium $0.042 / high $0.167.
+// Edits add an input-image token cost (~$0.01–0.02).
+const GPT_IMAGE_1_OPENAI_GENERATE_CENTS: Record<GptImage1Quality, number> = {
+  low: 2, medium: 5, high: 17, auto: 17,
+};
+const GPT_IMAGE_1_OPENAI_EDIT_CENTS: Record<GptImage1Quality, number> = {
+  low: 4, medium: 8, high: 20, auto: 20,
 };
 
-export function gptImage1CostCents(quality: GptImage1Quality, isEdit: boolean): number {
-  const table = isEdit ? GPT_IMAGE_1_EDIT_CENTS : GPT_IMAGE_1_GENERATE_CENTS;
-  return table[quality] ?? table.auto;
+export type GptImage1Provider = 'fal' | 'openai';
+
+export function gptImage1CostCents(
+  quality: GptImage1Quality,
+  isEdit: boolean,
+  provider: GptImage1Provider = 'fal',
+): number {
+  if (provider === 'openai') {
+    const t = isEdit ? GPT_IMAGE_1_OPENAI_EDIT_CENTS : GPT_IMAGE_1_OPENAI_GENERATE_CENTS;
+    return t[quality] ?? t.auto;
+  }
+  const t = isEdit ? GPT_IMAGE_1_EDIT_CENTS : GPT_IMAGE_1_GENERATE_CENTS;
+  return t[quality] ?? t.auto;
 }
 
 export const MODELS: ModelDef[] = [
