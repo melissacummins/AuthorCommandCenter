@@ -1,13 +1,13 @@
 import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import {
-  Plus, Loader2, Trash2, ExternalLink, ArrowLeft, Sparkles, GripVertical, X, Check, Upload,
+  Plus, Loader2, Trash2, ExternalLink, ArrowLeft, Sparkles, GripVertical, X, Check, Upload, Star,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   listLandingPages, createLandingPage, updateLandingPage, deleteLandingPage,
   fetchOgForUrl, isSlugAvailable, uploadBioImage,
 } from '../api';
-import type { BioButton, BookTextMode, LandingPage } from '../types';
+import type { BioButton, BookTextMode, LandingPage, ReviewItem } from '../types';
 import FormattedTextarea from './FormattedTextarea';
 import { isValidSlug, normalizeUrl, isValidUrl, buildShortUrl } from '../utils';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
@@ -52,6 +52,7 @@ interface DraftState {
   pageTextCustom: string;
   coverUrl: string;
   buttons: BioButton[];
+  reviews: ReviewItem[];
   theme: string;
   accentColor: string | null;
 }
@@ -59,7 +60,7 @@ interface DraftState {
 const EMPTY_DRAFT: DraftState = {
   slug: '', sourceUrl: '', title: '', headline: '', description: '',
   pageTextMode: 'description', pageTextCustom: '', coverUrl: '',
-  buttons: [], theme: DEFAULT_BIO_THEME, accentColor: null,
+  buttons: [], reviews: [], theme: DEFAULT_BIO_THEME, accentColor: null,
 };
 
 export default function LandingPagesPanel() {
@@ -190,6 +191,7 @@ function LandingPageEditor({
           pageTextCustom: page.page_text_custom ?? '',
           coverUrl: page.cover_image_url ?? '',
           buttons: Array.isArray(page.buttons) ? page.buttons : [],
+          reviews: Array.isArray(page.reviews) ? page.reviews : [],
           theme: page.theme ?? DEFAULT_BIO_THEME,
           accentColor: page.accent_color ?? null,
         }
@@ -255,6 +257,16 @@ function LandingPageEditor({
     set('buttons', draft.buttons.filter((_, idx) => idx !== i));
   }
 
+  function addReview() {
+    set('reviews', [...draft.reviews, { stars: 5, quote: '', attribution: '' }]);
+  }
+  function updateReview(i: number, patch: Partial<ReviewItem>) {
+    set('reviews', draft.reviews.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function removeReview(i: number) {
+    set('reviews', draft.reviews.filter((_, idx) => idx !== i));
+  }
+
   async function handleSave() {
     if (!user) return;
     const slug = draft.slug.trim();
@@ -265,6 +277,13 @@ function LandingPageEditor({
     const buttons = draft.buttons
       .map((b) => ({ label: b.label.trim(), url: b.url.trim() ? normalizeUrl(b.url) : '' }))
       .filter((b) => b.label && b.url && isValidUrl(b.url));
+    const reviews = draft.reviews
+      .map((r) => ({
+        stars: Math.max(1, Math.min(5, Math.round(Number(r.stars) || 5))),
+        quote: r.quote.trim(),
+        attribution: r.attribution.trim(),
+      }))
+      .filter((r) => r.quote);
     setSaving(true);
     setError(null);
     try {
@@ -286,6 +305,7 @@ function LandingPageEditor({
         cover_image_url: draft.coverUrl.trim() || null,
         source_url: draft.sourceUrl.trim(),
         buttons,
+        reviews,
         theme: draft.theme,
         accent_color: draft.accentColor,
       };
@@ -466,6 +486,63 @@ function LandingPageEditor({
                   </div>
                 );
               })}
+            </div>
+          )}
+        </div>
+
+        {/* Reviews */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium text-slate-700">Reviews</label>
+            <button onClick={addReview} className="inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline">
+              <Plus className="w-3.5 h-3.5" /> Add review
+            </button>
+          </div>
+          <p className="text-xs text-slate-400 mb-2">Reader quotes shown below the blurb as social proof. Star rating, quote, and who said it.</p>
+          {draft.reviews.length === 0 ? (
+            <p className="text-xs text-slate-400">No reviews yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {draft.reviews.map((r, i) => (
+                <div key={i} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="inline-flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => updateReview(i, { stars: n })}
+                          className="p-0.5"
+                          aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                        >
+                          <Star
+                            className={`w-5 h-5 ${n <= r.stars ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => removeReview(i)}
+                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50"
+                      title="Remove review"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <FormattedTextarea
+                    value={r.quote}
+                    onChange={(v) => updateReview(i, { quote: v })}
+                    rows={3}
+                    placeholder="What the reviewer said about the book."
+                  />
+                  <input
+                    value={r.attribution}
+                    onChange={(e) => updateReview(i, { attribution: e.target.value })}
+                    placeholder="Who said it (e.g. Goodreads, Sarah K., Publishers Weekly)"
+                    className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                  />
+                </div>
+              ))}
             </div>
           )}
         </div>
