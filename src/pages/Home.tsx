@@ -97,7 +97,7 @@ const moduleByPath: Record<string, ModuleCard> = {
     shadow: 'shadow-rose-500/25',
   },
   '/links': {
-    name: 'Link Shortener',
+    name: 'Links',
     description: 'Custom slugs, click tracking, archived links, and a hosted bio page.',
     path: '/links',
     icon: Link2,
