@@ -20,7 +20,7 @@ const modules = [
   { name: 'Ad Alchemy', path: '/ad-alchemy', icon: Sparkles, color: 'text-orange-400' },
   { name: 'Marketing', path: '/marketing', icon: Megaphone, color: 'text-pink-400' },
   { name: 'KDP Optimizer', path: '/kdp-optimizer', icon: Search, color: 'text-rose-400' },
-  { name: 'Link Shortener', path: '/links', icon: Link2, color: 'text-indigo-400' },
+  { name: 'Links', path: '/links', icon: Link2, color: 'text-indigo-400' },
   { name: 'ARCs', path: '/arcs', icon: Users, color: 'text-pink-400' },
   { name: 'Media', path: '/media', icon: ImagePlus, color: 'text-fuchsia-400' },
   { name: 'Social Media', path: '/social-media', icon: Share2, color: 'text-violet-400' },

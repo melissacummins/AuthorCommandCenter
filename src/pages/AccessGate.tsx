@@ -21,7 +21,7 @@ export default function AccessGate() {
       email: user.email.toLowerCase(),
       user_id: user.id,
       status: 'pending',
-      plan: 'alpha',
+      plan: 'member',
     });
     if (error && !/duplicate|unique/i.test(error.message)) {
       setError(error.message);
