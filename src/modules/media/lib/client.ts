@@ -66,17 +66,22 @@ export interface FalKeyStatus {
   updated_at: string | null;
 }
 
-export async function getFalKeyStatus(): Promise<FalKeyStatus> {
+// Provider routing is via ?provider=fal|openai on a single endpoint
+// (Vercel Hobby caps a deployment at 12 serverless functions, so we
+// can't split them into two files).
+type KeyProvider = 'fal' | 'openai';
+
+async function getKeyStatus(provider: KeyProvider): Promise<FalKeyStatus> {
   const headers = await authHeader();
-  const res = await fetch('/api/media/key', { headers });
+  const res = await fetch(`/api/media/key?provider=${provider}`, { headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Key status failed (${res.status})`);
   return data as FalKeyStatus;
 }
 
-export async function setFalKey(key: string): Promise<FalKeyStatus> {
+async function saveKey(provider: KeyProvider, key: string): Promise<FalKeyStatus> {
   const headers = await authHeader();
-  const res = await fetch('/api/media/key', {
+  const res = await fetch(`/api/media/key?provider=${provider}`, {
     method: 'POST',
     headers: { ...headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({ key }),
@@ -86,43 +91,21 @@ export async function setFalKey(key: string): Promise<FalKeyStatus> {
   return { has_key: true, hint: data.hint ?? null, updated_at: new Date().toISOString() };
 }
 
-export async function removeFalKey(): Promise<void> {
+async function deleteKey(provider: KeyProvider): Promise<void> {
   const headers = await authHeader();
-  const res = await fetch('/api/media/key', { method: 'DELETE', headers });
+  const res = await fetch(`/api/media/key?provider=${provider}`, { method: 'DELETE', headers });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(typeof data?.error === 'string' ? data.error : `Failed to remove key (${res.status})`);
   }
 }
 
-export async function getOpenaiKeyStatus(): Promise<FalKeyStatus> {
-  const headers = await authHeader();
-  const res = await fetch('/api/media/openai-key', { headers });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Key status failed (${res.status})`);
-  return data as FalKeyStatus;
-}
-
-export async function setOpenaiKey(key: string): Promise<FalKeyStatus> {
-  const headers = await authHeader();
-  const res = await fetch('/api/media/openai-key', {
-    method: 'POST',
-    headers: { ...headers, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ key }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(typeof data?.error === 'string' ? data.error : `Failed to save key (${res.status})`);
-  return { has_key: true, hint: data.hint ?? null, updated_at: new Date().toISOString() };
-}
-
-export async function removeOpenaiKey(): Promise<void> {
-  const headers = await authHeader();
-  const res = await fetch('/api/media/openai-key', { method: 'DELETE', headers });
-  if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(typeof data?.error === 'string' ? data.error : `Failed to remove key (${res.status})`);
-  }
-}
+export const getFalKeyStatus = () => getKeyStatus('fal');
+export const setFalKey = (key: string) => saveKey('fal', key);
+export const removeFalKey = () => deleteKey('fal');
+export const getOpenaiKeyStatus = () => getKeyStatus('openai');
+export const setOpenaiKey = (key: string) => saveKey('openai', key);
+export const removeOpenaiKey = () => deleteKey('openai');
 
 export async function uploadInputImage(file: File): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();
