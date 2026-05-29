@@ -74,12 +74,14 @@ export default function MediaModule() {
         kind: curated.kind,
         acceptsInputImage: curated.acceptsInputImage,
         canReference: supportsReferenceImages(curated),
+        hasDualMode: !!curated.editEndpoint,
         // References are mandatory only for pure-edit models (an edit
         // endpoint with no separate generation endpoint).
         referenceRequired: curated.acceptsInputImage && !curated.editEndpoint,
         supportsCustomSize: curated.supportsCustomSize,
         description: curated.description,
         estimatedCostCents: curated.estimatedCostCents,
+        editCostCents: curated.editCostCents ?? curated.estimatedCostCents,
         maxImages: maxImagesForGroup(curated.kind, curated.group),
         isCustom: false,
       };
@@ -95,10 +97,12 @@ export default function MediaModule() {
         kind: custom.kind,
         acceptsInputImage: custom.accepts_input_image,
         canReference: custom.accepts_input_image,
+        hasDualMode: false,
         referenceRequired: false,
         supportsCustomSize: custom.supports_custom_size,
         description: custom.description ?? `Custom: ${custom.endpoint}`,
         estimatedCostCents: custom.estimated_cost_cents,
+        editCostCents: custom.estimated_cost_cents,
         maxImages: customMax,
         isCustom: true,
       };
@@ -111,14 +115,22 @@ export default function MediaModule() {
       kind: first.kind,
       acceptsInputImage: first.acceptsInputImage,
       canReference: supportsReferenceImages(first),
+      hasDualMode: !!first.editEndpoint,
       referenceRequired: first.acceptsInputImage && !first.editEndpoint,
       supportsCustomSize: first.supportsCustomSize,
       description: first.description,
       estimatedCostCents: first.estimatedCostCents,
+      editCostCents: first.editCostCents ?? first.estimatedCostCents,
       maxImages: maxImagesForGroup(first.kind, first.group),
       isCustom: false,
     };
   }, [modelId, customModels]);
+
+  // True when this run will route to the model's edit endpoint
+  // (dual-mode model + a reference attached). Drives the edit-mode
+  // banner, Generate button label, and cost display.
+  const isEditMode = model.hasDualMode && inputImages.length > 0;
+  const perImageCostCents = isEditMode ? model.editCostCents : model.estimatedCostCents;
   const sizePreset = useMemo<SizePreset | null>(
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
     [sizePresetId],
@@ -710,6 +722,27 @@ export default function MediaModule() {
             </div>
           )}
 
+          {isEditMode && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 text-xs text-amber-900">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <p className="font-semibold">
+                  Edit mode — {inputImages.length} reference image{inputImages.length > 1 ? 's' : ''} attached.
+                </p>
+                <p className="text-amber-800/90 mt-0.5">
+                  This request will route to <code className="font-mono">{model.label.split(' —')[0]}</code>'s edit endpoint (~{formatCents(model.editCostCents)} per image vs ~{formatCents(model.estimatedCostCents)} to generate).
+                </p>
+              </div>
+              <button
+                onClick={() => setInputImages([])}
+                className="px-2 py-1 rounded-md bg-amber-600 text-white text-[11px] font-semibold hover:bg-amber-700 shrink-0"
+                title="Remove all references and switch back to generation"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           <button
             onClick={handleGenerate}
             disabled={generating || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
@@ -717,7 +750,7 @@ export default function MediaModule() {
           >
             {generating
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
-              : <><Wand2 className="w-4 h-4" /> Generate{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(model.estimatedCostCents * (model.kind === 'image' ? quantity : 1))})</>}
+              : <><Wand2 className="w-4 h-4" /> {isEditMode ? 'Edit' : 'Generate'}{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(perImageCostCents * (model.kind === 'image' ? quantity : 1))})</>}
           </button>
         </div>
 
@@ -861,7 +894,12 @@ function MediaCard({
         )}
 
         <div className="flex items-center justify-between text-[11px] text-slate-400">
-          <span>{generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}</span>
+          <span className="flex items-center gap-1">
+            {generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}
+            {generation.source_image_url && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-medium">edited</span>
+            )}
+          </span>
           <span>{formatCents(generation.cost_cents)}</span>
         </div>
 
