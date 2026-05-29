@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
-  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, Key, ExternalLink, Check, Layers,
+  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, ExternalLink, Layers,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,9 +9,7 @@ import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
-  getFalKeyStatus, setFalKey, removeFalKey,
-  getOpenaiKeyStatus, setOpenaiKey, removeOpenaiKey,
-  type FalKeyStatus,
+  getFalKeyStatus, getOpenaiKeyStatus, type FalKeyStatus,
 } from './lib/client';
 import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
 
@@ -384,26 +383,6 @@ export default function MediaModule() {
     if (data) setSettings(data as MediaSettings);
   }
 
-  async function handleSaveFalKey(rawKey: string) {
-    const status = await setFalKey(rawKey);
-    setKeyStatus(status);
-  }
-
-  async function handleRemoveFalKey() {
-    await removeFalKey();
-    setKeyStatus({ has_key: false, hint: null, updated_at: null });
-  }
-
-  async function handleSaveOpenaiKey(rawKey: string) {
-    const status = await setOpenaiKey(rawKey);
-    setOpenaiKeyStatus(status);
-  }
-
-  async function handleRemoveOpenaiKey() {
-    await removeOpenaiKey();
-    setOpenaiKeyStatus({ has_key: false, hint: null, updated_at: null });
-  }
-
   async function handleSaveCustomModel(input: Omit<MediaCustomModel, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
     if (!userId) return;
     if (!input.endpoint.startsWith('fal-ai/')) {
@@ -496,7 +475,7 @@ export default function MediaModule() {
 
       {keyStatus && !keyStatus.has_key && (
         <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
-          <Key className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
+          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
           <div className="flex-1">
             <p className="font-semibold">Add your Fal.AI API key to get started.</p>
             <p className="text-amber-800/80 text-xs mt-1">
@@ -504,12 +483,12 @@ export default function MediaModule() {
               <a href="https://fal.ai/dashboard/keys" target="_blank" rel="noreferrer" className="underline font-medium inline-flex items-center gap-0.5">
                 Get a key <ExternalLink className="w-3 h-3" />
               </a>
-              , then paste it in settings.
+              , then paste it in <RouterLink to="/settings" className="underline font-medium">Settings → Media generator keys</RouterLink>.
             </p>
           </div>
-          <button onClick={() => setSettingsDrawerOpen(true)} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shrink-0">
-            Add key
-          </button>
+          <RouterLink to="/settings" className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shrink-0">
+            Open Settings
+          </RouterLink>
         </div>
       )}
 
@@ -589,7 +568,12 @@ export default function MediaModule() {
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
-                    via Fal {openaiKeyStatus !== null && !openaiKeyStatus.has_key && '— add an OpenAI key in settings for ~3× lower cost'}
+                    via Fal
+                    {openaiKeyStatus !== null && !openaiKeyStatus.has_key && (
+                      <>
+                        {' — '}<RouterLink to="/settings" className="underline">add an OpenAI key</RouterLink>{' for ~3× lower cost'}
+                      </>
+                    )}
                   </span>
                 )}
               </p>
@@ -897,14 +881,8 @@ export default function MediaModule() {
       {settingsDrawerOpen && (
         <SettingsDrawer
           cap={cap}
-          keyStatus={keyStatus}
-          openaiKeyStatus={openaiKeyStatus}
           onClose={() => setSettingsDrawerOpen(false)}
           onSave={handleSaveSettings}
-          onSaveKey={handleSaveFalKey}
-          onRemoveKey={handleRemoveFalKey}
-          onSaveOpenaiKey={handleSaveOpenaiKey}
-          onRemoveOpenaiKey={handleRemoveOpenaiKey}
         />
       )}
       {customModelsDrawerOpen && (
@@ -1120,145 +1098,22 @@ function CollectionsDrawer({
   );
 }
 
-interface KeySectionConfig {
-  label: string;
-  provider: 'Fal.AI' | 'OpenAI';
-  status: FalKeyStatus | null;
-  placeholder: string;
-  helpUrl: string;
-  helpText: string;
-  required: boolean;
-  onSave: (key: string) => Promise<void>;
-  onRemove: () => Promise<void>;
-}
-
-function KeySection({ cfg }: { cfg: KeySectionConfig }) {
-  const [rawKey, setRawKey] = useState('');
-  const [savingKey, setSavingKey] = useState(false);
-  const [removingKey, setRemovingKey] = useState(false);
-  const [keyError, setKeyError] = useState<string | null>(null);
-  const [keySaved, setKeySaved] = useState(false);
-
-  async function submit() {
-    setKeyError(null); setKeySaved(false); setSavingKey(true);
-    try {
-      await cfg.onSave(rawKey.trim());
-      setRawKey(''); setKeySaved(true);
-    } catch (err) {
-      setKeyError(err instanceof Error ? err.message : 'Failed to save key');
-    } finally { setSavingKey(false); }
-  }
-  async function remove() {
-    if (!window.confirm(`Remove your stored ${cfg.provider} API key?`)) return;
-    setRemovingKey(true);
-    try {
-      await cfg.onRemove(); setKeySaved(false);
-    } catch (err) {
-      setKeyError(err instanceof Error ? err.message : 'Failed to remove key');
-    } finally { setRemovingKey(false); }
-  }
-
-  return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2 mb-2">
-        <Key className="w-4 h-4 text-slate-500" />
-        <h4 className="font-semibold text-slate-800">{cfg.label}</h4>
-      </div>
-      <p className="text-sm text-slate-500 mb-3">
-        {cfg.helpText}{' '}
-        <a href={cfg.helpUrl} target="_blank" rel="noreferrer" className="text-fuchsia-600 hover:text-fuchsia-700 underline inline-flex items-center gap-0.5">
-          Get a key <ExternalLink className="w-3 h-3" />
-        </a>
-        . Keys are encrypted with AES-256-GCM and only ever decrypted on the server.
-      </p>
-
-      {cfg.status?.has_key ? (
-        <div className="mb-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-800">
-          <Check className="w-4 h-4 shrink-0" />
-          <span className="flex-1">Key saved (ends in <code className="font-mono">{cfg.status.hint}</code>)</span>
-          <button onClick={remove} disabled={removingKey} className="text-xs text-emerald-700 hover:text-red-600 underline disabled:opacity-50">
-            {removingKey ? 'Removing…' : 'Remove'}
-          </button>
-        </div>
-      ) : cfg.required ? (
-        <div className="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
-          <AlertCircle className="w-4 h-4 shrink-0" />
-          <span>No key saved — generation is disabled until you add one.</span>
-        </div>
-      ) : (
-        <div className="mb-3 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600">
-          <span>Optional — adding one unlocks the cheaper provider for that model.</span>
-        </div>
-      )}
-
-      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-        {cfg.status?.has_key ? 'Replace key' : 'Paste your key'}
-      </label>
-      <input
-        type="password"
-        value={rawKey}
-        onChange={(e) => { setRawKey(e.target.value); setKeySaved(false); setKeyError(null); }}
-        placeholder={cfg.placeholder}
-        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"
-        autoComplete="off"
-      />
-      {keyError && <p className="text-xs text-red-600 mt-1">{keyError}</p>}
-      {keySaved && <p className="text-xs text-emerald-700 mt-1">Saved.</p>}
-      <button
-        onClick={submit}
-        disabled={savingKey || rawKey.trim().length < 16}
-        className="mt-2 px-4 py-2 rounded-lg bg-fuchsia-600 text-white text-sm font-semibold hover:bg-fuchsia-700 disabled:opacity-50"
-      >
-        {savingKey ? 'Saving…' : 'Save key'}
-      </button>
-    </div>
-  );
-}
-
-function SettingsDrawer({
-  cap, keyStatus, openaiKeyStatus, onClose, onSave, onSaveKey, onRemoveKey, onSaveOpenaiKey, onRemoveOpenaiKey,
-}: {
+function SettingsDrawer({ cap, onClose, onSave }: {
   cap: number;
-  keyStatus: FalKeyStatus | null;
-  openaiKeyStatus: FalKeyStatus | null;
   onClose: () => void;
   onSave: (capCents: number) => Promise<void>;
-  onSaveKey: (key: string) => Promise<void>;
-  onRemoveKey: () => Promise<void>;
-  onSaveOpenaiKey: (key: string) => Promise<void>;
-  onRemoveOpenaiKey: () => Promise<void>;
 }) {
   const [dollars, setDollars] = useState((cap / 100).toFixed(2));
 
   return (
     <Drawer title="Media settings" onClose={onClose}>
-      <KeySection cfg={{
-        label: 'Fal.AI API key',
-        provider: 'Fal.AI',
-        status: keyStatus,
-        placeholder: 'key_xxxx…  or  xxxxxxxx:xxxxxxxx…',
-        helpUrl: 'https://fal.ai/dashboard/keys',
-        helpText: 'Required for everything except GPT Image 1 if you have an OpenAI key. Each generation is billed to your Fal account.',
-        required: true,
-        onSave: onSaveKey,
-        onRemove: onRemoveKey,
-      }} />
+      <p className="text-sm text-slate-500 mb-5">
+        API keys for Fal and OpenAI live in <RouterLink to="/settings" onClick={onClose} className="text-fuchsia-600 hover:text-fuchsia-700 underline">Settings → Media generator keys</RouterLink> so they're not scattered across modules.
+      </p>
 
-      <KeySection cfg={{
-        label: 'OpenAI API key — for GPT Image 1',
-        provider: 'OpenAI',
-        status: openaiKeyStatus,
-        placeholder: 'sk-proj-…  or  sk-…',
-        helpUrl: 'https://platform.openai.com/api-keys',
-        helpText: 'Optional but recommended. When set, GPT Image 1 calls go directly to OpenAI instead of through Fal — roughly 3× cheaper. Other models keep using Fal.',
-        required: false,
-        onSave: onSaveOpenaiKey,
-        onRemove: onRemoveOpenaiKey,
-      }} />
-
-      <div className="border-t border-slate-100 pt-5">
+      <div>
         <h4 className="font-semibold text-slate-800 mb-1">Monthly spend cap</h4>
-        <p className="text-sm text-slate-500 mb-3">New generations are refused when the next request would exceed this amount. Costs are estimates based on Fal's published rates.</p>
+        <p className="text-sm text-slate-500 mb-3">New generations are refused when the next request would exceed this amount. Costs are estimates based on the provider's published rates.</p>
         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Monthly cap (USD)</label>
         <div className="flex gap-2">
           <span className="self-center text-slate-500">$</span>
