@@ -135,8 +135,10 @@ interface GenerateRequestBody {
 const MAX_BATCH = 10;
 
 type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
-const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 2,  medium: 5,  high: 20, auto: 15 };
-const GPT_IMAGE_1_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 5,  medium: 15, high: 40, auto: 30 };
+// Calibrated against Fal's quoted per-edit (~$0.28) and a real run
+// observed at $0.39. Fal's "auto" silently routes to "high".
+const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 3,  medium: 8,  high: 20, auto: 20 };
+const GPT_IMAGE_1_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 10, medium: 25, high: 40, auto: 40 };
 
 function normalizeQuality(q: unknown): GptImage1Quality {
   return q === 'low' || q === 'medium' || q === 'high' || q === 'auto' ? q : 'auto';

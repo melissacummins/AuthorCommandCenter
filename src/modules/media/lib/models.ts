@@ -46,17 +46,20 @@ export function supportsReferenceImages(m: { acceptsInputImage: boolean; editEnd
 // output size, so treat these as worst-case-for-1024 guardrails.
 export type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
 
+// Calibrated against Fal's quoted per-edit (~$0.28) and a real run
+// the user observed at $0.39. Fal's "auto" silently routes to "high",
+// so auto ≈ high on both sides.
 const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = {
-  low: 2,
-  medium: 5,
+  low: 3,
+  medium: 8,
   high: 20,
-  auto: 15,
+  auto: 20,
 };
 const GPT_IMAGE_1_EDIT_CENTS: Record<GptImage1Quality, number> = {
-  low: 5,
-  medium: 15,
+  low: 10,
+  medium: 25,
   high: 40,
-  auto: 30,
+  auto: 40,
 };
 
 export function gptImage1CostCents(quality: GptImage1Quality, isEdit: boolean): number {
@@ -144,8 +147,8 @@ export const MODELS: ModelDef[] = [
     editEndpoint: 'fal-ai/gpt-image-1/edit-image',
     editCostCents: 40,
     supportsCustomSize: true,
-    description: "Same model that powers ChatGPT image. Cost scales with the Quality setting (~$0.02 low → ~$0.40 high for edits).",
-    estimatedCostCents: 15,
+    description: "Same model that powers ChatGPT image. Cost scales with the Quality setting (Low ~$0.10 → High ~$0.40 for edits, Auto defaults to High).",
+    estimatedCostCents: 20,
     isAsync: false,
     isFeatured: true,
     group: 'image',
