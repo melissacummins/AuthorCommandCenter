@@ -127,11 +127,24 @@ interface GenerateRequestBody {
   source_image_urls?: string[];
   num_images?: number;
   collection_id?: string | null;
+  quality?: string;
 }
 
 // Hard ceiling on a single batch regardless of what the client asks
 // for — guards against a malformed request running up a huge bill.
 const MAX_BATCH = 10;
+
+type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
+const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 2,  medium: 5,  high: 20, auto: 15 };
+const GPT_IMAGE_1_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 5,  medium: 15, high: 40, auto: 30 };
+
+function normalizeQuality(q: unknown): GptImage1Quality {
+  return q === 'low' || q === 'medium' || q === 'high' || q === 'auto' ? q : 'auto';
+}
+
+function gptImage1CostCents(quality: GptImage1Quality, isEdit: boolean): number {
+  return (isEdit ? GPT_IMAGE_1_EDIT_CENTS : GPT_IMAGE_1_GENERATE_CENTS)[quality];
+}
 
 function authHeader(req: VercelRequest): string | null {
   const raw = req.headers['authorization'] ?? req.headers['Authorization'];
@@ -246,6 +259,12 @@ function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: 
     }
   } else if (model.id === 'gpt-image-1') {
     payload.image_size = 'auto';
+  }
+
+  // GPT Image 1 has a `quality` parameter that swings cost by ~10×.
+  // Pass it through so the user can pick Low for cheap drafts.
+  if (model.id === 'gpt-image-1') {
+    payload.quality = normalizeQuality(body.quality);
   }
 
   // Batch count — only meaningful for image generation. Fal ignores
@@ -378,12 +397,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Edit endpoints typically cost more than text-to-image, so use
   // editCostCents when we'll route to one. Falls back to the regular
-  // estimate when no per-mode price is configured.
+  // estimate when no per-mode price is configured. GPT Image 1's
+  // cost also depends on the quality setting.
   const willEdit = !!model.editEndpoint && (
     !!body.source_image_url ||
     (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0)
   );
-  const perImageCostCents = (willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents;
+  const perImageCostCents = model.id === 'gpt-image-1'
+    ? gptImage1CostCents(normalizeQuality(body.quality), willEdit)
+    : ((willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents);
   const totalCostCents = perImageCostCents * numImages;
 
   // Spend cap check. If the next generation would push us past the

@@ -23,6 +23,9 @@ export interface GeneratePayload {
   source_image_urls?: string[];
   num_images?: number;
   collection_id?: string | null;
+  // GPT Image 1 only — 'low' / 'medium' / 'high' / 'auto'. Other
+  // models ignore it.
+  quality?: string;
 }
 
 // Returns every generation row produced by the request. Image batches
