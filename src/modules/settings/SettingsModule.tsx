@@ -17,6 +17,7 @@ import {
 } from './backup';
 import type { BackupFile } from './tables';
 import KlaviyoSection from './KlaviyoSection';
+import MediaApiKeysSection from './MediaApiKeysSection';
 import PenNamesSection from './PenNamesSection';
 import MySidebarSection from './MySidebarSection';
 import AdminSection from './AdminSection';
@@ -135,6 +136,8 @@ export default function SettingsModule() {
       <MySidebarSection />
 
       <PenNamesSection />
+
+      <MediaApiKeysSection />
 
       <KlaviyoSection />
 
