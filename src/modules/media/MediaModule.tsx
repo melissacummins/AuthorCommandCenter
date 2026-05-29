@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages } from './lib/models';
+import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage1CostCents, type GptImage1Quality } from './lib/models';
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
@@ -37,6 +37,7 @@ export default function MediaModule() {
   const [inputImages, setInputImages] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [gptImage1Quality, setGptImage1Quality] = useState<GptImage1Quality>('medium');
 
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
@@ -130,7 +131,9 @@ export default function MediaModule() {
   // (dual-mode model + a reference attached). Drives the edit-mode
   // banner, Generate button label, and cost display.
   const isEditMode = model.hasDualMode && inputImages.length > 0;
-  const perImageCostCents = isEditMode ? model.editCostCents : model.estimatedCostCents;
+  const perImageCostCents = model.id === 'gpt-image-1'
+    ? gptImage1CostCents(gptImage1Quality, isEditMode)
+    : (isEditMode ? model.editCostCents : model.estimatedCostCents);
   const sizePreset = useMemo<SizePreset | null>(
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
     [sizePresetId],
@@ -259,6 +262,7 @@ export default function MediaModule() {
         height,
         source_image_urls: model.canReference ? inputImages.map((i) => i.url) : [],
         num_images: num,
+        quality: model.id === 'gpt-image-1' ? gptImage1Quality : undefined,
         collection_id: selectedCollectionId,
       });
 
@@ -631,6 +635,34 @@ export default function MediaModule() {
                   <input type="number" min={256} max={4096} value={customHeight} onChange={(e) => setCustomHeight(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="Height" />
                 </div>
               )}
+            </div>
+          )}
+
+          {/* GPT Image 1 quality */}
+          {model.id === 'gpt-image-1' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Quality</label>
+                <span className="text-[11px] text-slate-400">~{formatCents(gptImage1CostCents(gptImage1Quality, isEditMode))} each</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(['low', 'medium', 'high', 'auto'] as const).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setGptImage1Quality(q)}
+                    className={`py-2 rounded-lg text-xs font-medium border transition-colors ${
+                      gptImage1Quality === q
+                        ? 'bg-fuchsia-600 text-white border-fuchsia-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {q[0].toUpperCase() + q.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Low ~{formatCents(gptImage1CostCents('low', isEditMode))} · Medium ~{formatCents(gptImage1CostCents('medium', isEditMode))} · High ~{formatCents(gptImage1CostCents('high', isEditMode))}. Lower quality is fine for drafts.
+              </p>
             </div>
           )}
 

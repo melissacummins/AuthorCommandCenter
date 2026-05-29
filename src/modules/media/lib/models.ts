@@ -39,6 +39,31 @@ export function supportsReferenceImages(m: { acceptsInputImage: boolean; editEnd
   return m.acceptsInputImage || !!m.editEndpoint;
 }
 
+// GPT Image 1 pricing depends on a `quality` parameter that Fal/OpenAI
+// charge for very differently — low is ~10× cheaper than high. Estimates
+// include a small markup over OpenAI's published rates and (for edit)
+// the cost of one input image's tokens. Real cost also scales with
+// output size, so treat these as worst-case-for-1024 guardrails.
+export type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
+
+const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = {
+  low: 2,
+  medium: 5,
+  high: 20,
+  auto: 15,
+};
+const GPT_IMAGE_1_EDIT_CENTS: Record<GptImage1Quality, number> = {
+  low: 5,
+  medium: 15,
+  high: 40,
+  auto: 30,
+};
+
+export function gptImage1CostCents(quality: GptImage1Quality, isEdit: boolean): number {
+  const table = isEdit ? GPT_IMAGE_1_EDIT_CENTS : GPT_IMAGE_1_GENERATE_CENTS;
+  return table[quality] ?? table.auto;
+}
+
 export const MODELS: ModelDef[] = [
   // ============================================
   // FEATURED — image generation
@@ -117,10 +142,10 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/gpt-image-1/text-to-image',
     acceptsInputImage: false,
     editEndpoint: 'fal-ai/gpt-image-1/edit-image',
-    editCostCents: 17,
+    editCostCents: 40,
     supportsCustomSize: true,
-    description: "The same model that powers ChatGPT's image generation. Attach reference images to edit (~$0.17 vs ~$0.07 to generate).",
-    estimatedCostCents: 7,
+    description: "Same model that powers ChatGPT image. Cost scales with the Quality setting (~$0.02 low → ~$0.40 high for edits).",
+    estimatedCostCents: 15,
     isAsync: false,
     isFeatured: true,
     group: 'image',
