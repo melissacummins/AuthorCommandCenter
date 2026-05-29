@@ -8,7 +8,9 @@ import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
-  getFalKeyStatus, setFalKey, removeFalKey, type FalKeyStatus,
+  getFalKeyStatus, setFalKey, removeFalKey,
+  getOpenaiKeyStatus, setOpenaiKey, removeOpenaiKey,
+  type FalKeyStatus,
 } from './lib/client';
 import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
 
@@ -54,6 +56,7 @@ export default function MediaModule() {
   const [settings, setSettings] = useState<MediaSettings | null>(null);
   const [monthlySpent, setMonthlySpent] = useState(0);
   const [keyStatus, setKeyStatus] = useState<FalKeyStatus | null>(null);
+  const [openaiKeyStatus, setOpenaiKeyStatus] = useState<FalKeyStatus | null>(null);
 
   const [filterCollectionId, setFilterCollectionId] = useState<string | null>(null);
   const [stylesDrawerOpen, setStylesDrawerOpen] = useState(false);
@@ -130,9 +133,18 @@ export default function MediaModule() {
   // True when this run will route to the model's edit endpoint
   // (dual-mode model + a reference attached). Drives the edit-mode
   // banner, Generate button label, and cost display.
-  const isEditMode = model.hasDualMode && inputImages.length > 0;
+  // GPT Image 1 routes through OpenAI when a key is configured (much
+  // cheaper than via Fal); everything else uses Fal.
+  const gptImage1Provider: 'fal' | 'openai' =
+    model.id === 'gpt-image-1' && openaiKeyStatus?.has_key ? 'openai' : 'fal';
+  // When routed via OpenAI, ANY reference image becomes an edit
+  // (regardless of the model's editEndpoint, since OpenAI handles
+  // both modes on its own endpoints).
+  const isEditMode = model.id === 'gpt-image-1' && gptImage1Provider === 'openai'
+    ? inputImages.length > 0
+    : (model.hasDualMode && inputImages.length > 0);
   const perImageCostCents = model.id === 'gpt-image-1'
-    ? gptImage1CostCents(gptImage1Quality, isEditMode)
+    ? gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider)
     : (isEditMode ? model.editCostCents : model.estimatedCostCents);
   const sizePreset = useMemo<SizePreset | null>(
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
@@ -178,6 +190,11 @@ export default function MediaModule() {
       setKeyStatus(await getFalKeyStatus());
     } catch {
       setKeyStatus({ has_key: false, hint: null, updated_at: null });
+    }
+    try {
+      setOpenaiKeyStatus(await getOpenaiKeyStatus());
+    } catch {
+      setOpenaiKeyStatus({ has_key: false, hint: null, updated_at: null });
     }
   }, [userId]);
 
@@ -377,6 +394,16 @@ export default function MediaModule() {
     setKeyStatus({ has_key: false, hint: null, updated_at: null });
   }
 
+  async function handleSaveOpenaiKey(rawKey: string) {
+    const status = await setOpenaiKey(rawKey);
+    setOpenaiKeyStatus(status);
+  }
+
+  async function handleRemoveOpenaiKey() {
+    await removeOpenaiKey();
+    setOpenaiKeyStatus({ has_key: false, hint: null, updated_at: null });
+  }
+
   async function handleSaveCustomModel(input: Omit<MediaCustomModel, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
     if (!userId) return;
     if (!input.endpoint.startsWith('fal-ai/')) {
@@ -554,6 +581,19 @@ export default function MediaModule() {
               Show all models ({MODELS.length} total)
             </label>
             <p className="text-[11px] text-slate-400 mt-1">{model.description}</p>
+            {model.id === 'gpt-image-1' && (
+              <p className="text-[11px] mt-1">
+                {gptImage1Provider === 'openai' ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">
+                    via OpenAI direct (cheaper)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                    via Fal {openaiKeyStatus !== null && !openaiKeyStatus.has_key && '— add an OpenAI key in settings for ~3× lower cost'}
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           {/* Style preset */}
@@ -643,7 +683,7 @@ export default function MediaModule() {
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Quality</label>
-                <span className="text-[11px] text-slate-400">~{formatCents(gptImage1CostCents(gptImage1Quality, isEditMode))} each</span>
+                <span className="text-[11px] text-slate-400">~{formatCents(gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider))} each</span>
               </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {(['low', 'medium', 'high', 'auto'] as const).map((q) => (
@@ -661,7 +701,7 @@ export default function MediaModule() {
                 ))}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                Low ~{formatCents(gptImage1CostCents('low', isEditMode))} · Medium ~{formatCents(gptImage1CostCents('medium', isEditMode))} · High ~{formatCents(gptImage1CostCents('high', isEditMode))}. Lower quality is fine for drafts.
+                Low ~{formatCents(gptImage1CostCents('low', isEditMode, gptImage1Provider))} · Medium ~{formatCents(gptImage1CostCents('medium', isEditMode, gptImage1Provider))} · High ~{formatCents(gptImage1CostCents('high', isEditMode, gptImage1Provider))}. Lower quality is fine for drafts.
               </p>
             </div>
           )}
@@ -858,10 +898,13 @@ export default function MediaModule() {
         <SettingsDrawer
           cap={cap}
           keyStatus={keyStatus}
+          openaiKeyStatus={openaiKeyStatus}
           onClose={() => setSettingsDrawerOpen(false)}
           onSave={handleSaveSettings}
           onSaveKey={handleSaveFalKey}
           onRemoveKey={handleRemoveFalKey}
+          onSaveOpenaiKey={handleSaveOpenaiKey}
+          onRemoveOpenaiKey={handleRemoveOpenaiKey}
         />
       )}
       {customModelsDrawerOpen && (
@@ -1077,107 +1120,141 @@ function CollectionsDrawer({
   );
 }
 
-function SettingsDrawer({
-  cap, keyStatus, onClose, onSave, onSaveKey, onRemoveKey,
-}: {
-  cap: number;
-  keyStatus: FalKeyStatus | null;
-  onClose: () => void;
-  onSave: (capCents: number) => Promise<void>;
-  onSaveKey: (key: string) => Promise<void>;
-  onRemoveKey: () => Promise<void>;
-}) {
-  const [dollars, setDollars] = useState((cap / 100).toFixed(2));
+interface KeySectionConfig {
+  label: string;
+  provider: 'Fal.AI' | 'OpenAI';
+  status: FalKeyStatus | null;
+  placeholder: string;
+  helpUrl: string;
+  helpText: string;
+  required: boolean;
+  onSave: (key: string) => Promise<void>;
+  onRemove: () => Promise<void>;
+}
+
+function KeySection({ cfg }: { cfg: KeySectionConfig }) {
   const [rawKey, setRawKey] = useState('');
   const [savingKey, setSavingKey] = useState(false);
   const [removingKey, setRemovingKey] = useState(false);
   const [keyError, setKeyError] = useState<string | null>(null);
   const [keySaved, setKeySaved] = useState(false);
 
-  async function submitKey() {
-    setKeyError(null);
-    setKeySaved(false);
-    setSavingKey(true);
+  async function submit() {
+    setKeyError(null); setKeySaved(false); setSavingKey(true);
     try {
-      await onSaveKey(rawKey.trim());
-      setRawKey('');
-      setKeySaved(true);
+      await cfg.onSave(rawKey.trim());
+      setRawKey(''); setKeySaved(true);
     } catch (err) {
       setKeyError(err instanceof Error ? err.message : 'Failed to save key');
-    } finally {
-      setSavingKey(false);
-    }
+    } finally { setSavingKey(false); }
   }
-
-  async function removeKey() {
-    if (!window.confirm('Remove your stored Fal API key? You will need to paste it again to generate.')) return;
+  async function remove() {
+    if (!window.confirm(`Remove your stored ${cfg.provider} API key?`)) return;
     setRemovingKey(true);
     try {
-      await onRemoveKey();
-      setKeySaved(false);
+      await cfg.onRemove(); setKeySaved(false);
     } catch (err) {
       setKeyError(err instanceof Error ? err.message : 'Failed to remove key');
-    } finally {
-      setRemovingKey(false);
-    }
+    } finally { setRemovingKey(false); }
   }
 
   return (
-    <Drawer title="Media settings" onClose={onClose}>
-      {/* Fal API key */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Key className="w-4 h-4 text-slate-500" />
-          <h4 className="font-semibold text-slate-800">Fal.AI API key</h4>
-        </div>
-        <p className="text-sm text-slate-500 mb-3">
-          Each generation is billed to your own Fal account.{' '}
-          <a href="https://fal.ai/dashboard/keys" target="_blank" rel="noreferrer" className="text-fuchsia-600 hover:text-fuchsia-700 underline inline-flex items-center gap-0.5">
-            Get a key <ExternalLink className="w-3 h-3" />
-          </a>
-          . Keys are encrypted with AES-256-GCM before being stored — only the server can decrypt them on demand.
-        </p>
-
-        {keyStatus?.has_key ? (
-          <div className="mb-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-800">
-            <Check className="w-4 h-4 shrink-0" />
-            <span className="flex-1">Key saved (ends in <code className="font-mono">{keyStatus.hint}</code>)</span>
-            <button
-              onClick={removeKey}
-              disabled={removingKey}
-              className="text-xs text-emerald-700 hover:text-red-600 underline disabled:opacity-50"
-            >
-              {removingKey ? 'Removing…' : 'Remove'}
-            </button>
-          </div>
-        ) : (
-          <div className="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>No key saved — generation is disabled until you add one.</span>
-          </div>
-        )}
-
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-          {keyStatus?.has_key ? 'Replace key' : 'Paste your key'}
-        </label>
-        <input
-          type="password"
-          value={rawKey}
-          onChange={(e) => { setRawKey(e.target.value); setKeySaved(false); setKeyError(null); }}
-          placeholder="key_xxxx…  or  xxxxxxxx:xxxxxxxx…"
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"
-          autoComplete="off"
-        />
-        {keyError && <p className="text-xs text-red-600 mt-1">{keyError}</p>}
-        {keySaved && <p className="text-xs text-emerald-700 mt-1">Saved.</p>}
-        <button
-          onClick={submitKey}
-          disabled={savingKey || rawKey.trim().length < 16}
-          className="mt-2 px-4 py-2 rounded-lg bg-fuchsia-600 text-white text-sm font-semibold hover:bg-fuchsia-700 disabled:opacity-50"
-        >
-          {savingKey ? 'Saving…' : 'Save key'}
-        </button>
+    <div className="mb-6">
+      <div className="flex items-center gap-2 mb-2">
+        <Key className="w-4 h-4 text-slate-500" />
+        <h4 className="font-semibold text-slate-800">{cfg.label}</h4>
       </div>
+      <p className="text-sm text-slate-500 mb-3">
+        {cfg.helpText}{' '}
+        <a href={cfg.helpUrl} target="_blank" rel="noreferrer" className="text-fuchsia-600 hover:text-fuchsia-700 underline inline-flex items-center gap-0.5">
+          Get a key <ExternalLink className="w-3 h-3" />
+        </a>
+        . Keys are encrypted with AES-256-GCM and only ever decrypted on the server.
+      </p>
+
+      {cfg.status?.has_key ? (
+        <div className="mb-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-800">
+          <Check className="w-4 h-4 shrink-0" />
+          <span className="flex-1">Key saved (ends in <code className="font-mono">{cfg.status.hint}</code>)</span>
+          <button onClick={remove} disabled={removingKey} className="text-xs text-emerald-700 hover:text-red-600 underline disabled:opacity-50">
+            {removingKey ? 'Removing…' : 'Remove'}
+          </button>
+        </div>
+      ) : cfg.required ? (
+        <div className="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          <span>No key saved — generation is disabled until you add one.</span>
+        </div>
+      ) : (
+        <div className="mb-3 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-600">
+          <span>Optional — adding one unlocks the cheaper provider for that model.</span>
+        </div>
+      )}
+
+      <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+        {cfg.status?.has_key ? 'Replace key' : 'Paste your key'}
+      </label>
+      <input
+        type="password"
+        value={rawKey}
+        onChange={(e) => { setRawKey(e.target.value); setKeySaved(false); setKeyError(null); }}
+        placeholder={cfg.placeholder}
+        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"
+        autoComplete="off"
+      />
+      {keyError && <p className="text-xs text-red-600 mt-1">{keyError}</p>}
+      {keySaved && <p className="text-xs text-emerald-700 mt-1">Saved.</p>}
+      <button
+        onClick={submit}
+        disabled={savingKey || rawKey.trim().length < 16}
+        className="mt-2 px-4 py-2 rounded-lg bg-fuchsia-600 text-white text-sm font-semibold hover:bg-fuchsia-700 disabled:opacity-50"
+      >
+        {savingKey ? 'Saving…' : 'Save key'}
+      </button>
+    </div>
+  );
+}
+
+function SettingsDrawer({
+  cap, keyStatus, openaiKeyStatus, onClose, onSave, onSaveKey, onRemoveKey, onSaveOpenaiKey, onRemoveOpenaiKey,
+}: {
+  cap: number;
+  keyStatus: FalKeyStatus | null;
+  openaiKeyStatus: FalKeyStatus | null;
+  onClose: () => void;
+  onSave: (capCents: number) => Promise<void>;
+  onSaveKey: (key: string) => Promise<void>;
+  onRemoveKey: () => Promise<void>;
+  onSaveOpenaiKey: (key: string) => Promise<void>;
+  onRemoveOpenaiKey: () => Promise<void>;
+}) {
+  const [dollars, setDollars] = useState((cap / 100).toFixed(2));
+
+  return (
+    <Drawer title="Media settings" onClose={onClose}>
+      <KeySection cfg={{
+        label: 'Fal.AI API key',
+        provider: 'Fal.AI',
+        status: keyStatus,
+        placeholder: 'key_xxxx…  or  xxxxxxxx:xxxxxxxx…',
+        helpUrl: 'https://fal.ai/dashboard/keys',
+        helpText: 'Required for everything except GPT Image 1 if you have an OpenAI key. Each generation is billed to your Fal account.',
+        required: true,
+        onSave: onSaveKey,
+        onRemove: onRemoveKey,
+      }} />
+
+      <KeySection cfg={{
+        label: 'OpenAI API key — for GPT Image 1',
+        provider: 'OpenAI',
+        status: openaiKeyStatus,
+        placeholder: 'sk-proj-…  or  sk-…',
+        helpUrl: 'https://platform.openai.com/api-keys',
+        helpText: 'Optional but recommended. When set, GPT Image 1 calls go directly to OpenAI instead of through Fal — roughly 3× cheaper. Other models keep using Fal.',
+        required: false,
+        onSave: onSaveOpenaiKey,
+        onRemove: onRemoveOpenaiKey,
+      }} />
 
       <div className="border-t border-slate-100 pt-5">
         <h4 className="font-semibold text-slate-800 mb-1">Monthly spend cap</h4>
