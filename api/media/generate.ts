@@ -37,6 +37,7 @@ interface ModelDef {
   isAsync: boolean;
   acceptsInputImage: boolean;
   editEndpoint?: string;
+  editCostCents?: number;
   supportsCustomSize: boolean;
   estimatedCostCents: number;
 }
@@ -52,7 +53,7 @@ const MODELS: Record<string, ModelDef> = {
   'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
   'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/ideogram/v3/edit',       supportsCustomSize: true,  estimatedCostCents: 6   },
   'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
-  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1/text-to-image',                kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/gpt-image-1/edit-image',  supportsCustomSize: true,  estimatedCostCents: 7   },
+  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1/text-to-image',                kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/gpt-image-1/edit-image',  editCostCents: 17, supportsCustomSize: true,  estimatedCostCents: 7   },
   'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/flux/dev/image-to-image', supportsCustomSize: true,  estimatedCostCents: 3   },
   'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8   },
@@ -374,7 +375,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // batches; video is always a single output.
   const requestedNum = Number.isFinite(body.num_images) ? Math.floor(body.num_images as number) : 1;
   const numImages = model.kind === 'image' ? Math.min(MAX_BATCH, Math.max(1, requestedNum)) : 1;
-  const totalCostCents = model.estimatedCostCents * numImages;
+
+  // Edit endpoints typically cost more than text-to-image, so use
+  // editCostCents when we'll route to one. Falls back to the regular
+  // estimate when no per-mode price is configured.
+  const willEdit = !!model.editEndpoint && (
+    !!body.source_image_url ||
+    (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0)
+  );
+  const perImageCostCents = (willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents;
+  const totalCostCents = perImageCostCents * numImages;
 
   // Spend cap check. If the next generation would push us past the
   // cap, refuse and let the UI surface the message.
@@ -419,7 +429,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       height: body.height ?? null,
       source_image_url: firstSource,
       fal_model_endpoint: effectiveEndpoint,
-      cost_cents: model.estimatedCostCents,
+      cost_cents: perImageCostCents,
       status: 'pending',
     })
     .select()
@@ -507,7 +517,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         height: o.height ?? body.height ?? null,
         source_image_url: firstSource,
         fal_model_endpoint: effectiveEndpoint,
-        cost_cents: model.estimatedCostCents,
+        cost_cents: perImageCostCents,
         status: 'completed' as const,
         output_url: o.url,
         thumbnail_url: o.url,

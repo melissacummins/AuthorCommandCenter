@@ -21,6 +21,10 @@ export interface ModelDef {
   // request to this endpoint (like ChatGPT). When unset and
   // acceptsInputImage is true, `endpoint` is itself an edit endpoint.
   editEndpoint?: string;
+  // Cost per output image when routing to editEndpoint. Edit endpoints
+  // are typically pricier than text-to-image (they tokenize the input
+  // image too). When unset, falls back to estimatedCostCents.
+  editCostCents?: number;
   supportsCustomSize: boolean;
   description: string;
   estimatedCostCents: number;
@@ -113,8 +117,9 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/gpt-image-1/text-to-image',
     acceptsInputImage: false,
     editEndpoint: 'fal-ai/gpt-image-1/edit-image',
+    editCostCents: 17,
     supportsCustomSize: true,
-    description: "The same model that powers ChatGPT's image generation. Attach reference images to edit.",
+    description: "The same model that powers ChatGPT's image generation. Attach reference images to edit (~$0.17 vs ~$0.07 to generate).",
     estimatedCostCents: 7,
     isAsync: false,
     isFeatured: true,
