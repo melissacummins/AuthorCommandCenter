@@ -36,6 +36,7 @@ interface ModelDef {
   kind: 'image' | 'video';
   isAsync: boolean;
   acceptsInputImage: boolean;
+  editEndpoint?: string;
   supportsCustomSize: boolean;
   estimatedCostCents: number;
 }
@@ -46,14 +47,14 @@ interface ModelDef {
 // any fal-ai/* endpoint they've added themselves.
 const MODELS: Record<string, ModelDef> = {
   // Image generation
-  'nano-banana':          { id: 'nano-banana',          endpoint: 'fal-ai/nano-banana',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'nano-banana':          { id: 'nano-banana',          endpoint: 'fal-ai/nano-banana',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/nano-banana/edit',       supportsCustomSize: true,  estimatedCostCents: 4   },
   'flux-pro-v11':         { id: 'flux-pro-v11',         endpoint: 'fal-ai/flux-pro/v1.1',                            kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
-  'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 6   },
+  'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/ideogram/v3/edit',       supportsCustomSize: true,  estimatedCostCents: 6   },
   'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
-  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1',                              kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 7   },
+  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1/text-to-image',                kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/gpt-image-1/edit-image',  supportsCustomSize: true,  estimatedCostCents: 7   },
   'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
-  'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3   },
+  'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/flux/dev/image-to-image', supportsCustomSize: true,  estimatedCostCents: 3   },
   'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8   },
   'flux-lora':            { id: 'flux-lora',            endpoint: 'fal-ai/flux-lora',                                kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
   'imagen3':              { id: 'imagen3',              endpoint: 'fal-ai/imagen3',                                  kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
@@ -81,13 +82,12 @@ const MODELS: Record<string, ModelDef> = {
   'kling-video':          { id: 'kling-video',          endpoint: 'fal-ai/kling-video/v2/master/text-to-video',      kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 140 },
   'kling-image-to-video': { id: 'kling-image-to-video', endpoint: 'fal-ai/kling-video/v2/master/image-to-video',     kind: 'video', isAsync: true,  acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 140 },
   'veo3-fast':            { id: 'veo3-fast',            endpoint: 'fal-ai/veo3/fast',                                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 200 },
-  'ltx-video':            { id: 'ltx-video',            endpoint: 'fal-ai/ltx-video',                                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 20  },
+  'ltx-video':            { id: 'ltx-video',            endpoint: 'fal-ai/ltx-video-13b-distilled',                  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 20  },
   'kling-v16-std':        { id: 'kling-v16-std',        endpoint: 'fal-ai/kling-video/v1.6/standard/text-to-video',  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 35  },
   'wan-t2v':              { id: 'wan-t2v',              endpoint: 'fal-ai/wan/v2.2-5b/text-to-video',                kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 60  },
   'wan-i2v':              { id: 'wan-i2v',              endpoint: 'fal-ai/wan/v2.2-5b/image-to-video',               kind: 'video', isAsync: true,  acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 60  },
   'minimax-hailuo-02':    { id: 'minimax-hailuo-02',    endpoint: 'fal-ai/minimax/hailuo-02',                        kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 80  },
   'hunyuan-video':        { id: 'hunyuan-video',        endpoint: 'fal-ai/hunyuan-video',                            kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 80  },
-  'ltx-distilled':        { id: 'ltx-distilled',        endpoint: 'fal-ai/ltx-video-13b-distilled',                  kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 35  },
 };
 
 // Loads a user's custom model definition. Anything outside the curated
@@ -123,8 +123,14 @@ interface GenerateRequestBody {
   width?: number;
   height?: number;
   source_image_url?: string | null;
+  source_image_urls?: string[];
+  num_images?: number;
   collection_id?: string | null;
 }
+
+// Hard ceiling on a single batch regardless of what the client asks
+// for — guards against a malformed request running up a huge bill.
+const MAX_BATCH = 10;
 
 function authHeader(req: VercelRequest): string | null {
   const raw = req.headers['authorization'] ?? req.headers['Authorization'];
@@ -187,24 +193,77 @@ export async function resolveFalKey(supabase: SupabaseClient, userId: string): P
   return process.env.FAL_KEY ?? null;
 }
 
-function buildFalPayload(model: ModelDef, body: GenerateRequestBody): Record<string, unknown> {
+// Turns Fal's various error shapes into a single readable string.
+// Fal returns:
+//   - a plain string (older endpoints / 404s)
+//   - an array of Pydantic validation errors: [{loc, msg, type}, ...]
+//   - an object with `message` or nested error
+function formatFalError(detail: unknown, status: number): string {
+  if (typeof detail === 'string' && detail.trim()) return detail;
+  if (Array.isArray(detail) && detail.length > 0) {
+    return detail
+      .map((d) => {
+        if (d && typeof d === 'object') {
+          const o = d as { loc?: unknown; msg?: unknown };
+          const loc = Array.isArray(o.loc) ? o.loc.filter((x) => x !== 'body').join('.') : '';
+          const msg = typeof o.msg === 'string' ? o.msg : JSON.stringify(d);
+          return loc ? `${loc}: ${msg}` : msg;
+        }
+        return String(d);
+      })
+      .join('; ');
+  }
+  if (detail && typeof detail === 'object') {
+    const o = detail as { message?: unknown; error?: unknown };
+    if (typeof o.message === 'string') return o.message;
+    if (typeof o.error === 'string') return o.error;
+    try { return JSON.stringify(detail); } catch { /* fall through */ }
+  }
+  return `Fal HTTP ${status}`;
+}
+
+function gptImage1Size(width: number, height: number): 'auto' | '1024x1024' | '1536x1024' | '1024x1536' {
+  if (!width || !height) return 'auto';
+  if (width === height) return '1024x1024';
+  return width > height ? '1536x1024' : '1024x1536';
+}
+
+function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: number): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     prompt: body.full_prompt ?? body.prompt,
   };
 
   if (model.supportsCustomSize && body.width && body.height) {
-    // Most Fal image endpoints take image_size as either a named preset
-    // or an object {width, height}. The object form is universally
-    // accepted by the models in our catalogue.
-    payload.image_size = { width: body.width, height: body.height };
+    // Most Fal image endpoints take image_size as `{width, height}`.
+    // GPT Image 1 is the exception — it only accepts a fixed enum
+    // ("1024x1024", "1536x1024", "1024x1536", "auto"). Map the picked
+    // size to the closest aspect ratio.
+    if (model.id === 'gpt-image-1') {
+      payload.image_size = gptImage1Size(body.width, body.height);
+    } else {
+      payload.image_size = { width: body.width, height: body.height };
+    }
+  } else if (model.id === 'gpt-image-1') {
+    payload.image_size = 'auto';
   }
 
-  if (model.acceptsInputImage && body.source_image_url) {
-    // Different endpoints use different field names. Send both — Fal
-    // ignores unknown fields, so this keeps us compatible across the
-    // catalogue without per-model branching.
-    payload.image_url = body.source_image_url;
-    payload.image_urls = [body.source_image_url];
+  // Batch count — only meaningful for image generation. Fal ignores
+  // unknown fields, but we still skip it for video to be safe.
+  if (model.kind === 'image' && numImages > 1) {
+    payload.num_images = numImages;
+  }
+
+  if (model.acceptsInputImage || model.editEndpoint) {
+    const refs = (body.source_image_urls && body.source_image_urls.length > 0)
+      ? body.source_image_urls
+      : (body.source_image_url ? [body.source_image_url] : []);
+    if (refs.length > 0) {
+      // Different endpoints use different field names. Send both — Fal
+      // ignores unknown fields, so this keeps us compatible across the
+      // catalogue without per-model branching.
+      payload.image_url = refs[0];
+      payload.image_urls = refs;
+    }
   }
 
   return payload;
@@ -229,21 +288,27 @@ interface FalQueueResponse {
   status_url?: string;
 }
 
-function extractSyncOutputUrl(data: FalSyncResponse): { url: string | null; width: number | null; height: number | null } {
-  if (data.images && data.images.length > 0 && data.images[0].url) {
-    return {
-      url: data.images[0].url,
-      width: data.images[0].width ?? null,
-      height: data.images[0].height ?? null,
-    };
+interface ExtractedOutput {
+  url: string;
+  width: number | null;
+  height: number | null;
+}
+
+// Pulls every output image (or the single video) from a Fal response.
+function extractSyncOutputs(data: FalSyncResponse): ExtractedOutput[] {
+  const outputs: ExtractedOutput[] = [];
+  if (data.images && data.images.length > 0) {
+    for (const img of data.images) {
+      if (img.url) outputs.push({ url: img.url, width: img.width ?? null, height: img.height ?? null });
+    }
   }
-  if (data.image?.url) {
-    return { url: data.image.url, width: data.image.width ?? null, height: data.image.height ?? null };
+  if (outputs.length === 0 && data.image?.url) {
+    outputs.push({ url: data.image.url, width: data.image.width ?? null, height: data.image.height ?? null });
   }
-  if (data.video?.url) {
-    return { url: data.video.url, width: null, height: null };
+  if (outputs.length === 0 && data.video?.url) {
+    outputs.push({ url: data.video.url, width: null, height: null });
   }
-  return { url: null, width: null, height: null };
+  return outputs;
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -299,10 +364,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(400).json({ error: `Unknown model: ${body.model}` });
     return;
   }
-  if (model.acceptsInputImage && !body.source_image_url && body.model === 'nano-banana-edit') {
+  const hasInputImage = !!body.source_image_url || (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0);
+  if (model.acceptsInputImage && !hasInputImage && body.model === 'nano-banana-edit') {
     res.status(400).json({ error: 'Nano Banana edit requires a source image.' });
     return;
   }
+
+  // How many images to produce this request. Only image generation
+  // batches; video is always a single output.
+  const requestedNum = Number.isFinite(body.num_images) ? Math.floor(body.num_images as number) : 1;
+  const numImages = model.kind === 'image' ? Math.min(MAX_BATCH, Math.max(1, requestedNum)) : 1;
+  const totalCostCents = model.estimatedCostCents * numImages;
 
   // Spend cap check. If the next generation would push us past the
   // cap, refuse and let the UI surface the message.
@@ -310,18 +382,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     getMonthlySpendCents(supabase, userId),
     getMonthlyCapCents(supabase, userId),
   ]);
-  if (cap > 0 && spent + model.estimatedCostCents > cap) {
+  if (cap > 0 && spent + totalCostCents > cap) {
     res.status(402).json({
       error: 'Monthly spend cap reached',
       spent_cents: spent,
       cap_cents: cap,
-      estimated_cost_cents: model.estimatedCostCents,
+      estimated_cost_cents: totalCostCents,
     });
     return;
   }
 
+  const firstSource = body.source_image_url ?? (body.source_image_urls?.[0] ?? null);
   const fullPrompt = body.full_prompt?.trim() || body.prompt;
-  const falPayload = buildFalPayload(model, { ...body, full_prompt: fullPrompt });
+  const falPayload = buildFalPayload(model, { ...body, full_prompt: fullPrompt }, numImages);
+
+  // Dual-capability models (generation + editEndpoint): route to the
+  // edit endpoint when the user attached a reference image, otherwise
+  // use the plain generation endpoint. Pure-edit models have no
+  // editEndpoint and always use their base endpoint.
+  const effectiveEndpoint = (firstSource && model.editEndpoint) ? model.editEndpoint : model.endpoint;
 
   // Insert the row up front in 'pending' state. For sync models we
   // flip it to 'completed' as soon as Fal returns; for async (video)
@@ -338,8 +417,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       style_preset_id: body.style_preset_id ?? null,
       width: body.width ?? null,
       height: body.height ?? null,
-      source_image_url: body.source_image_url ?? null,
-      fal_model_endpoint: model.endpoint,
+      source_image_url: firstSource,
+      fal_model_endpoint: effectiveEndpoint,
       cost_cents: model.estimatedCostCents,
       status: 'pending',
     })
@@ -355,7 +434,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Sync path — image models. Hit the direct endpoint and wait.
   if (!model.isAsync) {
-    const falRes = await fetch(`https://fal.run/${model.endpoint}`, {
+    const falRes = await fetch(`https://fal.run/${effectiveEndpoint}`, {
       method: 'POST',
       headers: {
         'Authorization': `Key ${falKey}`,
@@ -366,45 +445,88 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const falJson = (await falRes.json().catch(() => ({}))) as FalSyncResponse & { detail?: unknown };
     if (!falRes.ok) {
+      // Zero the cost on failure so a failed attempt doesn't eat the
+      // monthly budget, and surface a clearer message for a missing
+      // endpoint (Fal returns "Path / not found" with a 404).
+      const friendly = falRes.status === 404
+        ? `This model is unavailable at "${effectiveEndpoint}" (Fal returned 404). You weren't charged.`
+        : `${formatFalError(falJson.detail, falRes.status)} — you weren't charged.`;
       await supabase.from('media_generations').update({
         status: 'failed',
-        error_message: typeof falJson.detail === 'string' ? falJson.detail : `Fal HTTP ${falRes.status}`,
+        error_message: friendly,
+        cost_cents: 0,
       }).eq('id', generationId);
-      res.status(502).json({ error: 'Fal request failed', detail: falJson.detail ?? falJson, status: falRes.status });
+      res.status(502).json({ error: 'Fal request failed', detail: friendly, status: falRes.status });
       return;
     }
 
-    const { url, width, height } = extractSyncOutputUrl(falJson);
-    if (!url) {
+    const outputs = extractSyncOutputs(falJson);
+    if (outputs.length === 0) {
       await supabase.from('media_generations').update({
         status: 'failed',
         error_message: 'Fal response did not include an output URL',
+        cost_cents: 0,
       }).eq('id', generationId);
       res.status(502).json({ error: 'No output URL in Fal response' });
       return;
     }
 
+    const completedAt = new Date().toISOString();
+    const generations: unknown[] = [];
+
+    // First output reuses the row we already inserted.
+    const first = outputs[0];
     const { data: updated } = await supabase
       .from('media_generations')
       .update({
         status: 'completed',
-        output_url: url,
-        thumbnail_url: url,
-        width: width ?? body.width ?? null,
-        height: height ?? body.height ?? null,
-        completed_at: new Date().toISOString(),
+        output_url: first.url,
+        thumbnail_url: first.url,
+        width: first.width ?? body.width ?? null,
+        height: first.height ?? body.height ?? null,
+        completed_at: completedAt,
       })
       .eq('id', generationId)
       .select()
       .single();
+    if (updated) generations.push(updated);
 
-    res.status(200).json({ generation: updated ?? inserted });
+    // Remaining outputs become their own completed rows so each image
+    // is independently downloadable / deletable in the history grid.
+    // Cost is recorded per-image so the monthly spend total stays exact.
+    if (outputs.length > 1) {
+      const extraRows = outputs.slice(1).map((o) => ({
+        user_id: userId,
+        collection_id: body.collection_id ?? null,
+        kind: model.kind,
+        model: model.id,
+        prompt: body.prompt,
+        full_prompt: fullPrompt,
+        style_preset_id: body.style_preset_id ?? null,
+        width: o.width ?? body.width ?? null,
+        height: o.height ?? body.height ?? null,
+        source_image_url: firstSource,
+        fal_model_endpoint: effectiveEndpoint,
+        cost_cents: model.estimatedCostCents,
+        status: 'completed' as const,
+        output_url: o.url,
+        thumbnail_url: o.url,
+        completed_at: completedAt,
+      }));
+      const { data: extras } = await supabase
+        .from('media_generations')
+        .insert(extraRows)
+        .select();
+      if (extras) generations.push(...extras);
+    }
+
+    res.status(200).json({ generations: generations.length > 0 ? generations : [updated ?? inserted] });
     return;
   }
 
   // Async path — video models. Submit to the Fal queue and store the
   // request_id; the client will poll /api/media/status until done.
-  const queueRes = await fetch(`https://queue.fal.run/${model.endpoint}`, {
+  const queueRes = await fetch(`https://queue.fal.run/${effectiveEndpoint}`, {
     method: 'POST',
     headers: {
       'Authorization': `Key ${falKey}`,
@@ -415,11 +537,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const queueJson = (await queueRes.json().catch(() => ({}))) as FalQueueResponse & { detail?: unknown };
   if (!queueRes.ok || !queueJson.request_id) {
+    const friendly = queueRes.status === 404
+      ? `This model is unavailable at "${effectiveEndpoint}" (Fal returned 404). You weren't charged.`
+      : `${formatFalError(queueJson.detail, queueRes.status)} — you weren't charged.`;
     await supabase.from('media_generations').update({
       status: 'failed',
-      error_message: typeof queueJson.detail === 'string' ? queueJson.detail : `Fal queue HTTP ${queueRes.status}`,
+      error_message: friendly,
+      cost_cents: 0,
     }).eq('id', generationId);
-    res.status(502).json({ error: 'Fal queue submission failed', detail: queueJson.detail ?? queueJson });
+    res.status(502).json({ error: 'Fal queue submission failed', detail: friendly });
     return;
   }
 
@@ -430,5 +556,5 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .select()
     .single();
 
-  res.status(202).json({ generation: queued ?? inserted });
+  res.status(202).json({ generations: [queued ?? inserted] });
 }

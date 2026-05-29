@@ -151,6 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({
         status: 'failed',
         error_message: typeof statusJson.error === 'string' ? statusJson.error : 'Generation failed',
+        cost_cents: 0,
       })
       .eq('id', generationId)
       .select()
@@ -179,6 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       .update({
         status: 'failed',
         error_message: 'No video URL in Fal response',
+        cost_cents: 0,
       })
       .eq('id', generationId)
       .select()

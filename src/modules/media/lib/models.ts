@@ -16,12 +16,23 @@ export interface ModelDef {
   kind: MediaKind;
   endpoint: string;
   acceptsInputImage: boolean;
+  // Optional image-editing endpoint. When set, this is a generation
+  // model that ALSO accepts reference images — attaching one routes the
+  // request to this endpoint (like ChatGPT). When unset and
+  // acceptsInputImage is true, `endpoint` is itself an edit endpoint.
+  editEndpoint?: string;
   supportsCustomSize: boolean;
   description: string;
   estimatedCostCents: number;
   isAsync: boolean;
   isFeatured: boolean;
   group: 'image' | 'image-edit' | 'image-upscale' | 'video';
+}
+
+// A model can take reference images if its base endpoint is an editor
+// (acceptsInputImage) or it has a dedicated editEndpoint to route to.
+export function supportsReferenceImages(m: { acceptsInputImage: boolean; editEndpoint?: string }): boolean {
+  return m.acceptsInputImage || !!m.editEndpoint;
 }
 
 export const MODELS: ModelDef[] = [
@@ -34,8 +45,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/nano-banana',
     acceptsInputImage: false,
+    editEndpoint: 'fal-ai/nano-banana/edit',
     supportsCustomSize: true,
-    description: "Google's Gemini image model. Great all-rounder, good prompt following.",
+    description: "Google's Gemini image model. Great all-rounder; attach a reference image to edit.",
     estimatedCostCents: 4,
     isAsync: false,
     isFeatured: true,
@@ -73,8 +85,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/ideogram/v3',
     acceptsInputImage: false,
+    editEndpoint: 'fal-ai/ideogram/v3/edit',
     supportsCustomSize: true,
-    description: 'Best-in-class for rendering text inside images — ideal for Pinterest pins with headlines.',
+    description: 'Best-in-class for text inside images — ideal for Pinterest pins. Attach a reference to edit.',
     estimatedCostCents: 6,
     isAsync: false,
     isFeatured: true,
@@ -97,10 +110,11 @@ export const MODELS: ModelDef[] = [
     id: 'gpt-image-1',
     label: 'GPT Image 1 (ChatGPT)',
     kind: 'image',
-    endpoint: 'fal-ai/gpt-image-1',
-    acceptsInputImage: true,
+    endpoint: 'fal-ai/gpt-image-1/text-to-image',
+    acceptsInputImage: false,
+    editEndpoint: 'fal-ai/gpt-image-1/edit-image',
     supportsCustomSize: true,
-    description: "The same model that powers ChatGPT's image generation. Excellent prompt adherence.",
+    description: "The same model that powers ChatGPT's image generation. Attach reference images to edit.",
     estimatedCostCents: 7,
     isAsync: false,
     isFeatured: true,
@@ -196,7 +210,7 @@ export const MODELS: ModelDef[] = [
     id: 'ltx-video',
     label: 'LTX Video (cheap)',
     kind: 'video',
-    endpoint: 'fal-ai/ltx-video',
+    endpoint: 'fal-ai/ltx-video-13b-distilled',
     acceptsInputImage: false,
     supportsCustomSize: false,
     description: 'Fast open video model. Lower fidelity than Kling but much cheaper.',
@@ -215,8 +229,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/flux/dev',
     acceptsInputImage: false,
+    editEndpoint: 'fal-ai/flux/dev/image-to-image',
     supportsCustomSize: true,
-    description: 'High-quality stylised image model. Strong for artistic / moody pieces.',
+    description: 'High-quality stylised image model. Attach a reference for image-to-image.',
     estimatedCostCents: 3,
     isAsync: false,
     isFeatured: false,
@@ -529,19 +544,6 @@ export const MODELS: ModelDef[] = [
     isFeatured: false,
     group: 'video',
   },
-  {
-    id: 'ltx-distilled',
-    label: 'LTX Video 13B (distilled)',
-    kind: 'video',
-    endpoint: 'fal-ai/ltx-video-13b-distilled',
-    acceptsInputImage: false,
-    supportsCustomSize: false,
-    description: 'Higher-fidelity LTX, still cheaper than Kling.',
-    estimatedCostCents: 35,
-    isAsync: true,
-    isFeatured: false,
-    group: 'video',
-  },
 ];
 
 export function findCuratedModel(id: string): ModelDef | undefined {
@@ -550,3 +552,16 @@ export function findCuratedModel(id: string): ModelDef | undefined {
 
 // Back-compat for the previous import name used elsewhere.
 export const findModel = findCuratedModel;
+
+// Max images a model can produce in one request. Editing, upscaling and
+// video endpoints return a single output; plain image generation
+// supports batches. Used to cap the quantity selector in the UI.
+export function maxImagesForGroup(kind: MediaKind, group: ModelDef['group']): number {
+  if (kind === 'video') return 1;
+  if (group === 'image-edit' || group === 'image-upscale') return 1;
+  return 4;
+}
+
+export function maxImagesFor(m: ModelDef): number {
+  return maxImagesForGroup(m.kind, m.group);
+}

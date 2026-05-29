@@ -20,10 +20,15 @@ export interface GeneratePayload {
   width?: number;
   height?: number;
   source_image_url?: string | null;
+  source_image_urls?: string[];
+  num_images?: number;
   collection_id?: string | null;
 }
 
-export async function requestGeneration(payload: GeneratePayload): Promise<MediaGeneration> {
+// Returns every generation row produced by the request. Image batches
+// (num_images > 1) yield one row per image; video and single-image
+// requests yield exactly one.
+export async function requestGeneration(payload: GeneratePayload): Promise<MediaGeneration[]> {
   const headers = await authHeader();
   const res = await fetch('/api/media/generate', {
     method: 'POST',
@@ -35,7 +40,9 @@ export async function requestGeneration(payload: GeneratePayload): Promise<Media
     const message = typeof data?.error === 'string' ? data.error : `Request failed (${res.status})`;
     throw new Error(message);
   }
-  return data.generation as MediaGeneration;
+  if (Array.isArray(data.generations)) return data.generations as MediaGeneration[];
+  if (data.generation) return [data.generation as MediaGeneration];
+  return [];
 }
 
 export async function pollGenerationStatus(id: string): Promise<MediaGeneration> {
