@@ -102,6 +102,12 @@ export interface BioSettings {
 
 export type BookTextMode = 'headline' | 'description' | 'custom' | 'none';
 
+export interface ReviewItem {
+  stars: number; // 1-5
+  quote: string;
+  attribution: string;
+}
+
 export interface LandingPage {
   id: string;
   user_id: string;
@@ -114,6 +120,7 @@ export interface LandingPage {
   cover_image_url: string | null;
   source_url: string;
   buttons: BioButton[];
+  reviews: ReviewItem[];
   theme: string | null;
   accent_color: string | null;
   created_at: string;
@@ -130,6 +137,7 @@ export type LandingPageInsert = {
   cover_image_url?: string | null;
   source_url?: string;
   buttons?: BioButton[];
+  reviews?: ReviewItem[];
   theme?: string;
   accent_color?: string | null;
 };

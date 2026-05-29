@@ -405,6 +405,7 @@ function lpTheme(themeId: string | null | undefined, accent: string | null | und
 }
 
 interface LpButton { label: string; url: string }
+interface LpReview { stars: number; quote: string; attribution: string }
 interface LandingPageRow {
   slug: string;
   title: string | null;
@@ -414,6 +415,7 @@ interface LandingPageRow {
   page_text_custom: string | null;
   cover_image_url: string | null;
   buttons: LpButton[] | null;
+  reviews: LpReview[] | null;
   theme: string | null;
   accent_color: string | null;
 }
@@ -430,6 +432,15 @@ function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = nul
   const storeHtml = buttons.map((b) =>
     `<a class="store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(lpRetailerIcon(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" onerror="${ICON_ONERR}" /></a>`,
   ).join('');
+  const reviews = (Array.isArray(page.reviews) ? page.reviews : [])
+    .filter((r) => r && typeof r.quote === 'string' && r.quote.trim());
+  const reviewsHtml = reviews.map((r) => {
+    const stars = Math.max(1, Math.min(5, Math.round(Number(r.stars) || 5)));
+    const starRow = '<span class="review-stars" aria-label="' + stars + ' out of 5 stars">' +
+      '★'.repeat(stars) + '<span class="review-stars-dim">' + '★'.repeat(5 - stars) + '</span></span>';
+    const attr = (r.attribution || '').trim();
+    return `<figure class="review">${starRow}<blockquote class="review-quote">${formatText(r.quote)}</blockquote>${attr ? `<figcaption class="review-attr">— ${escapeHtml(attr)}</figcaption>` : ''}</figure>`;
+  }).join('');
   const heroHtml = headline
     ? `<p class="kicker">${escapeHtml(title)}</p><h1 class="headline">${formatText(headline)}</h1>`
     : `<h1 class="headline headline--plain">${escapeHtml(title)}</h1>`;
@@ -462,6 +473,13 @@ body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sy
 .store{display:inline-grid;place-items:center;width:54px;height:54px;border-radius:13px;border:1px solid var(--border);background:var(--surface);text-decoration:none;transition:border-color 120ms ease,transform 120ms ease}
 .store:hover{border-color:var(--accent);transform:translateY(-2px)}
 .store img{width:28px;height:28px;display:block}
+.reviews{margin-top:34px;display:flex;flex-direction:column;gap:18px;clear:both}
+.review{margin:0;padding:18px 20px;border-radius:14px;border:1px solid var(--border);background:var(--surface)}
+.review-stars{display:block;font-size:15px;letter-spacing:.12em;color:var(--accent);line-height:1}
+.review-stars-dim{color:var(--border)}
+.review-quote{margin:8px 0 0;font-size:15px;line-height:1.6;color:var(--text);font-style:italic}
+.review-quote::before{content:"\\201C"}.review-quote::after{content:"\\201D"}
+.review-attr{margin-top:8px;font-size:13px;color:var(--muted);font-style:normal}
 @media(max-width:620px){body{padding:40px 20px 64px}.cover{float:none;width:210px;max-width:62%;margin:0 auto 24px}.wrap{text-align:center}.headline{font-size:29px}.stores{justify-content:center}}
 </style>
 </head>
@@ -471,6 +489,7 @@ body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sy
   ${heroHtml}
   ${body ? `<div class="desc">${formatText(body)}</div>` : ''}
   ${storeHtml ? `<div class="stores">${storeHtml}</div>` : ''}
+  ${reviewsHtml ? `<section class="reviews" aria-label="Reader reviews">${reviewsHtml}</section>` : ''}
 </main>
 </body>
 </html>`;
@@ -668,7 +687,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Not a short link — it might be a landing page (shared slug namespace).
       let pageQuery = supabase
         .from('landing_pages')
-        .select('slug, title, headline, description, page_text_mode, page_text_custom, cover_image_url, buttons, theme, accent_color')
+        .select('slug, title, headline, description, page_text_mode, page_text_custom, cover_image_url, buttons, reviews, theme, accent_color')
         .eq('slug', slug);
       if (ownerId) pageQuery = pageQuery.eq('user_id', ownerId);
       const { data: page } = await pageQuery.maybeSingle();
