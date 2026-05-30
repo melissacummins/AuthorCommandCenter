@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import {
-  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, Key, ExternalLink, Check, Layers,
+  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, ExternalLink, Layers,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages } from './lib/models';
+import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage1CostCents, type GptImage1Quality } from './lib/models';
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
-  getFalKeyStatus, setFalKey, removeFalKey, type FalKeyStatus,
+  getFalKeyStatus, getOpenaiKeyStatus, type FalKeyStatus,
 } from './lib/client';
 import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
 
@@ -37,6 +38,7 @@ export default function MediaModule() {
   const [inputImages, setInputImages] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [gptImage1Quality, setGptImage1Quality] = useState<GptImage1Quality>('medium');
 
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
@@ -53,6 +55,7 @@ export default function MediaModule() {
   const [settings, setSettings] = useState<MediaSettings | null>(null);
   const [monthlySpent, setMonthlySpent] = useState(0);
   const [keyStatus, setKeyStatus] = useState<FalKeyStatus | null>(null);
+  const [openaiKeyStatus, setOpenaiKeyStatus] = useState<FalKeyStatus | null>(null);
 
   const [filterCollectionId, setFilterCollectionId] = useState<string | null>(null);
   const [stylesDrawerOpen, setStylesDrawerOpen] = useState(false);
@@ -74,12 +77,14 @@ export default function MediaModule() {
         kind: curated.kind,
         acceptsInputImage: curated.acceptsInputImage,
         canReference: supportsReferenceImages(curated),
+        hasDualMode: !!curated.editEndpoint,
         // References are mandatory only for pure-edit models (an edit
         // endpoint with no separate generation endpoint).
         referenceRequired: curated.acceptsInputImage && !curated.editEndpoint,
         supportsCustomSize: curated.supportsCustomSize,
         description: curated.description,
         estimatedCostCents: curated.estimatedCostCents,
+        editCostCents: curated.editCostCents ?? curated.estimatedCostCents,
         maxImages: maxImagesForGroup(curated.kind, curated.group),
         isCustom: false,
       };
@@ -95,10 +100,12 @@ export default function MediaModule() {
         kind: custom.kind,
         acceptsInputImage: custom.accepts_input_image,
         canReference: custom.accepts_input_image,
+        hasDualMode: false,
         referenceRequired: false,
         supportsCustomSize: custom.supports_custom_size,
         description: custom.description ?? `Custom: ${custom.endpoint}`,
         estimatedCostCents: custom.estimated_cost_cents,
+        editCostCents: custom.estimated_cost_cents,
         maxImages: customMax,
         isCustom: true,
       };
@@ -111,14 +118,33 @@ export default function MediaModule() {
       kind: first.kind,
       acceptsInputImage: first.acceptsInputImage,
       canReference: supportsReferenceImages(first),
+      hasDualMode: !!first.editEndpoint,
       referenceRequired: first.acceptsInputImage && !first.editEndpoint,
       supportsCustomSize: first.supportsCustomSize,
       description: first.description,
       estimatedCostCents: first.estimatedCostCents,
+      editCostCents: first.editCostCents ?? first.estimatedCostCents,
       maxImages: maxImagesForGroup(first.kind, first.group),
       isCustom: false,
     };
   }, [modelId, customModels]);
+
+  // True when this run will route to the model's edit endpoint
+  // (dual-mode model + a reference attached). Drives the edit-mode
+  // banner, Generate button label, and cost display.
+  // GPT Image 1 routes through OpenAI when a key is configured (much
+  // cheaper than via Fal); everything else uses Fal.
+  const gptImage1Provider: 'fal' | 'openai' =
+    model.id === 'gpt-image-1' && openaiKeyStatus?.has_key ? 'openai' : 'fal';
+  // When routed via OpenAI, ANY reference image becomes an edit
+  // (regardless of the model's editEndpoint, since OpenAI handles
+  // both modes on its own endpoints).
+  const isEditMode = model.id === 'gpt-image-1' && gptImage1Provider === 'openai'
+    ? inputImages.length > 0
+    : (model.hasDualMode && inputImages.length > 0);
+  const perImageCostCents = model.id === 'gpt-image-1'
+    ? gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider)
+    : (isEditMode ? model.editCostCents : model.estimatedCostCents);
   const sizePreset = useMemo<SizePreset | null>(
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
     [sizePresetId],
@@ -163,6 +189,11 @@ export default function MediaModule() {
       setKeyStatus(await getFalKeyStatus());
     } catch {
       setKeyStatus({ has_key: false, hint: null, updated_at: null });
+    }
+    try {
+      setOpenaiKeyStatus(await getOpenaiKeyStatus());
+    } catch {
+      setOpenaiKeyStatus({ has_key: false, hint: null, updated_at: null });
     }
   }, [userId]);
 
@@ -247,6 +278,7 @@ export default function MediaModule() {
         height,
         source_image_urls: model.canReference ? inputImages.map((i) => i.url) : [],
         num_images: num,
+        quality: model.id === 'gpt-image-1' ? gptImage1Quality : undefined,
         collection_id: selectedCollectionId,
       });
 
@@ -351,16 +383,6 @@ export default function MediaModule() {
     if (data) setSettings(data as MediaSettings);
   }
 
-  async function handleSaveFalKey(rawKey: string) {
-    const status = await setFalKey(rawKey);
-    setKeyStatus(status);
-  }
-
-  async function handleRemoveFalKey() {
-    await removeFalKey();
-    setKeyStatus({ has_key: false, hint: null, updated_at: null });
-  }
-
   async function handleSaveCustomModel(input: Omit<MediaCustomModel, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
     if (!userId) return;
     if (!input.endpoint.startsWith('fal-ai/')) {
@@ -453,7 +475,7 @@ export default function MediaModule() {
 
       {keyStatus && !keyStatus.has_key && (
         <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
-          <Key className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
+          <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
           <div className="flex-1">
             <p className="font-semibold">Add your Fal.AI API key to get started.</p>
             <p className="text-amber-800/80 text-xs mt-1">
@@ -461,12 +483,12 @@ export default function MediaModule() {
               <a href="https://fal.ai/dashboard/keys" target="_blank" rel="noreferrer" className="underline font-medium inline-flex items-center gap-0.5">
                 Get a key <ExternalLink className="w-3 h-3" />
               </a>
-              , then paste it in settings.
+              , then paste it in <RouterLink to="/settings" className="underline font-medium">Settings → Media generator keys</RouterLink>.
             </p>
           </div>
-          <button onClick={() => setSettingsDrawerOpen(true)} className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shrink-0">
-            Add key
-          </button>
+          <RouterLink to="/settings" className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shrink-0">
+            Open Settings
+          </RouterLink>
         </div>
       )}
 
@@ -538,6 +560,24 @@ export default function MediaModule() {
               Show all models ({MODELS.length} total)
             </label>
             <p className="text-[11px] text-slate-400 mt-1">{model.description}</p>
+            {model.id === 'gpt-image-1' && (
+              <p className="text-[11px] mt-1">
+                {gptImage1Provider === 'openai' ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">
+                    via OpenAI direct (cheaper)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                    via Fal
+                    {openaiKeyStatus !== null && !openaiKeyStatus.has_key && (
+                      <>
+                        {' — '}<RouterLink to="/settings" className="underline">add an OpenAI key</RouterLink>{' for ~3× lower cost'}
+                      </>
+                    )}
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           {/* Style preset */}
@@ -619,6 +659,34 @@ export default function MediaModule() {
                   <input type="number" min={256} max={4096} value={customHeight} onChange={(e) => setCustomHeight(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="Height" />
                 </div>
               )}
+            </div>
+          )}
+
+          {/* GPT Image 1 quality */}
+          {model.id === 'gpt-image-1' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Quality</label>
+                <span className="text-[11px] text-slate-400">~{formatCents(gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider))} each</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(['low', 'medium', 'high', 'auto'] as const).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => setGptImage1Quality(q)}
+                    className={`py-2 rounded-lg text-xs font-medium border transition-colors ${
+                      gptImage1Quality === q
+                        ? 'bg-fuchsia-600 text-white border-fuchsia-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {q[0].toUpperCase() + q.slice(1)}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Low ~{formatCents(gptImage1CostCents('low', isEditMode, gptImage1Provider))} · Medium ~{formatCents(gptImage1CostCents('medium', isEditMode, gptImage1Provider))} · High ~{formatCents(gptImage1CostCents('high', isEditMode, gptImage1Provider))}. Lower quality is fine for drafts.
+              </p>
             </div>
           )}
 
@@ -710,6 +778,27 @@ export default function MediaModule() {
             </div>
           )}
 
+          {isEditMode && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 text-xs text-amber-900">
+              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
+              <div className="flex-1">
+                <p className="font-semibold">
+                  Edit mode — {inputImages.length} reference image{inputImages.length > 1 ? 's' : ''} attached.
+                </p>
+                <p className="text-amber-800/90 mt-0.5">
+                  This request will route to <code className="font-mono">{model.label.split(' —')[0]}</code>'s edit endpoint (~{formatCents(model.editCostCents)} per image vs ~{formatCents(model.estimatedCostCents)} to generate).
+                </p>
+              </div>
+              <button
+                onClick={() => setInputImages([])}
+                className="px-2 py-1 rounded-md bg-amber-600 text-white text-[11px] font-semibold hover:bg-amber-700 shrink-0"
+                title="Remove all references and switch back to generation"
+              >
+                Clear
+              </button>
+            </div>
+          )}
+
           <button
             onClick={handleGenerate}
             disabled={generating || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
@@ -717,7 +806,7 @@ export default function MediaModule() {
           >
             {generating
               ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
-              : <><Wand2 className="w-4 h-4" /> Generate{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(model.estimatedCostCents * (model.kind === 'image' ? quantity : 1))})</>}
+              : <><Wand2 className="w-4 h-4" /> {isEditMode ? 'Edit' : 'Generate'}{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(perImageCostCents * (model.kind === 'image' ? quantity : 1))})</>}
           </button>
         </div>
 
@@ -792,11 +881,8 @@ export default function MediaModule() {
       {settingsDrawerOpen && (
         <SettingsDrawer
           cap={cap}
-          keyStatus={keyStatus}
           onClose={() => setSettingsDrawerOpen(false)}
           onSave={handleSaveSettings}
-          onSaveKey={handleSaveFalKey}
-          onRemoveKey={handleRemoveFalKey}
         />
       )}
       {customModelsDrawerOpen && (
@@ -861,7 +947,12 @@ function MediaCard({
         )}
 
         <div className="flex items-center justify-between text-[11px] text-slate-400">
-          <span>{generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}</span>
+          <span className="flex items-center gap-1">
+            {generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}
+            {generation.source_image_url && (
+              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-medium">edited</span>
+            )}
+          </span>
           <span>{formatCents(generation.cost_cents)}</span>
         </div>
 
@@ -1007,111 +1098,22 @@ function CollectionsDrawer({
   );
 }
 
-function SettingsDrawer({
-  cap, keyStatus, onClose, onSave, onSaveKey, onRemoveKey,
-}: {
+function SettingsDrawer({ cap, onClose, onSave }: {
   cap: number;
-  keyStatus: FalKeyStatus | null;
   onClose: () => void;
   onSave: (capCents: number) => Promise<void>;
-  onSaveKey: (key: string) => Promise<void>;
-  onRemoveKey: () => Promise<void>;
 }) {
   const [dollars, setDollars] = useState((cap / 100).toFixed(2));
-  const [rawKey, setRawKey] = useState('');
-  const [savingKey, setSavingKey] = useState(false);
-  const [removingKey, setRemovingKey] = useState(false);
-  const [keyError, setKeyError] = useState<string | null>(null);
-  const [keySaved, setKeySaved] = useState(false);
-
-  async function submitKey() {
-    setKeyError(null);
-    setKeySaved(false);
-    setSavingKey(true);
-    try {
-      await onSaveKey(rawKey.trim());
-      setRawKey('');
-      setKeySaved(true);
-    } catch (err) {
-      setKeyError(err instanceof Error ? err.message : 'Failed to save key');
-    } finally {
-      setSavingKey(false);
-    }
-  }
-
-  async function removeKey() {
-    if (!window.confirm('Remove your stored Fal API key? You will need to paste it again to generate.')) return;
-    setRemovingKey(true);
-    try {
-      await onRemoveKey();
-      setKeySaved(false);
-    } catch (err) {
-      setKeyError(err instanceof Error ? err.message : 'Failed to remove key');
-    } finally {
-      setRemovingKey(false);
-    }
-  }
 
   return (
     <Drawer title="Media settings" onClose={onClose}>
-      {/* Fal API key */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-2">
-          <Key className="w-4 h-4 text-slate-500" />
-          <h4 className="font-semibold text-slate-800">Fal.AI API key</h4>
-        </div>
-        <p className="text-sm text-slate-500 mb-3">
-          Each generation is billed to your own Fal account.{' '}
-          <a href="https://fal.ai/dashboard/keys" target="_blank" rel="noreferrer" className="text-fuchsia-600 hover:text-fuchsia-700 underline inline-flex items-center gap-0.5">
-            Get a key <ExternalLink className="w-3 h-3" />
-          </a>
-          . Keys are encrypted with AES-256-GCM before being stored — only the server can decrypt them on demand.
-        </p>
+      <p className="text-sm text-slate-500 mb-5">
+        API keys for Fal and OpenAI live in <RouterLink to="/settings" onClick={onClose} className="text-fuchsia-600 hover:text-fuchsia-700 underline">Settings → Media generator keys</RouterLink> so they're not scattered across modules.
+      </p>
 
-        {keyStatus?.has_key ? (
-          <div className="mb-3 flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-sm text-emerald-800">
-            <Check className="w-4 h-4 shrink-0" />
-            <span className="flex-1">Key saved (ends in <code className="font-mono">{keyStatus.hint}</code>)</span>
-            <button
-              onClick={removeKey}
-              disabled={removingKey}
-              className="text-xs text-emerald-700 hover:text-red-600 underline disabled:opacity-50"
-            >
-              {removingKey ? 'Removing…' : 'Remove'}
-            </button>
-          </div>
-        ) : (
-          <div className="mb-3 flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-sm text-amber-800">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>No key saved — generation is disabled until you add one.</span>
-          </div>
-        )}
-
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-          {keyStatus?.has_key ? 'Replace key' : 'Paste your key'}
-        </label>
-        <input
-          type="password"
-          value={rawKey}
-          onChange={(e) => { setRawKey(e.target.value); setKeySaved(false); setKeyError(null); }}
-          placeholder="key_xxxx…  or  xxxxxxxx:xxxxxxxx…"
-          className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono"
-          autoComplete="off"
-        />
-        {keyError && <p className="text-xs text-red-600 mt-1">{keyError}</p>}
-        {keySaved && <p className="text-xs text-emerald-700 mt-1">Saved.</p>}
-        <button
-          onClick={submitKey}
-          disabled={savingKey || rawKey.trim().length < 16}
-          className="mt-2 px-4 py-2 rounded-lg bg-fuchsia-600 text-white text-sm font-semibold hover:bg-fuchsia-700 disabled:opacity-50"
-        >
-          {savingKey ? 'Saving…' : 'Save key'}
-        </button>
-      </div>
-
-      <div className="border-t border-slate-100 pt-5">
+      <div>
         <h4 className="font-semibold text-slate-800 mb-1">Monthly spend cap</h4>
-        <p className="text-sm text-slate-500 mb-3">New generations are refused when the next request would exceed this amount. Costs are estimates based on Fal's published rates.</p>
+        <p className="text-sm text-slate-500 mb-3">New generations are refused when the next request would exceed this amount. Costs are estimates based on the provider's published rates.</p>
         <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Monthly cap (USD)</label>
         <div className="flex gap-2">
           <span className="self-center text-slate-500">$</span>

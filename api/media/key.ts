@@ -1,12 +1,16 @@
-// Set or remove a user's Fal.AI API key. Stored encrypted with
-// AES-256-GCM using a master secret from FAL_KEY_ENCRYPTION_SECRET.
-// The encryption key is derived once via scrypt with a fixed salt —
-// the secret itself is the entropy.
+// Set / get / remove a user's BYOK API key (Fal or OpenAI). Stored
+// encrypted with AES-256-GCM. Provider is selected by the `provider`
+// query parameter — defaults to 'fal' for back-compat with the
+// original Fal-only client.
 //
 // Endpoints:
-//   POST   /api/media/key  { key: string }   — encrypts and stores
-//   DELETE /api/media/key                    — removes the user's key
-//   GET    /api/media/key                    — returns { has_key, hint }
+//   GET    /api/media/key?provider=fal|openai           — { has_key, hint }
+//   POST   /api/media/key?provider=fal|openai  { key }  — encrypts + stores
+//   DELETE /api/media/key?provider=fal|openai           — removes the key
+//
+// Why merged: Vercel Hobby caps a deployment at 12 serverless
+// functions. Splitting Fal and OpenAI into separate files put us at
+// 13 and failed the deploy.
 
 import { createClient } from '@supabase/supabase-js';
 import { createCipheriv, randomBytes, scryptSync } from 'node:crypto';
@@ -15,12 +19,40 @@ type VercelRequest = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
+  query?: Record<string, string | string[] | undefined>;
+  url?: string;
 };
 
 type VercelResponse = {
   status: (code: number) => VercelResponse;
   json: (body: unknown) => void;
   end: () => void;
+};
+
+type Provider = 'fal' | 'openai';
+
+interface ProviderConfig {
+  table: 'user_fal_keys' | 'user_openai_keys';
+  scryptSalt: string;
+  minLength: number;
+  validate: (key: string) => string | null; // returns error message or null if ok
+}
+
+const PROVIDERS: Record<Provider, ProviderConfig> = {
+  fal: {
+    table: 'user_fal_keys',
+    scryptSalt: 'media-fal-key-v1',
+    minLength: 16,
+    validate: (k) => (k.length < 16 ? 'Key looks too short — paste the full Fal API key.' : null),
+  },
+  openai: {
+    table: 'user_openai_keys',
+    scryptSalt: 'media-openai-key-v1',
+    minLength: 20,
+    validate: (k) => (k.length < 20 || !k.startsWith('sk-')
+      ? 'OpenAI keys start with "sk-" — paste the full secret key from platform.openai.com.'
+      : null),
+  },
 };
 
 function authHeader(req: VercelRequest): string | null {
@@ -30,12 +62,31 @@ function authHeader(req: VercelRequest): string | null {
   return v.slice(7);
 }
 
-function deriveMasterKey(secret: string): Buffer {
-  return scryptSync(secret, 'media-fal-key-v1', 32);
+function queryParam(req: VercelRequest, name: string): string | null {
+  const v = req.query?.[name];
+  if (Array.isArray(v)) return v[0] ?? null;
+  if (typeof v === 'string') return v;
+  // Fallback: parse from URL (in case the runtime didn't populate req.query).
+  if (req.url) {
+    try {
+      const u = new URL(req.url, 'http://placeholder.local');
+      return u.searchParams.get(name);
+    } catch { /* ignore */ }
+  }
+  return null;
 }
 
-function encryptKey(plain: string, masterSecret: string): { encrypted: string; nonce: string; authTag: string } {
-  const key = deriveMasterKey(masterSecret);
+function resolveProvider(req: VercelRequest): Provider {
+  const raw = queryParam(req, 'provider');
+  return raw === 'openai' ? 'openai' : 'fal';
+}
+
+function deriveMasterKey(secret: string, salt: string): Buffer {
+  return scryptSync(secret, salt, 32);
+}
+
+function encryptKey(plain: string, masterSecret: string, salt: string): { encrypted: string; nonce: string; authTag: string } {
+  const key = deriveMasterKey(masterSecret, salt);
   const iv = randomBytes(12);
   const cipher = createCipheriv('aes-256-gcm', key, iv);
   const ciphertext = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
@@ -77,9 +128,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const userId = userData.user.id;
 
+  const provider = resolveProvider(req);
+  const cfg = PROVIDERS[provider];
+
   if (req.method === 'GET') {
     const { data } = await supabase
-      .from('user_fal_keys')
+      .from(cfg.table)
       .select('key_hint, updated_at')
       .eq('user_id', userId)
       .maybeSingle();
@@ -92,7 +146,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method === 'DELETE') {
-    await supabase.from('user_fal_keys').delete().eq('user_id', userId);
+    await supabase.from(cfg.table).delete().eq('user_id', userId);
     res.status(200).json({ ok: true });
     return;
   }
@@ -111,16 +165,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const rawKey = typeof body?.key === 'string' ? body.key.trim() : '';
-  if (rawKey.length < 16) {
-    res.status(400).json({ error: 'Key looks too short — paste the full Fal API key.' });
+  const validationError = cfg.validate(rawKey);
+  if (validationError) {
+    res.status(400).json({ error: validationError });
     return;
   }
 
-  const { encrypted, nonce, authTag } = encryptKey(rawKey, masterSecret);
+  const { encrypted, nonce, authTag } = encryptKey(rawKey, masterSecret, cfg.scryptSalt);
   const hint = rawKey.length > 4 ? `…${rawKey.slice(-4)}` : '…';
 
   const { error: upErr } = await supabase
-    .from('user_fal_keys')
+    .from(cfg.table)
     .upsert({
       user_id: userId,
       encrypted_key: encrypted,

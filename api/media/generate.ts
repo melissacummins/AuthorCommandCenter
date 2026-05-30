@@ -37,6 +37,7 @@ interface ModelDef {
   isAsync: boolean;
   acceptsInputImage: boolean;
   editEndpoint?: string;
+  editCostCents?: number;
   supportsCustomSize: boolean;
   estimatedCostCents: number;
 }
@@ -52,7 +53,7 @@ const MODELS: Record<string, ModelDef> = {
   'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
   'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/ideogram/v3/edit',       supportsCustomSize: true,  estimatedCostCents: 6   },
   'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
-  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1/text-to-image',                kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/gpt-image-1/edit-image',  supportsCustomSize: true,  estimatedCostCents: 7   },
+  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1/text-to-image',                kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/gpt-image-1/edit-image',  editCostCents: 17, supportsCustomSize: true,  estimatedCostCents: 7   },
   'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/flux/dev/image-to-image', supportsCustomSize: true,  estimatedCostCents: 3   },
   'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8   },
@@ -126,11 +127,34 @@ interface GenerateRequestBody {
   source_image_urls?: string[];
   num_images?: number;
   collection_id?: string | null;
+  quality?: string;
 }
 
 // Hard ceiling on a single batch regardless of what the client asks
 // for — guards against a malformed request running up a huge bill.
 const MAX_BATCH = 10;
+
+type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
+// Via Fal — includes Fal's markup over OpenAI's pass-through rate.
+const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 3,  medium: 8,  high: 20, auto: 20 };
+const GPT_IMAGE_1_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 10, medium: 25, high: 40, auto: 40 };
+// Via OpenAI direct — meaningfully cheaper because no markup.
+// Source: OpenAI gpt-image-1 pricing (per output @ 1024×1024):
+//   low $0.011 / medium $0.042 / high $0.167. Edit adds an input-image
+//   token cost (~$0.01–0.02). Rounded up for conservative estimates.
+const GPT_IMAGE_1_OPENAI_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 2, medium: 5,  high: 17, auto: 17 };
+const GPT_IMAGE_1_OPENAI_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 4, medium: 8,  high: 20, auto: 20 };
+
+function normalizeQuality(q: unknown): GptImage1Quality {
+  return q === 'low' || q === 'medium' || q === 'high' || q === 'auto' ? q : 'auto';
+}
+
+function gptImage1CostCents(quality: GptImage1Quality, isEdit: boolean, provider: 'fal' | 'openai' = 'fal'): number {
+  if (provider === 'openai') {
+    return (isEdit ? GPT_IMAGE_1_OPENAI_EDIT_CENTS : GPT_IMAGE_1_OPENAI_GENERATE_CENTS)[quality];
+  }
+  return (isEdit ? GPT_IMAGE_1_EDIT_CENTS : GPT_IMAGE_1_GENERATE_CENTS)[quality];
+}
 
 function authHeader(req: VercelRequest): string | null {
   const raw = req.headers['authorization'] ?? req.headers['Authorization'];
@@ -164,33 +188,46 @@ async function getMonthlyCapCents(supabase: SupabaseClient, userId: string): Pro
   return 2000; // matches DB default
 }
 
+// Generic helper for both Fal and OpenAI keys — they live in
+// parallel tables with the same shape, encrypted under different
+// scrypt salts. Returns null when no key is configured.
+async function resolveBYOKKey(
+  supabase: SupabaseClient,
+  userId: string,
+  table: 'user_fal_keys' | 'user_openai_keys',
+  scryptSalt: string,
+): Promise<string | null> {
+  const masterSecret = process.env.FAL_KEY_ENCRYPTION_SECRET;
+  if (!masterSecret || masterSecret.length < 32) return null;
+  const { data } = await supabase
+    .from(table)
+    .select('encrypted_key, nonce, auth_tag')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (!data?.encrypted_key || !data.nonce || !data.auth_tag) return null;
+  try {
+    const key = scryptSync(masterSecret, scryptSalt, 32);
+    const iv = Buffer.from(data.nonce, 'base64');
+    const ciphertext = Buffer.from(data.encrypted_key, 'base64');
+    const authTag = Buffer.from(data.auth_tag, 'base64');
+    const decipher = createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
+  } catch {
+    return null;
+  }
+}
+
+async function resolveOpenaiKey(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  return resolveBYOKKey(supabase, userId, 'user_openai_keys', 'media-openai-key-v1');
+}
+
 // Pulls the caller's stored Fal key (decrypted) or falls back to the
 // platform FAL_KEY env var. Returns null when neither is available so
 // the handler can surface a friendly "add your key" error.
 export async function resolveFalKey(supabase: SupabaseClient, userId: string): Promise<string | null> {
-  const masterSecret = process.env.FAL_KEY_ENCRYPTION_SECRET;
-  if (masterSecret && masterSecret.length >= 32) {
-    const { data } = await supabase
-      .from('user_fal_keys')
-      .select('encrypted_key, nonce, auth_tag')
-      .eq('user_id', userId)
-      .maybeSingle();
-    if (data?.encrypted_key && data.nonce && data.auth_tag) {
-      try {
-        const key = scryptSync(masterSecret, 'media-fal-key-v1', 32);
-        const iv = Buffer.from(data.nonce, 'base64');
-        const ciphertext = Buffer.from(data.encrypted_key, 'base64');
-        const authTag = Buffer.from(data.auth_tag, 'base64');
-        const decipher = createDecipheriv('aes-256-gcm', key, iv);
-        decipher.setAuthTag(authTag);
-        const plain = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-        return plain.toString('utf8');
-      } catch {
-        return null;
-      }
-    }
-  }
-  return process.env.FAL_KEY ?? null;
+  const stored = await resolveBYOKKey(supabase, userId, 'user_fal_keys', 'media-fal-key-v1');
+  return stored ?? process.env.FAL_KEY ?? null;
 }
 
 // Turns Fal's various error shapes into a single readable string.
@@ -245,6 +282,12 @@ function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: 
     }
   } else if (model.id === 'gpt-image-1') {
     payload.image_size = 'auto';
+  }
+
+  // GPT Image 1 has a `quality` parameter that swings cost by ~10×.
+  // Pass it through so the user can pick Low for cheap drafts.
+  if (model.id === 'gpt-image-1') {
+    payload.quality = normalizeQuality(body.quality);
   }
 
   // Batch count — only meaningful for image generation. Fal ignores
@@ -311,6 +354,111 @@ function extractSyncOutputs(data: FalSyncResponse): ExtractedOutput[] {
   return outputs;
 }
 
+// ============================================================
+// OpenAI direct provider — gpt-image-1 only.
+// ============================================================
+
+interface OpenaiImageResponse {
+  data?: { b64_json?: string; url?: string }[];
+  error?: { message?: string; type?: string };
+}
+
+// OpenAI's gpt-image-1 only accepts a small set of size strings,
+// same as Fal's wrapper. Map (width, height) to the closest one.
+function openaiSizeFromDimensions(width?: number, height?: number): 'auto' | '1024x1024' | '1536x1024' | '1024x1536' {
+  if (!width || !height) return 'auto';
+  if (width === height) return '1024x1024';
+  return width > height ? '1536x1024' : '1024x1536';
+}
+
+function sizeToDimensions(size: string): { width: number; height: number } | null {
+  if (size === '1024x1024') return { width: 1024, height: 1024 };
+  if (size === '1536x1024') return { width: 1536, height: 1024 };
+  if (size === '1024x1536') return { width: 1024, height: 1536 };
+  return null;
+}
+
+async function uploadBase64ToOutputs(
+  supabase: SupabaseClient,
+  userId: string,
+  b64: string,
+): Promise<string | null> {
+  const buffer = Buffer.from(b64, 'base64');
+  const path = `${userId}/openai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+  const { error: upErr } = await supabase.storage
+    .from('media-outputs')
+    .upload(path, buffer, { contentType: 'image/png', upsert: false });
+  if (upErr) return null;
+  const { data: pub } = supabase.storage.from('media-outputs').getPublicUrl(path);
+  return pub.publicUrl ?? null;
+}
+
+interface OpenaiCallArgs {
+  openaiKey: string;
+  prompt: string;
+  size: 'auto' | '1024x1024' | '1536x1024' | '1024x1536';
+  quality: GptImage1Quality;
+  numImages: number;
+  inputImageUrls: string[]; // empty for generate, otherwise edit
+}
+
+interface OpenaiCallOk { ok: true; b64s: string[] }
+interface OpenaiCallErr { ok: false; error: string }
+type OpenaiCallResult = OpenaiCallOk | OpenaiCallErr;
+
+async function callOpenaiImage(args: OpenaiCallArgs): Promise<OpenaiCallResult> {
+  const { openaiKey, prompt, size, quality, numImages, inputImageUrls } = args;
+  const isEdit = inputImageUrls.length > 0;
+
+  let res: Response;
+  if (isEdit) {
+    const form = new FormData();
+    form.append('model', 'gpt-image-1');
+    form.append('prompt', prompt);
+    form.append('size', size);
+    form.append('quality', quality);
+    form.append('n', String(numImages));
+    // Fetch each input image (may be a signed Supabase URL or a public
+    // URL from a previous output) and attach as a Blob. gpt-image-1's
+    // edit endpoint accepts multiple images via image[].
+    for (const url of inputImageUrls) {
+      const imgRes = await fetch(url);
+      if (!imgRes.ok) return { ok: false, error: `Could not fetch reference image (${imgRes.status}).` };
+      const blob = await imgRes.blob();
+      form.append('image[]', blob, 'input.png');
+    }
+    res = await fetch('https://api.openai.com/v1/images/edits', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${openaiKey}` },
+      body: form,
+    });
+  } else {
+    res = await fetch('https://api.openai.com/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-image-1',
+        prompt,
+        size,
+        quality,
+        n: numImages,
+      }),
+    });
+  }
+
+  const json = (await res.json().catch(() => ({}))) as OpenaiImageResponse;
+  if (!res.ok) {
+    const msg = json.error?.message ?? `OpenAI HTTP ${res.status}`;
+    return { ok: false, error: msg };
+  }
+  const b64s = (json.data ?? []).map((d) => d.b64_json).filter((b): b is string => typeof b === 'string');
+  if (b64s.length === 0) return { ok: false, error: 'OpenAI response did not include image data.' };
+  return { ok: true, b64s };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -374,7 +522,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // batches; video is always a single output.
   const requestedNum = Number.isFinite(body.num_images) ? Math.floor(body.num_images as number) : 1;
   const numImages = model.kind === 'image' ? Math.min(MAX_BATCH, Math.max(1, requestedNum)) : 1;
-  const totalCostCents = model.estimatedCostCents * numImages;
+
+  // Provider selection. GPT Image 1 prefers the user's OpenAI key
+  // when one is configured (much cheaper than via Fal); everything
+  // else stays on Fal.
+  const openaiKey = model.id === 'gpt-image-1' ? await resolveOpenaiKey(supabase, userId) : null;
+  const provider: 'openai' | 'fal' = openaiKey ? 'openai' : 'fal';
+
+  // Edit endpoints typically cost more than text-to-image, so use
+  // editCostCents when we'll route to one. Falls back to the regular
+  // estimate when no per-mode price is configured. GPT Image 1's
+  // cost also depends on the quality setting and which provider we use.
+  const willEdit = (provider === 'openai')
+    ? (!!body.source_image_url || (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0))
+    : !!model.editEndpoint && (
+        !!body.source_image_url ||
+        (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0)
+      );
+  const perImageCostCents = model.id === 'gpt-image-1'
+    ? gptImage1CostCents(normalizeQuality(body.quality), willEdit, provider)
+    : ((willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents);
+  const totalCostCents = perImageCostCents * numImages;
 
   // Spend cap check. If the next generation would push us past the
   // cap, refuse and let the UI surface the message.
@@ -418,8 +586,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       width: body.width ?? null,
       height: body.height ?? null,
       source_image_url: firstSource,
-      fal_model_endpoint: effectiveEndpoint,
-      cost_cents: model.estimatedCostCents,
+      fal_model_endpoint: provider === 'openai'
+        ? (willEdit ? 'openai/gpt-image-1/edit' : 'openai/gpt-image-1')
+        : effectiveEndpoint,
+      cost_cents: perImageCostCents,
       status: 'pending',
     })
     .select()
@@ -431,6 +601,99 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const generationId = inserted.id as string;
+
+  // OpenAI provider path — gpt-image-1 only. Calls OpenAI directly
+  // (no Fal markup), receives base64 image data, uploads to our
+  // outputs bucket, and fans out one row per returned image.
+  if (provider === 'openai' && openaiKey) {
+    const inputUrls = (body.source_image_urls && body.source_image_urls.length > 0)
+      ? body.source_image_urls
+      : (body.source_image_url ? [body.source_image_url] : []);
+    const result = await callOpenaiImage({
+      openaiKey,
+      prompt: fullPrompt,
+      size: body.width && body.height ? openaiSizeFromDimensions(body.width, body.height) : 'auto',
+      quality: normalizeQuality(body.quality),
+      numImages,
+      inputImageUrls: inputUrls,
+    });
+    if (!result.ok) {
+      const err = (result as OpenaiCallErr).error;
+      await supabase.from('media_generations').update({
+        status: 'failed',
+        error_message: `${err} — you weren't charged.`,
+        cost_cents: 0,
+      }).eq('id', generationId);
+      res.status(502).json({ error: 'OpenAI request failed', detail: err });
+      return;
+    }
+
+    // Upload every returned image to our outputs bucket so we have
+    // stable public URLs (OpenAI's base64 isn't a URL).
+    const uploadedUrls: string[] = [];
+    for (const b64 of result.b64s) {
+      const url = await uploadBase64ToOutputs(supabase, userId, b64);
+      if (url) uploadedUrls.push(url);
+    }
+    if (uploadedUrls.length === 0) {
+      await supabase.from('media_generations').update({
+        status: 'failed',
+        error_message: 'OpenAI returned images but they could not be stored.',
+        cost_cents: 0,
+      }).eq('id', generationId);
+      res.status(500).json({ error: 'Failed to store OpenAI images' });
+      return;
+    }
+
+    const completedAt = new Date().toISOString();
+    const dims = sizeToDimensions(body.width && body.height ? openaiSizeFromDimensions(body.width, body.height) : 'auto');
+    const generations: unknown[] = [];
+
+    const first = uploadedUrls[0];
+    const { data: updated } = await supabase
+      .from('media_generations')
+      .update({
+        status: 'completed',
+        output_url: first,
+        thumbnail_url: first,
+        width: dims?.width ?? body.width ?? null,
+        height: dims?.height ?? body.height ?? null,
+        completed_at: completedAt,
+      })
+      .eq('id', generationId)
+      .select()
+      .single();
+    if (updated) generations.push(updated);
+
+    if (uploadedUrls.length > 1) {
+      const extraRows = uploadedUrls.slice(1).map((url) => ({
+        user_id: userId,
+        collection_id: body.collection_id ?? null,
+        kind: model.kind,
+        model: model.id,
+        prompt: body.prompt,
+        full_prompt: fullPrompt,
+        style_preset_id: body.style_preset_id ?? null,
+        width: dims?.width ?? body.width ?? null,
+        height: dims?.height ?? body.height ?? null,
+        source_image_url: firstSource,
+        fal_model_endpoint: willEdit ? 'openai/gpt-image-1/edit' : 'openai/gpt-image-1',
+        cost_cents: perImageCostCents,
+        status: 'completed' as const,
+        output_url: url,
+        thumbnail_url: url,
+        completed_at: completedAt,
+      }));
+      const { data: extras } = await supabase
+        .from('media_generations')
+        .insert(extraRows)
+        .select();
+      if (extras) generations.push(...extras);
+    }
+
+    res.status(200).json({ generations: generations.length > 0 ? generations : [updated ?? inserted] });
+    return;
+  }
 
   // Sync path — image models. Hit the direct endpoint and wait.
   if (!model.isAsync) {
@@ -507,7 +770,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         height: o.height ?? body.height ?? null,
         source_image_url: firstSource,
         fal_model_endpoint: effectiveEndpoint,
-        cost_cents: model.estimatedCostCents,
+        cost_cents: perImageCostCents,
         status: 'completed' as const,
         output_url: o.url,
         thumbnail_url: o.url,

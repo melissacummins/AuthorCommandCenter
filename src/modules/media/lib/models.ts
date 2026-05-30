@@ -21,6 +21,10 @@ export interface ModelDef {
   // request to this endpoint (like ChatGPT). When unset and
   // acceptsInputImage is true, `endpoint` is itself an edit endpoint.
   editEndpoint?: string;
+  // Cost per output image when routing to editEndpoint. Edit endpoints
+  // are typically pricier than text-to-image (they tokenize the input
+  // image too). When unset, falls back to estimatedCostCents.
+  editCostCents?: number;
   supportsCustomSize: boolean;
   description: string;
   estimatedCostCents: number;
@@ -33,6 +37,47 @@ export interface ModelDef {
 // (acceptsInputImage) or it has a dedicated editEndpoint to route to.
 export function supportsReferenceImages(m: { acceptsInputImage: boolean; editEndpoint?: string }): boolean {
   return m.acceptsInputImage || !!m.editEndpoint;
+}
+
+// GPT Image 1 pricing depends on a `quality` parameter that Fal/OpenAI
+// charge for very differently — low is ~10× cheaper than high. Estimates
+// include a small markup over OpenAI's published rates and (for edit)
+// the cost of one input image's tokens. Real cost also scales with
+// output size, so treat these as worst-case-for-1024 guardrails.
+export type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
+
+// Via Fal — includes Fal's markup over OpenAI's pass-through rate.
+// Calibrated against Fal's quoted ~$0.28/edit and a real run at $0.39.
+// Fal silently routes `quality: auto` to `high`, so auto ≈ high.
+const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = {
+  low: 3, medium: 8, high: 20, auto: 20,
+};
+const GPT_IMAGE_1_EDIT_CENTS: Record<GptImage1Quality, number> = {
+  low: 10, medium: 25, high: 40, auto: 40,
+};
+// Via OpenAI direct — no markup. Source: OpenAI gpt-image-1 pricing
+// (per output @ 1024×1024): low $0.011 / medium $0.042 / high $0.167.
+// Edits add an input-image token cost (~$0.01–0.02).
+const GPT_IMAGE_1_OPENAI_GENERATE_CENTS: Record<GptImage1Quality, number> = {
+  low: 2, medium: 5, high: 17, auto: 17,
+};
+const GPT_IMAGE_1_OPENAI_EDIT_CENTS: Record<GptImage1Quality, number> = {
+  low: 4, medium: 8, high: 20, auto: 20,
+};
+
+export type GptImage1Provider = 'fal' | 'openai';
+
+export function gptImage1CostCents(
+  quality: GptImage1Quality,
+  isEdit: boolean,
+  provider: GptImage1Provider = 'fal',
+): number {
+  if (provider === 'openai') {
+    const t = isEdit ? GPT_IMAGE_1_OPENAI_EDIT_CENTS : GPT_IMAGE_1_OPENAI_GENERATE_CENTS;
+    return t[quality] ?? t.auto;
+  }
+  const t = isEdit ? GPT_IMAGE_1_EDIT_CENTS : GPT_IMAGE_1_GENERATE_CENTS;
+  return t[quality] ?? t.auto;
 }
 
 export const MODELS: ModelDef[] = [
@@ -113,9 +158,10 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/gpt-image-1/text-to-image',
     acceptsInputImage: false,
     editEndpoint: 'fal-ai/gpt-image-1/edit-image',
+    editCostCents: 40,
     supportsCustomSize: true,
-    description: "The same model that powers ChatGPT's image generation. Attach reference images to edit.",
-    estimatedCostCents: 7,
+    description: "Same model that powers ChatGPT image. Cost scales with the Quality setting (Low ~$0.10 → High ~$0.40 for edits, Auto defaults to High).",
+    estimatedCostCents: 20,
     isAsync: false,
     isFeatured: true,
     group: 'image',
