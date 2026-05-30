@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft, ChevronRight, CalendarDays, Plus, X, ExternalLink, Check, Circle, Link2Off,
 } from 'lucide-react';
-import { useGoogleCalendar } from './useGoogleCalendar';
+import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import { formatMinutes, type PlannerTask } from './types';
 
@@ -32,13 +32,19 @@ function timeLabel(ev: GCalEvent): string {
 }
 
 export default function CalendarView({
-  tasks, today, onPatch,
+  tasks, today, onPatch, cal,
 }: {
   tasks: PlannerTask[];
   today: string;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  cal: {
+    gc: UseGoogleCalendar;
+    calVersion: number;
+    onTimeBlock: (task: PlannerTask, time: string) => void;
+    onUnblock: (task: PlannerTask) => void;
+  };
 }) {
-  const gc = useGoogleCalendar();
+  const { gc, calVersion, onTimeBlock, onUnblock } = cal;
   const [cursor, setCursor] = useState(() => { const d = new Date(today + 'T00:00:00'); return { y: d.getFullYear(), m: d.getMonth() }; });
   const [selected, setSelected] = useState(today);
   const [events, setEvents] = useState<GCalEvent[]>([]);
@@ -63,7 +69,10 @@ export default function CalendarView({
     const end = new Date(start); end.setDate(start.getDate() + 1);
     const evs = await gc.fetchEvents(start.toISOString(), end.toISOString());
     setEvents(evs);
-  }, [selected, gc.connected, gc.calendarId, gc.fetchEvents]);
+    // calVersion is included so a time block added from a list view also
+    // refreshes this day panel.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, gc.connected, gc.calendarId, gc.fetchEvents, calVersion]);
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
@@ -75,30 +84,15 @@ export default function CalendarView({
     setCursor(c => { const d = new Date(c.y, c.m + delta, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
   }
 
-  async function addToCalendar(task: PlannerTask, time: string) {
-    const start = new Date(`${selected}T${time}:00`);
-    const minutes = task.estimate_minutes ?? 30;
-    const end = new Date(start.getTime() + minutes * 60_000);
-    try {
-      const ev = await gc.createEvent({
-        summary: task.title, start: start.toISOString(), end: end.toISOString(), reminderMinutes: 10,
-      });
-      onPatch(task.id, { start_at: start.toISOString(), gcal_event_id: ev.id, due_date: selected, someday: false });
-      setScheduling(null);
-      await loadEvents(); // show the new block immediately
-    } catch (e) {
-      gc.setError((e as Error).message);
-    }
+  // Time-blocking is handled by the shared bridge (so the Calendar tab and the
+  // list views stay consistent); the day panel refreshes via calVersion.
+  function addToCalendar(task: PlannerTask, time: string) {
+    onTimeBlock(task, time);
+    setScheduling(null);
   }
 
-  async function removeFromCalendar(task: PlannerTask) {
-    try {
-      if (task.gcal_event_id) await gc.deleteEvent(task.gcal_event_id);
-    } catch (e) {
-      gc.setError((e as Error).message);
-    }
-    onPatch(task.id, { start_at: null, gcal_event_id: null });
-    await loadEvents();
+  function removeFromCalendar(task: PlannerTask) {
+    onUnblock(task);
   }
 
   return (
@@ -234,7 +228,7 @@ export default function CalendarView({
   );
 }
 
-function ConnectionControls({ gc }: { gc: ReturnType<typeof useGoogleCalendar> }) {
+function ConnectionControls({ gc }: { gc: UseGoogleCalendar }) {
   if (!gc.configured) return null;
   if (!gc.connected) {
     return (
