@@ -1,19 +1,31 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
-  CalendarClock, Layers, Sparkles, Moon, Inbox, X,
+  CalendarClock, Layers, Sparkles, Moon, Inbox, X, GripVertical,
+  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays,
 } from 'lucide-react';
+import CalendarView from './CalendarView';
 import {
   listNotes, createNote, updateNote, deleteNote,
-  listTasks, createTask, updateTask, deleteTask,
+  listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
 } from './api';
 import {
-  bucketForTask, formatDue, todayISO,
-  type PlannerNote, type PlannerTask, type Bucket,
+  bucketForTask, checklistProgress, formatDue, formatMinutes, nextDueDate, sumEstimate, todayISO,
+  ESTIMATE_PRESETS, RECURRENCE_LABELS,
+  type ChecklistItem, type PlannerNote, type PlannerTask, type Bucket, type Recurrence,
 } from './types';
 
-type Selection = { kind: 'view'; bucket: Bucket } | { kind: 'note'; id: string };
+type Selection = { kind: 'view'; bucket: Bucket } | { kind: 'note'; id: string } | { kind: 'calendar' };
 
 const VIEWS: { bucket: Bucket; label: string; icon: typeof Inbox; color: string }[] = [
   { bucket: 'today',    label: 'Today',    icon: Sparkles,      color: 'text-amber-500' },
@@ -44,13 +56,13 @@ export default function PlannerModule() {
   const notesById = useMemo(() => Object.fromEntries(notes.map(n => [n.id, n])), [notes]);
   const openCountByNote = useMemo(() => {
     const m: Record<string, number> = {};
-    for (const t of tasks) if (t.note_id && !t.done) m[t.note_id] = (m[t.note_id] ?? 0) + 1;
+    for (const t of tasks) if (t.note_id && t.kind === 'task' && !t.done) m[t.note_id] = (m[t.note_id] ?? 0) + 1;
     return m;
   }, [tasks]);
 
   const viewCounts = useMemo(() => {
     const c: Record<Bucket, number> = { today: 0, upcoming: 0, anytime: 0, someday: 0 };
-    for (const t of tasks) if (!t.done) c[bucketForTask(t, today)]++;
+    for (const t of tasks) if (t.kind === 'task' && !t.done) c[bucketForTask(t, today)]++;
     return c;
   }, [tasks, today]);
 
@@ -84,24 +96,47 @@ export default function PlannerModule() {
     catch (e) { setError((e as Error)?.message ?? 'Could not delete note.'); }
   }
 
-  async function addTask(input: { title: string; note_id?: string | null; due_date?: string | null; someday?: boolean }) {
+  async function addTask(input: {
+    title: string; note_id?: string | null; due_date?: string | null; someday?: boolean;
+    kind?: 'task' | 'heading'; sort_order?: number;
+  }) {
     if (!user || !input.title.trim()) return;
     try {
       const task = await createTask(user.id, { ...input, title: input.title.trim() });
       setTasks(prev => [...prev, task]);
-    } catch (e) { setError((e as Error)?.message ?? 'Could not add to-do.'); }
+    } catch (e) { setError((e as Error)?.message ?? 'Could not add item.'); }
   }
 
   async function patchTask(id: string, patch: Partial<PlannerTask>) {
-    setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...patch } : t)));
-    try { await updateTask(id, patch); }
-    catch (e) { setError((e as Error)?.message ?? 'Could not update to-do.'); }
+    // Completing a recurring to-do rolls it forward to the next occurrence
+    // (and resets its checklist) instead of finishing it.
+    const task = tasks.find(t => t.id === id);
+    let effective = patch;
+    if (patch.done === true && task?.recurrence && task.due_date) {
+      effective = {
+        done: false,
+        due_date: nextDueDate(task.due_date, task.recurrence),
+        checklist: (task.checklist ?? []).map(i => ({ ...i, done: false })),
+      };
+    }
+    setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...effective } : t)));
+    try { await updateTask(id, effective); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not update item.'); }
   }
 
   async function removeTask(id: string) {
     setTasks(prev => prev.filter(t => t.id !== id));
     try { await deleteTask(id); }
-    catch (e) { setError((e as Error)?.message ?? 'Could not delete to-do.'); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not delete item.'); }
+  }
+
+  async function reorder(updates: { id: string; sort_order: number }[]) {
+    setTasks(prev => {
+      const byId = new Map(updates.map(u => [u.id, u.sort_order]));
+      return prev.map(t => (byId.has(t.id) ? { ...t, sort_order: byId.get(t.id)! } : t));
+    });
+    try { await reorderTasks(updates); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save the new order.'); }
   }
 
   const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
@@ -129,6 +164,15 @@ export default function PlannerModule() {
               </button>
             );
           })}
+          <button
+            onClick={() => setSelection({ kind: 'calendar' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'calendar' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <CalendarDays className="w-4 h-4 text-sky-500" />
+            <span className="flex-1 text-left">Calendar</span>
+          </button>
         </nav>
 
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
@@ -171,6 +215,8 @@ export default function PlannerModule() {
         )}
         {loading ? (
           <div className="p-8 text-slate-400">Loading your planner…</div>
+        ) : selection.kind === 'calendar' ? (
+          <CalendarView tasks={tasks} today={today} onPatch={patchTask} />
         ) : selection.kind === 'view' ? (
           <ViewPane
             bucket={selection.bucket}
@@ -193,6 +239,7 @@ export default function PlannerModule() {
             onAdd={addTask}
             onPatch={patchTask}
             onDelete={removeTask}
+            onReorder={reorder}
           />
         ) : (
           <div className="p-8 text-slate-400">Select a note or view.</div>
@@ -202,6 +249,8 @@ export default function PlannerModule() {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Smart views
 // ---------------------------------------------------------------------------
 
 function ViewPane({
@@ -221,20 +270,30 @@ function ViewPane({
   const [draft, setDraft] = useState('');
 
   const items = tasks
-    .filter(t => !t.done && bucketForTask(t, today) === bucket)
+    .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
     .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
 
-  // Quick-add defaults that land the new task in this view.
   const addDefaults =
     bucket === 'today' ? { due_date: today } :
     bucket === 'someday' ? { someday: true } :
     {};
+
+  function noteNameFor(t: PlannerTask) {
+    return t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled note') : undefined;
+  }
+
+  const totalMinutes = sumEstimate(items);
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Icon className={`w-6 h-6 ${meta.color}`} />
         <h2 className="text-2xl font-bold text-slate-800">{meta.label}</h2>
+        {(bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
+          <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-slate-500">
+            <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
+          </span>
+        )}
       </div>
 
       <QuickAdd
@@ -246,19 +305,28 @@ function ViewPane({
 
       {items.length === 0 ? (
         <p className="text-sm text-slate-400 mt-4">Nothing here right now.</p>
+      ) : bucket === 'upcoming' ? (
+        // Group by day, like the Things "Upcoming" list.
+        <div className="mt-4 space-y-5">
+          {groupByDay(items).map(group => (
+            <div key={group.date}>
+              <DayHeader date={group.date} today={today} totalMinutes={sumEstimate(group.items)} />
+              <ul className="divide-y divide-slate-100">
+                {group.items.map(t => (
+                  <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
+                    onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
+                    onPatch={onPatch} onDelete={onDelete} showSchedule />
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       ) : (
         <ul className="mt-2 divide-y divide-slate-100">
           {items.map(t => (
-            <TaskRow
-              key={t.id}
-              task={t}
-              today={today}
-              noteName={t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled note') : undefined}
+            <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
               onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
-              onPatch={onPatch}
-              onDelete={onDelete}
-              showSchedule
-            />
+              onPatch={onPatch} onDelete={onDelete} showSchedule />
           ))}
         </ul>
       )}
@@ -266,28 +334,85 @@ function ViewPane({
   );
 }
 
+function groupByDay(items: PlannerTask[]): { date: string; items: PlannerTask[] }[] {
+  const map = new Map<string, PlannerTask[]>();
+  for (const t of items) {
+    const key = t.due_date ?? '';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(t);
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => ({ date, items }));
+}
+
+function DayHeader({ date, today, totalMinutes }: { date: string; today: string; totalMinutes: number }) {
+  const d = new Date(date + 'T00:00:00');
+  const weekday = d.toLocaleDateString(undefined, { weekday: 'long' });
+  const monthDay = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const diff = Math.round((d.getTime() - new Date(today + 'T00:00:00').getTime()) / 86_400_000);
+  const rel = diff === 1 ? 'Tomorrow' : weekday;
+  return (
+    <div className="flex items-baseline gap-2 mb-1">
+      <span className="text-xl font-bold text-slate-700">{d.getDate()}</span>
+      <span className="text-sm font-medium text-slate-500">{rel}</span>
+      <span className="text-xs text-slate-400">· {monthDay}</span>
+      {totalMinutes > 0 && (
+        <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400">
+          <Clock className="w-3.5 h-3.5" /> {formatMinutes(totalMinutes)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Note editor (headings + drag-to-reorder + checklists)
+// ---------------------------------------------------------------------------
+
 function NotePane({
-  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onPatch, onDelete,
+  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onPatch, onDelete, onReorder,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
   today: string;
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
-  onAdd: (i: { title: string; note_id: string }) => void;
+  onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  onReorder: (updates: { id: string; sort_order: number }[]) => void;
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [draft, setDraft] = useState('');
   const titleRef = useRef<HTMLInputElement>(null);
 
-  // Brand-new untitled notes open with the cursor in the title.
   useEffect(() => { if (!note.title) titleRef.current?.focus(); }, [note.id, note.title]);
 
-  const open = tasks.filter(t => !t.done);
-  const done = tasks.filter(t => t.done);
+  const ordered = [...tasks].sort((a, b) =>
+    (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at));
+  // Headings + open tasks make up the draggable list; completed to-dos drop to
+  // a "Done" section so they don't clutter what's left.
+  const mainItems = ordered.filter(t => t.kind === 'heading' || !t.done);
+  const doneItems = ordered.filter(t => t.kind === 'task' && t.done);
+  const nextOrder = (ordered.at(-1)?.sort_order ?? 0) + 1;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = mainItems.map(t => t.id);
+    const oldIdx = ids.indexOf(String(active.id));
+    const newIdx = ids.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    const reordered = arrayMove(mainItems, oldIdx, newIdx);
+    onReorder(reordered.map((t, i) => ({ id: t.id, sort_order: i })));
+  }
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
@@ -308,18 +433,10 @@ function NotePane({
           >
             {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
           </button>
-          <button
-            onClick={() => onSaveNote(note.id, { archived: true })}
-            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100"
-            title="Archive"
-          >
+          <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Archive">
             <Archive className="w-4 h-4" />
           </button>
-          <button
-            onClick={() => onDeleteNote(note.id)}
-            className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500"
-            title="Delete note"
-          >
+          <button onClick={() => onDeleteNote(note.id)} className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500" title="Delete note">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -330,34 +447,410 @@ function NotePane({
         onChange={e => setBody(e.target.value)}
         onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
         placeholder="Notes, links, anything you want to remember…"
-        rows={3}
-        className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-5"
+        rows={2}
+        className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-4"
       />
 
-      <QuickAdd
-        value={draft}
-        onChange={setDraft}
-        placeholder="Add a to-do…"
-        onSubmit={() => { onAdd({ title: draft, note_id: note.id }); setDraft(''); }}
-      />
+      <div className="flex items-center gap-2 mb-1">
+        <div className="flex-1">
+          <QuickAdd
+            value={draft}
+            onChange={setDraft}
+            placeholder="Add a to-do…"
+            onSubmit={() => { onAdd({ title: draft, note_id: note.id, sort_order: nextOrder }); setDraft(''); }}
+          />
+        </div>
+        <button
+          onClick={() => onAdd({ title: 'New section', note_id: note.id, kind: 'heading', sort_order: nextOrder })}
+          className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2"
+          title="Add a section heading"
+        >
+          <HeadingIcon className="w-3.5 h-3.5" /> Heading
+        </button>
+      </div>
 
-      <ul className="mt-2 divide-y divide-slate-100">
-        {open.map(t => (
-          <TaskRow key={t.id} task={t} today={today} onPatch={onPatch} onDelete={onDelete} showSchedule />
-        ))}
-      </ul>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={mainItems.map(t => t.id)} strategy={verticalListSortingStrategy}>
+          <ul className="mt-2">
+            {mainItems.map(t => (
+              <SortableNoteItem
+                key={t.id}
+                task={t}
+                today={today}
+                onPatch={onPatch}
+                onDelete={onDelete}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
 
-      {done.length > 0 && (
+      {mainItems.length === 0 && (
+        <p className="text-sm text-slate-400 mt-2">Add a to-do or a section heading to start planning this out.</p>
+      )}
+
+      {doneItems.length > 0 && (
         <div className="mt-6">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Done</p>
           <ul className="divide-y divide-slate-100">
-            {done.map(t => (
+            {doneItems.map(t => (
               <TaskRow key={t.id} task={t} today={today} onPatch={onPatch} onDelete={onDelete} />
             ))}
           </ul>
         </div>
       )}
     </div>
+  );
+}
+
+function useSortableStyle(id: string) {
+  const sortable = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.5 : 1,
+  };
+  return { ...sortable, style };
+}
+
+function SortableNoteItem({
+  task, today, onPatch, onDelete,
+}: {
+  task: PlannerTask;
+  today: string;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(task.id);
+  const handle = (
+    <button
+      {...attributes}
+      {...listeners}
+      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+      title="Drag to reorder"
+    >
+      <GripVertical className="w-4 h-4" />
+    </button>
+  );
+
+  if (task.kind === 'heading') {
+    return (
+      <li ref={setNodeRef} style={style}>
+        <HeadingRow task={task} dragHandle={handle} onPatch={onPatch} onDelete={onDelete} />
+      </li>
+    );
+  }
+  return (
+    <li ref={setNodeRef} style={style} className="border-b border-slate-100">
+      <TaskRow task={task} today={today} dragHandle={handle} enableChecklist showSchedule onPatch={onPatch} onDelete={onDelete} />
+    </li>
+  );
+}
+
+function HeadingRow({
+  task, dragHandle, onPatch, onDelete,
+}: {
+  task: PlannerTask;
+  dragHandle?: ReactNode;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [title, setTitle] = useState(task.title);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (task.title === 'New section') ref.current?.select(); }, [task.title]);
+  return (
+    <div className="flex items-center gap-2 pt-5 pb-1 group">
+      {dragHandle}
+      <input
+        ref={ref}
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+        onBlur={() => { if (title.trim() && title !== task.title) onPatch(task.id, { title: title.trim() }); }}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="flex-1 text-sm font-bold uppercase tracking-wide text-slate-600 bg-transparent outline-none border-b border-transparent focus:border-teal-400"
+      />
+      <button
+        onClick={() => onDelete(task.id)}
+        className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+        title="Delete heading"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function TaskRow({
+  task, today, noteName, onOpenNote, onPatch, onDelete, showSchedule = false,
+  enableChecklist = false, dragHandle,
+}: {
+  task: PlannerTask;
+  today: string;
+  noteName?: string;
+  onOpenNote?: () => void;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+  showSchedule?: boolean;
+  enableChecklist?: boolean;
+  dragHandle?: ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [expanded, setExpanded] = useState(false);
+  const overdue = !task.done && !!task.due_date && task.due_date < today;
+  const progress = checklistProgress(task);
+  const hasChecklist = progress.total > 0;
+
+  function commitTitle() {
+    setEditing(false);
+    const next = title.trim();
+    if (next && next !== task.title) onPatch(task.id, { title: next });
+    else setTitle(task.title);
+  }
+
+  function setChecklist(items: ChecklistItem[]) {
+    onPatch(task.id, { checklist: items });
+  }
+
+  return (
+    <div className="py-2 group">
+      <div className="flex items-center gap-2">
+        {dragHandle}
+        <button
+          onClick={() => onPatch(task.id, { done: !task.done })}
+          className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
+          title={task.done ? 'Mark not done' : 'Mark done'}
+        >
+          {task.done
+            ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-600 text-white"><Check className="w-3.5 h-3.5" /></span>
+            : <Circle className="w-5 h-5" />}
+        </button>
+
+        {editing ? (
+          <input
+            autoFocus
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') { setTitle(task.title); setEditing(false); } }}
+            className="flex-1 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
+          />
+        ) : (
+          <span
+            onClick={() => !task.done && setEditing(true)}
+            className={`flex-1 text-sm cursor-text ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+          >
+            {task.title || 'Untitled'}
+          </span>
+        )}
+
+        {/* Checklist toggle / progress */}
+        {enableChecklist && !task.done && (
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className={`flex items-center gap-1 text-xs shrink-0 ${hasChecklist ? 'text-slate-500' : 'text-slate-300 hover:text-slate-500'}`}
+            title="Checklist"
+          >
+            {hasChecklist
+              ? <span className="font-medium tabular-nums">{progress.done}/{progress.total}</span>
+              : <Check className="w-3.5 h-3.5" />}
+            {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          </button>
+        )}
+
+        {noteName && (
+          <button onClick={onOpenNote} className="text-xs text-slate-400 hover:text-teal-600 truncate max-w-[10rem] shrink-0">
+            {noteName}
+          </button>
+        )}
+
+        {showSchedule && !task.done && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {task.estimate_minutes ? (
+              <span className="text-xs font-medium text-slate-400">{formatMinutes(task.estimate_minutes)}</span>
+            ) : null}
+            {task.due_date && (
+              <span className={`text-xs font-medium ${overdue ? 'text-rose-500' : 'text-slate-500'}`}>
+                {formatDue(task.due_date, today)}
+              </span>
+            )}
+            <label className="relative cursor-pointer text-slate-300 hover:text-teal-600" title="Schedule a day">
+              <CalendarClock className="w-4 h-4" />
+              <input
+                type="date"
+                value={task.due_date ?? ''}
+                onChange={e => onPatch(task.id, { due_date: e.target.value || null, someday: false })}
+                className="absolute inset-0 opacity-0 cursor-pointer w-4"
+              />
+            </label>
+
+            <MiniMenu title="Time estimate" icon={<Clock className={`w-4 h-4 ${task.estimate_minutes ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
+              {close => (
+                <div className="py-1">
+                  {ESTIMATE_PRESETS.map(p => (
+                    <button key={p} onClick={() => { onPatch(task.id, { estimate_minutes: p }); close(); }}
+                      className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.estimate_minutes === p ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
+                      {formatMinutes(p)}
+                    </button>
+                  ))}
+                  <button onClick={() => { onPatch(task.id, { estimate_minutes: null }); close(); }}
+                    className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">No estimate</button>
+                </div>
+              )}
+            </MiniMenu>
+
+            <MiniMenu title="Repeat" icon={<Repeat className={`w-4 h-4 ${task.recurrence ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
+              {close => (
+                <div className="py-1">
+                  {(['daily', 'weekdays', 'weekly', 'monthly'] as Recurrence[]).map(r => (
+                    <button key={r} onClick={() => { onPatch(task.id, { recurrence: r, ...(task.due_date ? {} : { due_date: today, someday: false }) }); close(); }}
+                      className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.recurrence === r ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
+                      {RECURRENCE_LABELS[r]}
+                    </button>
+                  ))}
+                  <button onClick={() => { onPatch(task.id, { recurrence: null }); close(); }}
+                    className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">Don’t repeat</button>
+                </div>
+              )}
+            </MiniMenu>
+
+            <button
+              onClick={() => onPatch(task.id, { someday: !task.someday, due_date: null, ...(!task.someday ? { recurrence: null } : {}) })}
+              className={`${task.someday ? 'text-indigo-500' : 'text-slate-300 hover:text-indigo-500'}`}
+              title={task.someday ? 'In Someday — click to move to Anytime' : 'Move to Someday'}
+            >
+              <Moon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={() => onDelete(task.id)}
+          className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Checklist body */}
+      {enableChecklist && (expanded || hasChecklist) && !task.done && (
+        <ChecklistEditor
+          items={task.checklist ?? []}
+          expanded={expanded}
+          onToggleExpand={() => setExpanded(v => !v)}
+          onChange={setChecklist}
+        />
+      )}
+    </div>
+  );
+}
+
+function ChecklistEditor({
+  items, expanded, onToggleExpand, onChange,
+}: {
+  items: ChecklistItem[];
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onChange: (items: ChecklistItem[]) => void;
+}) {
+  const [draft, setDraft] = useState('');
+
+  function toggle(id: string) { onChange(items.map(i => (i.id === id ? { ...i, done: !i.done } : i))); }
+  function rename(id: string, title: string) { onChange(items.map(i => (i.id === id ? { ...i, title } : i))); }
+  function remove(id: string) { onChange(items.filter(i => i.id !== id)); }
+  function add() {
+    const title = draft.trim();
+    if (!title) return;
+    onChange([...items, newChecklistItem(title)]);
+    setDraft('');
+  }
+
+  return (
+    <div className="ml-7 mt-1 pl-3 border-l-2 border-slate-100 space-y-1">
+      {items.map(item => (
+        <div key={item.id} className="flex items-center gap-2 group/ci">
+          <button
+            onClick={() => toggle(item.id)}
+            className={`shrink-0 ${item.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
+          >
+            {item.done
+              ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-600 text-white"><Check className="w-2.5 h-2.5" /></span>
+              : <Circle className="w-4 h-4" />}
+          </button>
+          <input
+            value={item.title}
+            onChange={e => rename(item.id, e.target.value)}
+            className={`flex-1 text-sm bg-transparent outline-none ${item.done ? 'text-slate-400 line-through' : 'text-slate-600'}`}
+          />
+          <button
+            onClick={() => remove(item.id)}
+            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/ci:opacity-100 transition-opacity shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+      {expanded && (
+        <div className="flex items-center gap-2">
+          <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+          <input
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') add(); }}
+            placeholder="Add a sub-step…"
+            className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-300 text-slate-600"
+          />
+        </div>
+      )}
+      {!expanded && items.length > 0 && (
+        <button onClick={onToggleExpand} className="text-xs text-slate-400 hover:text-teal-600">+ add sub-step</button>
+      )}
+    </div>
+  );
+}
+
+// A tiny click-to-open menu, portalled to <body> and positioned under its
+// trigger so it never gets clipped by the planner's scroll container.
+function MiniMenu({
+  icon, title, children,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: (close: () => void) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.right });
+    }
+    setOpen(o => !o);
+  }
+
+  return (
+    <>
+      <button ref={btnRef} onClick={toggle} title={title} className="shrink-0">
+        {icon}
+      </button>
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-50 min-w-[8rem] bg-white border border-slate-200 rounded-lg shadow-lg py-0.5"
+            style={{ top: pos.top, left: pos.left, transform: 'translateX(-100%)' }}
+          >
+            {children(() => setOpen(false))}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
   );
 }
 
@@ -380,103 +873,5 @@ function QuickAdd({
         className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
       />
     </div>
-  );
-}
-
-function TaskRow({
-  task, today, noteName, onOpenNote, onPatch, onDelete, showSchedule = false,
-}: {
-  task: PlannerTask;
-  today: string;
-  noteName?: string;
-  onOpenNote?: () => void;
-  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
-  onDelete: (id: string) => void;
-  showSchedule?: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(task.title);
-  const overdue = !task.done && !!task.due_date && task.due_date < today;
-
-  function commitTitle() {
-    setEditing(false);
-    const next = title.trim();
-    if (next && next !== task.title) onPatch(task.id, { title: next });
-    else setTitle(task.title);
-  }
-
-  return (
-    <li className="flex items-center gap-3 py-2 group">
-      <button
-        onClick={() => onPatch(task.id, { done: !task.done })}
-        className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
-        title={task.done ? 'Mark not done' : 'Mark done'}
-      >
-        {task.done
-          ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-600 text-white"><Check className="w-3.5 h-3.5" /></span>
-          : <Circle className="w-5 h-5" />}
-      </button>
-
-      {editing ? (
-        <input
-          autoFocus
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onBlur={commitTitle}
-          onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') { setTitle(task.title); setEditing(false); } }}
-          className="flex-1 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
-        />
-      ) : (
-        <span
-          onClick={() => !task.done && setEditing(true)}
-          className={`flex-1 text-sm cursor-text ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}
-        >
-          {task.title || 'Untitled'}
-        </span>
-      )}
-
-      {noteName && (
-        <button
-          onClick={onOpenNote}
-          className="text-xs text-slate-400 hover:text-teal-600 truncate max-w-[10rem] shrink-0"
-        >
-          {noteName}
-        </button>
-      )}
-
-      {showSchedule && !task.done && (
-        <div className="flex items-center gap-1 shrink-0">
-          {task.due_date && (
-            <span className={`text-xs font-medium ${overdue ? 'text-rose-500' : 'text-slate-500'}`}>
-              {formatDue(task.due_date, today)}
-            </span>
-          )}
-          <label className="relative cursor-pointer text-slate-300 hover:text-teal-600" title="Schedule a day">
-            <CalendarClock className="w-4 h-4" />
-            <input
-              type="date"
-              value={task.due_date ?? ''}
-              onChange={e => onPatch(task.id, { due_date: e.target.value || null, someday: false })}
-              className="absolute inset-0 opacity-0 cursor-pointer w-4"
-            />
-          </label>
-          <button
-            onClick={() => onPatch(task.id, { someday: !task.someday, due_date: null })}
-            className={`${task.someday ? 'text-indigo-500' : 'text-slate-300 hover:text-indigo-500'}`}
-            title={task.someday ? 'In Someday — click to move to Anytime' : 'Move to Someday'}
-          >
-            <Moon className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      <button
-        onClick={() => onDelete(task.id)}
-        className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-        title="Delete"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
-    </li>
   );
 }

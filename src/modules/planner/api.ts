@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { PlannerNote, PlannerTask } from './types';
+import type { ChecklistItem, PlannerNote, PlannerTask, TaskKind } from './types';
 
 // ---- Notes ----------------------------------------------------------------
 
@@ -66,7 +66,14 @@ export async function listTasks(userId: string): Promise<PlannerTask[]> {
 
 export async function createTask(
   userId: string,
-  input: { title: string; note_id?: string | null; due_date?: string | null; someday?: boolean },
+  input: {
+    title: string;
+    note_id?: string | null;
+    due_date?: string | null;
+    someday?: boolean;
+    kind?: TaskKind;
+    sort_order?: number;
+  },
 ): Promise<PlannerTask> {
   const { data, error } = await supabase
     .from('planner_tasks')
@@ -76,6 +83,8 @@ export async function createTask(
       note_id: input.note_id ?? null,
       due_date: input.due_date ?? null,
       someday: input.someday ?? false,
+      kind: input.kind ?? 'task',
+      sort_order: input.sort_order ?? 0,
     })
     .select('*')
     .single();
@@ -85,7 +94,9 @@ export async function createTask(
 
 export async function updateTask(
   id: string,
-  patch: Partial<Pick<PlannerTask, 'title' | 'done' | 'due_date' | 'someday' | 'note_id' | 'sort_order'>>,
+  patch: Partial<Pick<PlannerTask,
+    'title' | 'done' | 'due_date' | 'someday' | 'note_id' | 'sort_order' | 'checklist' | 'recurrence'
+    | 'estimate_minutes' | 'start_at' | 'gcal_event_id'>>,
 ): Promise<PlannerTask> {
   const next: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() };
   // Keep done_at in step with done so we can show "completed" timestamps later.
@@ -103,4 +114,22 @@ export async function updateTask(
 export async function deleteTask(id: string): Promise<void> {
   const { error } = await supabase.from('planner_tasks').delete().eq('id', id);
   if (error) throw error;
+}
+
+// Persist a fresh sort order after a drag-and-drop. The data set per note is
+// tiny, so a handful of parallel updates is simpler than a bulk upsert (which
+// would need every NOT NULL column echoed back).
+export async function reorderTasks(updates: { id: string; sort_order: number }[]): Promise<void> {
+  const stamp = new Date().toISOString();
+  const results = await Promise.all(
+    updates.map(u =>
+      supabase.from('planner_tasks').update({ sort_order: u.sort_order, updated_at: stamp }).eq('id', u.id),
+    ),
+  );
+  const failed = results.find(r => r.error);
+  if (failed?.error) throw failed.error;
+}
+
+export function newChecklistItem(title: string): ChecklistItem {
+  return { id: crypto.randomUUID(), title, done: false };
 }
