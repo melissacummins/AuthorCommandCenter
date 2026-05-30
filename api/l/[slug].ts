@@ -407,6 +407,7 @@ function lpTheme(themeId: string | null | undefined, accent: string | null | und
 interface LpButton { label: string; url: string }
 interface LpReview { stars: number; quote: string; attribution: string }
 interface LandingPageRow {
+  id?: string;
   slug: string;
   title: string | null;
   headline: string | null;
@@ -416,11 +417,25 @@ interface LandingPageRow {
   cover_image_url: string | null;
   buttons: LpButton[] | null;
   reviews: LpReview[] | null;
+  series_page_id?: string | null;
+  cross_sell_label?: string | null;
   theme: string | null;
   accent_color: string | null;
 }
 
-function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = null): string {
+interface CrossSellBook {
+  slug: string;
+  title: string | null;
+  cover_image_url: string | null;
+}
+
+const CROSS_SELL_HEADINGS: Record<string, string> = {
+  series: 'Read the complete series',
+  world: 'More standalones in this world',
+  more: 'More books like this',
+};
+
+function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = null, crossSellBooks: CrossSellBook[] = []): string {
   const t = lpTheme(page.theme, page.accent_color);
   const title = (page.title || '').trim() || 'Get the book';
   const headline = (page.headline || '').trim();
@@ -441,6 +456,22 @@ function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = nul
     const attr = (r.attribution || '').trim();
     return `<figure class="review">${starRow}<blockquote class="review-quote">${formatText(r.quote)}</blockquote>${attr ? `<figcaption class="review-attr">— ${escapeHtml(attr)}</figcaption>` : ''}</figure>`;
   }).join('');
+  const csLabel = (page.cross_sell_label || 'series').toLowerCase();
+  const csHeading = CROSS_SELL_HEADINGS[csLabel];
+  const csBooks = csHeading && csLabel !== 'none' ? crossSellBooks : [];
+  const crossSellHtml = csBooks.length > 0
+    ? `<section class="cross-sell" aria-label="${escapeHtml(csHeading)}">
+        <h2 class="cross-sell-title">${escapeHtml(csHeading)}</h2>
+        <div class="cross-sell-list">${csBooks.map((b) => {
+          const t = (b.title || '').trim() || `/${b.slug}`;
+          const c = b.cover_image_url && b.cover_image_url.trim() ? b.cover_image_url.trim() : null;
+          const coverHtml = c
+            ? `<img src="${escapeHtml(c)}" alt="${escapeHtml(t)}" loading="lazy" />`
+            : '<span class="cross-sell-empty"></span>';
+          return `<a class="cross-sell-card" href="/${escapeHtml(b.slug)}"><span class="cross-sell-cover">${coverHtml}</span><span class="cross-sell-name">${escapeHtml(t)}</span></a>`;
+        }).join('')}</div>
+      </section>`
+    : '';
   const heroHtml = headline
     ? `<p class="kicker">${escapeHtml(title)}</p><h1 class="headline">${formatText(headline)}</h1>`
     : `<h1 class="headline headline--plain">${escapeHtml(title)}</h1>`;
@@ -480,7 +511,17 @@ body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sy
 .review-quote{margin:8px 0 0;font-size:15px;line-height:1.6;color:var(--text);font-style:italic}
 .review-quote::before{content:"\\201C"}.review-quote::after{content:"\\201D"}
 .review-attr{margin-top:8px;font-size:13px;color:var(--muted);font-style:normal}
-@media(max-width:620px){body{padding:40px 20px 64px}.cover{float:none;width:210px;max-width:62%;margin:0 auto 24px}.wrap{text-align:center}.headline{font-size:29px}.stores{justify-content:center}}
+.cross-sell{margin-top:40px;clear:both}
+.cross-sell-title{margin:0 0 14px;font-size:13px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.cross-sell-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:18px}
+.cross-sell-card{display:flex;flex-direction:column;gap:8px;text-decoration:none;color:var(--text);transition:transform 120ms ease}
+.cross-sell-card:hover{transform:translateY(-3px)}
+.cross-sell-cover{display:block;aspect-ratio:2/3;border-radius:8px;overflow:hidden;background:var(--surface);box-shadow:0 12px 24px -16px rgba(15,23,42,.45)}
+.cross-sell-cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cross-sell-empty{display:block;width:100%;height:100%;background:var(--border)}
+.cross-sell-name{font-size:13px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cross-sell-card:hover .cross-sell-name{color:var(--accent)}
+@media(max-width:620px){body{padding:40px 20px 64px}.cover{float:none;width:210px;max-width:62%;margin:0 auto 24px}.wrap{text-align:center}.headline{font-size:29px}.stores{justify-content:center}.cross-sell-list{grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:12px}.cross-sell-name{text-align:center}}
 </style>
 </head>
 <body>
@@ -490,6 +531,7 @@ body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sy
   ${body ? `<div class="desc">${formatText(body)}</div>` : ''}
   ${storeHtml ? `<div class="stores">${storeHtml}</div>` : ''}
   ${reviewsHtml ? `<section class="reviews" aria-label="Reader reviews">${reviewsHtml}</section>` : ''}
+  ${crossSellHtml}
 </main>
 </body>
 </html>`;
@@ -687,15 +729,39 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Not a short link — it might be a landing page (shared slug namespace).
       let pageQuery = supabase
         .from('landing_pages')
-        .select('slug, title, headline, description, page_text_mode, page_text_custom, cover_image_url, buttons, reviews, theme, accent_color')
+        .select('id, slug, title, headline, description, page_text_mode, page_text_custom, cover_image_url, buttons, reviews, series_page_id, cross_sell_label, theme, accent_color')
         .eq('slug', slug);
       if (ownerId) pageQuery = pageQuery.eq('user_id', ownerId);
       const { data: page } = await pageQuery.maybeSingle();
       if (page) {
         const favicon = await ownerLogo(supabase, ownerId);
+        const lp = page as LandingPageRow;
+        let crossSell: CrossSellBook[] = [];
+        if (lp.series_page_id && lp.cross_sell_label && lp.cross_sell_label !== 'none') {
+          const { data: seriesRow } = await supabase
+            .from('series_pages')
+            .select('page_ids')
+            .eq('id', lp.series_page_id)
+            .maybeSingle();
+          const ids = (Array.isArray(seriesRow?.page_ids) ? (seriesRow!.page_ids as string[]) : [])
+            .filter((id) => id && id !== lp.id);
+          if (ids.length > 0) {
+            let csQuery = supabase
+              .from('landing_pages')
+              .select('id, slug, title, cover_image_url')
+              .in('id', ids);
+            if (ownerId) csQuery = csQuery.eq('user_id', ownerId);
+            const { data: csRows } = await csQuery;
+            const byId = new Map((csRows ?? []).map((r) => [r.id as string, r]));
+            crossSell = ids
+              .map((id) => byId.get(id))
+              .filter((r): r is NonNullable<typeof r> => Boolean(r))
+              .map((r) => ({ slug: r.slug, title: r.title, cover_image_url: r.cover_image_url }));
+          }
+        }
         res.setHeader('content-type', 'text/html; charset=utf-8');
         res.setHeader('cache-control', 'public, max-age=15, s-maxage=30, stale-while-revalidate=300');
-        res.status(200).send(renderLandingPage(page as LandingPageRow, favicon));
+        res.status(200).send(renderLandingPage(lp, favicon, crossSell));
         return;
       }
 

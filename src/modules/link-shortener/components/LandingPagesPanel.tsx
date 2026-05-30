@@ -5,9 +5,9 @@ import {
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   listLandingPages, createLandingPage, updateLandingPage, deleteLandingPage,
-  fetchOgForUrl, isSlugAvailable, uploadBioImage,
+  fetchOgForUrl, isSlugAvailable, uploadBioImage, listSeriesPages,
 } from '../api';
-import type { BioButton, BookTextMode, LandingPage, ReviewItem } from '../types';
+import type { BioButton, BookTextMode, CrossSellLabel, LandingPage, ReviewItem, SeriesPage } from '../types';
 import FormattedTextarea from './FormattedTextarea';
 import { isValidSlug, normalizeUrl, isValidUrl, buildShortUrl } from '../utils';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
@@ -53,6 +53,8 @@ interface DraftState {
   coverUrl: string;
   buttons: BioButton[];
   reviews: ReviewItem[];
+  seriesPageId: string | null;
+  crossSellLabel: CrossSellLabel;
   theme: string;
   accentColor: string | null;
 }
@@ -60,7 +62,8 @@ interface DraftState {
 const EMPTY_DRAFT: DraftState = {
   slug: '', sourceUrl: '', title: '', headline: '', description: '',
   pageTextMode: 'description', pageTextCustom: '', coverUrl: '',
-  buttons: [], reviews: [], theme: DEFAULT_BIO_THEME, accentColor: null,
+  buttons: [], reviews: [], seriesPageId: null, crossSellLabel: 'series',
+  theme: DEFAULT_BIO_THEME, accentColor: null,
 };
 
 export default function LandingPagesPanel() {
@@ -192,6 +195,8 @@ function LandingPageEditor({
           coverUrl: page.cover_image_url ?? '',
           buttons: Array.isArray(page.buttons) ? page.buttons : [],
           reviews: Array.isArray(page.reviews) ? page.reviews : [],
+          seriesPageId: page.series_page_id ?? null,
+          crossSellLabel: page.cross_sell_label ?? 'series',
           theme: page.theme ?? DEFAULT_BIO_THEME,
           accentColor: page.accent_color ?? null,
         }
@@ -201,8 +206,14 @@ function LandingPageEditor({
   const [saving, setSaving] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [seriesOptions, setSeriesOptions] = useState<SeriesPage[]>([]);
   // Rows the author switched to a custom (non-listed) retailer name.
   const [customRows, setCustomRows] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    if (!user) return;
+    listSeriesPages(user.id).then(setSeriesOptions).catch(() => setSeriesOptions([]));
+  }, [user]);
 
   async function handleCoverUpload(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -306,6 +317,8 @@ function LandingPageEditor({
         source_url: draft.sourceUrl.trim(),
         buttons,
         reviews,
+        series_page_id: draft.seriesPageId,
+        cross_sell_label: draft.crossSellLabel,
         theme: draft.theme,
         accent_color: draft.accentColor,
       };
@@ -546,6 +559,39 @@ function LandingPageEditor({
             </div>
           )}
         </div>
+
+        {/* Cross-sell: other books from a series */}
+        <Field
+          label="Other books to show"
+          hint="Pulls covers from one of your series pages and shows them below the retailer buttons. The current book is automatically left out."
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <select
+              value={draft.seriesPageId ?? ''}
+              onChange={(e) => set('seriesPageId', e.target.value || null)}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            >
+              <option value="">Don't show other books</option>
+              {seriesOptions.map((s) => (
+                <option key={s.id} value={s.id}>{s.title?.trim() || `/${s.slug}`}</option>
+              ))}
+            </select>
+            <select
+              value={draft.crossSellLabel}
+              onChange={(e) => set('crossSellLabel', e.target.value as CrossSellLabel)}
+              disabled={!draft.seriesPageId}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-50 disabled:text-slate-400"
+            >
+              <option value="series">Read the complete series</option>
+              <option value="world">More standalones in this world</option>
+              <option value="more">More books like this</option>
+              <option value="none">Hide section</option>
+            </select>
+          </div>
+          {seriesOptions.length === 0 && (
+            <p className="mt-1 text-xs text-slate-400">No series pages yet — create one in Series pages to use this.</p>
+          )}
+        </Field>
 
         {/* Theme */}
         <div>

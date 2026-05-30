@@ -102,6 +102,8 @@ export interface BioSettings {
 
 export type BookTextMode = 'headline' | 'description' | 'custom' | 'none';
 
+export type CrossSellLabel = 'series' | 'world' | 'more' | 'none';
+
 export interface ReviewItem {
   stars: number; // 1-5
   quote: string;
@@ -121,6 +123,8 @@ export interface LandingPage {
   source_url: string;
   buttons: BioButton[];
   reviews: ReviewItem[];
+  series_page_id: string | null;
+  cross_sell_label: CrossSellLabel;
   theme: string | null;
   accent_color: string | null;
   created_at: string;
@@ -138,6 +142,8 @@ export type LandingPageInsert = {
   source_url?: string;
   buttons?: BioButton[];
   reviews?: ReviewItem[];
+  series_page_id?: string | null;
+  cross_sell_label?: CrossSellLabel;
   theme?: string;
   accent_color?: string | null;
 };
