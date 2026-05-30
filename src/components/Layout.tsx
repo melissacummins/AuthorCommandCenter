@@ -4,12 +4,13 @@ import { moduleKeyForPath } from '../lib/access';
 import PenNamePicker from './PenNamePicker';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock
+  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
 const modules = [
   { name: 'Home', path: '/', icon: Home, color: 'text-amber-400' },
+  { name: 'Planner', path: '/planner', icon: NotebookPen, color: 'text-teal-400' },
   { name: 'Catalog', path: '/catalog', icon: Library, color: 'text-indigo-400' },
   { name: 'Timeline', path: '/timeline', icon: Clock, color: 'text-indigo-400' },
   { name: 'Book Tracker', path: '/book-tracker', icon: BookOpen, color: 'text-purple-400' },
@@ -38,6 +39,7 @@ const sections: { label: string; paths: string[] }[] = [
 
 const moduleByPath = Object.fromEntries(modules.map(m => [m.path, m]));
 const homeModule = moduleByPath['/'];
+const plannerModule = moduleByPath['/planner'];
 const settingsModule = moduleByPath['/settings'];
 
 type ModuleEntry = (typeof modules)[number];
@@ -138,6 +140,9 @@ export default function Layout({ children }: { children: ReactNode }) {
         {/* Navigation */}
         <nav className="flex-1 px-2 py-2 overflow-y-auto">
           <NavLink module={homeModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
+          {/* Planner is a personal tool, always available and outside the four
+              gated groups (like Home/Settings). */}
+          <NavLink module={plannerModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
 
           {visibleSections.map(section => (
             <div key={section.label} className="mt-5">

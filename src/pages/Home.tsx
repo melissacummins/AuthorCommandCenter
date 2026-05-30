@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
+import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
@@ -159,6 +160,9 @@ export default function Home() {
           Your author business tools, all in one place.
         </p>
       </div>
+
+      {/* Quick capture / today's plan — first thing you see on login. */}
+      <TodayPanel />
 
       {visibleSections.length === 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
