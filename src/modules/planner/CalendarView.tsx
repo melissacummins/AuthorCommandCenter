@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ChevronLeft, ChevronRight, CalendarDays, Plus, X, ExternalLink, Check, Circle, Link2Off,
 } from 'lucide-react';
@@ -54,15 +54,18 @@ export default function CalendarView({
     return m;
   }, [tasks]);
 
-  // Load the selected day's Google events whenever the day / calendar changes.
-  useEffect(() => {
-    let active = true;
+  // Load the selected day's Google events. Extracted so we can re-run it right
+  // after adding/removing a time block (otherwise the new event wouldn't show
+  // until the day or calendar changed).
+  const loadEvents = useCallback(async () => {
     if (!gc.connected || !gc.calendarId) { setEvents([]); return; }
     const start = new Date(selected + 'T00:00:00');
     const end = new Date(start); end.setDate(start.getDate() + 1);
-    gc.fetchEvents(start.toISOString(), end.toISOString()).then(evs => { if (active) setEvents(evs); });
-    return () => { active = false; };
+    const evs = await gc.fetchEvents(start.toISOString(), end.toISOString());
+    setEvents(evs);
   }, [selected, gc.connected, gc.calendarId, gc.fetchEvents]);
+
+  useEffect(() => { loadEvents(); }, [loadEvents]);
 
   const grid = monthGrid(cursor.y, cursor.m);
   const monthName = new Date(cursor.y, cursor.m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -82,6 +85,7 @@ export default function CalendarView({
       });
       onPatch(task.id, { start_at: start.toISOString(), gcal_event_id: ev.id, due_date: selected, someday: false });
       setScheduling(null);
+      await loadEvents(); // show the new block immediately
     } catch (e) {
       gc.setError((e as Error).message);
     }
@@ -94,6 +98,7 @@ export default function CalendarView({
       gc.setError((e as Error).message);
     }
     onPatch(task.id, { start_at: null, gcal_event_id: null });
+    await loadEvents();
   }
 
   return (
