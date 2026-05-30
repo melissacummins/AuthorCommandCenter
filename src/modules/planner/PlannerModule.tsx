@@ -12,9 +12,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Sparkles, Moon, Inbox, X, GripVertical,
-  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays,
+  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off,
 } from 'lucide-react';
 import CalendarView from './CalendarView';
+import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
+import type { GCalEvent } from './google';
 import {
   listNotes, createNote, updateNote, deleteNote,
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
@@ -26,6 +28,15 @@ import {
 } from './types';
 
 type Selection = { kind: 'view'; bucket: Bucket } | { kind: 'note'; id: string } | { kind: 'calendar' };
+
+// Everything a list/calendar view needs to show Google events and turn to-dos
+// into time blocks. Bundled so it's one prop to thread down.
+interface CalendarBridge {
+  gc: UseGoogleCalendar;
+  calVersion: number;
+  onTimeBlock: (task: PlannerTask, time: string) => void;
+  onUnblock: (task: PlannerTask) => void;
+}
 
 const VIEWS: { bucket: Bucket; label: string; icon: typeof Inbox; color: string }[] = [
   { bucket: 'today',    label: 'Today',    icon: Sparkles,      color: 'text-amber-500' },
@@ -42,6 +53,9 @@ export default function PlannerModule() {
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>({ kind: 'view', bucket: 'today' });
   const today = todayISO();
+  const gc = useGoogleCalendar();
+  // Bumped whenever a time block is added/removed so the views re-fetch events.
+  const [calVersion, setCalVersion] = useState(0);
 
   useEffect(() => {
     if (!user) return;
@@ -139,6 +153,31 @@ export default function PlannerModule() {
     catch (e) { setError((e as Error)?.message ?? 'Could not save the new order.'); }
   }
 
+  // ---- calendar time-blocking (shared by the Calendar tab and the lists) ----
+
+  async function timeBlock(task: PlannerTask, time: string) {
+    const dateISO = task.due_date ?? today;
+    const start = new Date(`${dateISO}T${time}:00`);
+    const minutes = task.estimate_minutes ?? 30;
+    const end = new Date(start.getTime() + minutes * 60_000);
+    try {
+      const ev = await gc.createEvent({
+        summary: task.title, start: start.toISOString(), end: end.toISOString(), reminderMinutes: 10,
+      });
+      await patchTask(task.id, { start_at: start.toISOString(), gcal_event_id: ev.id, due_date: dateISO, someday: false });
+      setCalVersion(v => v + 1);
+    } catch (e) { gc.setError((e as Error).message); }
+  }
+
+  async function unblock(task: PlannerTask) {
+    try { if (task.gcal_event_id) await gc.deleteEvent(task.gcal_event_id); }
+    catch (e) { gc.setError((e as Error).message); }
+    await patchTask(task.id, { start_at: null, gcal_event_id: null });
+    setCalVersion(v => v + 1);
+  }
+
+  const cal: CalendarBridge = { gc, calVersion, onTimeBlock: timeBlock, onUnblock: unblock };
+
   const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
 
   return (
@@ -216,7 +255,7 @@ export default function PlannerModule() {
         {loading ? (
           <div className="p-8 text-slate-400">Loading your planner…</div>
         ) : selection.kind === 'calendar' ? (
-          <CalendarView tasks={tasks} today={today} onPatch={patchTask} />
+          <CalendarView tasks={tasks} today={today} onPatch={patchTask} cal={cal} />
         ) : selection.kind === 'view' ? (
           <ViewPane
             bucket={selection.bucket}
@@ -227,6 +266,7 @@ export default function PlannerModule() {
             onPatch={patchTask}
             onDelete={removeTask}
             onOpenNote={id => setSelection({ kind: 'note', id })}
+            cal={cal}
           />
         ) : selectedNote ? (
           <NotePane
@@ -254,7 +294,7 @@ export default function PlannerModule() {
 // ---------------------------------------------------------------------------
 
 function ViewPane({
-  bucket, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote,
+  bucket, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
 }: {
   bucket: Bucket;
   tasks: PlannerTask[];
@@ -264,14 +304,43 @@ function ViewPane({
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
   onOpenNote: (id: string) => void;
+  cal: CalendarBridge;
 }) {
   const meta = VIEWS.find(v => v.bucket === bucket)!;
   const Icon = meta.icon;
   const [draft, setDraft] = useState('');
+  const { gc, calVersion, onTimeBlock, onUnblock } = cal;
+  const [eventsByDay, setEventsByDay] = useState<Record<string, GCalEvent[]>>({});
 
   const items = tasks
     .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
     .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
+
+  // Pull Google events for the day (Today) or the day range (Upcoming) so they
+  // can sit alongside the to-dos. Other buckets have no dates, so no events.
+  const dueDates = items.map(t => t.due_date!).filter(Boolean);
+  const rangeMin = bucket === 'today' ? today : dueDates[0];
+  const rangeMax = bucket === 'today' ? today : dueDates[dueDates.length - 1];
+  const wantsEvents = gc.connected && (bucket === 'today' || (bucket === 'upcoming' && dueDates.length > 0));
+  const rangeKey = wantsEvents ? `${rangeMin}_${rangeMax}` : '';
+
+  useEffect(() => {
+    if (!wantsEvents) { setEventsByDay({}); return; }
+    let active = true;
+    const start = new Date(rangeMin + 'T00:00:00');
+    const end = new Date(rangeMax + 'T00:00:00'); end.setDate(end.getDate() + 1);
+    gc.fetchEvents(start.toISOString(), end.toISOString()).then(evs => {
+      if (!active) return;
+      const byDay: Record<string, GCalEvent[]> = {};
+      for (const ev of evs) {
+        const iso = eventDayISO(ev);
+        if (iso) (byDay[iso] ??= []).push(ev);
+      }
+      setEventsByDay(byDay);
+    });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeKey, gc.connected, gc.calendarId, gc.fetchEvents, calVersion, wantsEvents]);
 
   const addDefaults =
     bucket === 'today' ? { due_date: today } :
@@ -280,6 +349,17 @@ function ViewPane({
 
   function noteNameFor(t: PlannerTask) {
     return t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled note') : undefined;
+  }
+
+  function renderRow(t: PlannerTask) {
+    return (
+      <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
+        onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
+        onPatch={onPatch} onDelete={onDelete} showSchedule
+        calConnected={gc.connected}
+        onTimeBlock={time => onTimeBlock(t, time)}
+        onUnblock={() => onUnblock(t)} />
+    );
   }
 
   const totalMinutes = sumEstimate(items);
@@ -303,6 +383,8 @@ function ViewPane({
         onSubmit={() => { onAdd({ title: draft, ...addDefaults }); setDraft(''); }}
       />
 
+      {bucket === 'today' && <DayEventsStrip events={eventsByDay[today]} />}
+
       {items.length === 0 ? (
         <p className="text-sm text-slate-400 mt-4">Nothing here right now.</p>
       ) : bucket === 'upcoming' ? (
@@ -311,25 +393,56 @@ function ViewPane({
           {groupByDay(items).map(group => (
             <div key={group.date}>
               <DayHeader date={group.date} today={today} totalMinutes={sumEstimate(group.items)} />
+              <DayEventsStrip events={eventsByDay[group.date]} />
               <ul className="divide-y divide-slate-100">
-                {group.items.map(t => (
-                  <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
-                    onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
-                    onPatch={onPatch} onDelete={onDelete} showSchedule />
-                ))}
+                {group.items.map(renderRow)}
               </ul>
             </div>
           ))}
         </div>
       ) : (
         <ul className="mt-2 divide-y divide-slate-100">
-          {items.map(t => (
-            <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
-              onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
-              onPatch={onPatch} onDelete={onDelete} showSchedule />
-          ))}
+          {items.map(renderRow)}
         </ul>
       )}
+    </div>
+  );
+}
+
+// The local YYYY-MM-DD a Google event falls on (timed events use their start
+// instant; all-day events already carry a plain date).
+function eventDayISO(ev: GCalEvent): string | undefined {
+  if (ev.start?.date) return ev.start.date;
+  if (ev.start?.dateTime) {
+    const d = new Date(ev.start.dateTime);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  }
+  return undefined;
+}
+
+function eventTimeLabel(ev: GCalEvent): string {
+  if (ev.start?.date) return 'All day';
+  if (!ev.start?.dateTime) return '';
+  return new Date(ev.start.dateTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+// A subtle sky-tinted strip of the day's calendar events, shown above the
+// to-dos so you have context while planning the day.
+function DayEventsStrip({ events }: { events?: GCalEvent[] }) {
+  if (!events || events.length === 0) return null;
+  return (
+    <div className="mt-3 mb-1 rounded-lg bg-sky-50/70 border border-sky-100 px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-500 mb-1 flex items-center gap-1">
+        <CalendarDays className="w-3 h-3" /> On your calendar
+      </p>
+      <ul className="space-y-0.5">
+        {events.map(ev => (
+          <li key={ev.id} className="flex items-center gap-2 text-sm">
+            <span className="text-xs font-medium text-sky-600 w-16 shrink-0">{eventTimeLabel(ev)}</span>
+            <span className="flex-1 text-slate-600 truncate">{ev.summary || '(no title)'}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -584,7 +697,7 @@ function HeadingRow({
 
 function TaskRow({
   task, today, noteName, onOpenNote, onPatch, onDelete, showSchedule = false,
-  enableChecklist = false, dragHandle,
+  enableChecklist = false, dragHandle, calConnected = false, onTimeBlock, onUnblock,
 }: {
   task: PlannerTask;
   today: string;
@@ -595,10 +708,14 @@ function TaskRow({
   showSchedule?: boolean;
   enableChecklist?: boolean;
   dragHandle?: ReactNode;
+  calConnected?: boolean;
+  onTimeBlock?: (time: string) => void;
+  onUnblock?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [expanded, setExpanded] = useState(false);
+  const [blockTime, setBlockTime] = useState('09:00');
   const overdue = !task.done && !!task.due_date && task.due_date < today;
   const progress = checklistProgress(task);
   const hasChecklist = progress.total > 0;
@@ -715,6 +832,29 @@ function TaskRow({
                 </div>
               )}
             </MiniMenu>
+
+            {/* Time block: drop this to-do onto the calendar (or pull it off). */}
+            {onTimeBlock && task.gcal_event_id ? (
+              <button
+                onClick={onUnblock}
+                className="inline-flex items-center gap-0.5 text-xs font-medium text-sky-600 hover:text-rose-500"
+                title="Remove time block from calendar"
+              >
+                {task.start_at && new Date(task.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                <Link2Off className="w-3.5 h-3.5" />
+              </button>
+            ) : onTimeBlock && calConnected ? (
+              <MiniMenu title="Add to calendar as a time block" icon={<CalendarPlus className="w-4 h-4 text-slate-300 hover:text-sky-600" />}>
+                {close => (
+                  <div className="p-2 flex items-center gap-2">
+                    <input type="time" value={blockTime} onChange={e => setBlockTime(e.target.value)}
+                      className="text-sm border border-slate-200 rounded px-2 py-1" />
+                    <button onClick={() => { onTimeBlock(blockTime); close(); }}
+                      className="text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 rounded px-2 py-1">Block</button>
+                  </div>
+                )}
+              </MiniMenu>
+            ) : null}
 
             <button
               onClick={() => onPatch(task.id, { someday: !task.someday, due_date: null, ...(!task.someday ? { recurrence: null } : {}) })}
