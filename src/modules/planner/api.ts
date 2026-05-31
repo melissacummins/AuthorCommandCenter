@@ -1,5 +1,8 @@
 import { supabase } from '../../lib/supabase';
-import type { ChecklistItem, PlannerNote, PlannerTask, TaskKind } from './types';
+import type {
+  ChecklistItem, PlannerDayNote, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, TaskKind,
+} from './types';
+import { DEFAULT_DAILY_CAPACITY } from './types';
 
 // ---- Notes ----------------------------------------------------------------
 
@@ -73,6 +76,8 @@ export async function createTask(
     someday?: boolean;
     kind?: TaskKind;
     sort_order?: number;
+    block_id?: string | null;
+    estimate_minutes?: number | null;
   },
 ): Promise<PlannerTask> {
   const { data, error } = await supabase
@@ -85,6 +90,8 @@ export async function createTask(
       someday: input.someday ?? false,
       kind: input.kind ?? 'task',
       sort_order: input.sort_order ?? 0,
+      block_id: input.block_id ?? null,
+      estimate_minutes: input.estimate_minutes ?? null,
     })
     .select('*')
     .single();
@@ -96,7 +103,7 @@ export async function updateTask(
   id: string,
   patch: Partial<Pick<PlannerTask,
     'title' | 'done' | 'due_date' | 'someday' | 'note_id' | 'sort_order' | 'checklist' | 'recurrence'
-    | 'estimate_minutes' | 'start_at' | 'gcal_event_id'>>,
+    | 'estimate_minutes' | 'start_at' | 'gcal_event_id' | 'block_id'>>,
 ): Promise<PlannerTask> {
   const next: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() };
   // Keep done_at in step with done so we can show "completed" timestamps later.
@@ -132,4 +139,122 @@ export async function reorderTasks(updates: { id: string; sort_order: number }[]
 
 export function newChecklistItem(title: string): ChecklistItem {
   return { id: crypto.randomUUID(), title, done: false };
+}
+
+// ---- Settings -------------------------------------------------------------
+
+// The user's planner settings, creating a default row the first time so the My
+// Day capacity bar always has a target to measure against.
+export async function getSettings(userId: string): Promise<PlannerSettings> {
+  const { data, error } = await supabase
+    .from('planner_settings')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  if (data) return data as PlannerSettings;
+  const { data: created, error: insErr } = await supabase
+    .from('planner_settings')
+    .insert({ user_id: userId, daily_capacity_minutes: DEFAULT_DAILY_CAPACITY })
+    .select('*')
+    .single();
+  if (insErr) throw insErr;
+  return created as PlannerSettings;
+}
+
+export async function updateSettings(
+  userId: string,
+  patch: Partial<Pick<PlannerSettings, 'daily_capacity_minutes'>>,
+): Promise<PlannerSettings> {
+  const { data, error } = await supabase
+    .from('planner_settings')
+    .upsert({ user_id: userId, ...patch, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as PlannerSettings;
+}
+
+// ---- Day notes ------------------------------------------------------------
+
+export async function listDayNotes(userId: string): Promise<PlannerDayNote[]> {
+  const { data, error } = await supabase
+    .from('planner_day_notes')
+    .select('*')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return (data ?? []) as PlannerDayNote[];
+}
+
+// Upsert a single day's note (one row per (user, day)); empty bodies are kept
+// so the row's timestamps survive, which is harmless.
+export async function saveDayNote(userId: string, day: string, body: string): Promise<PlannerDayNote> {
+  const { data, error } = await supabase
+    .from('planner_day_notes')
+    .upsert({ user_id: userId, day, body, updated_at: new Date().toISOString() }, { onConflict: 'user_id,day' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as PlannerDayNote;
+}
+
+// ---- Time blocks ----------------------------------------------------------
+
+export async function listTimeBlocks(userId: string): Promise<PlannerTimeBlock[]> {
+  const { data, error } = await supabase
+    .from('planner_time_blocks')
+    .select('*')
+    .eq('user_id', userId)
+    .order('day', { ascending: true })
+    .order('start_minute', { ascending: true, nullsFirst: false })
+    .order('sort_order', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as PlannerTimeBlock[];
+}
+
+export async function createTimeBlock(
+  userId: string,
+  input: {
+    day: string;
+    title?: string;
+    start_minute?: number | null;
+    end_minute?: number | null;
+    sort_order?: number;
+  },
+): Promise<PlannerTimeBlock> {
+  const { data, error } = await supabase
+    .from('planner_time_blocks')
+    .insert({
+      user_id: userId,
+      day: input.day,
+      title: input.title ?? '',
+      start_minute: input.start_minute ?? null,
+      end_minute: input.end_minute ?? null,
+      sort_order: input.sort_order ?? 0,
+    })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as PlannerTimeBlock;
+}
+
+export async function updateTimeBlock(
+  id: string,
+  patch: Partial<Pick<PlannerTimeBlock, 'title' | 'start_minute' | 'end_minute' | 'gcal_event_id' | 'sort_order' | 'day'>>,
+): Promise<PlannerTimeBlock> {
+  const { data, error } = await supabase
+    .from('planner_time_blocks')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as PlannerTimeBlock;
+}
+
+export async function deleteTimeBlock(id: string): Promise<void> {
+  // planner_tasks.block_id is ON DELETE SET NULL, so the block's to-dos stay on
+  // the day and just lose their block grouping.
+  const { error } = await supabase.from('planner_time_blocks').delete().eq('id', id);
+  if (error) throw error;
 }

@@ -12,22 +12,25 @@ import { useAuth } from '../../contexts/AuthContext';
 import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Sparkles, Moon, Inbox, X, GripVertical,
-  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off,
+  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun,
 } from 'lucide-react';
-import CalendarView from './CalendarView';
+import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import {
   listNotes, createNote, updateNote, deleteNote,
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
+  getSettings, updateSettings, listDayNotes, saveDayNote as apiSaveDayNote,
+  listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
 } from './api';
 import {
   bucketForTask, checklistProgress, formatDue, formatMinutes, nextDueDate, sumEstimate, todayISO,
-  ESTIMATE_PRESETS, RECURRENCE_LABELS,
+  ESTIMATE_PRESETS, RECURRENCE_LABELS, DEFAULT_DAILY_CAPACITY,
   type ChecklistItem, type PlannerNote, type PlannerTask, type Bucket, type Recurrence,
+  type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock,
 } from './types';
 
-type Selection = { kind: 'view'; bucket: Bucket } | { kind: 'note'; id: string } | { kind: 'calendar' };
+type Selection = { kind: 'view'; bucket: Bucket } | { kind: 'note'; id: string } | { kind: 'myday' };
 
 // Everything a list/calendar view needs to show Google events and turn to-dos
 // into time blocks. Bundled so it's one prop to thread down.
@@ -49,6 +52,9 @@ export default function PlannerModule() {
   const { user } = useAuth();
   const [notes, setNotes] = useState<PlannerNote[]>([]);
   const [tasks, setTasks] = useState<PlannerTask[]>([]);
+  const [blocks, setBlocks] = useState<PlannerTimeBlock[]>([]);
+  const [dayNotes, setDayNotes] = useState<Record<string, string>>({});
+  const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>({ kind: 'view', bucket: 'today' });
@@ -60,8 +66,16 @@ export default function PlannerModule() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    Promise.all([listNotes(user.id), listTasks(user.id)])
-      .then(([n, t]) => { if (active) { setNotes(n); setTasks(t); } })
+    Promise.all([
+      listNotes(user.id), listTasks(user.id), listTimeBlocks(user.id),
+      listDayNotes(user.id), getSettings(user.id),
+    ])
+      .then(([n, t, b, dn, s]) => {
+        if (!active) return;
+        setNotes(n); setTasks(t); setBlocks(b);
+        setDayNotes(Object.fromEntries((dn as PlannerDayNote[]).map(d => [d.day, d.body])));
+        setSettings(s);
+      })
       .catch(e => { if (active) setError(e?.message ?? 'Could not load your planner.'); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -112,7 +126,7 @@ export default function PlannerModule() {
 
   async function addTask(input: {
     title: string; note_id?: string | null; due_date?: string | null; someday?: boolean;
-    kind?: 'task' | 'heading'; sort_order?: number;
+    kind?: 'task' | 'heading'; sort_order?: number; block_id?: string | null; estimate_minutes?: number | null;
   }) {
     if (!user || !input.title.trim()) return;
     try {
@@ -178,6 +192,83 @@ export default function PlannerModule() {
 
   const cal: CalendarBridge = { gc, calVersion, onTimeBlock: timeBlock, onUnblock: unblock };
 
+  // ---- My Day: time blocks, day notes, capacity ----
+
+  async function createBlock(day: string) {
+    if (!user) return;
+    const sort = blocks.filter(b => b.day === day).length;
+    try {
+      const block = await createTimeBlock(user.id, { day, sort_order: sort });
+      setBlocks(prev => [...prev, block]);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not add a time block.'); }
+  }
+
+  async function patchBlock(id: string, patch: Partial<PlannerTimeBlock>) {
+    setBlocks(prev => prev.map(b => (b.id === id ? { ...b, ...patch } : b)));
+    try { await updateTimeBlock(id, patch); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not update the block.'); }
+  }
+
+  async function removeBlock(id: string) {
+    // Free the block's to-dos back into the day (mirrors the DB's SET NULL).
+    setBlocks(prev => prev.filter(b => b.id !== id));
+    setTasks(prev => prev.map(t => (t.block_id === id ? { ...t, block_id: null } : t)));
+    try {
+      const block = blocks.find(b => b.id === id);
+      if (block?.gcal_event_id) { try { await gc.deleteEvent(block.gcal_event_id); } catch { /* event may be gone */ } }
+      await deleteTimeBlock(id);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not delete the block.'); }
+  }
+
+  // Push a timed block out to Google Calendar as a single event spanning its
+  // range, with the block's to-dos listed in the description.
+  async function syncBlock(block: PlannerTimeBlock, tasksInBlock: PlannerTask[]) {
+    if (block.start_minute == null || block.end_minute == null) return;
+    const start = new Date(`${block.day}T00:00:00`); start.setMinutes(block.start_minute);
+    const end = new Date(`${block.day}T00:00:00`); end.setMinutes(block.end_minute);
+    const summary = block.title.trim() || 'Time block';
+    try {
+      const ev = await gc.createEvent({ summary, start: start.toISOString(), end: end.toISOString(), reminderMinutes: 10 });
+      await patchBlock(block.id, { gcal_event_id: ev.id });
+      void tasksInBlock; // (description sync is a roadmap follow-up)
+      setCalVersion(v => v + 1);
+    } catch (e) { gc.setError((e as Error).message); }
+  }
+
+  async function unsyncBlock(block: PlannerTimeBlock) {
+    try { if (block.gcal_event_id) await gc.deleteEvent(block.gcal_event_id); }
+    catch (e) { gc.setError((e as Error).message); }
+    await patchBlock(block.id, { gcal_event_id: null });
+    setCalVersion(v => v + 1);
+  }
+
+  async function saveDayNote(day: string, body: string) {
+    if (!user) return;
+    setDayNotes(prev => ({ ...prev, [day]: body }));
+    try { await apiSaveDayNote(user.id, day, body); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save the day note.'); }
+  }
+
+  async function updateCapacity(minutes: number) {
+    if (!user) return;
+    setSettings(prev => (prev ? { ...prev, daily_capacity_minutes: minutes } : prev));
+    try { const s = await updateSettings(user.id, { daily_capacity_minutes: minutes }); setSettings(s); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save your daily target.'); }
+  }
+
+  const myDayHandlers: MyDayHandlers = {
+    onAddTask: addTask,
+    onPatchTask: patchTask,
+    onDeleteTask: removeTask,
+    onCreateBlock: createBlock,
+    onUpdateBlock: patchBlock,
+    onDeleteBlock: removeBlock,
+    onSyncBlock: syncBlock,
+    onUnsyncBlock: unsyncBlock,
+    onSaveDayNote: saveDayNote,
+    onUpdateCapacity: updateCapacity,
+  };
+
   const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
 
   return (
@@ -204,13 +295,13 @@ export default function PlannerModule() {
             );
           })}
           <button
-            onClick={() => setSelection({ kind: 'calendar' })}
+            onClick={() => setSelection({ kind: 'myday' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'calendar' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+              selection.kind === 'myday' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
             }`}
           >
-            <CalendarDays className="w-4 h-4 text-sky-500" />
-            <span className="flex-1 text-left">Calendar</span>
+            <Sun className="w-4 h-4 text-amber-500" />
+            <span className="flex-1 text-left">My Day</span>
           </button>
         </nav>
 
@@ -254,8 +345,16 @@ export default function PlannerModule() {
         )}
         {loading ? (
           <div className="p-8 text-slate-400">Loading your planner…</div>
-        ) : selection.kind === 'calendar' ? (
-          <CalendarView tasks={tasks} today={today} onPatch={patchTask} cal={cal} />
+        ) : selection.kind === 'myday' ? (
+          <MyDayView
+            tasks={tasks}
+            blocks={blocks}
+            dayNotes={dayNotes}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, created_at: '', updated_at: '' }}
+            today={today}
+            cal={{ gc, calVersion }}
+            handlers={myDayHandlers}
+          />
         ) : selection.kind === 'view' ? (
           <ViewPane
             bucket={selection.bucket}

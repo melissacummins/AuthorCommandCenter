@@ -46,10 +46,51 @@ export interface PlannerTask {
   // event id, set when a to-do is placed on the calendar.
   start_at: string | null;
   gcal_event_id: string | null;
+  // The named My Day time block this to-do has been dropped into, or null when
+  // it sits loose on the day. ON DELETE SET NULL frees it back into the day.
+  block_id: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
 }
+
+// Per-user planner preferences. Currently just the daily focus-time target the
+// My Day capacity bar measures a day's planned load against.
+export interface PlannerSettings {
+  user_id: string;
+  daily_capacity_minutes: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// A freeform note attached to a single calendar day (feelings, wins, ideas),
+// keyed by day. Distinct from PlannerNote, which is a named reusable list.
+export interface PlannerDayNote {
+  user_id: string;
+  day: string; // YYYY-MM-DD
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// A named block of time on a given day ("Writing 9–11am") that groups to-dos.
+// start_minute/end_minute are minutes from local midnight; null = an
+// unscheduled bucket block. gcal_event_id links it to Google Calendar.
+export interface PlannerTimeBlock {
+  id: string;
+  user_id: string;
+  day: string; // YYYY-MM-DD
+  title: string;
+  start_minute: number | null;
+  end_minute: number | null;
+  gcal_event_id: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// Default daily focus-time target (4h) until the user sets their own.
+export const DEFAULT_DAILY_CAPACITY = 240;
 
 export const RECURRENCE_LABELS: Record<Recurrence, string> = {
   daily: 'Every day',
@@ -133,6 +174,71 @@ export function formatMinutes(mins: number | null | undefined): string {
 // Total estimated minutes across the open (not done) to-dos in a list.
 export function sumEstimate(tasks: PlannerTask[]): number {
   return tasks.reduce((sum, t) => sum + (t.kind === 'task' && !t.done ? (t.estimate_minutes ?? 0) : 0), 0);
+}
+
+// Add (or subtract) whole days to a YYYY-MM-DD string, returning YYYY-MM-DD.
+export function addDaysISO(iso: string, delta: number): string {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + delta);
+  return toISO(d);
+}
+
+// A run of consecutive YYYY-MM-DD strings, `count` long, starting `from`.
+export function dayRange(from: string, count: number): string[] {
+  return Array.from({ length: count }, (_, i) => addDaysISO(from, i));
+}
+
+// "9:30am" / "2pm" from minutes-since-midnight; null/undefined => ''.
+export function formatClock(minute: number | null | undefined): string {
+  if (minute == null) return '';
+  const h = Math.floor(minute / 60);
+  const m = minute % 60;
+  const d = new Date();
+  d.setHours(h, m, 0, 0);
+  return d.toLocaleTimeString(undefined, m ? { hour: 'numeric', minute: '2-digit' } : { hour: 'numeric' });
+}
+
+// "HH:MM" (an <input type="time"> value) -> minutes from midnight, or null.
+export function timeToMinutes(value: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value);
+  if (!m) return null;
+  return Number(m[1]) * 60 + Number(m[2]);
+}
+
+// minutes from midnight -> "HH:MM" for an <input type="time"> value.
+export function minutesToTime(minute: number | null | undefined): string {
+  if (minute == null) return '';
+  const h = Math.floor(minute / 60);
+  const m = minute % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// A block's own planned minutes: its time-range length if scheduled, otherwise
+// the sum of its to-dos' estimates (so an untimed bucket still counts).
+export function blockMinutes(block: PlannerTimeBlock, tasksInBlock: PlannerTask[]): number {
+  if (block.start_minute != null && block.end_minute != null && block.end_minute > block.start_minute) {
+    return block.end_minute - block.start_minute;
+  }
+  return sumEstimate(tasksInBlock);
+}
+
+// How many to-dos the user completed on each of the last `days` days, oldest
+// first — fed to the My Day stats sparkline. Uses done_at (local day).
+export function completionsByDay(tasks: PlannerTask[], today: string, days: number): { day: string; done: number }[] {
+  const counts: Record<string, number> = {};
+  for (const t of tasks) {
+    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
+    const d = new Date(t.done_at);
+    const iso = new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+    counts[iso] = (counts[iso] ?? 0) + 1;
+  }
+  return dayRange(addDaysISO(today, -(days - 1)), days).map(day => ({ day, done: counts[day] ?? 0 }));
+}
+
+// Short weekday + day-of-month for the date strip, e.g. { dow: 'Mon', dom: 2 }.
+export function stripLabel(iso: string): { dow: string; dom: number } {
+  const d = new Date(iso + 'T00:00:00');
+  return { dow: d.toLocaleDateString(undefined, { weekday: 'short' }), dom: d.getDate() };
 }
 
 // Friendly relative label for a due date, e.g. "Today", "Yesterday", "Overdue
