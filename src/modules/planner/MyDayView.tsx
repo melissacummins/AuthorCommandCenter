@@ -4,14 +4,13 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
-  CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
-  GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox,
+  CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Clock, Trash2, Check, Circle,
+  GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle,
 } from 'lucide-react';
-import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, Cell } from 'recharts';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import {
-  addDaysISO, blockMinutes, completionsByDay, dayRange, formatClock, formatMinutes,
+  addDaysISO, blockMinutes, dayRange, formatClock, formatMinutes,
   minutesToTime, stripLabel, timeToMinutes,
   type PlannerSettings, type PlannerTask, type PlannerTimeBlock,
 } from './types';
@@ -47,6 +46,7 @@ export default function MyDayView({
   const [selected, setSelected] = useState(today);
   // The left-most day of the visible strip; starts so today sits second-in.
   const [stripStart, setStripStart] = useState(() => addDaysISO(today, -1));
+  const [showMonth, setShowMonth] = useState(false);
   const [events, setEvents] = useState<GCalEvent[]>([]);
 
   const strip = useMemo(() => dayRange(stripStart, STRIP_DAYS), [stripStart]);
@@ -87,15 +87,34 @@ export default function MyDayView({
   const looseTasks = dayTasks.filter(t => !t.block_id);
   const looseOpen = looseTasks.filter(t => !t.done);
 
+  // Open to-dos that slipped past their day (only surfaced when viewing today,
+  // so the day-view inherits the old Today bucket's overdue behaviour).
+  const overdue = useMemo(
+    () => (selected === today
+      ? tasks.filter(t => t.kind === 'task' && !t.done && !t.someday && !!t.due_date && t.due_date < today)
+        .sort((a, b) => (a.due_date ?? '').localeCompare(b.due_date ?? ''))
+      : []),
+    [tasks, selected, today],
+  );
+
   // Capacity: timed blocks count their range; untimed blocks + loose to-dos
-  // count their estimates. (A block's to-dos aren't counted separately, so a
-  // time-blocked to-do is never double-counted.)
+  // count their estimates; and the day's *timed* Google events count too —
+  // except events already represented by a synced block or time-blocked to-do
+  // (matched by gcal_event_id), so nothing is double-counted.
   const plannedMinutes = useMemo(() => {
     let total = 0;
     for (const b of dayBlocks) total += blockMinutes(b, tasksByBlock[b.id] ?? []);
     for (const t of looseOpen) total += t.estimate_minutes ?? 0;
+    const linked = new Set<string>();
+    for (const b of dayBlocks) if (b.gcal_event_id) linked.add(b.gcal_event_id);
+    for (const t of dayTasks) if (t.gcal_event_id) linked.add(t.gcal_event_id);
+    for (const ev of events) {
+      if (ev.id && linked.has(ev.id)) continue;
+      if (!ev.start?.dateTime || !ev.end?.dateTime) continue; // skip all-day
+      total += Math.max(0, Math.round((new Date(ev.end.dateTime).getTime() - new Date(ev.start.dateTime).getTime()) / 60_000));
+    }
     return total;
-  }, [dayBlocks, tasksByBlock, looseOpen]);
+  }, [dayBlocks, tasksByBlock, looseOpen, dayTasks, events]);
 
   function handleDragEnd(e: DragEndEvent) {
     const taskId = String(e.active.id);
@@ -109,7 +128,6 @@ export default function MyDayView({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const sel = new Date(selected + 'T00:00:00');
-  const scheduledCount = dayTasks.filter(t => !t.done).length;
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
@@ -128,33 +146,54 @@ export default function MyDayView({
       )}
       {!gc.configured && <NotConfiguredCard />}
 
-      {/* Date strip */}
-      <div className="flex items-center gap-1 mb-5">
-        <button onClick={() => setStripStart(s => addDaysISO(s, -STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Earlier"><ChevronLeft className="w-4 h-4" /></button>
-        <div className="flex-1 grid grid-cols-7 gap-1">
-          {strip.map(iso => {
-            const { dow, dom } = stripLabel(iso);
-            const isSel = iso === selected;
-            const isToday = iso === today;
-            const has = tasks.some(t => t.kind === 'task' && !t.done && t.due_date === iso);
-            return (
-              <button
-                key={iso}
-                onClick={() => selectDay(iso)}
-                className={`flex flex-col items-center py-2 rounded-xl transition-colors ${
-                  isSel ? 'bg-teal-600 text-white' : isToday ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSel ? 'text-teal-100' : 'text-slate-400'}`}>{dow}</span>
-                <span className="text-lg font-bold leading-tight">{dom}</span>
-                <span className={`mt-0.5 w-1 h-1 rounded-full ${has ? (isSel ? 'bg-white' : 'bg-teal-500') : 'bg-transparent'}`} />
-              </button>
-            );
-          })}
-        </div>
-        <button onClick={() => setStripStart(s => addDaysISO(s, STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Later"><ChevronRight className="w-4 h-4" /></button>
-        <button onClick={jumpToToday} className="ml-1 text-xs font-medium text-teal-600 hover:text-teal-700 px-2 py-1 rounded-lg hover:bg-teal-50">Today</button>
+      {/* Month label (expands a full month) + Today */}
+      <div className="flex items-center justify-between mb-2">
+        <button
+          onClick={() => setShowMonth(s => !s)}
+          className="flex items-center gap-1 text-sm font-semibold text-slate-700 hover:text-teal-600"
+          title={showMonth ? 'Back to the week strip' : 'See the full month'}
+        >
+          {new Date(selected + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+          <ChevronDown className={`w-4 h-4 transition-transform ${showMonth ? 'rotate-180' : ''}`} />
+        </button>
+        <button onClick={jumpToToday} className="text-xs font-medium text-teal-600 hover:text-teal-700 px-2 py-1 rounded-lg hover:bg-teal-50">Today</button>
       </div>
+
+      {showMonth ? (
+        <MonthGrid
+          selected={selected}
+          today={today}
+          tasks={tasks}
+          onSelect={iso => { selectDay(iso); setShowMonth(false); }}
+        />
+      ) : (
+        /* Week date strip */
+        <div className="flex items-center gap-1 mb-5">
+          <button onClick={() => setStripStart(s => addDaysISO(s, -STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Earlier"><ChevronLeft className="w-4 h-4" /></button>
+          <div className="flex-1 grid grid-cols-7 gap-1">
+            {strip.map(iso => {
+              const { dow, dom } = stripLabel(iso);
+              const isSel = iso === selected;
+              const isToday = iso === today;
+              const has = tasks.some(t => t.kind === 'task' && !t.done && t.due_date === iso);
+              return (
+                <button
+                  key={iso}
+                  onClick={() => selectDay(iso)}
+                  className={`flex flex-col items-center py-2 rounded-xl transition-colors ${
+                    isSel ? 'bg-teal-600 text-white' : isToday ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSel ? 'text-teal-100' : 'text-slate-400'}`}>{dow}</span>
+                  <span className="text-lg font-bold leading-tight">{dom}</span>
+                  <span className={`mt-0.5 w-1 h-1 rounded-full ${has ? (isSel ? 'bg-white' : 'bg-teal-500') : 'bg-transparent'}`} />
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={() => setStripStart(s => addDaysISO(s, STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Later"><ChevronRight className="w-4 h-4" /></button>
+        </div>
+      )}
 
       {/* Selected-day header + capacity */}
       <div className="mb-4">
@@ -169,6 +208,36 @@ export default function MyDayView({
         <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
           {/* Schedule column */}
           <div className="space-y-4">
+            {overdue.length > 0 && (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 mb-1 flex items-center gap-1">
+                  <AlertCircle className="w-3.5 h-3.5" /> Overdue
+                </p>
+                <ul className="space-y-0.5">
+                  {overdue.map(t => (
+                    <li key={t.id} className="flex items-center gap-2 group py-1">
+                      <button
+                        onClick={() => handlers.onPatchTask(t.id, { done: true })}
+                        className="text-slate-300 hover:text-teal-600 shrink-0"
+                        title="Mark done"
+                      >
+                        <Circle className="w-4 h-4" />
+                      </button>
+                      <span className="flex-1 text-sm text-slate-700 truncate">{t.title || 'Untitled'}</span>
+                      {t.estimate_minutes ? <span className="text-xs text-slate-400 shrink-0">{formatMinutes(t.estimate_minutes)}</span> : null}
+                      <button
+                        onClick={() => handlers.onPatchTask(t.id, { due_date: today })}
+                        className="text-xs font-medium text-teal-600 hover:text-teal-700 shrink-0"
+                        title="Move to today"
+                      >
+                        → Today
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {dayBlocks.map(b => (
               <BlockCard
                 key={b.id}
@@ -209,7 +278,6 @@ export default function MyDayView({
               value={dayNotes[selected] ?? ''}
               onSave={handlers.onSaveDayNote}
             />
-            <StatsCard tasks={tasks} today={today} scheduledToday={scheduledCount} />
           </div>
         </div>
       </DndContext>
@@ -522,43 +590,82 @@ function DayNoteCard({ day, value, onSave }: { day: string; value: string; onSav
   );
 }
 
-function StatsCard({ tasks, today, scheduledToday }: { tasks: PlannerTask[]; today: string; scheduledToday: number }) {
-  const data = useMemo(() => completionsByDay(tasks, today, 14), [tasks, today]);
-  const total = data.reduce((s, d) => s + d.done, 0);
-  const avg = total / data.length;
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Last 14 days</p>
-      <div className="flex items-center gap-4 mb-2">
-        <Stat label="Scheduled today" value={scheduledToday} />
-        <Stat label="Done / day" value={avg.toFixed(1)} />
-        <Stat label="Done total" value={total} />
-      </div>
-      <div className="h-16">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 2, right: 0, bottom: 0, left: 0 }}>
-            <XAxis dataKey="day" hide />
-            <Tooltip
-              cursor={{ fill: 'rgba(20,184,166,0.08)' }}
-              contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
-              labelFormatter={d => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-              formatter={(v: number) => [`${v} done`, '']}
-            />
-            <Bar dataKey="done" radius={[2, 2, 0, 0]}>
-              {data.map(d => <Cell key={d.day} fill={d.day === today ? '#0d9488' : '#99f6e4'} />)}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
-  );
+// ---------------------------------------------------------------------------
+// Month grid (expandable full-month overview)
+// ---------------------------------------------------------------------------
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function isoOf(d: Date): string {
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
 }
 
-function Stat({ label, value }: { label: string; value: number | string }) {
+// 42-cell (6-week) grid starting on the Sunday on/before the 1st of the month.
+function monthCells(year: number, month: number): Date[] {
+  const first = new Date(year, month, 1);
+  const start = new Date(first);
+  start.setDate(first.getDate() - first.getDay());
+  return Array.from({ length: 42 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return d;
+  });
+}
+
+function MonthGrid({
+  selected, today, tasks, onSelect,
+}: {
+  selected: string;
+  today: string;
+  tasks: PlannerTask[];
+  onSelect: (iso: string) => void;
+}) {
+  const [cursor, setCursor] = useState(() => {
+    const d = new Date(selected + 'T00:00:00');
+    return { y: d.getFullYear(), m: d.getMonth() };
+  });
+  const cells = monthCells(cursor.y, cursor.m);
+  const monthName = new Date(cursor.y, cursor.m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const daysWithTasks = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of tasks) if (t.kind === 'task' && !t.done && t.due_date) s.add(t.due_date);
+    return s;
+  }, [tasks]);
+
+  function shift(delta: number) {
+    setCursor(c => { const d = new Date(c.y, c.m + delta, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
+  }
+
   return (
-    <div>
-      <div className="text-lg font-bold text-slate-800 leading-none">{value}</div>
-      <div className="text-[10px] uppercase tracking-wide text-slate-400 mt-0.5">{label}</div>
+    <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-3">
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={() => shift(-1)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><ChevronLeft className="w-4 h-4" /></button>
+        <span className="text-sm font-semibold text-slate-700">{monthName}</span>
+        <button onClick={() => shift(1)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><ChevronRight className="w-4 h-4" /></button>
+      </div>
+      <div className="grid grid-cols-7 gap-1 mb-1">
+        {WEEKDAYS.map(w => <div key={w} className="text-center text-[10px] font-semibold uppercase text-slate-400">{w}</div>)}
+      </div>
+      <div className="grid grid-cols-7 gap-1">
+        {cells.map(d => {
+          const iso = isoOf(d);
+          const inMonth = d.getMonth() === cursor.m;
+          const isToday = iso === today;
+          const isSel = iso === selected;
+          const has = daysWithTasks.has(iso);
+          return (
+            <button
+              key={iso}
+              onClick={() => onSelect(iso)}
+              className={`relative aspect-square rounded-lg text-sm flex items-center justify-center transition-colors
+                ${isSel ? 'bg-teal-600 text-white font-semibold' : isToday ? 'bg-teal-50 text-teal-700 font-semibold' : inMonth ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-50'}`}
+            >
+              {d.getDate()}
+              {has && <span className={`absolute bottom-1 w-1 h-1 rounded-full ${isSel ? 'bg-white' : 'bg-teal-500'}`} />}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
