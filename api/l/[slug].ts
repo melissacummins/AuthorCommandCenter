@@ -419,6 +419,8 @@ interface LandingPageRow {
   reviews: LpReview[] | null;
   series_page_id?: string | null;
   cross_sell_label?: string | null;
+  sample_url?: string | null;
+  sample_label?: string | null;
   theme: string | null;
   accent_color: string | null;
 }
@@ -447,6 +449,14 @@ function renderLandingPage(page: LandingPageRow, faviconUrl: string | null = nul
   const storeHtml = buttons.map((b) =>
     `<a class="store" href="${escapeHtml(b.url)}" rel="noopener nofollow" title="${escapeHtml(b.label)}" aria-label="${escapeHtml(b.label)}"><img src="${escapeHtml(lpRetailerIcon(b.label, b.url))}" alt="${escapeHtml(b.label)}" loading="lazy" onerror="${ICON_ONERR}" /></a>`,
   ).join('');
+  const sampleUrl = (page.sample_url || '').trim();
+  const sampleLabel = (page.sample_label || '').trim() || 'Read a sample';
+  const sampleHtml = sampleUrl
+    ? `<a class="sample" href="${escapeHtml(sampleUrl)}" rel="noopener" target="_blank">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16a2 2 0 0 0-2-2H2z"/><path d="M22 4a2 2 0 0 0-2-2h-6a2 2 0 0 0-2 2v16a2 2 0 0 1 2-2h8z"/></svg>
+        <span>${escapeHtml(sampleLabel)}</span>
+      </a>`
+    : '';
   const reviews = (Array.isArray(page.reviews) ? page.reviews : [])
     .filter((r) => r && typeof r.quote === 'string' && r.quote.trim());
   const reviewsHtml = reviews.map((r) => {
@@ -504,6 +514,9 @@ body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sy
 .store{display:inline-grid;place-items:center;width:54px;height:54px;border-radius:13px;border:1px solid var(--border);background:var(--surface);text-decoration:none;transition:border-color 120ms ease,transform 120ms ease}
 .store:hover{border-color:var(--accent);transform:translateY(-2px)}
 .store img{width:28px;height:28px;display:block}
+.sample{display:inline-flex;align-items:center;gap:8px;margin-top:16px;padding:9px 16px;border-radius:999px;border:1px solid var(--border);background:transparent;color:var(--text);text-decoration:none;font-size:14px;font-weight:600;transition:border-color 120ms ease,color 120ms ease}
+.sample:hover{border-color:var(--accent);color:var(--accent)}
+.sample svg{display:block}
 .reviews{margin-top:34px;display:flex;flex-direction:column;gap:18px;clear:both}
 .review{margin:0;padding:18px 20px;border-radius:14px;border:1px solid var(--border);background:var(--surface)}
 .review-stars{display:block;font-size:15px;letter-spacing:.12em;color:var(--accent);line-height:1}
@@ -530,6 +543,7 @@ body{min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sy
   ${heroHtml}
   ${body ? `<div class="desc">${formatText(body)}</div>` : ''}
   ${storeHtml ? `<div class="stores">${storeHtml}</div>` : ''}
+  ${sampleHtml}
   ${reviewsHtml ? `<section class="reviews" aria-label="Reader reviews">${reviewsHtml}</section>` : ''}
   ${crossSellHtml}
 </main>
@@ -729,7 +743,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Not a short link — it might be a landing page (shared slug namespace).
       let pageQuery = supabase
         .from('landing_pages')
-        .select('id, slug, title, headline, description, page_text_mode, page_text_custom, cover_image_url, buttons, reviews, series_page_id, cross_sell_label, theme, accent_color')
+        .select('id, slug, title, headline, description, page_text_mode, page_text_custom, cover_image_url, buttons, reviews, series_page_id, cross_sell_label, sample_url, sample_label, theme, accent_color')
         .eq('slug', slug);
       if (ownerId) pageQuery = pageQuery.eq('user_id', ownerId);
       const { data: page } = await pageQuery.maybeSingle();

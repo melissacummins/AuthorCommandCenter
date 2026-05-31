@@ -125,6 +125,8 @@ export interface LandingPage {
   reviews: ReviewItem[];
   series_page_id: string | null;
   cross_sell_label: CrossSellLabel;
+  sample_url: string | null;
+  sample_label: string;
   theme: string | null;
   accent_color: string | null;
   created_at: string;
@@ -144,6 +146,8 @@ export type LandingPageInsert = {
   reviews?: ReviewItem[];
   series_page_id?: string | null;
   cross_sell_label?: CrossSellLabel;
+  sample_url?: string | null;
+  sample_label?: string;
   theme?: string;
   accent_color?: string | null;
 };

@@ -55,6 +55,8 @@ interface DraftState {
   reviews: ReviewItem[];
   seriesPageId: string | null;
   crossSellLabel: CrossSellLabel;
+  sampleUrl: string;
+  sampleLabel: string;
   theme: string;
   accentColor: string | null;
 }
@@ -63,6 +65,7 @@ const EMPTY_DRAFT: DraftState = {
   slug: '', sourceUrl: '', title: '', headline: '', description: '',
   pageTextMode: 'description', pageTextCustom: '', coverUrl: '',
   buttons: [], reviews: [], seriesPageId: null, crossSellLabel: 'series',
+  sampleUrl: '', sampleLabel: 'Read a sample',
   theme: DEFAULT_BIO_THEME, accentColor: null,
 };
 
@@ -197,6 +200,8 @@ function LandingPageEditor({
           reviews: Array.isArray(page.reviews) ? page.reviews : [],
           seriesPageId: page.series_page_id ?? null,
           crossSellLabel: page.cross_sell_label ?? 'series',
+          sampleUrl: page.sample_url ?? '',
+          sampleLabel: page.sample_label || 'Read a sample',
           theme: page.theme ?? DEFAULT_BIO_THEME,
           accentColor: page.accent_color ?? null,
         }
@@ -319,6 +324,8 @@ function LandingPageEditor({
         reviews,
         series_page_id: draft.seriesPageId,
         cross_sell_label: draft.crossSellLabel,
+        sample_url: draft.sampleUrl.trim() ? normalizeUrl(draft.sampleUrl) : null,
+        sample_label: draft.sampleLabel.trim() || 'Read a sample',
         theme: draft.theme,
         accent_color: draft.accentColor,
       };
@@ -502,6 +509,25 @@ function LandingPageEditor({
             </div>
           )}
         </div>
+
+        {/* Sample link */}
+        <Field label="Sample link" hint="Paste a link to a sample or first chapter (BookFunnel, Prolific Works, your own PDF…). Shows below the retailers.">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px] gap-2">
+            <input
+              value={draft.sampleUrl}
+              onChange={(e) => set('sampleUrl', e.target.value)}
+              placeholder="https://…"
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            />
+            <input
+              value={draft.sampleLabel}
+              onChange={(e) => set('sampleLabel', e.target.value)}
+              placeholder="Read a sample"
+              disabled={!draft.sampleUrl.trim()}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-50 disabled:text-slate-400"
+            />
+          </div>
+        </Field>
 
         {/* Reviews */}
         <div>
