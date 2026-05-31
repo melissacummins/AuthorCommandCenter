@@ -4,19 +4,16 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
-  CalendarDays, ChevronLeft, ChevronRight, ChevronDown, Plus, Clock, Trash2, Check, Circle,
-  GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle,
+  CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
+  GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import {
-  addDaysISO, blockMinutes, dayRange, formatClock, formatMinutes,
-  minutesToTime, stripLabel, timeToMinutes,
+  addDaysISO, blockMinutes, formatClock, formatMinutes,
+  minutesToTime, timeToMinutes,
   type PlannerSettings, type PlannerTask, type PlannerTimeBlock,
 } from './types';
-
-// How many days the date strip shows at once, and where "today" sits in it.
-const STRIP_DAYS = 7;
 
 export interface MyDayHandlers {
   onAddTask: (input: { title: string; due_date: string; block_id?: string | null; estimate_minutes?: number | null }) => void;
@@ -44,12 +41,8 @@ export default function MyDayView({
 }) {
   const { gc, calVersion } = cal;
   const [selected, setSelected] = useState(today);
-  // The left-most day of the visible strip; starts so today sits second-in.
-  const [stripStart, setStripStart] = useState(() => addDaysISO(today, -1));
   const [showMonth, setShowMonth] = useState(false);
   const [events, setEvents] = useState<GCalEvent[]>([]);
-
-  const strip = useMemo(() => dayRange(stripStart, STRIP_DAYS), [stripStart]);
 
   // Load the selected day's Google events (re-runs when a block is synced).
   const loadEvents = useCallback(async () => {
@@ -61,11 +54,8 @@ export default function MyDayView({
   }, [selected, gc.connected, gc.calendarId, gc.fetchEvents, calVersion]);
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
-  function jumpToToday() { setSelected(today); setStripStart(addDaysISO(today, -1)); }
-  function selectDay(iso: string) {
-    setSelected(iso);
-    if (iso < strip[0] || iso > strip[strip.length - 1]) setStripStart(addDaysISO(iso, -1));
-  }
+  function goToDay(iso: string) { setSelected(iso); setShowMonth(false); }
+  function shiftDay(delta: number) { setSelected(s => addDaysISO(s, delta)); }
 
   // The day's blocks, and the to-dos that live on the day.
   const dayBlocks = useMemo(
@@ -86,6 +76,27 @@ export default function MyDayView({
   // to-do in a block shows only inside that block, never also here.
   const looseTasks = dayTasks.filter(t => !t.block_id);
   const looseOpen = looseTasks.filter(t => !t.done);
+
+  // The local YYYY-MM-DD a to-do "belongs" to for navigation/recall: its due
+  // day, else the day it was completed.
+  function taskDay(t: PlannerTask): string | null {
+    if (t.due_date) return t.due_date;
+    if (t.done_at) { const d = new Date(t.done_at); return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10); }
+    return null;
+  }
+
+  // Days that saw activity — something due, something finished, or a time
+  // block — so the month can dot the days you actually worked.
+  const activeDays = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of tasks) {
+      if (t.kind !== 'task') continue;
+      const d = taskDay(t);
+      if (d) s.add(d);
+    }
+    for (const b of blocks) s.add(b.day);
+    return s;
+  }, [tasks, blocks]);
 
   // Open to-dos that slipped past their day (only surfaced when viewing today,
   // so the day-view inherits the old Today bucket's overdue behaviour).
@@ -146,66 +157,51 @@ export default function MyDayView({
       )}
       {!gc.configured && <NotConfiguredCard />}
 
-      {/* Month label opens a floating month picker (doesn't push the day down) */}
-      <div className="relative flex items-center justify-between mb-2">
-        <button
-          onClick={() => setShowMonth(s => !s)}
-          className="flex items-center gap-1 text-sm font-semibold text-slate-700 hover:text-teal-600"
-          title={showMonth ? 'Close month' : 'Pick from the full month'}
-        >
-          {new Date(selected + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-          <ChevronDown className={`w-4 h-4 transition-transform ${showMonth ? 'rotate-180' : ''}`} />
-        </button>
-        <button onClick={jumpToToday} className="text-xs font-medium text-teal-600 hover:text-teal-700 px-2 py-1 rounded-lg hover:bg-teal-50">Today</button>
-        {showMonth && (
-          <>
-            <div className="fixed inset-0 z-30" onClick={() => setShowMonth(false)} />
-            <div className="absolute left-0 top-full mt-1 z-40 w-80 max-w-[calc(100vw-3rem)] rounded-2xl shadow-xl">
-              <MonthGrid
-                selected={selected}
-                today={today}
-                tasks={tasks}
-                onSelect={iso => { selectDay(iso); setShowMonth(false); }}
-              />
-            </div>
-          </>
-        )}
-      </div>
+      {/* Search any task and jump to the day it's on / was done */}
+      <TaskSearch tasks={tasks} taskDay={taskDay} onJump={goToDay} />
 
-      {/* Week date strip (always visible) */}
-      <div className="flex items-center gap-1 mb-5">
-        <button onClick={() => setStripStart(s => addDaysISO(s, -STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Earlier"><ChevronLeft className="w-4 h-4" /></button>
-        <div className="flex-1 grid grid-cols-7 gap-1">
-          {strip.map(iso => {
-            const { dow, dom } = stripLabel(iso);
-            const isSel = iso === selected;
-            const isToday = iso === today;
-            const has = tasks.some(t => t.kind === 'task' && !t.done && t.due_date === iso);
-            return (
-              <button
-                key={iso}
-                onClick={() => selectDay(iso)}
-                className={`flex flex-col items-center py-2 rounded-xl transition-colors ${
-                  isSel ? 'bg-teal-600 text-white' : isToday ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-100'
-                }`}
-              >
-                <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSel ? 'text-teal-100' : 'text-slate-400'}`}>{dow}</span>
-                <span className="text-lg font-bold leading-tight">{dom}</span>
-                <span className={`mt-0.5 w-1 h-1 rounded-full ${has ? (isSel ? 'bg-white' : 'bg-teal-500') : 'bg-transparent'}`} />
-              </button>
-            );
-          })}
-        </div>
-        <button onClick={() => setStripStart(s => addDaysISO(s, STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Later"><ChevronRight className="w-4 h-4" /></button>
-      </div>
-
-      {/* Selected-day header + capacity */}
+      {/* Marvin-style day navigator: a big day number with Previous · 📅 · Next.
+          The calendar button swaps the number for the full month so you can
+          land on any day — with dots on the days you actually worked. */}
       <div className="mb-4">
-        <h3 className="text-lg font-bold text-slate-800">
-          {sel.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-          {selected === today && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-teal-600">Today</span>}
-        </h3>
-        <CapacityBar planned={plannedMinutes} target={settings.daily_capacity_minutes} onSetTarget={handlers.onUpdateCapacity} />
+        {showMonth ? (
+          <MonthGrid selected={selected} today={today} activeDays={activeDays} onSelect={goToDay} />
+        ) : (
+          <button onClick={() => setShowMonth(true)} className="block w-full text-center group" title="Open the month">
+            <div className="text-base font-medium text-slate-500">{sel.toLocaleDateString(undefined, { weekday: 'long' })}</div>
+            <div className="text-6xl font-bold text-slate-800 leading-none my-1 group-hover:text-teal-600 transition-colors">{sel.getDate()}</div>
+            <div className="text-sm text-slate-400">
+              {sel.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+              {selected === today && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-teal-600">Today</span>}
+            </div>
+          </button>
+        )}
+
+        <div className="flex items-center justify-center gap-6 mt-3">
+          <button onClick={() => shiftDay(-1)} className="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-teal-600">
+            <ChevronLeft className="w-4 h-4" /> Previous
+          </button>
+          <button
+            onClick={() => setShowMonth(s => !s)}
+            className={`p-2 rounded-lg transition-colors ${showMonth ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:bg-slate-100 hover:text-teal-600'}`}
+            title={showMonth ? 'Back to the day' : 'Pick a day from the month'}
+          >
+            <CalendarDays className="w-5 h-5" />
+          </button>
+          <button onClick={() => shiftDay(1)} className="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-teal-600">
+            Next <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {selected !== today && (
+          <div className="text-center mt-1">
+            <button onClick={() => goToDay(today)} className="text-xs font-medium text-teal-600 hover:text-teal-700">Jump to today</button>
+          </div>
+        )}
+
+        <div className="mt-3">
+          <CapacityBar planned={plannedMinutes} target={settings.daily_capacity_minutes} onSetTarget={handlers.onUpdateCapacity} />
+        </div>
       </div>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -617,11 +613,11 @@ function monthCells(year: number, month: number): Date[] {
 }
 
 function MonthGrid({
-  selected, today, tasks, onSelect,
+  selected, today, activeDays, onSelect,
 }: {
   selected: string;
   today: string;
-  tasks: PlannerTask[];
+  activeDays: Set<string>;
   onSelect: (iso: string) => void;
 }) {
   const [cursor, setCursor] = useState(() => {
@@ -630,11 +626,6 @@ function MonthGrid({
   });
   const cells = monthCells(cursor.y, cursor.m);
   const monthName = new Date(cursor.y, cursor.m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
-  const daysWithTasks = useMemo(() => {
-    const s = new Set<string>();
-    for (const t of tasks) if (t.kind === 'task' && !t.done && t.due_date) s.add(t.due_date);
-    return s;
-  }, [tasks]);
 
   function shift(delta: number) {
     setCursor(c => { const d = new Date(c.y, c.m + delta, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
@@ -656,7 +647,7 @@ function MonthGrid({
           const inMonth = d.getMonth() === cursor.m;
           const isToday = iso === today;
           const isSel = iso === selected;
-          const has = daysWithTasks.has(iso);
+          const has = activeDays.has(iso);
           return (
             <button
               key={iso}
@@ -677,6 +668,68 @@ function MonthGrid({
 // ---------------------------------------------------------------------------
 // Small shared bits
 // ---------------------------------------------------------------------------
+
+// Search every to-do by title and jump to the day it lives on (or was done) —
+// so when you've lost track of when something happened, you can find it and
+// land on that day's schedule.
+function TaskSearch({
+  tasks, taskDay, onJump,
+}: {
+  tasks: PlannerTask[];
+  taskDay: (t: PlannerTask) => string | null;
+  onJump: (iso: string) => void;
+}) {
+  const [q, setQ] = useState('');
+  const results = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return [];
+    return tasks.filter(t => t.kind === 'task' && (t.title || '').toLowerCase().includes(s)).slice(0, 12);
+  }, [q, tasks]);
+
+  return (
+    <div className="relative mb-4">
+      <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-4 py-2">
+        <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Search tasks…"
+          className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+        />
+        {q && <button onClick={() => setQ('')} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>}
+      </div>
+      {q.trim() && (
+        <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-80 overflow-y-auto">
+          {results.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-slate-400">No matching tasks.</p>
+          ) : (
+            <ul className="py-1">
+              {results.map(t => {
+                const day = taskDay(t);
+                return (
+                  <li key={t.id}>
+                    <button
+                      disabled={!day}
+                      onClick={() => { if (day) { onJump(day); setQ(''); } }}
+                      className={`w-full text-left px-4 py-2 flex items-center gap-2 ${day ? 'hover:bg-slate-50' : 'opacity-60 cursor-default'}`}
+                      title={day ? 'Go to this day' : 'No date — schedule it to navigate'}
+                    >
+                      {t.done
+                        ? <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                        : <Circle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
+                      <span className={`flex-1 text-sm truncate ${t.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{t.title || 'Untitled'}</span>
+                      {day && <span className="text-xs text-slate-400 shrink-0">{new Date(day + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function QuickAddTask({ onAdd }: { onAdd: (title: string) => void }) {
   const [value, setValue] = useState('');
