@@ -22,6 +22,7 @@ import MediaModule from './modules/media/MediaModule';
 import SocialMediaModule from './modules/social-media/SocialMediaModule';
 import SettingsModule from './modules/settings/SettingsModule';
 import TimelineModule from './modules/timeline/TimelineModule';
+import PlannerModule from './modules/planner/PlannerModule';
 import ShopifyCallback from './modules/orders/components/ShopifyCallback';
 
 // Maps each gateable module key to its route element. Keys match GATED_MODULES.
@@ -72,6 +73,9 @@ function ProtectedRoutes() {
           {GATED_MODULES.filter(m => visibleModules.has(m.key)).map(m => (
             <Route key={m.key} path={m.path.replace(/^\//, '')} element={GATED_ELEMENTS[m.key]} />
           ))}
+          {/* Planner is always available (like Home/Settings) — it's a personal
+              tool, not a sellable area, so it isn't gated and costs no module slot. */}
+          <Route path="planner" element={<PlannerModule />} />
           <Route path="settings" element={<SettingsModule />} />
           <Route path="shopify/callback" element={<ShopifyCallback />} />
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,0 +1,1017 @@
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
+  CalendarClock, Layers, Sparkles, Moon, Inbox, X, GripVertical,
+  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off,
+} from 'lucide-react';
+import CalendarView from './CalendarView';
+import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
+import type { GCalEvent } from './google';
+import {
+  listNotes, createNote, updateNote, deleteNote,
+  listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
+} from './api';
+import {
+  bucketForTask, checklistProgress, formatDue, formatMinutes, nextDueDate, sumEstimate, todayISO,
+  ESTIMATE_PRESETS, RECURRENCE_LABELS,
+  type ChecklistItem, type PlannerNote, type PlannerTask, type Bucket, type Recurrence,
+} from './types';
+
+type Selection = { kind: 'view'; bucket: Bucket } | { kind: 'note'; id: string } | { kind: 'calendar' };
+
+// Everything a list/calendar view needs to show Google events and turn to-dos
+// into time blocks. Bundled so it's one prop to thread down.
+interface CalendarBridge {
+  gc: UseGoogleCalendar;
+  calVersion: number;
+  onTimeBlock: (task: PlannerTask, time: string) => void;
+  onUnblock: (task: PlannerTask) => void;
+}
+
+const VIEWS: { bucket: Bucket; label: string; icon: typeof Inbox; color: string }[] = [
+  { bucket: 'today',    label: 'Today',    icon: Sparkles,      color: 'text-amber-500' },
+  { bucket: 'upcoming', label: 'Upcoming', icon: CalendarClock, color: 'text-rose-500' },
+  { bucket: 'anytime',  label: 'Anytime',  icon: Layers,        color: 'text-teal-600' },
+  { bucket: 'someday',  label: 'Someday',  icon: Moon,          color: 'text-indigo-500' },
+];
+
+export default function PlannerModule() {
+  const { user } = useAuth();
+  const [notes, setNotes] = useState<PlannerNote[]>([]);
+  const [tasks, setTasks] = useState<PlannerTask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<Selection>({ kind: 'view', bucket: 'today' });
+  const today = todayISO();
+  const gc = useGoogleCalendar();
+  // Bumped whenever a time block is added/removed so the views re-fetch events.
+  const [calVersion, setCalVersion] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    Promise.all([listNotes(user.id), listTasks(user.id)])
+      .then(([n, t]) => { if (active) { setNotes(n); setTasks(t); } })
+      .catch(e => { if (active) setError(e?.message ?? 'Could not load your planner.'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [user]);
+
+  const notesById = useMemo(() => Object.fromEntries(notes.map(n => [n.id, n])), [notes]);
+  const openCountByNote = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const t of tasks) if (t.note_id && t.kind === 'task' && !t.done) m[t.note_id] = (m[t.note_id] ?? 0) + 1;
+    return m;
+  }, [tasks]);
+
+  const viewCounts = useMemo(() => {
+    const c: Record<Bucket, number> = { today: 0, upcoming: 0, anytime: 0, someday: 0 };
+    for (const t of tasks) if (t.kind === 'task' && !t.done) c[bucketForTask(t, today)]++;
+    return c;
+  }, [tasks, today]);
+
+  // ---- mutations (optimistic where it helps responsiveness) ----
+
+  async function handleNewNote() {
+    if (!user) return;
+    try {
+      const note = await createNote(user.id, '');
+      setNotes(prev => [note, ...prev]);
+      setSelection({ kind: 'note', id: note.id });
+    } catch (e) { setError((e as Error)?.message ?? 'Could not create note.'); }
+  }
+
+  function patchNoteLocal(id: string, patch: Partial<PlannerNote>) {
+    setNotes(prev => prev.map(n => (n.id === id ? { ...n, ...patch } : n)));
+  }
+
+  async function saveNote(id: string, patch: Partial<PlannerNote>) {
+    patchNoteLocal(id, patch);
+    try { await updateNote(id, patch); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save note.'); }
+  }
+
+  async function removeNote(id: string) {
+    if (!confirm('Delete this note and its checklist? This can’t be undone.')) return;
+    setNotes(prev => prev.filter(n => n.id !== id));
+    setTasks(prev => prev.filter(t => t.note_id !== id));
+    setSelection({ kind: 'view', bucket: 'today' });
+    try { await deleteNote(id); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not delete note.'); }
+  }
+
+  async function addTask(input: {
+    title: string; note_id?: string | null; due_date?: string | null; someday?: boolean;
+    kind?: 'task' | 'heading'; sort_order?: number;
+  }) {
+    if (!user || !input.title.trim()) return;
+    try {
+      const task = await createTask(user.id, { ...input, title: input.title.trim() });
+      setTasks(prev => [...prev, task]);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not add item.'); }
+  }
+
+  async function patchTask(id: string, patch: Partial<PlannerTask>) {
+    // Completing a recurring to-do rolls it forward to the next occurrence
+    // (and resets its checklist) instead of finishing it.
+    const task = tasks.find(t => t.id === id);
+    let effective = patch;
+    if (patch.done === true && task?.recurrence && task.due_date) {
+      effective = {
+        done: false,
+        due_date: nextDueDate(task.due_date, task.recurrence),
+        checklist: (task.checklist ?? []).map(i => ({ ...i, done: false })),
+      };
+    }
+    setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...effective } : t)));
+    try { await updateTask(id, effective); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not update item.'); }
+  }
+
+  async function removeTask(id: string) {
+    setTasks(prev => prev.filter(t => t.id !== id));
+    try { await deleteTask(id); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not delete item.'); }
+  }
+
+  async function reorder(updates: { id: string; sort_order: number }[]) {
+    setTasks(prev => {
+      const byId = new Map(updates.map(u => [u.id, u.sort_order]));
+      return prev.map(t => (byId.has(t.id) ? { ...t, sort_order: byId.get(t.id)! } : t));
+    });
+    try { await reorderTasks(updates); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save the new order.'); }
+  }
+
+  // ---- calendar time-blocking (shared by the Calendar tab and the lists) ----
+
+  async function timeBlock(task: PlannerTask, time: string) {
+    const dateISO = task.due_date ?? today;
+    const start = new Date(`${dateISO}T${time}:00`);
+    const minutes = task.estimate_minutes ?? 30;
+    const end = new Date(start.getTime() + minutes * 60_000);
+    try {
+      const ev = await gc.createEvent({
+        summary: task.title, start: start.toISOString(), end: end.toISOString(), reminderMinutes: 10,
+      });
+      await patchTask(task.id, { start_at: start.toISOString(), gcal_event_id: ev.id, due_date: dateISO, someday: false });
+      setCalVersion(v => v + 1);
+    } catch (e) { gc.setError((e as Error).message); }
+  }
+
+  async function unblock(task: PlannerTask) {
+    try { if (task.gcal_event_id) await gc.deleteEvent(task.gcal_event_id); }
+    catch (e) { gc.setError((e as Error).message); }
+    await patchTask(task.id, { start_at: null, gcal_event_id: null });
+    setCalVersion(v => v + 1);
+  }
+
+  const cal: CalendarBridge = { gc, calVersion, onTimeBlock: timeBlock, onUnblock: unblock };
+
+  const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
+
+  return (
+    <div className="flex h-full min-h-0">
+      {/* Left rail: smart views + notes */}
+      <aside className="w-64 shrink-0 border-r border-slate-200 bg-slate-50/60 flex flex-col overflow-y-auto">
+        <nav className="p-3 space-y-1">
+          {VIEWS.map(v => {
+            const Icon = v.icon;
+            const active = selection.kind === 'view' && selection.bucket === v.bucket;
+            const count = viewCounts[v.bucket];
+            return (
+              <button
+                key={v.bucket}
+                onClick={() => setSelection({ kind: 'view', bucket: v.bucket })}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${v.color}`} />
+                <span className="flex-1 text-left">{v.label}</span>
+                {count > 0 && <span className="text-xs text-slate-400 font-medium">{count}</span>}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setSelection({ kind: 'calendar' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'calendar' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <CalendarDays className="w-4 h-4 text-sky-500" />
+            <span className="flex-1 text-left">Calendar</span>
+          </button>
+        </nav>
+
+        <div className="px-4 pt-3 pb-1 flex items-center justify-between">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Notes</span>
+          <button onClick={handleNewNote} className="text-slate-400 hover:text-teal-600" title="New note">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        <nav className="px-3 pb-4 space-y-1">
+          {notes.length === 0 && (
+            <p className="px-3 py-2 text-xs text-slate-400">No notes yet. Hit + to name one out.</p>
+          )}
+          {notes.map(n => {
+            const active = selection.kind === 'note' && selection.id === n.id;
+            const open = openCountByNote[n.id] ?? 0;
+            return (
+              <button
+                key={n.id}
+                onClick={() => setSelection({ kind: 'note', id: n.id })}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+                }`}
+              >
+                {n.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                <span className="flex-1 text-left truncate">{n.title.trim() || 'Untitled note'}</span>
+                {open > 0 && <span className="text-xs text-slate-400">{open}</span>}
+              </button>
+            );
+          })}
+        </nav>
+      </aside>
+
+      {/* Detail */}
+      <section className="flex-1 min-w-0 overflow-y-auto">
+        {error && (
+          <div className="m-4 flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">
+            <span className="flex-1">{error}</span>
+            <button onClick={() => setError(null)}><X className="w-4 h-4" /></button>
+          </div>
+        )}
+        {loading ? (
+          <div className="p-8 text-slate-400">Loading your planner…</div>
+        ) : selection.kind === 'calendar' ? (
+          <CalendarView tasks={tasks} today={today} onPatch={patchTask} cal={cal} />
+        ) : selection.kind === 'view' ? (
+          <ViewPane
+            bucket={selection.bucket}
+            tasks={tasks}
+            today={today}
+            notesById={notesById}
+            onAdd={addTask}
+            onPatch={patchTask}
+            onDelete={removeTask}
+            onOpenNote={id => setSelection({ kind: 'note', id })}
+            cal={cal}
+          />
+        ) : selectedNote ? (
+          <NotePane
+            key={selectedNote.id}
+            note={selectedNote}
+            tasks={tasks.filter(t => t.note_id === selectedNote.id)}
+            today={today}
+            onSaveNote={saveNote}
+            onDeleteNote={removeNote}
+            onAdd={addTask}
+            onPatch={patchTask}
+            onDelete={removeTask}
+            onReorder={reorder}
+          />
+        ) : (
+          <div className="p-8 text-slate-400">Select a note or view.</div>
+        )}
+      </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Smart views
+// ---------------------------------------------------------------------------
+
+function ViewPane({
+  bucket, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
+}: {
+  bucket: Bucket;
+  tasks: PlannerTask[];
+  today: string;
+  notesById: Record<string, PlannerNote>;
+  onAdd: (i: { title: string; due_date?: string | null; someday?: boolean }) => void;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+  onOpenNote: (id: string) => void;
+  cal: CalendarBridge;
+}) {
+  const meta = VIEWS.find(v => v.bucket === bucket)!;
+  const Icon = meta.icon;
+  const [draft, setDraft] = useState('');
+  const { gc, calVersion, onTimeBlock, onUnblock } = cal;
+  const [eventsByDay, setEventsByDay] = useState<Record<string, GCalEvent[]>>({});
+
+  const items = tasks
+    .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
+    .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
+
+  // Pull Google events for the day (Today) or the day range (Upcoming) so they
+  // can sit alongside the to-dos. Other buckets have no dates, so no events.
+  const dueDates = items.map(t => t.due_date!).filter(Boolean);
+  const rangeMin = bucket === 'today' ? today : dueDates[0];
+  const rangeMax = bucket === 'today' ? today : dueDates[dueDates.length - 1];
+  const wantsEvents = gc.connected && (bucket === 'today' || (bucket === 'upcoming' && dueDates.length > 0));
+  const rangeKey = wantsEvents ? `${rangeMin}_${rangeMax}` : '';
+
+  useEffect(() => {
+    if (!wantsEvents) { setEventsByDay({}); return; }
+    let active = true;
+    const start = new Date(rangeMin + 'T00:00:00');
+    const end = new Date(rangeMax + 'T00:00:00'); end.setDate(end.getDate() + 1);
+    gc.fetchEvents(start.toISOString(), end.toISOString()).then(evs => {
+      if (!active) return;
+      const byDay: Record<string, GCalEvent[]> = {};
+      for (const ev of evs) {
+        const iso = eventDayISO(ev);
+        if (iso) (byDay[iso] ??= []).push(ev);
+      }
+      setEventsByDay(byDay);
+    });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeKey, gc.connected, gc.calendarId, gc.fetchEvents, calVersion, wantsEvents]);
+
+  const addDefaults =
+    bucket === 'today' ? { due_date: today } :
+    bucket === 'someday' ? { someday: true } :
+    {};
+
+  function noteNameFor(t: PlannerTask) {
+    return t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled note') : undefined;
+  }
+
+  function renderRow(t: PlannerTask) {
+    return (
+      <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
+        onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
+        onPatch={onPatch} onDelete={onDelete} showSchedule
+        calConnected={gc.connected}
+        onTimeBlock={time => onTimeBlock(t, time)}
+        onUnblock={() => onUnblock(t)} />
+    );
+  }
+
+  const totalMinutes = sumEstimate(items);
+
+  return (
+    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+      <div className="flex items-center gap-3 mb-6">
+        <Icon className={`w-6 h-6 ${meta.color}`} />
+        <h2 className="text-2xl font-bold text-slate-800">{meta.label}</h2>
+        {(bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
+          <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-slate-500">
+            <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
+          </span>
+        )}
+      </div>
+
+      <QuickAdd
+        value={draft}
+        onChange={setDraft}
+        placeholder={`Add to ${meta.label}…`}
+        onSubmit={() => { onAdd({ title: draft, ...addDefaults }); setDraft(''); }}
+      />
+
+      {bucket === 'today' && <DayEventsStrip events={eventsByDay[today]} />}
+
+      {items.length === 0 ? (
+        <p className="text-sm text-slate-400 mt-4">Nothing here right now.</p>
+      ) : bucket === 'upcoming' ? (
+        // Group by day, like the Things "Upcoming" list.
+        <div className="mt-4 space-y-5">
+          {groupByDay(items).map(group => (
+            <div key={group.date}>
+              <DayHeader date={group.date} today={today} totalMinutes={sumEstimate(group.items)} />
+              <DayEventsStrip events={eventsByDay[group.date]} />
+              <ul className="divide-y divide-slate-100">
+                {group.items.map(renderRow)}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <ul className="mt-2 divide-y divide-slate-100">
+          {items.map(renderRow)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// The local YYYY-MM-DD a Google event falls on (timed events use their start
+// instant; all-day events already carry a plain date).
+function eventDayISO(ev: GCalEvent): string | undefined {
+  if (ev.start?.date) return ev.start.date;
+  if (ev.start?.dateTime) {
+    const d = new Date(ev.start.dateTime);
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+  }
+  return undefined;
+}
+
+function eventTimeLabel(ev: GCalEvent): string {
+  if (ev.start?.date) return 'All day';
+  if (!ev.start?.dateTime) return '';
+  return new Date(ev.start.dateTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
+// A subtle sky-tinted strip of the day's calendar events, shown above the
+// to-dos so you have context while planning the day.
+function DayEventsStrip({ events }: { events?: GCalEvent[] }) {
+  if (!events || events.length === 0) return null;
+  return (
+    <div className="mt-3 mb-1 rounded-lg bg-sky-50/70 border border-sky-100 px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-500 mb-1 flex items-center gap-1">
+        <CalendarDays className="w-3 h-3" /> On your calendar
+      </p>
+      <ul className="space-y-0.5">
+        {events.map(ev => (
+          <li key={ev.id} className="flex items-center gap-2 text-sm">
+            <span className="text-xs font-medium text-sky-600 w-16 shrink-0">{eventTimeLabel(ev)}</span>
+            <span className="flex-1 text-slate-600 truncate">{ev.summary || '(no title)'}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function groupByDay(items: PlannerTask[]): { date: string; items: PlannerTask[] }[] {
+  const map = new Map<string, PlannerTask[]>();
+  for (const t of items) {
+    const key = t.due_date ?? '';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(t);
+  }
+  return Array.from(map.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([date, items]) => ({ date, items }));
+}
+
+function DayHeader({ date, today, totalMinutes }: { date: string; today: string; totalMinutes: number }) {
+  const d = new Date(date + 'T00:00:00');
+  const weekday = d.toLocaleDateString(undefined, { weekday: 'long' });
+  const monthDay = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const diff = Math.round((d.getTime() - new Date(today + 'T00:00:00').getTime()) / 86_400_000);
+  const rel = diff === 1 ? 'Tomorrow' : weekday;
+  return (
+    <div className="flex items-baseline gap-2 mb-1">
+      <span className="text-xl font-bold text-slate-700">{d.getDate()}</span>
+      <span className="text-sm font-medium text-slate-500">{rel}</span>
+      <span className="text-xs text-slate-400">· {monthDay}</span>
+      {totalMinutes > 0 && (
+        <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400">
+          <Clock className="w-3.5 h-3.5" /> {formatMinutes(totalMinutes)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Note editor (headings + drag-to-reorder + checklists)
+// ---------------------------------------------------------------------------
+
+function NotePane({
+  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onPatch, onDelete, onReorder,
+}: {
+  note: PlannerNote;
+  tasks: PlannerTask[];
+  today: string;
+  onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
+  onDeleteNote: (id: string) => void;
+  onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+  onReorder: (updates: { id: string; sort_order: number }[]) => void;
+}) {
+  const [title, setTitle] = useState(note.title);
+  const [body, setBody] = useState(note.body);
+  const [draft, setDraft] = useState('');
+  const titleRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => { if (!note.title) titleRef.current?.focus(); }, [note.id, note.title]);
+
+  const ordered = [...tasks].sort((a, b) =>
+    (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at));
+  // Headings + open tasks make up the draggable list; completed to-dos drop to
+  // a "Done" section so they don't clutter what's left.
+  const mainItems = ordered.filter(t => t.kind === 'heading' || !t.done);
+  const doneItems = ordered.filter(t => t.kind === 'task' && t.done);
+  const nextOrder = (ordered.at(-1)?.sort_order ?? 0) + 1;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  function handleDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const ids = mainItems.map(t => t.id);
+    const oldIdx = ids.indexOf(String(active.id));
+    const newIdx = ids.indexOf(String(over.id));
+    if (oldIdx < 0 || newIdx < 0) return;
+    const reordered = arrayMove(mainItems, oldIdx, newIdx);
+    onReorder(reordered.map((t, i) => ({ id: t.id, sort_order: i })));
+  }
+
+  return (
+    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+      <div className="flex items-start gap-3 mb-2">
+        <input
+          ref={titleRef}
+          value={title}
+          onChange={e => setTitle(e.target.value)}
+          onBlur={() => { if (title !== note.title) onSaveNote(note.id, { title }); }}
+          placeholder="Untitled note"
+          className="flex-1 text-2xl font-bold text-slate-800 bg-transparent outline-none placeholder:text-slate-300"
+        />
+        <div className="flex items-center gap-1 pt-2">
+          <button
+            onClick={() => onSaveNote(note.id, { pinned: !note.pinned })}
+            className={`p-2 rounded-lg hover:bg-slate-100 ${note.pinned ? 'text-amber-500' : 'text-slate-400'}`}
+            title={note.pinned ? 'Unpin' : 'Pin to top'}
+          >
+            {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+          </button>
+          <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Archive">
+            <Archive className="w-4 h-4" />
+          </button>
+          <button onClick={() => onDeleteNote(note.id)} className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500" title="Delete note">
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <textarea
+        value={body}
+        onChange={e => setBody(e.target.value)}
+        onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
+        placeholder="Notes, links, anything you want to remember…"
+        rows={2}
+        className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-4"
+      />
+
+      <div className="flex items-center gap-2 mb-1">
+        <div className="flex-1">
+          <QuickAdd
+            value={draft}
+            onChange={setDraft}
+            placeholder="Add a to-do…"
+            onSubmit={() => { onAdd({ title: draft, note_id: note.id, sort_order: nextOrder }); setDraft(''); }}
+          />
+        </div>
+        <button
+          onClick={() => onAdd({ title: 'New section', note_id: note.id, kind: 'heading', sort_order: nextOrder })}
+          className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2"
+          title="Add a section heading"
+        >
+          <HeadingIcon className="w-3.5 h-3.5" /> Heading
+        </button>
+      </div>
+
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={mainItems.map(t => t.id)} strategy={verticalListSortingStrategy}>
+          <ul className="mt-2">
+            {mainItems.map(t => (
+              <SortableNoteItem
+                key={t.id}
+                task={t}
+                today={today}
+                onPatch={onPatch}
+                onDelete={onDelete}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
+
+      {mainItems.length === 0 && (
+        <p className="text-sm text-slate-400 mt-2">Add a to-do or a section heading to start planning this out.</p>
+      )}
+
+      {doneItems.length > 0 && (
+        <div className="mt-6">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Done</p>
+          <ul className="divide-y divide-slate-100">
+            {doneItems.map(t => (
+              <TaskRow key={t.id} task={t} today={today} onPatch={onPatch} onDelete={onDelete} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function useSortableStyle(id: string) {
+  const sortable = useSortable({ id });
+  const style = {
+    transform: CSS.Transform.toString(sortable.transform),
+    transition: sortable.transition,
+    opacity: sortable.isDragging ? 0.5 : 1,
+  };
+  return { ...sortable, style };
+}
+
+function SortableNoteItem({
+  task, today, onPatch, onDelete,
+}: {
+  task: PlannerTask;
+  today: string;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, style } = useSortableStyle(task.id);
+  const handle = (
+    <button
+      {...attributes}
+      {...listeners}
+      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+      title="Drag to reorder"
+    >
+      <GripVertical className="w-4 h-4" />
+    </button>
+  );
+
+  if (task.kind === 'heading') {
+    return (
+      <li ref={setNodeRef} style={style}>
+        <HeadingRow task={task} dragHandle={handle} onPatch={onPatch} onDelete={onDelete} />
+      </li>
+    );
+  }
+  return (
+    <li ref={setNodeRef} style={style} className="border-b border-slate-100">
+      <TaskRow task={task} today={today} dragHandle={handle} enableChecklist showSchedule onPatch={onPatch} onDelete={onDelete} />
+    </li>
+  );
+}
+
+function HeadingRow({
+  task, dragHandle, onPatch, onDelete,
+}: {
+  task: PlannerTask;
+  dragHandle?: ReactNode;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [title, setTitle] = useState(task.title);
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => { if (task.title === 'New section') ref.current?.select(); }, [task.title]);
+  return (
+    <div className="flex items-center gap-2 pt-5 pb-1 group">
+      {dragHandle}
+      <input
+        ref={ref}
+        value={title}
+        onChange={e => setTitle(e.target.value)}
+        onBlur={() => { if (title.trim() && title !== task.title) onPatch(task.id, { title: title.trim() }); }}
+        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        className="flex-1 text-sm font-bold uppercase tracking-wide text-slate-600 bg-transparent outline-none border-b border-transparent focus:border-teal-400"
+      />
+      <button
+        onClick={() => onDelete(task.id)}
+        className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+        title="Delete heading"
+      >
+        <Trash2 className="w-4 h-4" />
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+
+function TaskRow({
+  task, today, noteName, onOpenNote, onPatch, onDelete, showSchedule = false,
+  enableChecklist = false, dragHandle, calConnected = false, onTimeBlock, onUnblock,
+}: {
+  task: PlannerTask;
+  today: string;
+  noteName?: string;
+  onOpenNote?: () => void;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+  showSchedule?: boolean;
+  enableChecklist?: boolean;
+  dragHandle?: ReactNode;
+  calConnected?: boolean;
+  onTimeBlock?: (time: string) => void;
+  onUnblock?: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [expanded, setExpanded] = useState(false);
+  const [blockTime, setBlockTime] = useState('09:00');
+  const overdue = !task.done && !!task.due_date && task.due_date < today;
+  const progress = checklistProgress(task);
+  const hasChecklist = progress.total > 0;
+
+  function commitTitle() {
+    setEditing(false);
+    const next = title.trim();
+    if (next && next !== task.title) onPatch(task.id, { title: next });
+    else setTitle(task.title);
+  }
+
+  function setChecklist(items: ChecklistItem[]) {
+    onPatch(task.id, { checklist: items });
+  }
+
+  return (
+    <div className="py-2 group">
+      <div className="flex items-center gap-2">
+        {dragHandle}
+        <button
+          onClick={() => onPatch(task.id, { done: !task.done })}
+          className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
+          title={task.done ? 'Mark not done' : 'Mark done'}
+        >
+          {task.done
+            ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-600 text-white"><Check className="w-3.5 h-3.5" /></span>
+            : <Circle className="w-5 h-5" />}
+        </button>
+
+        {editing ? (
+          <input
+            autoFocus
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            onBlur={commitTitle}
+            onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') { setTitle(task.title); setEditing(false); } }}
+            className="flex-1 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
+          />
+        ) : (
+          <span
+            onClick={() => !task.done && setEditing(true)}
+            className={`flex-1 text-sm cursor-text ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}
+          >
+            {task.title || 'Untitled'}
+          </span>
+        )}
+
+        {/* Checklist toggle / progress */}
+        {enableChecklist && !task.done && (
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className={`flex items-center gap-1 text-xs shrink-0 ${hasChecklist ? 'text-slate-500' : 'text-slate-300 hover:text-slate-500'}`}
+            title="Checklist"
+          >
+            {hasChecklist
+              ? <span className="font-medium tabular-nums">{progress.done}/{progress.total}</span>
+              : <Check className="w-3.5 h-3.5" />}
+            {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          </button>
+        )}
+
+        {noteName && (
+          <button onClick={onOpenNote} className="text-xs text-slate-400 hover:text-teal-600 truncate max-w-[10rem] shrink-0">
+            {noteName}
+          </button>
+        )}
+
+        {showSchedule && !task.done && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {task.estimate_minutes ? (
+              <span className="text-xs font-medium text-slate-400">{formatMinutes(task.estimate_minutes)}</span>
+            ) : null}
+            {task.due_date && (
+              <span className={`text-xs font-medium ${overdue ? 'text-rose-500' : 'text-slate-500'}`}>
+                {formatDue(task.due_date, today)}
+              </span>
+            )}
+            <label className="relative cursor-pointer text-slate-300 hover:text-teal-600" title="Schedule a day">
+              <CalendarClock className="w-4 h-4" />
+              <input
+                type="date"
+                value={task.due_date ?? ''}
+                onChange={e => onPatch(task.id, { due_date: e.target.value || null, someday: false })}
+                className="absolute inset-0 opacity-0 cursor-pointer w-4"
+              />
+            </label>
+
+            <MiniMenu title="Time estimate" icon={<Clock className={`w-4 h-4 ${task.estimate_minutes ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
+              {close => (
+                <div className="py-1">
+                  {ESTIMATE_PRESETS.map(p => (
+                    <button key={p} onClick={() => { onPatch(task.id, { estimate_minutes: p }); close(); }}
+                      className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.estimate_minutes === p ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
+                      {formatMinutes(p)}
+                    </button>
+                  ))}
+                  <button onClick={() => { onPatch(task.id, { estimate_minutes: null }); close(); }}
+                    className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">No estimate</button>
+                </div>
+              )}
+            </MiniMenu>
+
+            <MiniMenu title="Repeat" icon={<Repeat className={`w-4 h-4 ${task.recurrence ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
+              {close => (
+                <div className="py-1">
+                  {(['daily', 'weekdays', 'weekly', 'monthly'] as Recurrence[]).map(r => (
+                    <button key={r} onClick={() => { onPatch(task.id, { recurrence: r, ...(task.due_date ? {} : { due_date: today, someday: false }) }); close(); }}
+                      className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.recurrence === r ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
+                      {RECURRENCE_LABELS[r]}
+                    </button>
+                  ))}
+                  <button onClick={() => { onPatch(task.id, { recurrence: null }); close(); }}
+                    className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">Don’t repeat</button>
+                </div>
+              )}
+            </MiniMenu>
+
+            {/* Time block: drop this to-do onto the calendar (or pull it off). */}
+            {onTimeBlock && task.gcal_event_id ? (
+              <button
+                onClick={onUnblock}
+                className="inline-flex items-center gap-0.5 text-xs font-medium text-sky-600 hover:text-rose-500"
+                title="Remove time block from calendar"
+              >
+                {task.start_at && new Date(task.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+                <Link2Off className="w-3.5 h-3.5" />
+              </button>
+            ) : onTimeBlock && calConnected ? (
+              <MiniMenu title="Add to calendar as a time block" icon={<CalendarPlus className="w-4 h-4 text-slate-300 hover:text-sky-600" />}>
+                {close => (
+                  <div className="p-2 flex items-center gap-2">
+                    <input type="time" value={blockTime} onChange={e => setBlockTime(e.target.value)}
+                      className="text-sm border border-slate-200 rounded px-2 py-1" />
+                    <button onClick={() => { onTimeBlock(blockTime); close(); }}
+                      className="text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 rounded px-2 py-1">Block</button>
+                  </div>
+                )}
+              </MiniMenu>
+            ) : null}
+
+            <button
+              onClick={() => onPatch(task.id, { someday: !task.someday, due_date: null, ...(!task.someday ? { recurrence: null } : {}) })}
+              className={`${task.someday ? 'text-indigo-500' : 'text-slate-300 hover:text-indigo-500'}`}
+              title={task.someday ? 'In Someday — click to move to Anytime' : 'Move to Someday'}
+            >
+              <Moon className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
+        <button
+          onClick={() => onDelete(task.id)}
+          className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+          title="Delete"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Checklist body */}
+      {enableChecklist && (expanded || hasChecklist) && !task.done && (
+        <ChecklistEditor
+          items={task.checklist ?? []}
+          expanded={expanded}
+          onToggleExpand={() => setExpanded(v => !v)}
+          onChange={setChecklist}
+        />
+      )}
+    </div>
+  );
+}
+
+function ChecklistEditor({
+  items, expanded, onToggleExpand, onChange,
+}: {
+  items: ChecklistItem[];
+  expanded: boolean;
+  onToggleExpand: () => void;
+  onChange: (items: ChecklistItem[]) => void;
+}) {
+  const [draft, setDraft] = useState('');
+
+  function toggle(id: string) { onChange(items.map(i => (i.id === id ? { ...i, done: !i.done } : i))); }
+  function rename(id: string, title: string) { onChange(items.map(i => (i.id === id ? { ...i, title } : i))); }
+  function remove(id: string) { onChange(items.filter(i => i.id !== id)); }
+  function add() {
+    const title = draft.trim();
+    if (!title) return;
+    onChange([...items, newChecklistItem(title)]);
+    setDraft('');
+  }
+
+  return (
+    <div className="ml-7 mt-1 pl-3 border-l-2 border-slate-100 space-y-1">
+      {items.map(item => (
+        <div key={item.id} className="flex items-center gap-2 group/ci">
+          <button
+            onClick={() => toggle(item.id)}
+            className={`shrink-0 ${item.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
+          >
+            {item.done
+              ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-600 text-white"><Check className="w-2.5 h-2.5" /></span>
+              : <Circle className="w-4 h-4" />}
+          </button>
+          <input
+            value={item.title}
+            onChange={e => rename(item.id, e.target.value)}
+            className={`flex-1 text-sm bg-transparent outline-none ${item.done ? 'text-slate-400 line-through' : 'text-slate-600'}`}
+          />
+          <button
+            onClick={() => remove(item.id)}
+            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/ci:opacity-100 transition-opacity shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      ))}
+      {expanded && (
+        <div className="flex items-center gap-2">
+          <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+          <input
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') add(); }}
+            placeholder="Add a sub-step…"
+            className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-300 text-slate-600"
+          />
+        </div>
+      )}
+      {!expanded && items.length > 0 && (
+        <button onClick={onToggleExpand} className="text-xs text-slate-400 hover:text-teal-600">+ add sub-step</button>
+      )}
+    </div>
+  );
+}
+
+// A tiny click-to-open menu, portalled to <body> and positioned under its
+// trigger so it never gets clipped by the planner's scroll container.
+function MiniMenu({
+  icon, title, children,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: (close: () => void) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  function toggle() {
+    if (!open && btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.right });
+    }
+    setOpen(o => !o);
+  }
+
+  return (
+    <>
+      <button ref={btnRef} onClick={toggle} title={title} className="shrink-0">
+        {icon}
+      </button>
+      {open && pos && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-50 min-w-[8rem] bg-white border border-slate-200 rounded-lg shadow-lg py-0.5"
+            style={{ top: pos.top, left: pos.left, transform: 'translateX(-100%)' }}
+          >
+            {children(() => setOpen(false))}
+          </div>
+        </>,
+        document.body,
+      )}
+    </>
+  );
+}
+
+function QuickAdd({
+  value, onChange, onSubmit, placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onSubmit: () => void;
+  placeholder: string;
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+      <Plus className="w-4 h-4 text-slate-400 shrink-0" />
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        onKeyDown={e => { if (e.key === 'Enter') onSubmit(); }}
+        placeholder={placeholder}
+        className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+      />
+    </div>
+  );
+}

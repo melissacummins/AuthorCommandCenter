@@ -1,9 +1,12 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
+import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
+  ChevronDown, ChevronRight,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -140,6 +143,14 @@ const sections: { label: string; paths: string[] }[] = [
 export default function Home() {
   const { profile, user, visibleModules } = useAuth();
   const firstName = (profile?.full_name || user?.user_metadata?.full_name || 'there').split(' ')[0];
+  // Tools take a back seat to the day's plan; collapse state is remembered so
+  // the dashboard can stay focused on Today.
+  const [toolsOpen, setToolsOpen] = useState(() => localStorage.getItem('home-tools-open') !== 'false');
+  function toggleTools() {
+    const next = !toolsOpen;
+    setToolsOpen(next);
+    localStorage.setItem('home-tools-open', String(next));
+  }
 
   const visibleSections = sections
     .map(section => ({
@@ -160,6 +171,9 @@ export default function Home() {
         </p>
       </div>
 
+      {/* Quick capture / today's plan — first thing you see on login. */}
+      <TodayPanel />
+
       {visibleSections.length === 0 && (
         <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
           <h3 className="font-semibold text-slate-800 mb-1">You're all set up</h3>
@@ -170,12 +184,22 @@ export default function Home() {
         </div>
       )}
 
-      {visibleSections.map(section => (
+      {visibleSections.length > 0 && (
+        <button
+          onClick={toggleTools}
+          className="flex items-center gap-2 mb-4 text-slate-500 hover:text-slate-700 transition-colors"
+        >
+          {toolsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          <span className="text-xs font-semibold uppercase tracking-wider">Your tools</span>
+        </button>
+      )}
+
+      {toolsOpen && visibleSections.map(section => (
         <section key={section.label} className="mb-8">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">
             {section.label}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {section.paths.map(path => {
               const m = moduleByPath[path];
               if (!m) return null;
@@ -184,16 +208,15 @@ export default function Home() {
                 <Link
                   key={m.path}
                   to={m.path}
-                  className="group bg-white rounded-2xl border border-slate-200 p-6 hover:shadow-lg hover:border-slate-300 transition-all duration-200"
+                  className="group bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md hover:border-slate-300 transition-all duration-200"
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className={`inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br ${m.gradient} rounded-xl shadow-lg ${m.shadow}`}>
-                      <Icon className="w-6 h-6 text-white" />
+                  <div className="flex items-center gap-3">
+                    <div className={`inline-flex items-center justify-center w-10 h-10 bg-gradient-to-br ${m.gradient} rounded-lg shadow ${m.shadow} shrink-0`}>
+                      <Icon className="w-5 h-5 text-white" />
                     </div>
-                    <ArrowRight className="w-5 h-5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
+                    <h3 className="text-sm font-semibold text-slate-800 flex-1">{m.name}</h3>
+                    <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all" />
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-800 mb-1">{m.name}</h3>
-                  <p className="text-sm text-slate-500 leading-relaxed">{m.description}</p>
                 </Link>
               );
             })}
