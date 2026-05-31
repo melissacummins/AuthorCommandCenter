@@ -146,54 +146,58 @@ export default function MyDayView({
       )}
       {!gc.configured && <NotConfiguredCard />}
 
-      {/* Month label (expands a full month) + Today */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Month label opens a floating month picker (doesn't push the day down) */}
+      <div className="relative flex items-center justify-between mb-2">
         <button
           onClick={() => setShowMonth(s => !s)}
           className="flex items-center gap-1 text-sm font-semibold text-slate-700 hover:text-teal-600"
-          title={showMonth ? 'Back to the week strip' : 'See the full month'}
+          title={showMonth ? 'Close month' : 'Pick from the full month'}
         >
           {new Date(selected + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
           <ChevronDown className={`w-4 h-4 transition-transform ${showMonth ? 'rotate-180' : ''}`} />
         </button>
         <button onClick={jumpToToday} className="text-xs font-medium text-teal-600 hover:text-teal-700 px-2 py-1 rounded-lg hover:bg-teal-50">Today</button>
+        {showMonth && (
+          <>
+            <div className="fixed inset-0 z-30" onClick={() => setShowMonth(false)} />
+            <div className="absolute left-0 top-full mt-1 z-40 w-80 max-w-[calc(100vw-3rem)] rounded-2xl shadow-xl">
+              <MonthGrid
+                selected={selected}
+                today={today}
+                tasks={tasks}
+                onSelect={iso => { selectDay(iso); setShowMonth(false); }}
+              />
+            </div>
+          </>
+        )}
       </div>
 
-      {showMonth ? (
-        <MonthGrid
-          selected={selected}
-          today={today}
-          tasks={tasks}
-          onSelect={iso => { selectDay(iso); setShowMonth(false); }}
-        />
-      ) : (
-        /* Week date strip */
-        <div className="flex items-center gap-1 mb-5">
-          <button onClick={() => setStripStart(s => addDaysISO(s, -STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Earlier"><ChevronLeft className="w-4 h-4" /></button>
-          <div className="flex-1 grid grid-cols-7 gap-1">
-            {strip.map(iso => {
-              const { dow, dom } = stripLabel(iso);
-              const isSel = iso === selected;
-              const isToday = iso === today;
-              const has = tasks.some(t => t.kind === 'task' && !t.done && t.due_date === iso);
-              return (
-                <button
-                  key={iso}
-                  onClick={() => selectDay(iso)}
-                  className={`flex flex-col items-center py-2 rounded-xl transition-colors ${
-                    isSel ? 'bg-teal-600 text-white' : isToday ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSel ? 'text-teal-100' : 'text-slate-400'}`}>{dow}</span>
-                  <span className="text-lg font-bold leading-tight">{dom}</span>
-                  <span className={`mt-0.5 w-1 h-1 rounded-full ${has ? (isSel ? 'bg-white' : 'bg-teal-500') : 'bg-transparent'}`} />
-                </button>
-              );
-            })}
-          </div>
-          <button onClick={() => setStripStart(s => addDaysISO(s, STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Later"><ChevronRight className="w-4 h-4" /></button>
+      {/* Week date strip (always visible) */}
+      <div className="flex items-center gap-1 mb-5">
+        <button onClick={() => setStripStart(s => addDaysISO(s, -STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Earlier"><ChevronLeft className="w-4 h-4" /></button>
+        <div className="flex-1 grid grid-cols-7 gap-1">
+          {strip.map(iso => {
+            const { dow, dom } = stripLabel(iso);
+            const isSel = iso === selected;
+            const isToday = iso === today;
+            const has = tasks.some(t => t.kind === 'task' && !t.done && t.due_date === iso);
+            return (
+              <button
+                key={iso}
+                onClick={() => selectDay(iso)}
+                className={`flex flex-col items-center py-2 rounded-xl transition-colors ${
+                  isSel ? 'bg-teal-600 text-white' : isToday ? 'bg-teal-50 text-teal-700' : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span className={`text-[10px] font-semibold uppercase tracking-wide ${isSel ? 'text-teal-100' : 'text-slate-400'}`}>{dow}</span>
+                <span className="text-lg font-bold leading-tight">{dom}</span>
+                <span className={`mt-0.5 w-1 h-1 rounded-full ${has ? (isSel ? 'bg-white' : 'bg-teal-500') : 'bg-transparent'}`} />
+              </button>
+            );
+          })}
         </div>
-      )}
+        <button onClick={() => setStripStart(s => addDaysISO(s, STRIP_DAYS))} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Later"><ChevronRight className="w-4 h-4" /></button>
+      </div>
 
       {/* Selected-day header + capacity */}
       <div className="mb-4">
@@ -637,7 +641,7 @@ function MonthGrid({
   }
 
   return (
-    <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-3">
+    <div className="rounded-2xl border border-slate-200 bg-white p-3">
       <div className="flex items-center justify-between mb-2">
         <button onClick={() => shift(-1)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><ChevronLeft className="w-4 h-4" /></button>
         <span className="text-sm font-semibold text-slate-700">{monthName}</span>

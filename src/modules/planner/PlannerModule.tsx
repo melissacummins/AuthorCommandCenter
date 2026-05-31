@@ -13,6 +13,7 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
+  Star,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
@@ -122,7 +123,7 @@ export default function PlannerModule() {
   }
 
   async function removeNote(id: string) {
-    if (!confirm('Delete this note and its checklist? This can’t be undone.')) return;
+    if (!confirm('Delete this list and its checklist? This can’t be undone.')) return;
     setNotes(prev => prev.filter(n => n.id !== id));
     setTasks(prev => prev.filter(t => t.note_id !== id));
     setSelection({ kind: 'myday' });
@@ -139,6 +140,19 @@ export default function PlannerModule() {
       const task = await createTask(user.id, { ...input, title: input.title.trim() });
       setTasks(prev => [...prev, task]);
     } catch (e) { setError((e as Error)?.message ?? 'Could not add item.'); }
+  }
+
+  // Like addTask but returns the created row (and allows an empty title) so the
+  // list editor can place it precisely and focus it for keyboard-driven entry.
+  async function createTaskReturning(input: {
+    title?: string; note_id?: string | null; kind?: 'task' | 'heading'; sort_order?: number;
+  }): Promise<PlannerTask | undefined> {
+    if (!user) return undefined;
+    try {
+      const task = await createTask(user.id, { ...input, title: input.title ?? '' });
+      setTasks(prev => [...prev, task]);
+      return task;
+    } catch (e) { setError((e as Error)?.message ?? 'Could not add item.'); return undefined; }
   }
 
   async function patchTask(id: string, patch: Partial<PlannerTask>) {
@@ -322,14 +336,14 @@ export default function PlannerModule() {
         </nav>
 
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Notes</span>
-          <button onClick={handleNewNote} className="text-slate-400 hover:text-teal-600" title="New note">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Lists</span>
+          <button onClick={handleNewNote} className="text-slate-400 hover:text-teal-600" title="New list">
             <Plus className="w-4 h-4" />
           </button>
         </div>
         <nav className="px-3 pb-4 space-y-1">
           {notes.length === 0 && (
-            <p className="px-3 py-2 text-xs text-slate-400">No notes yet. Hit + to name one out.</p>
+            <p className="px-3 py-2 text-xs text-slate-400">No lists yet. Hit + to start one.</p>
           )}
           {notes.map(n => {
             const active = selection.kind === 'note' && selection.id === n.id;
@@ -343,7 +357,7 @@ export default function PlannerModule() {
                 }`}
               >
                 {n.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
-                <span className="flex-1 text-left truncate">{n.title.trim() || 'Untitled note'}</span>
+                <span className="flex-1 text-left truncate">{n.title.trim() || 'Untitled list'}</span>
                 {open > 0 && <span className="text-xs text-slate-400">{open}</span>}
               </button>
             );
@@ -394,6 +408,7 @@ export default function PlannerModule() {
             onSaveNote={saveNote}
             onDeleteNote={removeNote}
             onAdd={addTask}
+            onCreate={createTaskReturning}
             onPatch={patchTask}
             onDelete={removeTask}
             onReorder={reorder}
@@ -465,7 +480,7 @@ function ViewPane({
     {};
 
   function noteNameFor(t: PlannerTask) {
-    return t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled note') : undefined;
+    return t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled list') : undefined;
   }
 
   function renderRow(t: PlannerTask) {
@@ -601,7 +616,7 @@ function DayHeader({ date, today, totalMinutes }: { date: string; today: string;
 // ---------------------------------------------------------------------------
 
 function NotePane({
-  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onPatch, onDelete, onReorder,
+  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onCreate, onPatch, onDelete, onReorder,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
@@ -609,6 +624,7 @@ function NotePane({
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
   onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
+  onCreate: (i: { title?: string; note_id: string; kind?: 'task' | 'heading' }) => Promise<PlannerTask | undefined>;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
   onReorder: (updates: { id: string; sort_order: number }[]) => void;
@@ -616,17 +632,40 @@ function NotePane({
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [draft, setDraft] = useState('');
+  const [filter, setFilter] = useState<'all' | 'important'>('all');
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  // The to-do id that should open for editing next render (keyboard entry).
+  const [focusId, setFocusId] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { if (!note.title) titleRef.current?.focus(); }, [note.id, note.title]);
 
   const ordered = [...tasks].sort((a, b) =>
     (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at));
-  // Headings + open tasks make up the draggable list; completed to-dos drop to
-  // a "Done" section so they don't clutter what's left.
-  const mainItems = ordered.filter(t => t.kind === 'heading' || !t.done);
+  // The full main list (headings + open tasks) ignoring collapse — the basis
+  // for drag reordering so hidden rows keep their place. Completed to-dos drop
+  // to a "Done" section so they don't clutter what's left.
+  const mainAll = ordered.filter(t => t.kind === 'heading' || !t.done);
   const doneItems = ordered.filter(t => t.kind === 'task' && t.done);
+  const flaggedOpen = ordered.filter(t => t.kind === 'task' && !t.done && t.flagged);
   const nextOrder = (ordered.at(-1)?.sort_order ?? 0) + 1;
+
+  // Walk the list tracking the current heading so we can hide a heading's
+  // tasks when it's collapsed and show a "n hidden" count on the heading.
+  const hidden = new Set<string>();
+  const childCount: Record<string, number> = {};
+  {
+    let head: string | null = null;
+    for (const t of mainAll) {
+      if (t.kind === 'heading') { head = t.id; childCount[head] = 0; }
+      else if (head) { childCount[head]++; if (collapsed.has(head)) hidden.add(t.id); }
+    }
+  }
+  const visibleMain = mainAll.filter(t => !hidden.has(t.id));
+
+  function toggleCollapse(id: string) {
+    setCollapsed(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -636,12 +675,28 @@ function NotePane({
   function handleDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const ids = mainItems.map(t => t.id);
+    // Reorder within the *full* list so collapsed rows keep their positions.
+    const ids = mainAll.map(t => t.id);
     const oldIdx = ids.indexOf(String(active.id));
     const newIdx = ids.indexOf(String(over.id));
     if (oldIdx < 0 || newIdx < 0) return;
-    const reordered = arrayMove(mainItems, oldIdx, newIdx);
+    const reordered = arrayMove(mainAll, oldIdx, newIdx);
     onReorder(reordered.map((t, i) => ({ id: t.id, sort_order: i })));
+  }
+
+  // Create an empty to-do positioned right after `refId` in the list, then
+  // focus it — the heart of the keyboard flow (Enter on a heading/task).
+  async function createAfter(refId: string) {
+    const created = await onCreate({ note_id: note.id, kind: 'task' });
+    if (!created) return;
+    // If we're adding under a collapsed heading, expand it so the new (focused)
+    // row is actually visible.
+    setCollapsed(prev => { if (!prev.has(refId)) return prev; const n = new Set(prev); n.delete(refId); return n; });
+    const idx = mainAll.findIndex(t => t.id === refId);
+    const insertAt = idx < 0 ? mainAll.length : idx + 1;
+    const next = [...mainAll.slice(0, insertAt), created, ...mainAll.slice(insertAt)];
+    onReorder(next.map((t, i) => ({ id: t.id, sort_order: i })));
+    setFocusId(created.id);
   }
 
   return (
@@ -652,7 +707,7 @@ function NotePane({
           value={title}
           onChange={e => setTitle(e.target.value)}
           onBlur={() => { if (title !== note.title) onSaveNote(note.id, { title }); }}
-          placeholder="Untitled note"
+          placeholder="Untitled list"
           className="flex-1 text-2xl font-bold text-slate-800 bg-transparent outline-none placeholder:text-slate-300"
         />
         <div className="flex items-center gap-1 pt-2">
@@ -666,7 +721,7 @@ function NotePane({
           <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Archive">
             <Archive className="w-4 h-4" />
           </button>
-          <button onClick={() => onDeleteNote(note.id)} className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500" title="Delete note">
+          <button onClick={() => onDeleteNote(note.id)} className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500" title="Delete list">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -680,6 +735,23 @@ function NotePane({
         rows={2}
         className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-4"
       />
+
+      {/* All / Important filter (Things-3-style) */}
+      <div className="flex items-center gap-1 mb-2">
+        {(['all', 'important'] as const).map(f => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+              filter === f ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'
+            }`}
+          >
+            {f === 'important' && <Star className="w-3 h-3" fill={filter === f ? 'currentColor' : 'none'} />}
+            {f === 'all' ? 'All' : 'Important'}
+            {f === 'important' && flaggedOpen.length > 0 && <span className={filter === f ? 'text-amber-300' : 'text-amber-500'}>{flaggedOpen.length}</span>}
+          </button>
+        ))}
+      </div>
 
       <div className="flex items-center gap-2 mb-1">
         <div className="flex-1">
@@ -699,23 +771,53 @@ function NotePane({
         </button>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={mainItems.map(t => t.id)} strategy={verticalListSortingStrategy}>
-          <ul className="mt-2">
-            {mainItems.map(t => (
-              <SortableNoteItem
+      {filter === 'important' ? (
+        flaggedOpen.length === 0 ? (
+          <p className="text-sm text-slate-400 mt-3">Nothing flagged. Star a to-do to mark it Important.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-slate-100">
+            {flaggedOpen.map(t => (
+              <TaskRow
                 key={t.id}
                 task={t}
                 today={today}
+                enableChecklist
+                showSchedule
+                focusId={focusId}
+                onFocused={() => setFocusId(null)}
+                onEnter={() => createAfter(t.id)}
                 onPatch={onPatch}
                 onDelete={onDelete}
               />
             ))}
           </ul>
-        </SortableContext>
-      </DndContext>
+        )
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={visibleMain.map(t => t.id)} strategy={verticalListSortingStrategy}>
+            <ul className="mt-2">
+              {visibleMain.map(t => (
+                <SortableNoteItem
+                  key={t.id}
+                  task={t}
+                  today={today}
+                  collapsed={collapsed.has(t.id)}
+                  childCount={childCount[t.id] ?? 0}
+                  focusId={focusId}
+                  onFocused={() => setFocusId(null)}
+                  onToggleCollapse={() => toggleCollapse(t.id)}
+                  onAddUnder={() => createAfter(t.id)}
+                  onEnter={() => createAfter(t.id)}
+                  onPatch={onPatch}
+                  onDelete={onDelete}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
+      )}
 
-      {mainItems.length === 0 && (
+      {filter === 'all' && mainAll.length === 0 && (
         <p className="text-sm text-slate-400 mt-2">Add a to-do or a section heading to start planning this out.</p>
       )}
 
@@ -744,10 +846,17 @@ function useSortableStyle(id: string) {
 }
 
 function SortableNoteItem({
-  task, today, onPatch, onDelete,
+  task, today, collapsed, childCount, focusId, onFocused, onToggleCollapse, onAddUnder, onEnter, onPatch, onDelete,
 }: {
   task: PlannerTask;
   today: string;
+  collapsed: boolean;
+  childCount: number;
+  focusId: string | null;
+  onFocused: () => void;
+  onToggleCollapse: () => void;
+  onAddUnder: () => void;
+  onEnter: () => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
 }) {
@@ -766,39 +875,86 @@ function SortableNoteItem({
   if (task.kind === 'heading') {
     return (
       <li ref={setNodeRef} style={style}>
-        <HeadingRow task={task} dragHandle={handle} onPatch={onPatch} onDelete={onDelete} />
+        <HeadingRow
+          task={task}
+          dragHandle={handle}
+          collapsed={collapsed}
+          childCount={childCount}
+          onToggleCollapse={onToggleCollapse}
+          onAddUnder={onAddUnder}
+          onPatch={onPatch}
+          onDelete={onDelete}
+        />
       </li>
     );
   }
   return (
     <li ref={setNodeRef} style={style} className="border-b border-slate-100">
-      <TaskRow task={task} today={today} dragHandle={handle} enableChecklist showSchedule onPatch={onPatch} onDelete={onDelete} />
+      <TaskRow
+        task={task}
+        today={today}
+        dragHandle={handle}
+        enableChecklist
+        showSchedule
+        focusId={focusId}
+        onFocused={onFocused}
+        onEnter={onEnter}
+        onPatch={onPatch}
+        onDelete={onDelete}
+      />
     </li>
   );
 }
 
 function HeadingRow({
-  task, dragHandle, onPatch, onDelete,
+  task, dragHandle, collapsed, childCount, onToggleCollapse, onAddUnder, onPatch, onDelete,
 }: {
   task: PlannerTask;
   dragHandle?: ReactNode;
+  collapsed: boolean;
+  childCount: number;
+  onToggleCollapse: () => void;
+  onAddUnder: () => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
 }) {
   const [title, setTitle] = useState(task.title);
   const ref = useRef<HTMLInputElement>(null);
   useEffect(() => { if (task.title === 'New section') ref.current?.select(); }, [task.title]);
+
+  function commit() {
+    if (title.trim() && title !== task.title) onPatch(task.id, { title: title.trim() });
+  }
+
   return (
     <div className="flex items-center gap-2 pt-5 pb-1 group">
       {dragHandle}
+      <button
+        onClick={onToggleCollapse}
+        className="text-slate-400 hover:text-slate-600 shrink-0"
+        title={collapsed ? 'Expand section' : 'Collapse section'}
+      >
+        {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+      </button>
       <input
         ref={ref}
         value={title}
         onChange={e => setTitle(e.target.value)}
-        onBlur={() => { if (title.trim() && title !== task.title) onPatch(task.id, { title: title.trim() }); }}
-        onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        onBlur={commit}
+        // Enter commits the heading and drops a fresh to-do underneath it.
+        onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); onAddUnder(); } }}
         className="flex-1 text-sm font-bold uppercase tracking-wide text-slate-600 bg-transparent outline-none border-b border-transparent focus:border-teal-400"
       />
+      {collapsed && childCount > 0 && (
+        <span className="text-xs text-slate-400 shrink-0">{childCount}</span>
+      )}
+      <button
+        onClick={onAddUnder}
+        className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+        title="Add a to-do under this heading"
+      >
+        <Plus className="w-4 h-4" />
+      </button>
       <button
         onClick={() => onDelete(task.id)}
         className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
@@ -815,6 +971,7 @@ function HeadingRow({
 function TaskRow({
   task, today, noteName, onOpenNote, onPatch, onDelete, showSchedule = false,
   enableChecklist = false, dragHandle, calConnected = false, onTimeBlock, onUnblock,
+  focusId, onFocused, onEnter,
 }: {
   task: PlannerTask;
   today: string;
@@ -828,6 +985,9 @@ function TaskRow({
   calConnected?: boolean;
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
+  focusId?: string | null;
+  onFocused?: () => void;
+  onEnter?: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -837,11 +997,28 @@ function TaskRow({
   const progress = checklistProgress(task);
   const hasChecklist = progress.total > 0;
 
-  function commitTitle() {
+  // Open for editing when the keyboard flow points focus at this row.
+  useEffect(() => {
+    if (focusId && focusId === task.id) { setEditing(true); onFocused?.(); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusId, task.id]);
+
+  // Commit on blur; a row left blank (a new one never typed into) is removed.
+  function blurCommit() {
     setEditing(false);
     const next = title.trim();
-    if (next && next !== task.title) onPatch(task.id, { title: next });
-    else setTitle(task.title);
+    if (!next) { if (!task.title) onDelete(task.id); else setTitle(task.title); return; }
+    if (next !== task.title) onPatch(task.id, { title: next });
+  }
+
+  // Enter commits, then (via onEnter) spawns the next sibling to-do and focuses
+  // it. Pressing Enter on a still-blank row just ends entry instead.
+  function enterCommit() {
+    const next = title.trim();
+    if (!next) { setEditing(false); if (!task.title) onDelete(task.id); return; }
+    if (next !== task.title) onPatch(task.id, { title: next });
+    setEditing(false);
+    onEnter?.();
   }
 
   function setChecklist(items: ChecklistItem[]) {
@@ -867,8 +1044,8 @@ function TaskRow({
             autoFocus
             value={title}
             onChange={e => setTitle(e.target.value)}
-            onBlur={commitTitle}
-            onKeyDown={e => { if (e.key === 'Enter') commitTitle(); if (e.key === 'Escape') { setTitle(task.title); setEditing(false); } }}
+            onBlur={blurCommit}
+            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); enterCommit(); } if (e.key === 'Escape') { setTitle(task.title); setEditing(false); } }}
             className="flex-1 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
           />
         ) : (
@@ -902,6 +1079,13 @@ function TaskRow({
 
         {showSchedule && !task.done && (
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => onPatch(task.id, { flagged: !task.flagged })}
+              className={`${task.flagged ? 'text-amber-400' : 'text-slate-300 hover:text-amber-400 opacity-0 group-hover:opacity-100'} transition-opacity`}
+              title={task.flagged ? 'Unflag' : 'Flag as Important'}
+            >
+              <Star className="w-4 h-4" fill={task.flagged ? 'currentColor' : 'none'} />
+            </button>
             {task.estimate_minutes ? (
               <span className="text-xs font-medium text-slate-400">{formatMinutes(task.estimate_minutes)}</span>
             ) : null}

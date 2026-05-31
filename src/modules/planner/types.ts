@@ -42,6 +42,8 @@ export interface PlannerTask {
   checklist: ChecklistItem[];
   recurrence: Recurrence | null;
   estimate_minutes: number | null;
+  // True when the to-do is flagged "Important" (a Things-3-style priority star).
+  flagged: boolean;
   // Optional timed start (a calendar time block) and the linked Google Calendar
   // event id, set when a to-do is placed on the calendar.
   start_at: string | null;
