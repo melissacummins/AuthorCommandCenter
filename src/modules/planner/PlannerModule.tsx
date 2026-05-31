@@ -11,10 +11,11 @@ import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
-  CalendarClock, Layers, Sparkles, Moon, Inbox, X, GripVertical,
-  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun,
+  CalendarClock, Layers, Moon, Inbox, X, GripVertical,
+  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
+import StatsView from './StatsView';
 import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import {
@@ -30,7 +31,11 @@ import {
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock,
 } from './types';
 
-type Selection = { kind: 'view'; bucket: Bucket } | { kind: 'note'; id: string } | { kind: 'myday' };
+type Selection =
+  | { kind: 'view'; bucket: Bucket }
+  | { kind: 'note'; id: string }
+  | { kind: 'myday' }
+  | { kind: 'stats' };
 
 // Everything a list/calendar view needs to show Google events and turn to-dos
 // into time blocks. Bundled so it's one prop to thread down.
@@ -41,8 +46,9 @@ interface CalendarBridge {
   onUnblock: (task: PlannerTask) => void;
 }
 
+// "Today" is intentionally absent here — My Day is the day view and surfaces
+// today (and overdue) itself.
 const VIEWS: { bucket: Bucket; label: string; icon: typeof Inbox; color: string }[] = [
-  { bucket: 'today',    label: 'Today',    icon: Sparkles,      color: 'text-amber-500' },
   { bucket: 'upcoming', label: 'Upcoming', icon: CalendarClock, color: 'text-rose-500' },
   { bucket: 'anytime',  label: 'Anytime',  icon: Layers,        color: 'text-teal-600' },
   { bucket: 'someday',  label: 'Someday',  icon: Moon,          color: 'text-indigo-500' },
@@ -57,7 +63,7 @@ export default function PlannerModule() {
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selection, setSelection] = useState<Selection>({ kind: 'view', bucket: 'today' });
+  const [selection, setSelection] = useState<Selection>({ kind: 'myday' });
   const today = todayISO();
   const gc = useGoogleCalendar();
   // Bumped whenever a time block is added/removed so the views re-fetch events.
@@ -119,7 +125,7 @@ export default function PlannerModule() {
     if (!confirm('Delete this note and its checklist? This can’t be undone.')) return;
     setNotes(prev => prev.filter(n => n.id !== id));
     setTasks(prev => prev.filter(t => t.note_id !== id));
-    setSelection({ kind: 'view', bucket: 'today' });
+    setSelection({ kind: 'myday' });
     try { await deleteNote(id); }
     catch (e) { setError((e as Error)?.message ?? 'Could not delete note.'); }
   }
@@ -276,6 +282,16 @@ export default function PlannerModule() {
       {/* Left rail: smart views + notes */}
       <aside className="w-64 shrink-0 border-r border-slate-200 bg-slate-50/60 flex flex-col overflow-y-auto">
         <nav className="p-3 space-y-1">
+          <button
+            onClick={() => setSelection({ kind: 'myday' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'myday' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <Sun className="w-4 h-4 text-amber-500" />
+            <span className="flex-1 text-left">My Day</span>
+            {viewCounts.today > 0 && <span className="text-xs text-slate-400 font-medium">{viewCounts.today}</span>}
+          </button>
           {VIEWS.map(v => {
             const Icon = v.icon;
             const active = selection.kind === 'view' && selection.bucket === v.bucket;
@@ -295,13 +311,13 @@ export default function PlannerModule() {
             );
           })}
           <button
-            onClick={() => setSelection({ kind: 'myday' })}
+            onClick={() => setSelection({ kind: 'stats' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'myday' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+              selection.kind === 'stats' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
             }`}
           >
-            <Sun className="w-4 h-4 text-amber-500" />
-            <span className="flex-1 text-left">My Day</span>
+            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            <span className="flex-1 text-left">Stats</span>
           </button>
         </nav>
 
@@ -355,6 +371,8 @@ export default function PlannerModule() {
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
           />
+        ) : selection.kind === 'stats' ? (
+          <StatsView tasks={tasks} today={today} />
         ) : selection.kind === 'view' ? (
           <ViewPane
             bucket={selection.bucket}
