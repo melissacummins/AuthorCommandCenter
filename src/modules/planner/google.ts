@@ -13,6 +13,9 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 const SCOPE = 'https://www.googleapis.com/auth/calendar';
 const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const CONNECTED_KEY = 'planner-gcal-connected';
+// Cache the short-lived access token for the tab session so navigating away
+// from the planner (or a reload) resumes silently instead of re-prompting.
+const TOKEN_KEY = 'planner-gcal-token';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObj = any;
@@ -47,6 +50,16 @@ let tokenClient: AnyObj = null;
 let accessToken: string | null = null;
 let tokenExpiry = 0;
 
+// Restore a still-valid token cached earlier this tab session, so a remount or
+// reload doesn't trigger a fresh consent/popup.
+try {
+  const raw = sessionStorage.getItem(TOKEN_KEY);
+  if (raw) {
+    const { t, e } = JSON.parse(raw) as { t: string; e: number };
+    if (t && e && Date.now() < e) { accessToken = t; tokenExpiry = e; }
+  }
+} catch { /* ignore malformed cache */ }
+
 async function ensureTokenClient(): Promise<void> {
   if (!CLIENT_ID) throw new Error('Google Calendar isn’t configured yet.');
   await loadGis();
@@ -73,6 +86,7 @@ function requestToken(prompt: '' | 'consent'): Promise<string> {
           accessToken = resp.access_token;
           tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000 - 60_000;
           localStorage.setItem(CONNECTED_KEY, '1');
+          try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ t: accessToken, e: tokenExpiry })); } catch { /* quota/private mode */ }
           resolve(accessToken!);
         };
         tokenClient.requestAccessToken({ prompt });
@@ -95,6 +109,7 @@ export function disconnect(): void {
   accessToken = null;
   tokenExpiry = 0;
   localStorage.removeItem(CONNECTED_KEY);
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
   if (tok) (window as AnyObj).google?.accounts?.oauth2?.revoke?.(tok, () => {});
 }
 

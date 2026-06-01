@@ -13,10 +13,11 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star,
+  Star, Menu, CalendarRange,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
+import PlanView from './PlanView';
 import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import {
@@ -36,6 +37,7 @@ type Selection =
   | { kind: 'view'; bucket: Bucket }
   | { kind: 'note'; id: string }
   | { kind: 'myday' }
+  | { kind: 'plan' }
   | { kind: 'stats' };
 
 // Everything a list/calendar view needs to show Google events and turn to-dos
@@ -65,6 +67,11 @@ export default function PlannerModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>({ kind: 'myday' });
+  // The planner rail is a slide-over on mobile; always-on from md up.
+  const [railOpen, setRailOpen] = useState(false);
+  // A nudge to open a specific day in My Day (e.g. from the Plan view). The
+  // bumping counter lets the same day be re-opened.
+  const [dayJump, setDayJump] = useState<{ iso: string; n: number }>(() => ({ iso: todayISO(), n: 0 }));
   const today = todayISO();
   const gc = useGoogleCalendar();
   // Bumped whenever a time block is added/removed so the views re-fetch events.
@@ -109,6 +116,7 @@ export default function PlannerModule() {
       const note = await createNote(user.id, '');
       setNotes(prev => [note, ...prev]);
       setSelection({ kind: 'note', id: note.id });
+      setRailOpen(false);
     } catch (e) { setError((e as Error)?.message ?? 'Could not create note.'); }
   }
 
@@ -289,15 +297,33 @@ export default function PlannerModule() {
     onUpdateCapacity: updateCapacity,
   };
 
+  // Pick a view and dismiss the mobile rail in one go.
+  function choose(sel: Selection) { setSelection(sel); setRailOpen(false); }
+  // Open a specific day in My Day (from the Plan grid).
+  function openDay(iso: string) { setDayJump(d => ({ iso, n: d.n + 1 })); choose({ kind: 'myday' }); }
+
   const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
 
   return (
-    <div className="flex h-full min-h-0">
-      {/* Left rail: smart views + notes */}
-      <aside className="w-64 shrink-0 border-r border-slate-200 bg-slate-50/60 flex flex-col overflow-y-auto">
+    <div className="flex h-full min-h-0 relative">
+      {/* Backdrop behind the mobile slide-over rail */}
+      {railOpen && <div className="md:hidden fixed inset-0 bg-black/30 z-40" onClick={() => setRailOpen(false)} />}
+
+      {/* Left rail: smart views + lists. Static from md up; a slide-over on
+          mobile so the day/list has full width for adding to-dos. */}
+      <aside
+        className={`w-64 shrink-0 border-r border-slate-200 bg-slate-50/60 flex-col overflow-y-auto nice-scrollbar
+          md:static md:flex
+          ${railOpen ? 'fixed inset-y-0 left-0 z-50 flex shadow-2xl' : 'hidden md:flex'}`}
+      >
+        <div className="md:hidden flex justify-end p-2">
+          <button onClick={() => setRailOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-200" title="Close menu">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
         <nav className="p-3 space-y-1">
           <button
-            onClick={() => setSelection({ kind: 'myday' })}
+            onClick={() => choose({ kind: 'myday' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               selection.kind === 'myday' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
             }`}
@@ -306,6 +332,15 @@ export default function PlannerModule() {
             <span className="flex-1 text-left">My Day</span>
             {viewCounts.today > 0 && <span className="text-xs text-slate-400 font-medium">{viewCounts.today}</span>}
           </button>
+          <button
+            onClick={() => choose({ kind: 'plan' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'plan' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <CalendarRange className="w-4 h-4 text-sky-500" />
+            <span className="flex-1 text-left">Plan</span>
+          </button>
           {VIEWS.map(v => {
             const Icon = v.icon;
             const active = selection.kind === 'view' && selection.bucket === v.bucket;
@@ -313,7 +348,7 @@ export default function PlannerModule() {
             return (
               <button
                 key={v.bucket}
-                onClick={() => setSelection({ kind: 'view', bucket: v.bucket })}
+                onClick={() => choose({ kind: 'view', bucket: v.bucket })}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                   active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
                 }`}
@@ -325,7 +360,7 @@ export default function PlannerModule() {
             );
           })}
           <button
-            onClick={() => setSelection({ kind: 'stats' })}
+            onClick={() => choose({ kind: 'stats' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               selection.kind === 'stats' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
             }`}
@@ -351,7 +386,7 @@ export default function PlannerModule() {
             return (
               <button
                 key={n.id}
-                onClick={() => setSelection({ kind: 'note', id: n.id })}
+                onClick={() => choose({ kind: 'note', id: n.id })}
                 className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                   active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
                 }`}
@@ -366,7 +401,13 @@ export default function PlannerModule() {
       </aside>
 
       {/* Detail */}
-      <section className="flex-1 min-w-0 overflow-y-auto">
+      <section className="flex-1 min-w-0 overflow-y-auto nice-scrollbar">
+        {/* Mobile-only bar to reopen the planner rail */}
+        <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 bg-white/85 backdrop-blur border-b border-slate-100 px-3 py-2">
+          <button onClick={() => setRailOpen(true)} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-teal-600">
+            <Menu className="w-5 h-5" /> Menu
+          </button>
+        </div>
         {error && (
           <div className="m-4 flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">
             <span className="flex-1">{error}</span>
@@ -384,6 +425,15 @@ export default function PlannerModule() {
             today={today}
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
+            jumpTo={dayJump}
+          />
+        ) : selection.kind === 'plan' ? (
+          <PlanView
+            tasks={tasks}
+            blocks={blocks}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, created_at: '', updated_at: '' }}
+            today={today}
+            onOpenDay={openDay}
           />
         ) : selection.kind === 'stats' ? (
           <StatsView tasks={tasks} today={today} />
