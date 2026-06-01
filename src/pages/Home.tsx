@@ -52,7 +52,7 @@ const moduleByPath: Record<string, ModuleCard> = {
     shadow: 'shadow-green-500/25',
   },
   '/finstream': {
-    name: 'Financials',
+    name: 'Transactions',
     description: 'Import bank transactions, auto-categorize expenses, and track subscriptions.',
     path: '/finstream',
     icon: Wallet,

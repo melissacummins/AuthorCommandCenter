@@ -98,7 +98,7 @@ export default function Subscriptions() {
         {/* Subscription List */}
         <div className="divide-y divide-slate-100">
           {filtered.map(sub => (
-            <SubscriptionRow key={sub.id} sub={sub} onDelete={() => { deleteSubscription(sub.id); refetch(); }} />
+            <SubscriptionRow key={sub.id} sub={sub} onDelete={async () => { await deleteSubscription(sub.id); refetch(); }} />
           ))}
           {filtered.length === 0 && subscriptions.length > 0 && (
             <p className="py-6 text-center text-sm text-slate-400">No subscriptions match your search.</p>

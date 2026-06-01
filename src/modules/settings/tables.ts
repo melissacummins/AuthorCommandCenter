@@ -40,12 +40,12 @@ export const BACKUP_TABLES: BackupTable[] = [
   { name: 'ad_projects', label: 'Ad projects', module: 'Ad Alchemy' },
   { name: 'enriched_ads', label: 'Enriched ads', module: 'Ad Alchemy' },
 
-  // Financials
-  { name: 'transactions', label: 'Transactions', module: 'Financials' },
-  { name: 'category_rules', label: 'Category rules', module: 'Financials' },
-  { name: 'manual_subscriptions', label: 'Subscriptions', module: 'Financials' },
-  { name: 'cash_flow_notes', label: 'Cash flow notes', module: 'Financials' },
-  { name: 'manual_history_entries', label: 'Manual history', module: 'Financials' },
+  // Transactions
+  { name: 'transactions', label: 'Transactions', module: 'Transactions' },
+  { name: 'category_rules', label: 'Category rules', module: 'Transactions' },
+  { name: 'manual_subscriptions', label: 'Subscriptions', module: 'Transactions' },
+  { name: 'cash_flow_notes', label: 'Cash flow notes', module: 'Transactions' },
+  { name: 'manual_history_entries', label: 'Manual history', module: 'Transactions' },
 
   // KDP
   { name: 'tropes', label: 'Tropes', module: 'KDP Optimizer' },
