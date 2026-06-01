@@ -135,14 +135,14 @@ export default function MediaModule() {
   // GPT Image 1 routes through OpenAI when a key is configured (much
   // cheaper than via Fal); everything else uses Fal.
   const gptImage1Provider: 'fal' | 'openai' =
-    model.id === 'gpt-image-1' && openaiKeyStatus?.has_key ? 'openai' : 'fal';
+    model.id === 'gpt-image-2' && openaiKeyStatus?.has_key ? 'openai' : 'fal';
   // When routed via OpenAI, ANY reference image becomes an edit
   // (regardless of the model's editEndpoint, since OpenAI handles
   // both modes on its own endpoints).
-  const isEditMode = model.id === 'gpt-image-1' && gptImage1Provider === 'openai'
+  const isEditMode = model.id === 'gpt-image-2' && gptImage1Provider === 'openai'
     ? inputImages.length > 0
     : (model.hasDualMode && inputImages.length > 0);
-  const perImageCostCents = model.id === 'gpt-image-1'
+  const perImageCostCents = model.id === 'gpt-image-2'
     ? gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider)
     : (isEditMode ? model.editCostCents : model.estimatedCostCents);
   const sizePreset = useMemo<SizePreset | null>(
@@ -278,7 +278,7 @@ export default function MediaModule() {
         height,
         source_image_urls: model.canReference ? inputImages.map((i) => i.url) : [],
         num_images: num,
-        quality: model.id === 'gpt-image-1' ? gptImage1Quality : undefined,
+        quality: model.id === 'gpt-image-2' ? gptImage1Quality : undefined,
         collection_id: selectedCollectionId,
       });
 
@@ -560,7 +560,7 @@ export default function MediaModule() {
               Show all models ({MODELS.length} total)
             </label>
             <p className="text-[11px] text-slate-400 mt-1">{model.description}</p>
-            {model.id === 'gpt-image-1' && (
+            {model.id === 'gpt-image-2' && (
               <p className="text-[11px] mt-1">
                 {gptImage1Provider === 'openai' ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-medium">
@@ -663,7 +663,7 @@ export default function MediaModule() {
           )}
 
           {/* GPT Image 1 quality */}
-          {model.id === 'gpt-image-1' && (
+          {model.id === 'gpt-image-2' && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Quality</label>

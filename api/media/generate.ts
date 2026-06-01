@@ -53,7 +53,7 @@ const MODELS: Record<string, ModelDef> = {
   'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
   'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/ideogram/v3/edit',       supportsCustomSize: true,  estimatedCostCents: 6   },
   'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
-  'gpt-image-1':          { id: 'gpt-image-1',          endpoint: 'fal-ai/gpt-image-1/text-to-image',                kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/gpt-image-1/edit-image',  editCostCents: 17, supportsCustomSize: true,  estimatedCostCents: 7   },
+  'gpt-image-2':          { id: 'gpt-image-2',          endpoint: 'openai/gpt-image-2',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'openai/gpt-image-2/edit',        editCostCents: 45, supportsCustomSize: true,  estimatedCostCents: 25  },
   'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/flux/dev/image-to-image', supportsCustomSize: true,  estimatedCostCents: 3   },
   'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8   },
@@ -136,14 +136,14 @@ const MAX_BATCH = 10;
 
 type GptImage1Quality = 'low' | 'medium' | 'high' | 'auto';
 // Via Fal — includes Fal's markup over OpenAI's pass-through rate.
-const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 3,  medium: 8,  high: 20, auto: 20 };
-const GPT_IMAGE_1_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 10, medium: 25, high: 40, auto: 40 };
+const GPT_IMAGE_1_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 3,  medium: 10, high: 25, auto: 25 };
+const GPT_IMAGE_1_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 12, medium: 30, high: 45, auto: 45 };
 // Via OpenAI direct — meaningfully cheaper because no markup.
-// Source: OpenAI gpt-image-1 pricing (per output @ 1024×1024):
-//   low $0.011 / medium $0.042 / high $0.167. Edit adds an input-image
-//   token cost (~$0.01–0.02). Rounded up for conservative estimates.
-const GPT_IMAGE_1_OPENAI_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 2, medium: 5,  high: 17, auto: 17 };
-const GPT_IMAGE_1_OPENAI_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 4, medium: 8,  high: 20, auto: 20 };
+// Source: OpenAI gpt-image-2 pricing (per output @ 1024×1024):
+//   low ~$0.006 / medium ~$0.053 / high ~$0.211. Edit adds an
+//   input-image token cost (~$0.02–0.03). Conservative round-ups.
+const GPT_IMAGE_1_OPENAI_GENERATE_CENTS: Record<GptImage1Quality, number> = { low: 1, medium: 6,  high: 22, auto: 22 };
+const GPT_IMAGE_1_OPENAI_EDIT_CENTS:     Record<GptImage1Quality, number> = { low: 3, medium: 9,  high: 25, auto: 25 };
 
 function normalizeQuality(q: unknown): GptImage1Quality {
   return q === 'low' || q === 'medium' || q === 'high' || q === 'auto' ? q : 'auto';
@@ -275,18 +275,18 @@ function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: 
     // GPT Image 1 is the exception — it only accepts a fixed enum
     // ("1024x1024", "1536x1024", "1024x1536", "auto"). Map the picked
     // size to the closest aspect ratio.
-    if (model.id === 'gpt-image-1') {
+    if (model.id === 'gpt-image-2') {
       payload.image_size = gptImage1Size(body.width, body.height);
     } else {
       payload.image_size = { width: body.width, height: body.height };
     }
-  } else if (model.id === 'gpt-image-1') {
+  } else if (model.id === 'gpt-image-2') {
     payload.image_size = 'auto';
   }
 
   // GPT Image 1 has a `quality` parameter that swings cost by ~10×.
   // Pass it through so the user can pick Low for cheap drafts.
-  if (model.id === 'gpt-image-1') {
+  if (model.id === 'gpt-image-2') {
     payload.quality = normalizeQuality(body.quality);
   }
 
@@ -355,7 +355,7 @@ function extractSyncOutputs(data: FalSyncResponse): ExtractedOutput[] {
 }
 
 // ============================================================
-// OpenAI direct provider — gpt-image-1 only.
+// OpenAI direct provider — gpt-image-2 only.
 // ============================================================
 
 interface OpenaiImageResponse {
@@ -363,7 +363,7 @@ interface OpenaiImageResponse {
   error?: { message?: string; type?: string };
 }
 
-// OpenAI's gpt-image-1 only accepts a small set of size strings,
+// OpenAI's gpt-image-2 only accepts a small set of size strings,
 // same as Fal's wrapper. Map (width, height) to the closest one.
 function openaiSizeFromDimensions(width?: number, height?: number): 'auto' | '1024x1024' | '1536x1024' | '1024x1536' {
   if (!width || !height) return 'auto';
@@ -413,13 +413,13 @@ async function callOpenaiImage(args: OpenaiCallArgs): Promise<OpenaiCallResult> 
   let res: Response;
   if (isEdit) {
     const form = new FormData();
-    form.append('model', 'gpt-image-1');
+    form.append('model', 'gpt-image-2');
     form.append('prompt', prompt);
     form.append('size', size);
     form.append('quality', quality);
     form.append('n', String(numImages));
     // Fetch each input image (may be a signed Supabase URL or a public
-    // URL from a previous output) and attach as a Blob. gpt-image-1's
+    // URL from a previous output) and attach as a Blob. gpt-image-2's
     // edit endpoint accepts multiple images via image[].
     for (const url of inputImageUrls) {
       const imgRes = await fetch(url);
@@ -440,7 +440,7 @@ async function callOpenaiImage(args: OpenaiCallArgs): Promise<OpenaiCallResult> 
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-image-1',
+        model: 'gpt-image-2',
         prompt,
         size,
         quality,
@@ -526,7 +526,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Provider selection. GPT Image 1 prefers the user's OpenAI key
   // when one is configured (much cheaper than via Fal); everything
   // else stays on Fal.
-  const openaiKey = model.id === 'gpt-image-1' ? await resolveOpenaiKey(supabase, userId) : null;
+  const openaiKey = model.id === 'gpt-image-2' ? await resolveOpenaiKey(supabase, userId) : null;
   const provider: 'openai' | 'fal' = openaiKey ? 'openai' : 'fal';
 
   // Edit endpoints typically cost more than text-to-image, so use
@@ -539,7 +539,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         !!body.source_image_url ||
         (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0)
       );
-  const perImageCostCents = model.id === 'gpt-image-1'
+  const perImageCostCents = model.id === 'gpt-image-2'
     ? gptImage1CostCents(normalizeQuality(body.quality), willEdit, provider)
     : ((willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents);
   const totalCostCents = perImageCostCents * numImages;
@@ -587,7 +587,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       height: body.height ?? null,
       source_image_url: firstSource,
       fal_model_endpoint: provider === 'openai'
-        ? (willEdit ? 'openai/gpt-image-1/edit' : 'openai/gpt-image-1')
+        ? (willEdit ? 'openai/gpt-image-2/edit' : 'openai/gpt-image-2')
         : effectiveEndpoint,
       cost_cents: perImageCostCents,
       status: 'pending',
@@ -602,7 +602,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const generationId = inserted.id as string;
 
-  // OpenAI provider path — gpt-image-1 only. Calls OpenAI directly
+  // OpenAI provider path — gpt-image-2 only. Calls OpenAI directly
   // (no Fal markup), receives base64 image data, uploads to our
   // outputs bucket, and fans out one row per returned image.
   if (provider === 'openai' && openaiKey) {
@@ -677,7 +677,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         width: dims?.width ?? body.width ?? null,
         height: dims?.height ?? body.height ?? null,
         source_image_url: firstSource,
-        fal_model_endpoint: willEdit ? 'openai/gpt-image-1/edit' : 'openai/gpt-image-1',
+        fal_model_endpoint: willEdit ? 'openai/gpt-image-2/edit' : 'openai/gpt-image-2',
         cost_cents: perImageCostCents,
         status: 'completed' as const,
         output_url: url,
