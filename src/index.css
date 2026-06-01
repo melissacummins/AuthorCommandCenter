@@ -88,3 +88,25 @@ body {
 input[type=number]::-webkit-inner-spin-button {
   opacity: 1;
 }
+
+/* Slim, unobtrusive scrollbars for sidebars and scroll panels (replaces the
+   chunky default that showed on the collapsed nav). Works on the dark main
+   nav and the light planner rail alike via a translucent slate thumb. */
+.nice-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.5) transparent;
+}
+.nice-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.nice-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.nice-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+}
+.nice-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.75);
+}

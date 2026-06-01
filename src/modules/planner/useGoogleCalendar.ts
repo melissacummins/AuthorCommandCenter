@@ -11,7 +11,10 @@ const SELECTED_KEY = 'planner-gcal-calendar';
 // connection + the chosen calendar, and re-exposes the event CRUD helpers.
 export function useGoogleCalendar() {
   const configured = isCalendarConfigured();
-  const [connected, setConnected] = useState(false);
+  // Start optimistically connected if we connected before, so navigating back
+  // to the planner doesn't flash the "Connect Google Calendar" prompt while the
+  // silent resume runs. loadCalendars() flips this back off if resume fails.
+  const [connected, setConnected] = useState(() => configured && wasConnected());
   const [calendars, setCalendars] = useState<GCalCalendar[]>([]);
   const [calendarId, setCalendarId] = useState<string>(() => localStorage.getItem(SELECTED_KEY) ?? '');
   const [error, setError] = useState<string | null>(null);

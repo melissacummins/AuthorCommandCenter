@@ -29,7 +29,7 @@ export interface MyDayHandlers {
 }
 
 export default function MyDayView({
-  tasks, blocks, dayNotes, settings, today, cal, handlers,
+  tasks, blocks, dayNotes, settings, today, cal, handlers, jumpTo,
 }: {
   tasks: PlannerTask[];
   blocks: PlannerTimeBlock[];
@@ -38,11 +38,18 @@ export default function MyDayView({
   today: string;
   cal: { gc: UseGoogleCalendar; calVersion: number };
   handlers: MyDayHandlers;
+  // A nudge from elsewhere (the Plan view) to open a specific day.
+  jumpTo?: { iso: string; n: number };
 }) {
   const { gc, calVersion } = cal;
   const [selected, setSelected] = useState(today);
   const [showMonth, setShowMonth] = useState(false);
   const [events, setEvents] = useState<GCalEvent[]>([]);
+
+  // Follow external day jumps (Plan → My Day). n bumps so the same day re-opens.
+  useEffect(() => {
+    if (jumpTo && jumpTo.n > 0) { setSelected(jumpTo.iso); setShowMonth(false); }
+  }, [jumpTo]);
 
   // Load the selected day's Google events (re-runs when a block is synced).
   const loadEvents = useCallback(async () => {

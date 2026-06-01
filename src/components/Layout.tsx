@@ -1,7 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
-import PenNamePicker from './PenNamePicker';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
   Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen
@@ -138,7 +137,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         </button>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 py-2 overflow-y-auto">
+        <nav className="flex-1 px-2 py-2 overflow-y-auto nice-scrollbar">
           <NavLink module={homeModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
           {/* Planner is a personal tool, always available and outside the four
               gated groups (like Home/Settings). */}
@@ -214,9 +213,6 @@ export default function Layout({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-2">
             <currentModule.icon className={`w-5 h-5 ${currentModule.color}`} />
             <h2 className="text-lg font-semibold text-slate-800">{currentModule.name}</h2>
-          </div>
-          <div className="ml-auto">
-            <PenNamePicker />
           </div>
         </header>
         <div className="flex-1 overflow-y-auto">
