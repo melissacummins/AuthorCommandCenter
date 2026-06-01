@@ -39,7 +39,7 @@ export const GATED_MODULES: { key: string; path: string; label: string }[] = [
   { key: 'timeline', path: '/timeline', label: 'Timeline' },
   { key: 'book-tracker', path: '/book-tracker', label: 'Book Tracker' },
   { key: 'profit-track', path: '/profit-track', label: 'Profit' },
-  { key: 'finstream', path: '/finstream', label: 'Financials' },
+  { key: 'finstream', path: '/finstream', label: 'Transactions' },
   { key: 'inventory', path: '/inventory', label: 'Inventory' },
   { key: 'cross-sell', path: '/cross-sell', label: 'Cross-Sell Analyzer' },
   { key: 'ad-alchemy', path: '/ad-alchemy', label: 'Ad Alchemy' },
