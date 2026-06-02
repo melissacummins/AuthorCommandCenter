@@ -26,6 +26,7 @@ export interface MyDayHandlers {
   onUnsyncBlock: (block: PlannerTimeBlock) => void;
   onSaveDayNote: (day: string, body: string) => void;
   onUpdateCapacity: (minutes: number) => void;
+  onToggleCarryOver: (on: boolean) => void;
 }
 
 export default function MyDayView({
@@ -42,23 +43,36 @@ export default function MyDayView({
   jumpTo?: { iso: string; n: number };
 }) {
   const { gc, calVersion } = cal;
+  const carryOver = !!settings.carry_over_capacity;
   const [selected, setSelected] = useState(today);
+  const prevDay = addDaysISO(selected, -1);
   const [showMonth, setShowMonth] = useState(false);
   const [events, setEvents] = useState<GCalEvent[]>([]);
+  // The previous day's timed events — only needed (and only fetched) when the
+  // carry-over setting is on, so the deduction matches what that day's bar showed.
+  const [prevEvents, setPrevEvents] = useState<GCalEvent[]>([]);
 
   // Follow external day jumps (Plan → My Day). n bumps so the same day re-opens.
   useEffect(() => {
     if (jumpTo && jumpTo.n > 0) { setSelected(jumpTo.iso); setShowMonth(false); }
   }, [jumpTo]);
 
-  // Load the selected day's Google events (re-runs when a block is synced).
+  // Load the selected day's Google events (re-runs when a block is synced), plus
+  // the previous day's when carry-over is on so its overage can be measured.
   const loadEvents = useCallback(async () => {
-    if (!gc.connected) { setEvents([]); return; }
+    if (!gc.connected) { setEvents([]); setPrevEvents([]); return; }
     const start = new Date(selected + 'T00:00:00');
     const end = new Date(start); end.setDate(start.getDate() + 1);
     setEvents(await gc.fetchEvents(start.toISOString(), end.toISOString()));
+    if (carryOver) {
+      const pStart = new Date(prevDay + 'T00:00:00');
+      const pEnd = new Date(pStart); pEnd.setDate(pStart.getDate() + 1);
+      setPrevEvents(await gc.fetchEvents(pStart.toISOString(), pEnd.toISOString()));
+    } else {
+      setPrevEvents([]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, gc.connected, gc.calendarId, gc.fetchEvents, calVersion]);
+  }, [selected, prevDay, carryOver, gc.connected, gc.calendarId, gc.fetchEvents, calVersion]);
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
   function goToDay(iso: string) { setSelected(iso); setShowMonth(false); }
@@ -82,7 +96,6 @@ export default function MyDayView({
   // Loose = scheduled for the day but not dropped into a block. De-duped: a
   // to-do in a block shows only inside that block, never also here.
   const looseTasks = dayTasks.filter(t => !t.block_id);
-  const looseOpen = looseTasks.filter(t => !t.done);
 
   // The local YYYY-MM-DD a to-do "belongs" to for navigation/recall: its due
   // day, else the day it was completed.
@@ -115,24 +128,42 @@ export default function MyDayView({
     [tasks, selected, today],
   );
 
-  // Capacity: timed blocks count their range; untimed blocks + loose to-dos
-  // count their estimates; and the day's *timed* Google events count too —
-  // except events already represented by a synced block or time-blocked to-do
-  // (matched by gcal_event_id), so nothing is double-counted.
-  const plannedMinutes = useMemo(() => {
+  // Planned load for any day: timed blocks count their range; untimed blocks +
+  // loose to-dos count their estimates; and the day's *timed* Google events count
+  // too — except events already represented by a synced block or time-blocked
+  // to-do (matched by gcal_event_id), so nothing is double-counted. Pulling this
+  // out lets us measure both the selected day and the previous one identically.
+  const plannedFor = useCallback((dayIso: string, dayEvents: GCalEvent[]) => {
+    const dBlocks = blocks.filter(b => b.day === dayIso);
+    const dTasks = tasks.filter(t => t.kind === 'task' && t.due_date === dayIso);
+    const byBlock: Record<string, PlannerTask[]> = {};
+    for (const t of dTasks) if (t.block_id) (byBlock[t.block_id] ??= []).push(t);
     let total = 0;
-    for (const b of dayBlocks) total += blockMinutes(b, tasksByBlock[b.id] ?? []);
-    for (const t of looseOpen) total += t.estimate_minutes ?? 0;
+    for (const b of dBlocks) total += blockMinutes(b, byBlock[b.id] ?? []);
+    for (const t of dTasks) if (!t.block_id && !t.done) total += t.estimate_minutes ?? 0;
     const linked = new Set<string>();
-    for (const b of dayBlocks) if (b.gcal_event_id) linked.add(b.gcal_event_id);
-    for (const t of dayTasks) if (t.gcal_event_id) linked.add(t.gcal_event_id);
-    for (const ev of events) {
+    for (const b of dBlocks) if (b.gcal_event_id) linked.add(b.gcal_event_id);
+    for (const t of dTasks) if (t.gcal_event_id) linked.add(t.gcal_event_id);
+    for (const ev of dayEvents) {
       if (ev.id && linked.has(ev.id)) continue;
       if (!ev.start?.dateTime || !ev.end?.dateTime) continue; // skip all-day
       total += Math.max(0, Math.round((new Date(ev.end.dateTime).getTime() - new Date(ev.start.dateTime).getTime()) / 60_000));
     }
     return total;
-  }, [dayBlocks, tasksByBlock, looseOpen, dayTasks, events]);
+  }, [blocks, tasks]);
+
+  const plannedMinutes = useMemo(() => plannedFor(selected, events), [plannedFor, selected, events]);
+
+  // Carry-over: if the previous day was planned *over* its target, lower today's
+  // target by that overage rounded to the nearest hour (floored at zero). Off by
+  // default; the deduction is shown on the bar so it never silently moves.
+  const baseTarget = settings.daily_capacity_minutes;
+  const carryDeduction = useMemo(() => {
+    if (!carryOver) return 0;
+    const over = plannedFor(prevDay, prevEvents) - baseTarget;
+    return over > 0 ? Math.round(over / 60) * 60 : 0;
+  }, [carryOver, plannedFor, prevDay, prevEvents, baseTarget]);
+  const effectiveTarget = Math.max(0, baseTarget - carryDeduction);
 
   function handleDragEnd(e: DragEndEvent) {
     const taskId = String(e.active.id);
@@ -207,7 +238,15 @@ export default function MyDayView({
         )}
 
         <div className="mt-3">
-          <CapacityBar planned={plannedMinutes} target={settings.daily_capacity_minutes} onSetTarget={handlers.onUpdateCapacity} />
+          <CapacityBar
+            planned={plannedMinutes}
+            target={effectiveTarget}
+            baseTarget={baseTarget}
+            carryDeduction={carryDeduction}
+            carryOver={carryOver}
+            onSetTarget={handlers.onUpdateCapacity}
+            onToggleCarryOver={handlers.onToggleCarryOver}
+          />
         </div>
       </div>
 
@@ -296,17 +335,28 @@ export default function MyDayView({
 // Capacity bar
 // ---------------------------------------------------------------------------
 
-function CapacityBar({ planned, target, onSetTarget }: { planned: number; target: number; onSetTarget: (m: number) => void }) {
+function CapacityBar({
+  planned, target, baseTarget, carryDeduction, carryOver, onSetTarget, onToggleCarryOver,
+}: {
+  planned: number;
+  target: number; // effective target the bar measures against (base minus carry-over)
+  baseTarget: number; // the saved daily target; what the editable field shows/sets
+  carryDeduction: number; // minutes shaved off today because yesterday ran over
+  carryOver: boolean;
+  onSetTarget: (m: number) => void;
+  onToggleCarryOver: (on: boolean) => void;
+}) {
   const [editing, setEditing] = useState(false);
-  const [hours, setHours] = useState((target / 60).toString());
+  const [hours, setHours] = useState((baseTarget / 60).toString());
   const pct = target > 0 ? Math.min(100, Math.round((planned / target) * 100)) : 0;
   const over = planned > target;
+  const reduced = carryDeduction > 0;
 
   function commit() {
     setEditing(false);
     const h = parseFloat(hours);
     if (!isNaN(h) && h > 0) onSetTarget(Math.round(h * 60));
-    else setHours((target / 60).toString());
+    else setHours((baseTarget / 60).toString());
   }
 
   return (
@@ -332,7 +382,7 @@ function CapacityBar({ planned, target, onSetTarget }: { planned: number; target
             <span className="text-slate-400">h target</span>
           </span>
         ) : (
-          <button onClick={() => { setHours((target / 60).toString()); setEditing(true); }} className="font-medium text-slate-500 hover:text-teal-600 underline decoration-dotted">
+          <button onClick={() => { setHours((baseTarget / 60).toString()); setEditing(true); }} className="font-medium text-slate-500 hover:text-teal-600 underline decoration-dotted">
             {formatMinutes(target)} target
           </button>
         )}
@@ -340,6 +390,22 @@ function CapacityBar({ planned, target, onSetTarget }: { planned: number; target
       </div>
       <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
         <div className={`h-full rounded-full transition-all ${over ? 'bg-rose-500' : pct > 80 ? 'bg-amber-500' : 'bg-teal-500'}`} style={{ width: `${pct}%` }} />
+      </div>
+      <div className="flex items-center gap-2 mt-1.5 text-[11px]">
+        {reduced && (
+          <span className="text-amber-600">
+            −{formatMinutes(carryDeduction)} carried over from yesterday (target {formatMinutes(baseTarget)} → {formatMinutes(target)})
+          </span>
+        )}
+        <label className="ml-auto inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-600 cursor-pointer select-none" title="When yesterday runs over its target, lower today's target by that overage (rounded to the nearest hour).">
+          <input
+            type="checkbox"
+            checked={carryOver}
+            onChange={e => onToggleCarryOver(e.target.checked)}
+            className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
+          />
+          Carry over yesterday's overage
+        </label>
       </div>
     </div>
   );

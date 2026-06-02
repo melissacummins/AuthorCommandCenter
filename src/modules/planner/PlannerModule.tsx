@@ -284,6 +284,13 @@ export default function PlannerModule() {
     catch (e) { setError((e as Error)?.message ?? 'Could not save your daily target.'); }
   }
 
+  async function updateCarryOver(on: boolean) {
+    if (!user) return;
+    setSettings(prev => (prev ? { ...prev, carry_over_capacity: on } : prev));
+    try { const s = await updateSettings(user.id, { carry_over_capacity: on }); setSettings(s); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save your capacity setting.'); }
+  }
+
   const myDayHandlers: MyDayHandlers = {
     onAddTask: addTask,
     onPatchTask: patchTask,
@@ -295,6 +302,7 @@ export default function PlannerModule() {
     onUnsyncBlock: unsyncBlock,
     onSaveDayNote: saveDayNote,
     onUpdateCapacity: updateCapacity,
+    onToggleCarryOver: updateCarryOver,
   };
 
   // Pick a view and dismiss the mobile rail in one go.
@@ -421,7 +429,7 @@ export default function PlannerModule() {
             tasks={tasks}
             blocks={blocks}
             dayNotes={dayNotes}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, created_at: '', updated_at: '' }}
             today={today}
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
@@ -431,7 +439,7 @@ export default function PlannerModule() {
           <PlanView
             tasks={tasks}
             blocks={blocks}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, created_at: '', updated_at: '' }}
             today={today}
             onOpenDay={openDay}
           />
