@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  connect as gConnect, disconnect as gDisconnect, isCalendarConfigured, wasConnected,
+  connect as gConnect, disconnect as gDisconnect, isCalendarConfigured, wasConnected, prepare as gPrepare,
   listCalendars, listEvents, createEvent, updateEvent, deleteEvent,
   type GCalCalendar, type GCalEvent,
 } from './google';
@@ -40,9 +40,12 @@ export function useGoogleCalendar() {
     }
   }, []);
 
-  // Resume a prior session silently on mount.
+  // Resume a prior session silently on mount. Either way, warm up GIS so a later
+  // Connect click can open the popup within the user-gesture window.
   useEffect(() => {
-    if (configured && wasConnected()) loadCalendars();
+    if (!configured) return;
+    gPrepare();
+    if (wasConnected()) loadCalendars();
   }, [configured, loadCalendars]);
 
   const connect = useCallback(async () => {
