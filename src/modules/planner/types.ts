@@ -51,6 +51,11 @@ export interface PlannerTask {
   // The named My Day time block this to-do has been dropped into, or null when
   // it sits loose on the day. ON DELETE SET NULL frees it back into the day.
   block_id: string | null;
+  // Time tracking. actual_minutes is the real time worked, accumulated across
+  // timer runs; timer_started_at is the ISO start of the active run while a
+  // timer is going (null when stopped). Only one to-do runs at a time.
+  actual_minutes: number;
+  timer_started_at: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -239,6 +244,70 @@ export function completionsByDay(tasks: PlannerTask[], today: string, days: numb
     counts[iso] = (counts[iso] ?? 0) + 1;
   }
   return dayRange(addDaysISO(today, -(days - 1)), days).map(day => ({ day, done: counts[day] ?? 0 }));
+}
+
+// Whole minutes elapsed since an ISO timestamp (a running timer's start), never
+// negative. Used to bank a running timer's in-progress time.
+export function elapsedMinutes(since: string): number {
+  return Math.max(0, Math.round((Date.now() - new Date(since).getTime()) / 60_000));
+}
+
+// Local YYYY-MM-DD for an ISO timestamp (e.g. done_at, created_at), matching
+// todayISO()'s local-day convention. Shared by the Logbook and Stats.
+export function localDay(ts: string): string {
+  const d = new Date(ts);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
+// One row per day over the window: how many to-dos were completed (by done_at),
+// plus the estimated and actually-tracked minutes of those completed to-dos.
+// Drives the Stats chart, which can plot count or hours.
+export interface DayStat { day: string; done: number; estMinutes: number; trackedMinutes: number }
+export function productivitySeries(tasks: PlannerTask[], today: string, days: number): DayStat[] {
+  const by: Record<string, DayStat> = {};
+  for (const t of tasks) {
+    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
+    const day = localDay(t.done_at);
+    const row = (by[day] ??= { day, done: 0, estMinutes: 0, trackedMinutes: 0 });
+    row.done += 1;
+    row.estMinutes += t.estimate_minutes ?? 0;
+    row.trackedMinutes += t.actual_minutes ?? 0;
+  }
+  return dayRange(addDaysISO(today, -(days - 1)), days)
+    .map(day => by[day] ?? { day, done: 0, estMinutes: 0, trackedMinutes: 0 });
+}
+
+// Completed-to-do counts by weekday (0 = Sunday … 6 = Saturday), over a window
+// bounded by [from, to] inclusive on done_at's local day.
+export function completionsByWeekday(tasks: PlannerTask[], from: string, to: string): number[] {
+  const counts = [0, 0, 0, 0, 0, 0, 0];
+  for (const t of tasks) {
+    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
+    const day = localDay(t.done_at);
+    if (day < from || day > to) continue;
+    counts[new Date(day + 'T00:00:00').getDay()] += 1;
+  }
+  return counts;
+}
+
+// Per-list rollup of completed to-dos in a window: count + estimated/tracked
+// minutes, keyed by note_id ('' for list-less to-dos). Sorted by tracked then
+// estimated time, busiest first.
+export interface ListStat { noteId: string; done: number; estMinutes: number; trackedMinutes: number }
+export function completionsByList(tasks: PlannerTask[], from: string, to: string): ListStat[] {
+  const by: Record<string, ListStat> = {};
+  for (const t of tasks) {
+    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
+    const day = localDay(t.done_at);
+    if (day < from || day > to) continue;
+    const key = t.note_id ?? '';
+    const row = (by[key] ??= { noteId: key, done: 0, estMinutes: 0, trackedMinutes: 0 });
+    row.done += 1;
+    row.estMinutes += t.estimate_minutes ?? 0;
+    row.trackedMinutes += t.actual_minutes ?? 0;
+  }
+  return Object.values(by).sort((a, b) =>
+    (b.trackedMinutes - a.trackedMinutes) || (b.estMinutes - a.estMinutes) || (b.done - a.done));
 }
 
 // Short weekday + day-of-month for the date strip, e.g. { dow: 'Mon', dom: 2 }.

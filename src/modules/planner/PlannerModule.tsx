@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MiniMenu } from './MiniMenu';
+import { TimerButton } from './TimerButton';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -13,10 +14,11 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange,
+  Star, Menu, CalendarRange, BookCheck,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
+import LogbookView from './LogbookView';
 import PlanView from './PlanView';
 import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
@@ -28,7 +30,7 @@ import {
 } from './api';
 import {
   bucketForTask, checklistProgress, formatDue, formatMinutes, nextDueDate, sumEstimate, todayISO,
-  ESTIMATE_PRESETS, RECURRENCE_LABELS, DEFAULT_DAILY_CAPACITY,
+  elapsedMinutes, ESTIMATE_PRESETS, RECURRENCE_LABELS, DEFAULT_DAILY_CAPACITY,
   type ChecklistItem, type PlannerNote, type PlannerTask, type Bucket, type Recurrence,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock,
 } from './types';
@@ -38,7 +40,8 @@ type Selection =
   | { kind: 'note'; id: string }
   | { kind: 'myday' }
   | { kind: 'plan' }
-  | { kind: 'stats' };
+  | { kind: 'stats' }
+  | { kind: 'logbook' };
 
 // Everything a list/calendar view needs to show Google events and turn to-dos
 // into time blocks. Bundled so it's one prop to thread down.
@@ -175,8 +178,25 @@ export default function PlannerModule() {
         checklist: (task.checklist ?? []).map(i => ({ ...i, done: false })),
       };
     }
-    setTasks(prev => prev.map(t => (t.id === id ? { ...t, ...effective } : t)));
-    try { await updateTask(id, effective); }
+    // Completing a to-do with a running timer banks the in-progress time first.
+    if (patch.done === true && task?.timer_started_at) {
+      effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + elapsedMinutes(task.timer_started_at), timer_started_at: null };
+    }
+    // Only one timer runs at a time: starting one stops + banks every other.
+    const startingTimer = !!patch.timer_started_at;
+    const others = startingTimer ? tasks.filter(t => t.id !== id && t.timer_started_at) : [];
+    setTasks(prev => prev.map(t => {
+      if (t.id === id) return { ...t, ...effective };
+      if (startingTimer && t.timer_started_at) {
+        return { ...t, actual_minutes: (t.actual_minutes ?? 0) + elapsedMinutes(t.timer_started_at), timer_started_at: null };
+      }
+      return t;
+    }));
+    try {
+      await updateTask(id, effective);
+      await Promise.all(others.map(t =>
+        updateTask(t.id, { actual_minutes: (t.actual_minutes ?? 0) + elapsedMinutes(t.timer_started_at!), timer_started_at: null })));
+    }
     catch (e) { setError((e as Error)?.message ?? 'Could not update item.'); }
   }
 
@@ -376,6 +396,15 @@ export default function PlannerModule() {
             <BarChart3 className="w-4 h-4 text-indigo-500" />
             <span className="flex-1 text-left">Stats</span>
           </button>
+          <button
+            onClick={() => choose({ kind: 'logbook' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'logbook' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <BookCheck className="w-4 h-4 text-emerald-500" />
+            <span className="flex-1 text-left">Logbook</span>
+          </button>
         </nav>
 
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
@@ -444,7 +473,9 @@ export default function PlannerModule() {
             onOpenDay={openDay}
           />
         ) : selection.kind === 'stats' ? (
-          <StatsView tasks={tasks} today={today} />
+          <StatsView tasks={tasks} notesById={notesById} today={today} />
+        ) : selection.kind === 'logbook' ? (
+          <LogbookView tasks={tasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
         ) : selection.kind === 'view' ? (
           <ViewPane
             bucket={selection.bucket}
@@ -1137,6 +1168,7 @@ function TaskRow({
 
         {showSchedule && !task.done && (
           <div className="flex items-center gap-1.5 shrink-0">
+            <TimerButton task={task} onPatch={onPatch} />
             <button
               onClick={() => onPatch(task.id, { flagged: !task.flagged })}
               className={`${task.flagged ? 'text-amber-400' : 'text-slate-300 hover:text-amber-400 opacity-0 group-hover:opacity-100'} transition-opacity`}
