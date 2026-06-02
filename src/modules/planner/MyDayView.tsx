@@ -6,12 +6,14 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
+  CalendarClock,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
+import { MiniMenu } from './MiniMenu';
 import {
   addDaysISO, blockMinutes, formatClock, formatMinutes,
-  minutesToTime, timeToMinutes,
+  minutesToTime, timeToMinutes, ESTIMATE_PRESETS,
   type PlannerSettings, type PlannerTask, type PlannerTimeBlock,
 } from './types';
 
@@ -605,9 +607,41 @@ function DraggableTaskRow({
           {task.title || 'Untitled'}
         </span>
       )}
-      {task.estimate_minutes ? <span className="text-xs text-slate-400 shrink-0">{formatMinutes(task.estimate_minutes)}</span> : null}
+      {task.estimate_minutes ? <span className="text-xs font-medium text-slate-400 shrink-0">{formatMinutes(task.estimate_minutes)}</span> : null}
       {task.start_at && (
         <span className="text-xs text-sky-600 shrink-0">{new Date(task.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
+      )}
+      {!task.done && (
+        <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Set / clear a time estimate. */}
+          <MiniMenu title="Time estimate" icon={<Clock className={`w-4 h-4 ${task.estimate_minutes ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
+            {close => (
+              <div className="py-1">
+                {ESTIMATE_PRESETS.map(p => (
+                  <button key={p} onClick={() => { onPatch(task.id, { estimate_minutes: p }); close(); }}
+                    className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.estimate_minutes === p ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
+                    {formatMinutes(p)}
+                  </button>
+                ))}
+                <button onClick={() => { onPatch(task.id, { estimate_minutes: null }); close(); }}
+                  className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">No estimate</button>
+              </div>
+            )}
+          </MiniMenu>
+
+          {/* Reschedule to another day. Also pops it out of any time block (whose
+              block lives on the old day) so it can't vanish from both days, and
+              clearing the date moves it to Anytime. */}
+          <label className="relative cursor-pointer text-slate-300 hover:text-teal-600" title="Move to another day">
+            <CalendarClock className="w-4 h-4" />
+            <input
+              type="date"
+              value={task.due_date ?? ''}
+              onChange={e => onPatch(task.id, { due_date: e.target.value || null, block_id: null, someday: false })}
+              className="absolute inset-0 opacity-0 cursor-pointer w-4"
+            />
+          </label>
+        </div>
       )}
       <button onClick={() => onDelete(task.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Delete">
         <Trash2 className="w-3.5 h-3.5" />
