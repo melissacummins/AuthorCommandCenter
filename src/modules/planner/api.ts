@@ -103,7 +103,8 @@ export async function updateTask(
   id: string,
   patch: Partial<Pick<PlannerTask,
     'title' | 'done' | 'due_date' | 'someday' | 'note_id' | 'sort_order' | 'checklist' | 'recurrence'
-    | 'estimate_minutes' | 'start_at' | 'gcal_event_id' | 'block_id' | 'flagged'>>,
+    | 'estimate_minutes' | 'start_at' | 'gcal_event_id' | 'block_id' | 'flagged'
+    | 'actual_minutes' | 'timer_started_at'>>,
 ): Promise<PlannerTask> {
   const next: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() };
   // Keep done_at in step with done so we can show "completed" timestamps later.

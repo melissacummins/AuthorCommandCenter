@@ -11,6 +11,7 @@ import {
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import { MiniMenu } from './MiniMenu';
+import { TimerButton } from './TimerButton';
 import {
   addDaysISO, blockMinutes, formatClock, formatMinutes,
   minutesToTime, timeToMinutes, ESTIMATE_PRESETS,
@@ -611,6 +612,7 @@ function DraggableTaskRow({
       {task.start_at && (
         <span className="text-xs text-sky-600 shrink-0">{new Date(task.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
       )}
+      <TimerButton task={task} onPatch={onPatch} />
       {!task.done && (
         <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           {/* Set / clear a time estimate. */}
