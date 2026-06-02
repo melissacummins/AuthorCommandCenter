@@ -56,11 +56,15 @@ export interface PlannerTask {
   updated_at: string;
 }
 
-// Per-user planner preferences. Currently just the daily focus-time target the
-// My Day capacity bar measures a day's planned load against.
+// Per-user planner preferences. The daily focus-time target the My Day
+// capacity bar measures a day's planned load against, plus an opt-in to carry
+// yesterday's overage into today's target.
 export interface PlannerSettings {
   user_id: string;
   daily_capacity_minutes: number;
+  // When true, the My Day capacity bar subtracts the previous day's overage
+  // (rounded to the nearest hour, floored at zero) from this day's target.
+  carry_over_capacity: boolean;
   created_at: string;
   updated_at: string;
 }

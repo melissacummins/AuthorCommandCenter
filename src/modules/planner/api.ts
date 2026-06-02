@@ -164,7 +164,7 @@ export async function getSettings(userId: string): Promise<PlannerSettings> {
 
 export async function updateSettings(
   userId: string,
-  patch: Partial<Pick<PlannerSettings, 'daily_capacity_minutes'>>,
+  patch: Partial<Pick<PlannerSettings, 'daily_capacity_minutes' | 'carry_over_capacity'>>,
 ): Promise<PlannerSettings> {
   const { data, error } = await supabase
     .from('planner_settings')
