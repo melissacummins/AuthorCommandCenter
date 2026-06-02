@@ -76,31 +76,42 @@ async function ensureTokenClient(): Promise<void> {
 // prompt='' tries to refresh silently using the existing Google session.
 function requestToken(prompt: '' | 'consent'): Promise<string> {
   return new Promise<string>((resolve, reject) => {
-    ensureTokenClient()
-      .then(() => {
-        tokenClient.callback = (resp: AnyObj) => {
-          if (resp.error) {
-            reject(new Error(resp.error_description || resp.error));
-            return;
-          }
-          accessToken = resp.access_token;
-          tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000 - 60_000;
-          localStorage.setItem(CONNECTED_KEY, '1');
-          try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ t: accessToken, e: tokenExpiry })); } catch { /* quota/private mode */ }
-          resolve(accessToken!);
-        };
-        // Without this, a silent (prompt='') resume that actually needs the user
-        // — expired Google session, revoked grant, blocked popup — fires GIS's
-        // error path instead of `callback`, leaving the promise pending forever.
-        // That hang is what left the planner stuck "connected" with no events and
-        // no way to re-open the consent popup. Rejecting here lets the caller fall
-        // back to showing the Connect button again.
-        tokenClient.error_callback = (err: AnyObj) => {
-          reject(new Error(err?.message || 'Google sign-in was cancelled or blocked.'));
-        };
-        tokenClient.requestAccessToken({ prompt });
-      })
-      .catch(reject);
+    // Wire up the per-request callbacks, then ask GIS for a token.
+    const fire = () => {
+      tokenClient.callback = (resp: AnyObj) => {
+        if (resp.error) {
+          reject(new Error(resp.error_description || resp.error));
+          return;
+        }
+        accessToken = resp.access_token;
+        tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000 - 60_000;
+        localStorage.setItem(CONNECTED_KEY, '1');
+        try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ t: accessToken, e: tokenExpiry })); } catch { /* quota/private mode */ }
+        resolve(accessToken!);
+      };
+      // Without this, a silent (prompt='') resume that actually needs the user
+      // — expired Google session, revoked grant, blocked popup — fires GIS's
+      // error path instead of `callback`, leaving the promise pending forever.
+      // That hang is what left the planner stuck "connected" with no events and
+      // no way to re-open the consent popup. Rejecting here lets the caller fall
+      // back to showing the Connect button again.
+      tokenClient.error_callback = (err: AnyObj) => {
+        reject(new Error(err?.message || 'Google sign-in was cancelled or blocked.'));
+      };
+      tokenClient.requestAccessToken({ prompt });
+    };
+
+    // The consent popup is opened by GIS via window.open, which browsers only
+    // allow inside the synchronous user-gesture call stack. If the token client
+    // is already initialised (prepare() runs on planner mount), fire SYNCHRONOUSLY
+    // here — `new Promise`'s executor runs synchronously, so this stays inside the
+    // click handler and the popup isn't blocked. Only fall back to the async GIS
+    // load when we weren't prepared in time.
+    if (tokenClient) {
+      try { fire(); } catch (e) { reject(e as Error); }
+      return;
+    }
+    ensureTokenClient().then(fire).catch(reject);
   });
 }
 
