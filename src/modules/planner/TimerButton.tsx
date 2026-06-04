@@ -39,14 +39,13 @@ export function TimerButton({
     else onPatch(task.id, { timer_started_at: new Date().toISOString() });
   }
 
-  const show = running || base > 0;
   return (
     <button
       onClick={toggle}
       title={running ? 'Stop timer' : base > 0 ? `Resume timer · ${formatMinutes(base)} tracked` : 'Start timer'}
-      className={`inline-flex items-center gap-1 text-xs font-medium shrink-0 transition-opacity ${
-        show ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-      } ${running ? 'text-rose-600' : base > 0 ? 'text-slate-500 hover:text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
+      className={`inline-flex items-center gap-1 text-xs font-medium shrink-0 ${
+        running ? 'text-rose-600' : base > 0 ? 'text-slate-500 hover:text-teal-600' : 'text-slate-300 hover:text-teal-600'
+      }`}
     >
       {running
         ? <span className="relative flex w-3.5 h-3.5 items-center justify-center"><Square className="w-3 h-3 fill-current" /></span>
