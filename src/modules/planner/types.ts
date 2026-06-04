@@ -34,6 +34,9 @@ export interface PlannerTask {
   // groups the tasks beneath it. Headings never appear in the smart views.
   kind: TaskKind;
   title: string;
+  // Optional long-form body: a draft, links, context that doesn't fit the
+  // title. Empty/null when unused.
+  notes: string | null;
   done: boolean;
   done_at: string | null;
   // 'YYYY-MM-DD' or null. null + someday=false => Anytime; someday=true => Someday.

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MiniMenu } from './MiniMenu';
 import { TimerButton } from './TimerButton';
+import { TaskNotes } from './TaskNotes';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -14,7 +15,7 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck,
+  Star, Menu, CalendarRange, BookCheck, FileText,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
@@ -1081,7 +1082,9 @@ function TaskRow({
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [expanded, setExpanded] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [blockTime, setBlockTime] = useState('09:00');
+  const hasNotes = !!task.notes?.trim();
   const overdue = !task.done && !!task.due_date && task.due_date < today;
   const progress = checklistProgress(task);
   const hasChecklist = progress.total > 0;
@@ -1258,6 +1261,14 @@ function TaskRow({
         )}
 
         <button
+          onClick={() => setNotesOpen(v => !v)}
+          className={`shrink-0 transition-opacity ${hasNotes || notesOpen ? 'opacity-100 text-teal-600' : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-teal-600'}`}
+          title={hasNotes ? 'Notes' : 'Add notes'}
+        >
+          <FileText className="w-4 h-4" />
+        </button>
+
+        <button
           onClick={() => onDelete(task.id)}
           className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
           title="Delete"
@@ -1265,6 +1276,20 @@ function TaskRow({
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Notes body: open editor, or a one-line preview that opens it. */}
+      {notesOpen ? (
+        <div className="ml-7 mt-1.5">
+          <TaskNotes task={task} onPatch={onPatch} autoFocus />
+        </div>
+      ) : hasNotes ? (
+        <button
+          onClick={() => setNotesOpen(true)}
+          className="ml-7 mt-0.5 block text-left text-xs text-slate-400 hover:text-slate-600 truncate max-w-full"
+        >
+          {task.notes!.trim().split('\n')[0]}
+        </button>
+      ) : null}
 
       {/* Checklist body */}
       {enableChecklist && (expanded || hasChecklist) && !task.done && (

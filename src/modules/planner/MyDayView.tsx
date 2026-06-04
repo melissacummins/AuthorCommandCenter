@@ -6,12 +6,13 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
-  CalendarClock,
+  CalendarClock, FileText,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import { MiniMenu } from './MiniMenu';
 import { TimerButton } from './TimerButton';
+import { TaskNotes } from './TaskNotes';
 import {
   addDaysISO, blockMinutes, formatClock, formatMinutes,
   minutesToTime, timeToMinutes, ESTIMATE_PRESETS,
@@ -274,6 +275,7 @@ export default function MyDayView({
                       </button>
                       <span className="flex-1 text-sm text-slate-700 truncate">{t.title || 'Untitled'}</span>
                       {t.estimate_minutes ? <span className="text-xs text-slate-400 shrink-0">{formatMinutes(t.estimate_minutes)}</span> : null}
+                      <TimerButton task={t} onPatch={handlers.onPatchTask} />
                       <button
                         onClick={() => handlers.onPatchTask(t.id, { due_date: today })}
                         className="text-xs font-medium text-teal-600 hover:text-teal-700 shrink-0"
@@ -563,6 +565,8 @@ function DraggableTaskRow({
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const hasNotes = !!task.notes?.trim();
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
 
   function commit() {
@@ -573,7 +577,8 @@ function DraggableTaskRow({
   }
 
   return (
-    <li ref={setNodeRef} style={style} className={`flex items-center gap-2 group py-1 ${isDragging ? 'opacity-50' : ''}`}>
+    <li ref={setNodeRef} style={style} className={`group ${isDragging ? 'opacity-50' : ''}`}>
+      <div className="flex items-center gap-2 py-1">
       <button
         {...attributes}
         {...listeners}
@@ -645,9 +650,27 @@ function DraggableTaskRow({
           </label>
         </div>
       )}
+      <button
+        onClick={() => setNotesOpen(v => !v)}
+        className={`shrink-0 transition-opacity ${hasNotes || notesOpen ? 'opacity-100 text-teal-600' : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-teal-600'}`}
+        title={hasNotes ? 'Notes' : 'Add notes'}
+      >
+        <FileText className="w-3.5 h-3.5" />
+      </button>
       <button onClick={() => onDelete(task.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Delete">
         <Trash2 className="w-3.5 h-3.5" />
       </button>
+      </div>
+      {notesOpen ? (
+        <div className="ml-6 mb-1.5"><TaskNotes task={task} onPatch={onPatch} autoFocus /></div>
+      ) : hasNotes ? (
+        <button
+          onClick={() => setNotesOpen(true)}
+          className="ml-6 mb-1 block text-left text-xs text-slate-400 hover:text-slate-600 truncate max-w-full"
+        >
+          {task.notes!.trim().split('\n')[0]}
+        </button>
+      ) : null}
     </li>
   );
 }
