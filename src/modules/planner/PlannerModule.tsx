@@ -61,7 +61,6 @@ interface CalendarBridge {
 const VIEWS: { bucket: Bucket; label: string; icon: typeof Inbox; color: string }[] = [
   { bucket: 'upcoming', label: 'Upcoming', icon: CalendarClock, color: 'text-rose-500' },
   { bucket: 'anytime',  label: 'Anytime',  icon: Layers,        color: 'text-teal-600' },
-  { bucket: 'someday',  label: 'Someday',  icon: Moon,          color: 'text-indigo-500' },
 ];
 
 export default function PlannerModule() {
@@ -394,13 +393,14 @@ export default function PlannerModule() {
             {viewCounts.today > 0 && <span className="text-xs text-slate-400 font-medium">{viewCounts.today}</span>}
           </button>
           <button
-            onClick={() => choose({ kind: 'plan' })}
+            onClick={() => choose({ kind: 'inbox' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'plan' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+              selection.kind === 'inbox' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
             }`}
           >
-            <CalendarRange className="w-4 h-4 text-sky-500" />
-            <span className="flex-1 text-left">Plan</span>
+            <Inbox className="w-4 h-4 text-slate-400" />
+            <span className="flex-1 text-left">Inbox</span>
+            {inboxCount > 0 && <span className="text-xs text-slate-400 font-medium">{inboxCount}</span>}
           </button>
           {VIEWS.map(v => {
             const Icon = v.icon;
@@ -421,23 +421,13 @@ export default function PlannerModule() {
             );
           })}
           <button
-            onClick={() => choose({ kind: 'inbox' })}
+            onClick={() => choose({ kind: 'plan' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'inbox' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+              selection.kind === 'plan' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
             }`}
           >
-            <Inbox className="w-4 h-4 text-slate-400" />
-            <span className="flex-1 text-left">Inbox</span>
-            {inboxCount > 0 && <span className="text-xs text-slate-400 font-medium">{inboxCount}</span>}
-          </button>
-          <button
-            onClick={() => choose({ kind: 'stats' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'stats' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
-            }`}
-          >
-            <BarChart3 className="w-4 h-4 text-indigo-500" />
-            <span className="flex-1 text-left">Stats</span>
+            <CalendarRange className="w-4 h-4 text-sky-500" />
+            <span className="flex-1 text-left">Planning</span>
           </button>
           <button
             onClick={() => choose({ kind: 'logbook' })}
@@ -447,6 +437,15 @@ export default function PlannerModule() {
           >
             <BookCheck className="w-4 h-4 text-emerald-500" />
             <span className="flex-1 text-left">Logbook</span>
+          </button>
+          <button
+            onClick={() => choose({ kind: 'stats' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'stats' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            <span className="flex-1 text-left">Stats</span>
           </button>
           <button
             onClick={() => choose({ kind: 'settings' })}
