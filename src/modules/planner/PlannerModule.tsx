@@ -15,11 +15,12 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck, FileText,
+  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
 import LogbookView from './LogbookView';
+import SettingsView from './SettingsView';
 import PlanView from './PlanView';
 import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
@@ -42,7 +43,8 @@ type Selection =
   | { kind: 'myday' }
   | { kind: 'plan' }
   | { kind: 'stats' }
-  | { kind: 'logbook' };
+  | { kind: 'logbook' }
+  | { kind: 'settings' };
 
 // Everything a list/calendar view needs to show Google events and turn to-dos
 // into time blocks. Bundled so it's one prop to thread down.
@@ -90,7 +92,20 @@ export default function PlannerModule() {
     ])
       .then(([n, t, b, dn, s]) => {
         if (!active) return;
-        setNotes(n); setTasks(t); setBlocks(b);
+        const today = todayISO();
+        // Auto roll-over: pull unfinished, non-Someday to-dos from past days
+        // forward to today so they don't rot in Overdue. Persist in the
+        // background; reflect immediately in local state.
+        let tasks = t as PlannerTask[];
+        if ((s as PlannerSettings).auto_rollover) {
+          const stale = tasks.filter(x => x.kind === 'task' && !x.done && !x.someday && !!x.due_date && x.due_date < today);
+          if (stale.length) {
+            const ids = new Set(stale.map(x => x.id));
+            tasks = tasks.map(x => (ids.has(x.id) ? { ...x, due_date: today } : x));
+            Promise.all(stale.map(x => updateTask(x.id, { due_date: today }))).catch(() => { /* best effort */ });
+          }
+        }
+        setNotes(n); setTasks(tasks); setBlocks(b);
         setDayNotes(Object.fromEntries((dn as PlannerDayNote[]).map(d => [d.day, d.body])));
         setSettings(s);
       })
@@ -312,6 +327,15 @@ export default function PlannerModule() {
     catch (e) { setError((e as Error)?.message ?? 'Could not save your capacity setting.'); }
   }
 
+  // One updater for the central Settings page (capacity, carry-over, roll-over,
+  // working phase). Optimistic, then reconciled with the saved row.
+  async function updatePlannerSettings(patch: Partial<PlannerSettings>) {
+    if (!user) return;
+    setSettings(prev => (prev ? { ...prev, ...patch } : prev));
+    try { const s = await updateSettings(user.id, patch); setSettings(s); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save your settings.'); }
+  }
+
   const myDayHandlers: MyDayHandlers = {
     onAddTask: addTask,
     onPatchTask: patchTask,
@@ -406,6 +430,15 @@ export default function PlannerModule() {
             <BookCheck className="w-4 h-4 text-emerald-500" />
             <span className="flex-1 text-left">Logbook</span>
           </button>
+          <button
+            onClick={() => choose({ kind: 'settings' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'settings' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <SettingsIcon className="w-4 h-4 text-slate-400" />
+            <span className="flex-1 text-left">Settings</span>
+          </button>
         </nav>
 
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
@@ -459,7 +492,7 @@ export default function PlannerModule() {
             tasks={tasks}
             blocks={blocks}
             dayNotes={dayNotes}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, created_at: '', updated_at: '' }}
             today={today}
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
@@ -469,7 +502,7 @@ export default function PlannerModule() {
           <PlanView
             tasks={tasks}
             blocks={blocks}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, created_at: '', updated_at: '' }}
             today={today}
             onOpenDay={openDay}
           />
@@ -477,6 +510,12 @@ export default function PlannerModule() {
           <StatsView tasks={tasks} notesById={notesById} today={today} />
         ) : selection.kind === 'logbook' ? (
           <LogbookView tasks={tasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
+        ) : selection.kind === 'settings' ? (
+          <SettingsView
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, created_at: '', updated_at: '' }}
+            today={today}
+            onUpdate={updatePlannerSettings}
+          />
         ) : selection.kind === 'view' ? (
           <ViewPane
             bucket={selection.bucket}
