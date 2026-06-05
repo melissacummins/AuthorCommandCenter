@@ -1,40 +1,44 @@
 import { useMemo, useState } from 'react';
-import { BarChart3, Clock, Trophy, ListChecks } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, Cell } from 'recharts';
 import {
-  productivitySeries, completionsByWeekday, completionsByList, localDay,
-  formatMinutes, addDaysISO, type PlannerNote, type PlannerTask,
+  productivitySeries, trackedMinutesByDay, localDay,
+  addDaysISO, formatMinutes, type PlannerTask, type PlannerTimeSession,
 } from './types';
 
 const RANGES = [14, 30, 90] as const;
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // Mon-first, mapping into Sun=0 arrays.
 
-// "12.5h" / "0h" — hours from minutes, one decimal.
+// "12.5h" / "0h" — hours from minutes, one decimal (whole at 10h+).
 function fmtHours(min: number): string {
   return `${(min / 60).toFixed(min >= 60 * 10 ? 0 : 1)}h`;
 }
 
-// A "how am I doing" dashboard: completions over time, hours worked (tracked +
-// estimated), throughput vs backlog, busiest weekday, effort by list, and your
-// longest to-dos. Kept separate from My Day so the day view stays about planning.
+// A "how am I doing" dashboard: completions and hours worked over time, plus
+// throughput vs backlog. Hours come from the timer session log, so they reflect
+// the day work actually happened — completed or not.
 export default function StatsView({
-  tasks, notesById, today,
+  tasks, sessions, today,
 }: {
   tasks: PlannerTask[];
-  notesById: Record<string, PlannerNote>;
+  sessions: PlannerTimeSession[];
   today: string;
 }) {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   const [metric, setMetric] = useState<'todos' | 'hours'>('todos');
   const from = useMemo(() => addDaysISO(today, -(days - 1)), [today, days]);
 
-  const series = useMemo(() => productivitySeries(tasks, today, days), [tasks, today, days]);
-  const weekday = useMemo(() => completionsByWeekday(tasks, from, today), [tasks, from, today]);
-  const byList = useMemo(() => completionsByList(tasks, from, today), [tasks, from, today]);
+  // Completions (and their estimates) by completion day, then overlay real
+  // tracked minutes by the day they were worked.
+  const series = useMemo(() => {
+    const base = productivitySeries(tasks, today, days);
+    const tracked = trackedMinutesByDay(sessions, today, days);
+    return base.map(d => ({ ...d, trackedMinutes: tracked[d.day] ?? 0 }));
+  }, [tasks, sessions, today, days]);
+
+  const trackedTotal = useMemo(() => series.reduce((s, d) => s + d.trackedMinutes, 0), [series]);
 
   const totals = useMemo(() => {
-    let done = 0, est = 0, tracked = 0, created = 0, sized = 0;
+    let done = 0, est = 0, created = 0, sized = 0;
     let openNow = 0, overdue = 0;
     for (const t of tasks) {
       if (t.kind !== 'task') continue;
@@ -46,24 +50,14 @@ export default function StatsView({
       if (t.done && t.done_at && localDay(t.done_at) >= from) {
         done += 1;
         est += t.estimate_minutes ?? 0;
-        tracked += t.actual_minutes ?? 0;
         if (t.estimate_minutes) sized += 1;
       }
     }
-    return { done, est, tracked, created, openNow, overdue, avgSize: sized ? est / sized : 0 };
+    return { done, est, created, openNow, overdue, avgSize: sized ? est / sized : 0 };
   }, [tasks, from, today]);
-
-  const longest = useMemo(() => tasks
-    .filter(t => t.kind === 'task' && t.done && t.done_at && localDay(t.done_at) >= from)
-    .map(t => ({ t, weight: Math.max(t.actual_minutes ?? 0, t.estimate_minutes ?? 0) }))
-    .filter(x => x.weight > 0)
-    .sort((a, b) => b.weight - a.weight)
-    .slice(0, 5), [tasks, from]);
 
   const avgPerDay = series.length ? totals.done / series.length : 0;
   const net = totals.created - totals.done;
-  const maxWeekday = Math.max(1, ...weekday);
-  const maxListDone = Math.max(1, ...byList.map(l => l.done));
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
@@ -86,9 +80,9 @@ export default function StatsView({
       {/* Headline numbers */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
         <StatCard label="Completed" value={totals.done} />
-        <StatCard label="Tracked" value={fmtHours(totals.tracked)} hint="real time worked" />
+        <StatCard label="Tracked" value={fmtHours(trackedTotal)} hint="real time on the timer" />
         <StatCard label="Estimated" value={fmtHours(totals.est)} hint="of completed to-dos" />
-        <StatCard label="Per day" value={avgPerDay.toFixed(1)} />
+        <StatCard label="Per day" value={avgPerDay.toFixed(1)} hint="to-dos completed" />
       </div>
 
       {/* Main chart: completions or hours per day */}
@@ -141,13 +135,13 @@ export default function StatsView({
             </BarChart>
           </ResponsiveContainer>
         </div>
-        {metric === 'hours' && totals.tracked === 0 && (
+        {metric === 'hours' && trackedTotal === 0 && (
           <p className="text-xs text-slate-400 mt-2">No time tracked yet — start a timer on a to-do to fill this in.</p>
         )}
       </div>
 
       {/* Throughput & backlog */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-4">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4">
         <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Throughput &amp; backlog · last {days} days</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
           <Mini label="Created" value={totals.created} />
@@ -162,78 +156,6 @@ export default function StatsView({
           <Mini label="Overdue" value={totals.overdue} tone={totals.overdue > 0 ? 'rose' : 'slate'} />
           <Mini label="Avg size" value={formatMinutes(Math.round(totals.avgSize)) || '—'} hint="est. per to-do" />
         </div>
-      </div>
-
-      {/* Busiest weekday */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Busiest weekday · last {days} days</p>
-        <div className="flex items-end gap-2 h-28">
-          {WEEKDAY_ORDER.map((idx, i) => {
-            const n = weekday[idx];
-            const peak = n === maxWeekday && n > 0;
-            return (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[11px] text-slate-400 tabular-nums">{n || ''}</span>
-                <div className="w-full flex-1 flex items-end">
-                  <div
-                    className={`w-full rounded-t ${peak ? 'bg-indigo-500' : 'bg-indigo-200'}`}
-                    style={{ height: `${Math.max(2, (n / maxWeekday) * 100)}%` }}
-                  />
-                </div>
-                <span className="text-[11px] font-medium text-slate-500">{WEEKDAYS[i]}</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* By list / project */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1">
-          <ListChecks className="w-3.5 h-3.5" /> Effort by list · last {days} days
-        </p>
-        {byList.length === 0 ? (
-          <p className="text-sm text-slate-400">Nothing completed in this window.</p>
-        ) : (
-          <ul className="space-y-2">
-            {byList.slice(0, 8).map(l => {
-              const name = l.noteId ? (notesById[l.noteId]?.title.trim() || 'Untitled list') : 'No list';
-              return (
-                <li key={l.noteId || '∅'} className="flex items-center gap-3 text-sm">
-                  <span className="w-32 truncate text-slate-600 shrink-0" title={name}>{name}</span>
-                  <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
-                    <div className="h-full rounded-full bg-teal-400" style={{ width: `${(l.done / maxListDone) * 100}%` }} />
-                  </div>
-                  <span className="text-slate-500 tabular-nums w-10 text-right shrink-0">{l.done}</span>
-                  <span className="text-slate-400 tabular-nums w-12 text-right shrink-0">{l.trackedMinutes > 0 ? fmtHours(l.trackedMinutes) : fmtHours(l.estMinutes)}</span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </div>
-
-      {/* Longest to-dos */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1">
-          <Trophy className="w-3.5 h-3.5" /> Longest to-dos · last {days} days
-        </p>
-        {longest.length === 0 ? (
-          <p className="text-sm text-slate-400">Nothing with a time yet — add estimates or track time to see this.</p>
-        ) : (
-          <ol className="space-y-1.5">
-            {longest.map(({ t, weight }, i) => (
-              <li key={t.id} className="flex items-center gap-3 text-sm">
-                <span className="text-slate-300 font-semibold w-4 shrink-0">{i + 1}</span>
-                <span className="flex-1 truncate text-slate-600">{t.title || 'Untitled'}</span>
-                <span className="inline-flex items-center gap-1 text-slate-500 font-medium shrink-0">
-                  <Clock className="w-3 h-3" />{formatMinutes(weight)}
-                  {t.actual_minutes > 0 ? <span className="text-slate-300 font-normal">tracked</span> : <span className="text-slate-300 font-normal">est.</span>}
-                </span>
-              </li>
-            ))}
-          </ol>
-        )}
       </div>
     </div>
   );
