@@ -42,6 +42,7 @@ type Selection =
   | { kind: 'note'; id: string }
   | { kind: 'myday' }
   | { kind: 'plan' }
+  | { kind: 'inbox' }
   | { kind: 'stats' }
   | { kind: 'logbook' }
   | { kind: 'settings' };
@@ -92,20 +93,7 @@ export default function PlannerModule() {
     ])
       .then(([n, t, b, dn, s]) => {
         if (!active) return;
-        const today = todayISO();
-        // Auto roll-over: pull unfinished, non-Someday to-dos from past days
-        // forward to today so they don't rot in Overdue. Persist in the
-        // background; reflect immediately in local state.
-        let tasks = t as PlannerTask[];
-        if ((s as PlannerSettings).auto_rollover) {
-          const stale = tasks.filter(x => x.kind === 'task' && !x.done && !x.someday && !!x.due_date && x.due_date < today);
-          if (stale.length) {
-            const ids = new Set(stale.map(x => x.id));
-            tasks = tasks.map(x => (ids.has(x.id) ? { ...x, due_date: today } : x));
-            Promise.all(stale.map(x => updateTask(x.id, { due_date: today }))).catch(() => { /* best effort */ });
-          }
-        }
-        setNotes(n); setTasks(tasks); setBlocks(b);
+        setNotes(n); setTasks(t); setBlocks(b);
         setDayNotes(Object.fromEntries((dn as PlannerDayNote[]).map(d => [d.day, d.body])));
         setSettings(s);
       })
@@ -113,6 +101,20 @@ export default function PlannerModule() {
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [user]);
+
+  // Auto roll-over: while the setting is on, pull unfinished, non-Someday to-dos
+  // from past days forward to today — reactively, so flipping it on (or simply
+  // opening the planner on a new day) takes effect right away rather than only
+  // on a hard reload. After bumping there's nothing stale left, so it settles.
+  useEffect(() => {
+    if (!user || loading || !settings?.auto_rollover) return;
+    const today = todayISO();
+    const stale = tasks.filter(t => t.kind === 'task' && !t.done && !t.someday && !!t.due_date && t.due_date < today);
+    if (!stale.length) return;
+    const ids = new Set(stale.map(t => t.id));
+    setTasks(prev => prev.map(t => (ids.has(t.id) ? { ...t, due_date: today } : t)));
+    Promise.all(stale.map(t => updateTask(t.id, { due_date: today }))).catch(() => { /* best effort */ });
+  }, [user, loading, settings?.auto_rollover, tasks]);
 
   const notesById = useMemo(() => Object.fromEntries(notes.map(n => [n.id, n])), [notes]);
   const openCountByNote = useMemo(() => {
@@ -126,6 +128,12 @@ export default function PlannerModule() {
     for (const t of tasks) if (t.kind === 'task' && !t.done) c[bucketForTask(t, today)]++;
     return c;
   }, [tasks, today]);
+
+  // Open to-dos captured but never filed into a list — the Inbox count.
+  const inboxCount = useMemo(
+    () => tasks.filter(t => t.kind === 'task' && !t.done && !t.note_id).length,
+    [tasks],
+  );
 
   // ---- mutations (optimistic where it helps responsiveness) ----
 
@@ -413,6 +421,16 @@ export default function PlannerModule() {
             );
           })}
           <button
+            onClick={() => choose({ kind: 'inbox' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'inbox' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <Inbox className="w-4 h-4 text-slate-400" />
+            <span className="flex-1 text-left">Inbox</span>
+            {inboxCount > 0 && <span className="text-xs text-slate-400 font-medium">{inboxCount}</span>}
+          </button>
+          <button
             onClick={() => choose({ kind: 'stats' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               selection.kind === 'stats' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
@@ -516,9 +534,10 @@ export default function PlannerModule() {
             today={today}
             onUpdate={updatePlannerSettings}
           />
-        ) : selection.kind === 'view' ? (
+        ) : selection.kind === 'view' || selection.kind === 'inbox' ? (
           <ViewPane
-            bucket={selection.bucket}
+            bucket={selection.kind === 'view' ? selection.bucket : undefined}
+            inbox={selection.kind === 'inbox'}
             tasks={tasks}
             today={today}
             notesById={notesById}
@@ -555,9 +574,10 @@ export default function PlannerModule() {
 // ---------------------------------------------------------------------------
 
 function ViewPane({
-  bucket, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
+  bucket, inbox = false, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
 }: {
-  bucket: Bucket;
+  bucket?: Bucket;
+  inbox?: boolean;
   tasks: PlannerTask[];
   today: string;
   notesById: Record<string, PlannerNote>;
@@ -567,22 +587,31 @@ function ViewPane({
   onOpenNote: (id: string) => void;
   cal: CalendarBridge;
 }) {
-  const meta = VIEWS.find(v => v.bucket === bucket)!;
+  const meta = inbox
+    ? { label: 'Inbox', icon: Inbox, color: 'text-slate-500' }
+    : VIEWS.find(v => v.bucket === bucket)!;
   const Icon = meta.icon;
   const [draft, setDraft] = useState('');
   const { gc, calVersion, onTimeBlock, onUnblock } = cal;
   const [eventsByDay, setEventsByDay] = useState<Record<string, GCalEvent[]>>({});
 
-  const items = tasks
-    .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
-    .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
+  // Inbox is the catch-all for anything captured but never filed into a list,
+  // regardless of date — so you can edit those to-dos without hunting for the
+  // day you added them on.
+  const items = inbox
+    ? tasks
+        .filter(t => t.kind === 'task' && !t.done && !t.note_id)
+        .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
+    : tasks
+        .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
+        .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
 
   // Pull Google events for the day (Today) or the day range (Upcoming) so they
   // can sit alongside the to-dos. Other buckets have no dates, so no events.
   const dueDates = items.map(t => t.due_date!).filter(Boolean);
   const rangeMin = bucket === 'today' ? today : dueDates[0];
   const rangeMax = bucket === 'today' ? today : dueDates[dueDates.length - 1];
-  const wantsEvents = gc.connected && (bucket === 'today' || (bucket === 'upcoming' && dueDates.length > 0));
+  const wantsEvents = !inbox && gc.connected && (bucket === 'today' || (bucket === 'upcoming' && dueDates.length > 0));
   const rangeKey = wantsEvents ? `${rangeMin}_${rangeMax}` : '';
 
   useEffect(() => {
@@ -630,7 +659,7 @@ function ViewPane({
       <div className="flex items-center gap-3 mb-6">
         <Icon className={`w-6 h-6 ${meta.color}`} />
         <h2 className="text-2xl font-bold text-slate-800">{meta.label}</h2>
-        {(bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
+        {(inbox || bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
           <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-slate-500">
             <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
           </span>
