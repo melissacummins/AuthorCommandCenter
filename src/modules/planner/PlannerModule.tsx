@@ -29,12 +29,13 @@ import {
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
   getSettings, updateSettings, listDayNotes, saveDayNote as apiSaveDayNote,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
+  listTimeSessions, createTimeSessions,
 } from './api';
 import {
   bucketForTask, checklistProgress, formatDue, formatMinutes, nextDueDate, sumEstimate, todayISO,
   elapsedMinutes, ESTIMATE_PRESETS, RECURRENCE_LABELS, DEFAULT_DAILY_CAPACITY,
   type ChecklistItem, type PlannerNote, type PlannerTask, type Bucket, type Recurrence,
-  type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock,
+  type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
 } from './types';
 
 type Selection =
@@ -68,6 +69,7 @@ export default function PlannerModule() {
   const [notes, setNotes] = useState<PlannerNote[]>([]);
   const [tasks, setTasks] = useState<PlannerTask[]>([]);
   const [blocks, setBlocks] = useState<PlannerTimeBlock[]>([]);
+  const [sessions, setSessions] = useState<PlannerTimeSession[]>([]);
   const [dayNotes, setDayNotes] = useState<Record<string, string>>({});
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,11 +90,11 @@ export default function PlannerModule() {
     let active = true;
     Promise.all([
       listNotes(user.id), listTasks(user.id), listTimeBlocks(user.id),
-      listDayNotes(user.id), getSettings(user.id),
+      listDayNotes(user.id), getSettings(user.id), listTimeSessions(user.id),
     ])
-      .then(([n, t, b, dn, s]) => {
+      .then(([n, t, b, dn, s, ts]) => {
         if (!active) return;
-        setNotes(n); setTasks(t); setBlocks(b);
+        setNotes(n); setTasks(t); setBlocks(b); setSessions(ts);
         setDayNotes(Object.fromEntries((dn as PlannerDayNote[]).map(d => [d.day, d.body])));
         setSettings(s);
       })
@@ -208,6 +210,20 @@ export default function PlannerModule() {
     // Only one timer runs at a time: starting one stops + banks every other.
     const startingTimer = !!patch.timer_started_at;
     const others = startingTimer ? tasks.filter(t => t.id !== id && t.timer_started_at) : [];
+
+    // Log a session for every timer that stops in this patch (this to-do being
+    // stopped or completed, plus any others displaced by starting a new one), so
+    // tracked time lands on the day it was worked — even if never completed.
+    const stoppedAt = new Date().toISOString();
+    const sessionRows: { task_id: string; started_at: string; ended_at: string; minutes: number }[] = [];
+    const logStop = (t: PlannerTask) => {
+      if (!t.timer_started_at) return;
+      const minutes = elapsedMinutes(t.timer_started_at);
+      if (minutes > 0) sessionRows.push({ task_id: t.id, started_at: t.timer_started_at, ended_at: stoppedAt, minutes });
+    };
+    if (task && task.timer_started_at && (patch.timer_started_at === null || patch.done === true)) logStop(task);
+    if (startingTimer) others.forEach(logStop);
+
     setTasks(prev => prev.map(t => {
       if (t.id === id) return { ...t, ...effective };
       if (startingTimer && t.timer_started_at) {
@@ -219,6 +235,10 @@ export default function PlannerModule() {
       await updateTask(id, effective);
       await Promise.all(others.map(t =>
         updateTask(t.id, { actual_minutes: (t.actual_minutes ?? 0) + elapsedMinutes(t.timer_started_at!), timer_started_at: null })));
+      if (sessionRows.length && user) {
+        const created = await createTimeSessions(user.id, sessionRows);
+        setSessions(prev => [...prev, ...created]);
+      }
     }
     catch (e) { setError((e as Error)?.message ?? 'Could not update item.'); }
   }
@@ -524,7 +544,7 @@ export default function PlannerModule() {
             onOpenDay={openDay}
           />
         ) : selection.kind === 'stats' ? (
-          <StatsView tasks={tasks} notesById={notesById} today={today} />
+          <StatsView tasks={tasks} sessions={sessions} today={today} />
         ) : selection.kind === 'logbook' ? (
           <LogbookView tasks={tasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
         ) : selection.kind === 'settings' ? (

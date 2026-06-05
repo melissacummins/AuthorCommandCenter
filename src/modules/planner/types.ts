@@ -110,6 +110,30 @@ export interface PlannerTimeBlock {
   updated_at: string;
 }
 
+// One start→stop run of a to-do's timer. Lets Stats place tracked time on the
+// day it was worked, regardless of whether the to-do is ever completed.
+export interface PlannerTimeSession {
+  id: string;
+  user_id: string;
+  task_id: string;
+  started_at: string;
+  ended_at: string;
+  minutes: number;
+  created_at: string;
+}
+
+// Tracked minutes per day over the window, from the session log (by started_at).
+export function trackedMinutesByDay(sessions: PlannerTimeSession[], today: string, days: number): Record<string, number> {
+  const by: Record<string, number> = {};
+  const from = addDaysISO(today, -(days - 1));
+  for (const s of sessions) {
+    const day = localDay(s.started_at);
+    if (day < from || day > today) continue;
+    by[day] = (by[day] ?? 0) + s.minutes;
+  }
+  return by;
+}
+
 // Default daily focus-time target (4h) until the user sets their own.
 export const DEFAULT_DAILY_CAPACITY = 240;
 
@@ -369,39 +393,6 @@ export function productivitySeries(tasks: PlannerTask[], today: string, days: nu
   }
   return dayRange(addDaysISO(today, -(days - 1)), days)
     .map(day => by[day] ?? { day, done: 0, estMinutes: 0, trackedMinutes: 0 });
-}
-
-// Completed-to-do counts by weekday (0 = Sunday … 6 = Saturday), over a window
-// bounded by [from, to] inclusive on done_at's local day.
-export function completionsByWeekday(tasks: PlannerTask[], from: string, to: string): number[] {
-  const counts = [0, 0, 0, 0, 0, 0, 0];
-  for (const t of tasks) {
-    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
-    const day = localDay(t.done_at);
-    if (day < from || day > to) continue;
-    counts[new Date(day + 'T00:00:00').getDay()] += 1;
-  }
-  return counts;
-}
-
-// Per-list rollup of completed to-dos in a window: count + estimated/tracked
-// minutes, keyed by note_id ('' for list-less to-dos). Sorted by tracked then
-// estimated time, busiest first.
-export interface ListStat { noteId: string; done: number; estMinutes: number; trackedMinutes: number }
-export function completionsByList(tasks: PlannerTask[], from: string, to: string): ListStat[] {
-  const by: Record<string, ListStat> = {};
-  for (const t of tasks) {
-    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
-    const day = localDay(t.done_at);
-    if (day < from || day > to) continue;
-    const key = t.note_id ?? '';
-    const row = (by[key] ??= { noteId: key, done: 0, estMinutes: 0, trackedMinutes: 0 });
-    row.done += 1;
-    row.estMinutes += t.estimate_minutes ?? 0;
-    row.trackedMinutes += t.actual_minutes ?? 0;
-  }
-  return Object.values(by).sort((a, b) =>
-    (b.trackedMinutes - a.trackedMinutes) || (b.estMinutes - a.estMinutes) || (b.done - a.done));
 }
 
 // Short weekday + day-of-month for the date strip, e.g. { dow: 'Mon', dom: 2 }.

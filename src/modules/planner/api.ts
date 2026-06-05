@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  ChecklistItem, PlannerDayNote, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, TaskKind,
+  ChecklistItem, PlannerDayNote, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, PlannerTimeSession, TaskKind,
 } from './types';
 import { DEFAULT_DAILY_CAPACITY } from './types';
 
@@ -140,6 +140,36 @@ export async function reorderTasks(updates: { id: string; sort_order: number }[]
 
 export function newChecklistItem(title: string): ChecklistItem {
   return { id: crypto.randomUUID(), title, done: false };
+}
+
+// ---- Time-tracking sessions -----------------------------------------------
+
+// Recent timer runs (last ~120 days) — enough to cover the Stats range while
+// keeping the payload bounded as the log grows.
+export async function listTimeSessions(userId: string): Promise<PlannerTimeSession[]> {
+  const cutoff = new Date(Date.now() - 120 * 86_400_000).toISOString();
+  const { data, error } = await supabase
+    .from('planner_time_sessions')
+    .select('*')
+    .eq('user_id', userId)
+    .gte('started_at', cutoff)
+    .order('started_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as PlannerTimeSession[];
+}
+
+// Log one or more completed timer runs. Returns the inserted rows.
+export async function createTimeSessions(
+  userId: string,
+  rows: { task_id: string; started_at: string; ended_at: string; minutes: number }[],
+): Promise<PlannerTimeSession[]> {
+  if (!rows.length) return [];
+  const { data, error } = await supabase
+    .from('planner_time_sessions')
+    .insert(rows.map(r => ({ ...r, user_id: userId })))
+    .select('*');
+  if (error) throw error;
+  return (data ?? []) as PlannerTimeSession[];
 }
 
 // ---- Settings -------------------------------------------------------------
