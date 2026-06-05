@@ -15,8 +15,8 @@ import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
 import {
   addDaysISO, blockMinutes, formatClock, formatMinutes,
-  minutesToTime, timeToMinutes, ESTIMATE_PRESETS,
-  type PlannerSettings, type PlannerTask, type PlannerTimeBlock,
+  minutesToTime, timeToMinutes, ESTIMATE_PRESETS, phaseInfo, daysBetweenISO,
+  type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo,
 } from './types';
 
 export interface MyDayHandlers {
@@ -158,16 +158,25 @@ export default function MyDayView({
 
   const plannedMinutes = useMemo(() => plannedFor(selected, events), [plannedFor, selected, events]);
 
+  // Working Phase: when one is active, it scales the day's target down (or up)
+  // from the plain baseline — e.g. Recovery proposes a gentle fraction. This
+  // becomes the effective base the bar and carry-over work from.
+  const baseTarget = settings.daily_capacity_minutes;
+  const phase = settings.working_phase ? phaseInfo(settings.working_phase) : null;
+  const daysInPhase = settings.working_phase && settings.phase_started_on
+    ? Math.max(0, daysBetweenISO(settings.phase_started_on, selected)) : 0;
+  const phaseTarget = phase ? phase.proposed(baseTarget, daysInPhase) : null;
+  const effectiveBase = phaseTarget ?? baseTarget;
+
   // Carry-over: if the previous day was planned *over* its target, lower today's
   // target by that overage rounded to the nearest hour (floored at zero). Off by
   // default; the deduction is shown on the bar so it never silently moves.
-  const baseTarget = settings.daily_capacity_minutes;
   const carryDeduction = useMemo(() => {
     if (!carryOver) return 0;
-    const over = plannedFor(prevDay, prevEvents) - baseTarget;
+    const over = plannedFor(prevDay, prevEvents) - effectiveBase;
     return over > 0 ? Math.round(over / 60) * 60 : 0;
-  }, [carryOver, plannedFor, prevDay, prevEvents, baseTarget]);
-  const effectiveTarget = Math.max(0, baseTarget - carryDeduction);
+  }, [carryOver, plannedFor, prevDay, prevEvents, effectiveBase]);
+  const effectiveTarget = Math.max(0, effectiveBase - carryDeduction);
 
   function handleDragEnd(e: DragEndEvent) {
     const taskId = String(e.active.id);
@@ -247,9 +256,7 @@ export default function MyDayView({
             target={effectiveTarget}
             baseTarget={baseTarget}
             carryDeduction={carryDeduction}
-            carryOver={carryOver}
             onSetTarget={handlers.onUpdateCapacity}
-            onToggleCarryOver={handlers.onToggleCarryOver}
           />
         </div>
       </div>
@@ -258,6 +265,9 @@ export default function MyDayView({
         <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
           {/* Schedule column */}
           <div className="space-y-4">
+            {phase && (
+              <PhaseBanner phase={phase} target={phaseTarget!} planned={plannedMinutes} daysIn={daysInPhase} />
+            )}
             {overdue.length > 0 && (
               <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 mb-1 flex items-center gap-1">
@@ -341,15 +351,13 @@ export default function MyDayView({
 // ---------------------------------------------------------------------------
 
 function CapacityBar({
-  planned, target, baseTarget, carryDeduction, carryOver, onSetTarget, onToggleCarryOver,
+  planned, target, baseTarget, carryDeduction, onSetTarget,
 }: {
   planned: number;
-  target: number; // effective target the bar measures against (base minus carry-over)
+  target: number; // effective target the bar measures against (after phase + carry-over)
   baseTarget: number; // the saved daily target; what the editable field shows/sets
   carryDeduction: number; // minutes shaved off today because yesterday ran over
-  carryOver: boolean;
   onSetTarget: (m: number) => void;
-  onToggleCarryOver: (on: boolean) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [hours, setHours] = useState((baseTarget / 60).toString());
@@ -396,22 +404,38 @@ function CapacityBar({
       <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
         <div className={`h-full rounded-full transition-all ${over ? 'bg-rose-500' : pct > 80 ? 'bg-amber-500' : 'bg-teal-500'}`} style={{ width: `${pct}%` }} />
       </div>
-      <div className="flex items-center gap-2 mt-1.5 text-[11px]">
-        {reduced && (
-          <span className="text-amber-600">
-            −{formatMinutes(carryDeduction)} carried over from yesterday (target {formatMinutes(baseTarget)} → {formatMinutes(target)})
-          </span>
-        )}
-        <label className="ml-auto inline-flex items-center gap-1.5 text-slate-400 hover:text-slate-600 cursor-pointer select-none" title="When yesterday runs over its target, lower today's target by that overage (rounded to the nearest hour).">
-          <input
-            type="checkbox"
-            checked={carryOver}
-            onChange={e => onToggleCarryOver(e.target.checked)}
-            className="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-3.5 h-3.5"
-          />
-          Carry over yesterday's overage
-        </label>
+      {reduced && (
+        <div className="mt-1.5 text-[11px] text-amber-600">
+          −{formatMinutes(carryDeduction)} carried over from yesterday ({formatMinutes(target + carryDeduction)} → {formatMinutes(target)})
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Working Phase banner — the forcing function: names the season you're in and
+// flags when the day you've planned outruns what that phase can hold.
+// ---------------------------------------------------------------------------
+
+function PhaseBanner({ phase, target, planned, daysIn }: { phase: PhaseInfo; target: number; planned: number; daysIn: number }) {
+  const over = planned > target && target > 0;
+  return (
+    <div className={`rounded-2xl border p-4 ${over ? 'border-rose-200 bg-rose-50/60' : 'border-slate-200 bg-slate-50/70'}`}>
+      <div className="flex items-center gap-2">
+        <span className={`w-2.5 h-2.5 rounded-full ${phase.dot} shrink-0`} />
+        <span className={`text-sm font-semibold ${phase.accent}`}>You're in {phase.label}</span>
+        <span className="ml-auto text-xs font-medium text-slate-500">suggests {formatMinutes(target)} · day {daysIn + 1}</span>
       </div>
+      <p className="text-xs text-slate-500 mt-1">{phase.tagline}</p>
+      {over ? (
+        <p className="text-xs text-rose-600 mt-2 font-medium">
+          Today's plan is {formatMinutes(planned)} — more than {phase.label} can hold. What can move or wait?
+          {phase.watchFor ? ` ${phase.watchFor}` : ''}
+        </p>
+      ) : phase.watchFor ? (
+        <p className="text-xs text-amber-600 mt-2"><span className="font-medium">Watch for:</span> {phase.watchFor}</p>
+      ) : null}
     </div>
   );
 }

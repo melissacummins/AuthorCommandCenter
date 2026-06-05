@@ -73,6 +73,13 @@ export interface PlannerSettings {
   // When true, the My Day capacity bar subtracts the previous day's overage
   // (rounded to the nearest hour, floored at zero) from this day's target.
   carry_over_capacity: boolean;
+  // When true, unfinished scheduled to-dos from past days roll forward to today
+  // on load instead of accumulating as Overdue.
+  auto_rollover: boolean;
+  // The current Working Phase (season of work), or null when the strategy is
+  // off. phase_started_on is the local day it was entered (for ramped targets).
+  working_phase: WorkingPhase | null;
+  phase_started_on: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -105,6 +112,90 @@ export interface PlannerTimeBlock {
 
 // Default daily focus-time target (4h) until the user sets their own.
 export const DEFAULT_DAILY_CAPACITY = 240;
+
+// ---- Working Phases -------------------------------------------------------
+// Seasons of work (not a linear progression — you move between them fluidly).
+// The point is to recognize which one you're actually in versus which one your
+// calendar assumes, and to size the day's load accordingly.
+export type WorkingPhase = 'sprint' | 'recovery' | 'calibration' | 'building' | 'flow';
+
+export interface PhaseInfo {
+  id: WorkingPhase;
+  label: string;
+  tagline: string;
+  appropriateWhen: string;
+  watchFor?: string;
+  accent: string; // tailwind text color, e.g. 'text-rose-600'
+  dot: string;    // tailwind bg color for the phase dot
+  // The daily target (minutes) this phase proposes, given the user's baseline
+  // target and how many days they've been in the phase (for ramps).
+  proposed: (baselineMinutes: number, daysIn: number) => number;
+}
+
+const round15 = (m: number) => Math.max(15, Math.round(m / 15) * 15);
+
+// Ordered easiest→biggest, matching the December framing.
+export const PHASES: PhaseInfo[] = [
+  {
+    id: 'recovery',
+    label: 'Recovery',
+    tagline: 'Post-illness or post-sprint — minimal decisions, maintenance mode.',
+    appropriateWhen: "You've been sick, sleep-deprived, emotionally depleted, or just finished something big.",
+    watchFor: "You can't meet deep-work demands here. Calibration-level work in Recovery sends you further back — walking's fine, a hike isn't.",
+    accent: 'text-sky-600',
+    dot: 'bg-sky-500',
+    // Start gentle (~1h) and ramp ~30m/day, capped at half your baseline.
+    proposed: (base, daysIn) => round15(Math.min(base * 0.5, 60 + Math.max(0, daysIn) * 30)),
+  },
+  {
+    id: 'calibration',
+    label: 'Calibration',
+    tagline: "Assessing what's working, making adjustments — moderate energy.",
+    appropriateWhen: "You can think clearly but aren't ready for sustained creative output. Ad optimization, inventory checks, system tweaks live here.",
+    accent: 'text-amber-600',
+    dot: 'bg-amber-500',
+    proposed: base => round15(base * 0.6),
+  },
+  {
+    id: 'building',
+    label: 'Building',
+    tagline: 'Steady, consistent work at a sustainable pace.',
+    appropriateWhen: 'The target zone for most weeks — writing, creating, growing the business at a pace that doesn’t deplete you.',
+    accent: 'text-teal-600',
+    dot: 'bg-teal-500',
+    proposed: base => base,
+  },
+  {
+    id: 'sprint',
+    label: 'Sprint',
+    tagline: 'Launching something new — high output, time-bound.',
+    appropriateWhen: "You're energized, resourced, and the work has a clear endpoint.",
+    watchFor: 'Sprinting when you’re actually in Recovery — the calendar says Sprint, the body says no.',
+    accent: 'text-rose-600',
+    dot: 'bg-rose-500',
+    proposed: base => round15(base * 1.15),
+  },
+  {
+    id: 'flow',
+    label: 'Flow',
+    tagline: 'Everything humming — clear-headed, ready for bigger moves.',
+    appropriateWhen: "The big creative leaps. You can't force your way in; it arrives when the other phases have been honored.",
+    accent: 'text-violet-600',
+    dot: 'bg-violet-500',
+    proposed: base => base,
+  },
+];
+
+export function phaseInfo(phase: WorkingPhase): PhaseInfo {
+  return PHASES.find(p => p.id === phase) ?? PHASES[2];
+}
+
+// Whole days between two YYYY-MM-DD strings (to - from); negative if to < from.
+export function daysBetweenISO(from: string, to: string): number {
+  const a = new Date(from + 'T00:00:00').getTime();
+  const b = new Date(to + 'T00:00:00').getTime();
+  return Math.round((b - a) / 86_400_000);
+}
 
 export const RECURRENCE_LABELS: Record<Recurrence, string> = {
   daily: 'Every day',
