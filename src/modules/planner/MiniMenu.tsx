@@ -12,13 +12,20 @@ export function MiniMenu({
   children: (close: () => void) => ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number } | null>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
   function toggle() {
     if (!open && btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 4, left: r.right });
+      // Flip the menu above the trigger when there isn't room below, so it's
+      // never cut off by the bottom of the window.
+      const spaceBelow = window.innerHeight - r.bottom;
+      const openUp = spaceBelow < 280 && r.top > spaceBelow;
+      setPos({
+        left: Math.max(8, r.right),
+        ...(openUp ? { bottom: window.innerHeight - r.top + 4 } : { top: r.bottom + 4 }),
+      });
     }
     setOpen(o => !o);
   }
@@ -32,8 +39,8 @@ export function MiniMenu({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-50 min-w-[8rem] bg-white border border-slate-200 rounded-lg shadow-lg py-0.5"
-            style={{ top: pos.top, left: pos.left, transform: 'translateX(-100%)' }}
+            className="fixed z-50 min-w-[8rem] max-h-[70vh] overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg py-0.5"
+            style={{ top: pos.top, bottom: pos.bottom, left: pos.left, transform: 'translateX(-100%)' }}
           >
             {children(() => setOpen(false))}
           </div>

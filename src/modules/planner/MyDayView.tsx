@@ -275,25 +275,15 @@ export default function MyDayView({
                 </p>
                 <ul className="space-y-0.5">
                   {overdue.map(t => (
-                    <li key={t.id} className="flex items-center gap-2 group py-1">
-                      <button
-                        onClick={() => handlers.onPatchTask(t.id, { done: true })}
-                        className="text-slate-300 hover:text-teal-600 shrink-0"
-                        title="Mark done"
-                      >
-                        <Circle className="w-4 h-4" />
-                      </button>
-                      <span className="flex-1 text-sm text-slate-700 truncate">{t.title || 'Untitled'}</span>
-                      {t.estimate_minutes ? <span className="text-xs text-slate-400 shrink-0">{formatMinutes(t.estimate_minutes)}</span> : null}
-                      <TimerButton task={t} onPatch={handlers.onPatchTask} />
-                      <button
-                        onClick={() => handlers.onPatchTask(t.id, { due_date: today })}
-                        className="text-xs font-medium text-teal-600 hover:text-teal-700 shrink-0"
-                        title="Move to today"
-                      >
-                        → Today
-                      </button>
-                    </li>
+                    <DraggableTaskRow
+                      key={t.id}
+                      task={t}
+                      today={today}
+                      onPatch={handlers.onPatchTask}
+                      onDelete={handlers.onDeleteTask}
+                      draggable={false}
+                      onMoveToToday={() => handlers.onPatchTask(t.id, { due_date: today, block_id: null })}
+                    />
                   ))}
                 </ul>
               </div>
@@ -579,14 +569,16 @@ function LooseZone({
 // ---------------------------------------------------------------------------
 
 function DraggableTaskRow({
-  task, today, onPatch, onDelete,
+  task, today, onPatch, onDelete, draggable = true, onMoveToToday,
 }: {
   task: PlannerTask;
   today: string;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  draggable?: boolean;
+  onMoveToToday?: () => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, disabled: !draggable });
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -603,14 +595,16 @@ function DraggableTaskRow({
   return (
     <li ref={setNodeRef} style={style} className={`group ${isDragging ? 'opacity-50' : ''}`}>
       <div className="flex items-center gap-2 py-1">
-      <button
-        {...attributes}
-        {...listeners}
-        className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
-        title="Drag between blocks"
-      >
-        <GripVertical className="w-4 h-4" />
-      </button>
+      {draggable && (
+        <button
+          {...attributes}
+          {...listeners}
+          className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+          title="Drag between blocks"
+        >
+          <GripVertical className="w-4 h-4" />
+        </button>
+      )}
       <button
         onClick={() => onPatch(task.id, { done: !task.done })}
         className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
@@ -681,6 +675,11 @@ function DraggableTaskRow({
       >
         <FileText className="w-3.5 h-3.5" />
       </button>
+      {onMoveToToday && !task.done && (
+        <button onClick={onMoveToToday} className="text-xs font-medium text-teal-600 hover:text-teal-700 shrink-0" title="Move to today">
+          → Today
+        </button>
+      )}
       <button onClick={() => onDelete(task.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Delete">
         <Trash2 className="w-3.5 h-3.5" />
       </button>
