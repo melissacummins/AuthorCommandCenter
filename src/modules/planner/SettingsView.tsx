@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
-import { Settings as SettingsIcon, Compass } from 'lucide-react';
+import { Settings as SettingsIcon, Compass, Sparkles } from 'lucide-react';
+import { plannerComplete } from './ai';
 import {
   PHASES, phaseInfo, daysBetweenISO, formatMinutes,
   type PlannerSettings, type WorkingPhase,
@@ -150,6 +151,50 @@ export default function SettingsView({
           <p className="mt-2 text-xs text-slate-400">Off — My Day uses your plain daily capacity above.</p>
         )}
       </Section>
+
+      {/* AI (preview) */}
+      <Section
+        title={<span className="flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-violet-400" /> AI assistant</span>}
+        hint="Coming online: free-day suggestions, smart Orbit picks, and phase triage. They run through a server-side endpoint that holds your Claude key. Once ANTHROPIC_API_KEY is set in Vercel, test the connection here."
+      >
+        <AiTest />
+      </Section>
+    </div>
+  );
+}
+
+function AiTest() {
+  const [state, setState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  const [message, setMessage] = useState('');
+
+  async function run() {
+    setState('loading'); setMessage('');
+    try {
+      const text = await plannerComplete({
+        prompt: 'Reply with a single short, warm one-line check-in for someone planning their day.',
+        maxTokens: 64,
+      });
+      setState('ok'); setMessage(text || 'Connected.');
+    } catch (e) {
+      setState('error'); setMessage((e as Error)?.message ?? 'Failed.');
+    }
+  }
+
+  return (
+    <div>
+      <button
+        onClick={run}
+        disabled={state === 'loading'}
+        className="text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-lg px-3 py-1.5"
+      >
+        {state === 'loading' ? 'Testing…' : 'Test connection'}
+      </button>
+      {message && (
+        <p className={`text-xs mt-2 leading-relaxed ${state === 'error' ? 'text-rose-600' : 'text-slate-500'}`}>
+          {state === 'ok' && <span className="font-medium text-emerald-600">✓ Connected — </span>}
+          {message}
+        </p>
+      )}
     </div>
   );
 }
