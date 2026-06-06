@@ -1,6 +1,6 @@
-import { useState, type ReactNode } from 'react';
+import { useState, useEffect, type ReactNode } from 'react';
 import { Settings as SettingsIcon, Compass, Sparkles } from 'lucide-react';
-import { plannerComplete } from './ai';
+import { plannerComplete, getAnthropicKeyStatus, setAnthropicKey, removeAnthropicKey } from './ai';
 import {
   PHASES, phaseInfo, daysBetweenISO, formatMinutes,
   type PlannerSettings, type WorkingPhase,
@@ -152,47 +152,109 @@ export default function SettingsView({
         )}
       </Section>
 
-      {/* AI (preview) */}
+      {/* AI assistant — bring your own Anthropic key */}
       <Section
         title={<span className="flex items-center gap-1.5"><Sparkles className="w-4 h-4 text-violet-400" /> AI assistant</span>}
-        hint="Coming online: free-day suggestions, smart Orbit picks, and phase triage. They run through a server-side endpoint that holds your Claude key. Once ANTHROPIC_API_KEY is set in Vercel, test the connection here."
+        hint="Powers free-day suggestions, smart Orbit picks, and phase triage. Add your own Anthropic API key — your AI usage is billed to your account, and the key is stored encrypted and never shown again."
       >
-        <AiTest />
+        <AiKeyManager />
       </Section>
     </div>
   );
 }
 
-function AiTest() {
-  const [state, setState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [message, setMessage] = useState('');
+function AiKeyManager() {
+  const [loading, setLoading] = useState(true);
+  const [hasKey, setHasKey] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [testState, setTestState] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  const [testMsg, setTestMsg] = useState('');
 
-  async function run() {
-    setState('loading'); setMessage('');
+  useEffect(() => {
+    getAnthropicKeyStatus()
+      .then(s => { setHasKey(s.has_key); setHint(s.hint); })
+      .catch(e => setError((e as Error)?.message ?? 'Could not load key status.'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function save() {
+    setBusy(true); setError(''); setTestState('idle'); setTestMsg('');
+    try {
+      const s = await setAnthropicKey(input.trim());
+      setHasKey(true); setHint(s.hint); setInput('');
+    } catch (e) { setError((e as Error)?.message ?? 'Failed to save key.'); }
+    finally { setBusy(false); }
+  }
+
+  async function remove() {
+    setBusy(true); setError(''); setTestState('idle'); setTestMsg('');
+    try { await removeAnthropicKey(); setHasKey(false); setHint(null); }
+    catch (e) { setError((e as Error)?.message ?? 'Failed to remove key.'); }
+    finally { setBusy(false); }
+  }
+
+  async function test() {
+    setTestState('loading'); setTestMsg('');
     try {
       const text = await plannerComplete({
         prompt: 'Reply with a single short, warm one-line check-in for someone planning their day.',
         maxTokens: 64,
       });
-      setState('ok'); setMessage(text || 'Connected.');
-    } catch (e) {
-      setState('error'); setMessage((e as Error)?.message ?? 'Failed.');
-    }
+      setTestState('ok'); setTestMsg(text || 'Connected.');
+    } catch (e) { setTestState('error'); setTestMsg((e as Error)?.message ?? 'Failed.'); }
   }
+
+  if (loading) return <p className="text-xs text-slate-400">Loading…</p>;
 
   return (
     <div>
-      <button
-        onClick={run}
-        disabled={state === 'loading'}
-        className="text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-lg px-3 py-1.5"
-      >
-        {state === 'loading' ? 'Testing…' : 'Test connection'}
-      </button>
-      {message && (
-        <p className={`text-xs mt-2 leading-relaxed ${state === 'error' ? 'text-rose-600' : 'text-slate-500'}`}>
-          {state === 'ok' && <span className="font-medium text-emerald-600">✓ Connected — </span>}
-          {message}
+      {hasKey ? (
+        <div className="flex items-center gap-3 flex-wrap">
+          <span className="text-sm text-slate-600">
+            <span className="font-medium text-emerald-600">✓ Key saved</span>
+            {hint && <span className="text-slate-400"> — ending {hint}</span>}
+          </span>
+          <button onClick={test} disabled={testState === 'loading'}
+            className="text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-lg px-3 py-1.5">
+            {testState === 'loading' ? 'Testing…' : 'Test connection'}
+          </button>
+          <button onClick={remove} disabled={busy}
+            className="text-xs font-medium text-slate-400 hover:text-rose-600 disabled:opacity-60">
+            Remove
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="password"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder="sk-ant-…"
+            autoComplete="off"
+            className="w-64 text-sm border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono"
+          />
+          <button onClick={save} disabled={busy || input.trim().length < 8}
+            className="text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-50 rounded-lg px-3 py-1.5">
+            {busy ? 'Saving…' : 'Save key'}
+          </button>
+        </div>
+      )}
+
+      {!hasKey && (
+        <p className="text-xs text-slate-400 mt-2">
+          Don't have one? Create a key at{' '}
+          <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer"
+            className="text-violet-600 hover:underline">console.anthropic.com</a>.
+        </p>
+      )}
+      {error && <p className="text-xs text-rose-600 mt-2 leading-relaxed">{error}</p>}
+      {testMsg && (
+        <p className={`text-xs mt-2 leading-relaxed ${testState === 'error' ? 'text-rose-600' : 'text-slate-500'}`}>
+          {testState === 'ok' && <span className="font-medium text-emerald-600">✓ Connected — </span>}
+          {testMsg}
         </p>
       )}
     </div>
