@@ -150,19 +150,22 @@ export default function MediaModule() {
   //   - Everything else → Fal.
   const gptImage1Provider: 'fal' | 'openai' =
     model.id === 'gpt-image-2' && openaiKeyStatus?.has_key ? 'openai' : 'fal';
-  const isIdeogramV3Model = model.id === 'ideogram-v3' || model.id === 'ideogram-v3-edit';
+  // ideogram-v4 is generate-only via direct API. Keys also unlock
+  // v3 (generate + edit) since the same Ideogram account works for both.
+  const isIdeogramDirectModel =
+    model.id === 'ideogram-v3' || model.id === 'ideogram-v3-edit' || model.id === 'ideogram-v4';
   const ideogramProvider: 'fal' | 'ideogram' =
-    isIdeogramV3Model && ideogramKeyStatus?.has_key ? 'ideogram' : 'fal';
+    isIdeogramDirectModel && ideogramKeyStatus?.has_key ? 'ideogram' : 'fal';
   // When routed via OpenAI or Ideogram direct, ANY reference image
   // becomes an edit (the direct endpoints handle both modes).
   const isEditMode = model.id === 'gpt-image-2' && gptImage1Provider === 'openai'
     ? inputImages.length > 0
-    : isIdeogramV3Model && ideogramProvider === 'ideogram'
+    : isIdeogramDirectModel && ideogramProvider === 'ideogram'
       ? inputImages.length > 0
       : (model.hasDualMode && inputImages.length > 0);
   const perImageCostCents = model.id === 'gpt-image-2'
     ? gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider)
-    : (isIdeogramV3Model && ideogramProvider === 'ideogram'
+    : (isIdeogramDirectModel && ideogramProvider === 'ideogram'
         ? ideogramCostCents(ideogramSpeed, isEditMode)
         : (isEditMode ? model.editCostCents : model.estimatedCostCents));
   const sizePreset = useMemo<SizePreset | null>(
@@ -304,7 +307,7 @@ export default function MediaModule() {
         source_image_urls: model.canReference ? inputImages.map((i) => i.url) : [],
         num_images: num,
         quality: model.id === 'gpt-image-2' ? gptImage1Quality : undefined,
-        rendering_speed: isIdeogramV3Model && ideogramProvider === 'ideogram' ? ideogramSpeed : undefined,
+        rendering_speed: isIdeogramDirectModel && ideogramProvider === 'ideogram' ? ideogramSpeed : undefined,
         collection_id: selectedCollectionId,
       });
 
@@ -604,7 +607,7 @@ export default function MediaModule() {
                 )}
               </p>
             )}
-            {isIdeogramV3Model && (
+            {isIdeogramDirectModel && (
               <p className="text-[11px] mt-1">
                 {ideogramProvider === 'ideogram' ? (
                   <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
@@ -735,7 +738,7 @@ export default function MediaModule() {
           )}
 
           {/* Ideogram v3 rendering speed — only when routed via Ideogram direct. */}
-          {isIdeogramV3Model && ideogramProvider === 'ideogram' && (
+          {isIdeogramDirectModel && ideogramProvider === 'ideogram' && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Rendering speed</label>
