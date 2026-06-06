@@ -159,10 +159,11 @@ export default function MyDayView({
 
   const plannedMinutes = useMemo(() => plannedFor(selected, events), [plannedFor, selected, events]);
 
-  // Daily goal: how many to-dos were completed on the viewed day vs the target.
+  // Daily goal: how many of the day's *scheduled* to-dos you've completed —
+  // matches what My Day shows, rather than counting completions from any list.
   const goal = settings.daily_goal_count;
   const completedCount = useMemo(
-    () => tasks.filter(t => t.kind === 'task' && t.done && t.done_at && localDay(t.done_at) === selected).length,
+    () => tasks.filter(t => t.kind === 'task' && t.done && t.due_date === selected).length,
     [tasks, selected],
   );
   // Real time tracked on the viewed day (from the timer session log), so the
