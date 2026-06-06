@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   connect as gConnect, disconnect as gDisconnect, isCalendarConfigured, wasConnected, prepare as gPrepare,
+  hasValidToken, GCalNeedsReconnect,
   listCalendars, listEvents, createEvent, updateEvent, deleteEvent,
   type GCalCalendar, type GCalEvent,
 } from './google';
@@ -11,10 +12,11 @@ const SELECTED_KEY = 'planner-gcal-calendar';
 // connection + the chosen calendar, and re-exposes the event CRUD helpers.
 export function useGoogleCalendar() {
   const configured = isCalendarConfigured();
-  // Start optimistically connected if we connected before, so navigating back
-  // to the planner doesn't flash the "Connect Google Calendar" prompt while the
-  // silent resume runs. loadCalendars() flips this back off if resume fails.
-  const [connected, setConnected] = useState(() => configured && wasConnected());
+  // Start connected only if we connected before AND still hold a valid token
+  // from this tab session, so a reload resumes silently. Without a live token we
+  // show the Connect button rather than auto-prompting (which reopened Google's
+  // popup on every refresh).
+  const [connected, setConnected] = useState(() => configured && wasConnected() && hasValidToken());
   const [calendars, setCalendars] = useState<GCalCalendar[]>([]);
   const [calendarId, setCalendarId] = useState<string>(() => localStorage.getItem(SELECTED_KEY) ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -40,12 +42,14 @@ export function useGoogleCalendar() {
     }
   }, []);
 
-  // Resume a prior session silently on mount. Either way, warm up GIS so a later
-  // Connect click can open the popup within the user-gesture window.
+  // On mount, warm up GIS so a later Connect click can open the popup within the
+  // user-gesture window. Only auto-load calendars when we still hold a valid
+  // token — never trigger a token request here, or Google's consent popup
+  // reopens on every refresh.
   useEffect(() => {
     if (!configured) return;
     gPrepare();
-    if (wasConnected()) loadCalendars();
+    if (wasConnected() && hasValidToken()) loadCalendars();
   }, [configured, loadCalendars]);
 
   const connect = useCallback(async () => {
@@ -78,7 +82,10 @@ export function useGoogleCalendar() {
       try {
         return await listEvents(calendarId, timeMin, timeMax);
       } catch (e) {
-        setError((e as Error).message);
+        // Token lapsed mid-session — drop to the Connect button instead of
+        // surfacing a raw error or forcing a popup.
+        if (e instanceof GCalNeedsReconnect) setConnected(false);
+        else setError((e as Error).message);
         return [];
       }
     },

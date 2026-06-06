@@ -115,9 +115,26 @@ function requestToken(prompt: '' | 'consent'): Promise<string> {
   });
 }
 
+// True when we hold a still-valid access token cached earlier this tab session
+// — i.e. we can call Calendar without any user-visible prompt.
+export function hasValidToken(): boolean {
+  return !!accessToken && Date.now() < tokenExpiry;
+}
+
+// Thrown when a Calendar call needs a token we don't have. Callers should fall
+// back to the Connect button rather than forcing a prompt.
+export class GCalNeedsReconnect extends Error {
+  constructor() { super('Google Calendar needs to be reconnected.'); this.name = 'GCalNeedsReconnect'; }
+}
+
+// Non-interactive token accessor. Returns the cached token or signals that a
+// reconnect is needed — it NEVER calls requestAccessToken. Only an explicit
+// connect() (inside a user click) may open Google's popup. The old silent
+// resume (requestToken('')) escalated to a *visible* consent popup on browsers
+// that block third-party cookies, which reopened the popup on every refresh.
 async function token(): Promise<string> {
-  if (accessToken && Date.now() < tokenExpiry) return accessToken;
-  return requestToken('');
+  if (hasValidToken()) return accessToken!;
+  throw new GCalNeedsReconnect();
 }
 
 // Warm up the GIS script + token client ahead of time so an explicit Connect
