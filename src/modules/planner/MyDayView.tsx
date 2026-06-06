@@ -6,7 +6,7 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
-  CalendarClock, FileText,
+  CalendarClock, FileText, CornerDownLeft,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
@@ -888,16 +888,27 @@ function TaskSearch({
 
 function QuickAddTask({ onAdd }: { onAdd: (title: string) => void }) {
   const [value, setValue] = useState('');
+  function submit() { if (value.trim()) { onAdd(value.trim()); setValue(''); } }
   return (
     <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
       <Plus className="w-4 h-4 text-slate-400 shrink-0" />
       <input
         value={value}
         onChange={e => setValue(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && value.trim()) { onAdd(value.trim()); setValue(''); } }}
+        onKeyDown={e => { if (e.key === 'Enter') submit(); }}
         placeholder="Add a to-do to this day…"
         className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
       />
+      <button
+        onClick={submit}
+        disabled={!value.trim()}
+        title="Add (Enter)"
+        className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-slate-300 cursor-default'
+        }`}
+      >
+        <CornerDownLeft className="w-3.5 h-3.5" /> Add
+      </button>
     </div>
   );
 }

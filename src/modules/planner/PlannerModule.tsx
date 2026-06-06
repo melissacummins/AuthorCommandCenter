@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MiniMenu } from './MiniMenu';
-import { TimerButton } from './TimerButton';
+import { TimerButton, RunningTimerBar, stopTimerPatch } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
@@ -15,7 +15,7 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon,
+  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
@@ -135,6 +135,10 @@ export default function PlannerModule() {
     () => tasks.filter(t => t.kind === 'task' && !t.done && !t.note_id).length,
     [tasks],
   );
+
+  // The single to-do whose timer is currently running (if any) — surfaced in a
+  // floating bar so it can be stopped from any planner view.
+  const runningTask = useMemo(() => tasks.find(t => !!t.timer_started_at) ?? null, [tasks]);
 
   // ---- mutations (optimistic where it helps responsiveness) ----
 
@@ -392,8 +396,8 @@ export default function PlannerModule() {
       {/* Left rail: smart views + lists. Static from md up; a slide-over on
           mobile so the day/list has full width for adding to-dos. */}
       <aside
-        className={`w-64 shrink-0 border-r border-slate-200 bg-slate-50/60 flex-col overflow-y-auto nice-scrollbar
-          md:static md:flex
+        className={`w-64 shrink-0 border-r border-slate-200 bg-slate-50 flex-col overflow-y-auto nice-scrollbar
+          md:static md:flex md:bg-slate-50/60
           ${railOpen ? 'fixed inset-y-0 left-0 z-50 flex shadow-2xl' : 'hidden md:flex'}`}
       >
         <div className="md:hidden flex justify-end p-2">
@@ -584,6 +588,17 @@ export default function PlannerModule() {
           <div className="p-8 text-slate-400">Select a note or view.</div>
         )}
       </section>
+
+      {runningTask && (
+        <RunningTimerBar
+          task={runningTask}
+          onStop={() => patchTask(runningTask.id, stopTimerPatch(runningTask))}
+          onOpen={() => {
+            if (runningTask.note_id) setSelection({ kind: 'note', id: runningTask.note_id });
+            else choose({ kind: 'myday' });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1475,6 +1490,16 @@ function QuickAdd({
         placeholder={placeholder}
         className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
       />
+      <button
+        onClick={onSubmit}
+        disabled={!value.trim()}
+        title="Add (Enter)"
+        className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-slate-300 cursor-default'
+        }`}
+      >
+        <CornerDownLeft className="w-3.5 h-3.5" /> Add
+      </button>
     </div>
   );
 }

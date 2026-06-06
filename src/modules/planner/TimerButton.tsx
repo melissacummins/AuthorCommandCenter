@@ -35,7 +35,7 @@ export function TimerButton({
   const sessionMs = running ? Math.max(0, Date.now() - new Date(task.timer_started_at!).getTime()) : 0;
 
   function toggle() {
-    if (running) onPatch(task.id, { actual_minutes: base + Math.round(sessionMs / 60_000), timer_started_at: null });
+    if (running) onPatch(task.id, stopTimerPatch(task));
     else onPatch(task.id, { timer_started_at: new Date().toISOString() });
   }
 
@@ -54,6 +54,46 @@ export function TimerButton({
         ? <span className="tabular-nums">{formatStopwatch(base * 60_000 + sessionMs)}</span>
         : base > 0 ? <span>{formatMinutes(base)}</span> : null}
     </button>
+  );
+}
+
+// The patch that stops a running timer: bank the elapsed minutes into the
+// to-do's running total and clear the active run. (patchTask additionally logs
+// a session row off the timer_started_at → null transition.)
+export function stopTimerPatch(task: PlannerTask): Partial<PlannerTask> {
+  const add = task.timer_started_at
+    ? Math.max(0, Math.round((Date.now() - new Date(task.timer_started_at).getTime()) / 60_000))
+    : 0;
+  return { actual_minutes: (task.actual_minutes ?? 0) + add, timer_started_at: null };
+}
+
+// A floating control shown across the planner while a timer is running, so it
+// can be stopped (or its to-do opened) from anywhere — no hunting for the row.
+export function RunningTimerBar({ task, onStop, onOpen }: { task: PlannerTask; onStop: () => void; onOpen: () => void }) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => tick(n => n + 1), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const ms = task.timer_started_at ? Math.max(0, Date.now() - new Date(task.timer_started_at).getTime()) : 0;
+  return (
+    <div className="fixed bottom-4 right-4 z-40 flex items-center gap-3 bg-slate-900 text-white rounded-full shadow-xl pl-4 pr-2 py-2 max-w-[min(90vw,22rem)]">
+      <span className="relative flex h-2.5 w-2.5 shrink-0">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
+        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
+      </span>
+      <button onClick={onOpen} className="flex-1 min-w-0 text-left truncate text-sm font-medium hover:underline" title="Open this to-do">
+        {task.title || 'Untitled'}
+      </button>
+      <span className="tabular-nums text-sm text-slate-200 shrink-0">{formatStopwatch(ms)}</span>
+      <button
+        onClick={onStop}
+        className="shrink-0 inline-flex items-center gap-1 bg-rose-500 hover:bg-rose-600 rounded-full px-3 py-1 text-xs font-semibold"
+        title="Stop timer"
+      >
+        <Square className="w-3 h-3 fill-current" /> Stop
+      </button>
+    </div>
   );
 }
 
