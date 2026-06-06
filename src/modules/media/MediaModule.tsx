@@ -29,7 +29,7 @@ export default function MediaModule() {
 
   const [prompt, setPrompt] = useState('');
   const [modelId, setModelId] = useState<string>(MODELS[0].id);
-  const [sizePresetId, setSizePresetId] = useState<string>('pinterest');
+  const [sizePresetId, setSizePresetId] = useState<string>('aspect-4-5');
   const [customWidth, setCustomWidth] = useState<number>(1024);
   const [customHeight, setCustomHeight] = useState<number>(1024);
   const [useCustomSize, setUseCustomSize] = useState(false);
@@ -729,18 +729,18 @@ export default function MediaModule() {
                 }}
                 className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
               >
-                <optgroup label="Social">
+                <optgroup label="Aspect ratio">
+                  {SIZE_PRESETS.filter((p) => p.group === 'aspect').map((p) => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Social platform">
                   {SIZE_PRESETS.filter((p) => p.group === 'social').map((p) => (
                     <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
                 </optgroup>
                 <optgroup label="Book">
                   {SIZE_PRESETS.filter((p) => p.group === 'book').map((p) => (
-                    <option key={p.id} value={p.id}>{p.label}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="General">
-                  {SIZE_PRESETS.filter((p) => p.group === 'general').map((p) => (
                     <option key={p.id} value={p.id}>{p.label}</option>
                   ))}
                 </optgroup>

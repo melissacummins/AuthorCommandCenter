@@ -290,15 +290,17 @@ function formatFalError(detail: unknown, status: number): string {
   return `Fal HTTP ${status}`;
 }
 
-// Pass-through formatter for gpt-image-2. The API accepts arbitrary
-// "WIDTHxHEIGHT" strings; rather than encode any constraints client-
-// side (and risk lying about them — different sources say different
-// things), we send what the user picked and let OpenAI be the source
-// of truth. If a size is rejected the existing error formatter
-// surfaces the actual API message to the user.
+// gpt-image-2 / OpenAI direct enforces one real constraint: both
+// dimensions must be divisible by 16. (The OpenAI error literally says
+// so.) Fal's `openai/gpt-image-2` wrapper snaps for you transparently,
+// which is why "1080x1350" appears to work via Fal but 502s via direct.
+// We mirror Fal's behavior — snap to the nearest multiple of 16 in
+// each dimension. Aspect ratio is preserved to within a fraction of a
+// percent (e.g. 1080×1350 → 1088×1344 is still 4:5).
 function gptImage2Size(width: number, height: number): string {
   if (!width || !height) return 'auto';
-  return `${Math.round(width)}x${Math.round(height)}`;
+  const snap16 = (n: number) => Math.max(16, Math.round(n / 16) * 16);
+  return `${snap16(width)}x${snap16(height)}`;
 }
 
 function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: number): Record<string, unknown> {
@@ -397,12 +399,14 @@ interface OpenaiImageResponse {
   error?: { message?: string; type?: string };
 }
 
-// Same pass-through formatter as the Fal path — gpt-image-2 / OpenAI's
-// /v1/images/{generations,edits} accept arbitrary WxH. We trust what
-// the user picked and forward OpenAI's validation error if any.
+// Same snap-to-16 logic as the Fal path. OpenAI's image API requires
+// both dimensions divisible by 16; without this, 1080×1350 (a 4:5
+// aspect that the user has confirmed works via Fal's wrapper) gets
+// rejected by /v1/images/generations.
 function openaiSizeFromDimensions(width?: number, height?: number): string {
   if (!width || !height) return 'auto';
-  return `${Math.round(width)}x${Math.round(height)}`;
+  const snap16 = (n: number) => Math.max(16, Math.round(n / 16) * 16);
+  return `${snap16(width)}x${snap16(height)}`;
 }
 
 // Parse any "WIDTHxHEIGHT" we sent back out, so the history row records
