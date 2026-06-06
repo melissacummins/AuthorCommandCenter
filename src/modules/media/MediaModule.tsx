@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
-  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, ExternalLink, Layers,
+  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, RotateCw, Check, ExternalLink, Layers,
   ChevronLeft, ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -65,6 +65,11 @@ export default function MediaModule() {
   const [filterCollectionId, setFilterCollectionId] = useState<string | null>(null);
   const [stylesDrawerOpen, setStylesDrawerOpen] = useState(false);
   const [collectionsDrawerOpen, setCollectionsDrawerOpen] = useState(false);
+  // Selection set for bulk delete / move-to-collection.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Set of generation ids currently downloading so we can show a spinner
+  // on the row button while the blob is being fetched.
+  const [downloadingIds, setDownloadingIds] = useState<Set<string>>(new Set());
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollersRef = useRef<Map<string, number>>(new Map());
@@ -419,6 +424,100 @@ export default function MediaModule() {
       .eq('id', generationId);
     if (upErr) { setError(upErr.message); return; }
     setHistory((prev) => prev.map((g) => (g.id === generationId ? { ...g, collection_id: collectionId } : g)));
+  }
+
+  // Force a real download instead of a new tab. The output URLs are on
+  // Supabase's storage origin, so the browser ignores <a download> for
+  // cross-origin links. Fetch into a Blob, mint a blob: URL, and click
+  // a synthetic anchor.
+  async function handleDownload(gen: MediaGeneration) {
+    if (!gen.output_url) return;
+    setDownloadingIds((prev) => { const next = new Set(prev); next.add(gen.id); return next; });
+    try {
+      const res = await fetch(gen.output_url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const ext = gen.kind === 'video' ? 'mp4' : 'png';
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${gen.model}-${gen.id.slice(0, 8)}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setError(err instanceof Error ? `Download failed: ${err.message}` : 'Download failed');
+    } finally {
+      setDownloadingIds((prev) => { const next = new Set(prev); next.delete(gen.id); return next; });
+    }
+  }
+
+  function toggleSelected(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} item${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    const { error: delErr } = await supabase
+      .from('media_generations')
+      .delete()
+      .in('id', ids);
+    if (delErr) { setError(delErr.message); return; }
+    setHistory((prev) => prev.filter((g) => !selectedIds.has(g.id)));
+    setSelectedIds(new Set());
+  }
+
+  async function handleBulkMoveToCollection(collectionId: string | null) {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    const { error: upErr } = await supabase
+      .from('media_generations')
+      .update({ collection_id: collectionId })
+      .in('id', ids);
+    if (upErr) { setError(upErr.message); return; }
+    setHistory((prev) => prev.map((g) => (selectedIds.has(g.id) ? { ...g, collection_id: collectionId } : g)));
+    setSelectedIds(new Set());
+  }
+
+  // Pre-fill all controls from a past generation so the user can rerun
+  // it with the same prompt + model + size + style. Quality / rendering
+  // speed aren't stored on the row, so they keep whatever's currently
+  // selected (user can tweak before hitting Generate). References:
+  // we only stored the first source_image_url, so that's what gets
+  // re-attached.
+  function handleRetry(gen: MediaGeneration) {
+    setPrompt(gen.prompt);
+    setModelId(gen.model);
+    if (gen.style_preset_id) setSelectedStyleId(gen.style_preset_id);
+    if (gen.collection_id) setSelectedCollectionId(gen.collection_id);
+    if (gen.width && gen.height) {
+      // Match a known size preset if the dimensions line up; else use Custom.
+      const preset = SIZE_PRESETS.find((p) => p.width === gen.width && p.height === gen.height);
+      if (preset) {
+        setSizePresetId(preset.id);
+        setUseCustomSize(false);
+      } else {
+        setCustomWidth(gen.width);
+        setCustomHeight(gen.height);
+        setUseCustomSize(true);
+      }
+    }
+    if (gen.source_image_url) {
+      setInputImages([{ url: gen.source_image_url, name: 'previous reference' }]);
+    } else {
+      setInputImages([]);
+    }
+    setLightboxId(null);
+    // Scroll the controls back into view in case the user clicked
+    // retry from deep in the history grid.
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   // ---------- derived ----------
@@ -849,6 +948,35 @@ export default function MediaModule() {
 
         {/* History */}
         <div>
+          {/* Bulk action toolbar — only when there's a selection. */}
+          {selectedIds.size > 0 && (
+            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 mb-3 bg-fuchsia-50 border border-fuchsia-200 rounded-xl px-3 py-2 text-sm">
+              <span className="font-semibold text-fuchsia-900">{selectedIds.size} selected</span>
+              <select
+                value=""
+                onChange={(e) => handleBulkMoveToCollection(e.target.value || null)}
+                className="text-xs px-2 py-1.5 rounded-lg border border-fuchsia-200 bg-white text-slate-700"
+              >
+                <option value="" disabled>Move to collection…</option>
+                <option value="">Uncategorised</option>
+                {collections.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleBulkDelete}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700"
+              >
+                <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size}
+              </button>
+              <button
+                onClick={() => setSelectedIds(new Set())}
+                className="ml-auto text-xs text-fuchsia-700 hover:text-fuchsia-900 underline"
+              >
+                Clear selection
+              </button>
+            </div>
+          )}
           {/* Collection filter chips */}
           <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
             <button
@@ -889,8 +1017,13 @@ export default function MediaModule() {
                   key={g.id}
                   generation={g}
                   collections={collections}
+                  selected={selectedIds.has(g.id)}
+                  downloading={downloadingIds.has(g.id)}
+                  onToggleSelected={() => toggleSelected(g.id)}
+                  onDownload={() => handleDownload(g)}
                   onDelete={() => handleDelete(g)}
                   onUseAsInput={() => handleUseAsInput(g)}
+                  onRetry={() => handleRetry(g)}
                   onMoveCollection={(cid) => handleMoveToCollection(g.id, cid)}
                   onOpenLightbox={() => setLightboxId(g.id)}
                 />
@@ -947,6 +1080,8 @@ export default function MediaModule() {
             next={next}
             onClose={() => setLightboxId(null)}
             onJump={(id) => setLightboxId(id)}
+            onDownload={() => handleDownload(lightboxItem)}
+            onRetry={() => handleRetry(lightboxItem)}
           />
         );
       })()}
@@ -959,12 +1094,18 @@ export default function MediaModule() {
 // ============================================
 
 function MediaCard({
-  generation, collections, onDelete, onUseAsInput, onMoveCollection, onOpenLightbox,
+  generation, collections, selected, downloading,
+  onToggleSelected, onDownload, onDelete, onUseAsInput, onRetry, onMoveCollection, onOpenLightbox,
 }: {
   generation: MediaGeneration;
   collections: MediaCollection[];
+  selected: boolean;
+  downloading: boolean;
+  onToggleSelected: () => void;
+  onDownload: () => void;
   onDelete: () => void;
   onUseAsInput: () => void;
+  onRetry: () => void;
   onMoveCollection: (collectionId: string | null) => void;
   onOpenLightbox: () => void;
 }) {
@@ -973,8 +1114,22 @@ function MediaCard({
   const failed = generation.status === 'failed';
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden flex flex-col">
+    <div className={`bg-white rounded-2xl border overflow-hidden flex flex-col ${selected ? 'border-fuchsia-500 ring-2 ring-fuchsia-200' : 'border-slate-200'}`}>
       <div className="aspect-square bg-slate-100 relative">
+        {/* Selection checkbox — top-left overlay. */}
+        {!pending && !failed && (
+          <button
+            onClick={onToggleSelected}
+            className={`absolute top-2 left-2 z-10 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+              selected
+                ? 'bg-fuchsia-600 border-fuchsia-600 text-white'
+                : 'bg-white/80 border-white hover:border-fuchsia-400'
+            }`}
+            title={selected ? 'Deselect' : 'Select'}
+          >
+            {selected && <Check className="w-4 h-4" />}
+          </button>
+        )}
         {pending && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
             <Loader2 className="w-8 h-8 animate-spin" />
@@ -1022,16 +1177,23 @@ function MediaCard({
 
         <div className="flex items-center gap-1 mt-1">
           {generation.output_url && !pending && (
-            <a
-              href={generation.output_url}
-              target="_blank"
-              rel="noreferrer"
-              download
-              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            <button
+              onClick={onDownload}
+              disabled={downloading}
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
               title="Download"
             >
-              <Download className="w-4 h-4" />
-            </a>
+              {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            </button>
+          )}
+          {!pending && (
+            <button
+              onClick={onRetry}
+              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              title="Generate again with the same prompt and settings"
+            >
+              <RotateCw className="w-4 h-4" />
+            </button>
           )}
           {generation.output_url && generation.kind === 'image' && !pending && (
             <button
@@ -1380,13 +1542,15 @@ function PromptHistoryDrawer({
 // detail before deciding whether to download / discard. Arrow keys
 // navigate through the visible history.
 function Lightbox({
-  generation, prev, next, onClose, onJump,
+  generation, prev, next, onClose, onJump, onDownload, onRetry,
 }: {
   generation: MediaGeneration;
   prev: MediaGeneration | null;
   next: MediaGeneration | null;
   onClose: () => void;
   onJump: (id: string) => void;
+  onDownload: () => void;
+  onRetry: () => void;
 }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -1450,18 +1614,23 @@ function Lightbox({
           <p className="text-xs text-slate-500 whitespace-pre-wrap line-clamp-4">{generation.prompt}</p>
           <div className="flex items-center justify-between mt-2 text-[11px] text-slate-400">
             <span>{generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind} · {formatCents(generation.cost_cents)}</span>
-            {generation.output_url && (
-              <a
-                href={generation.output_url}
-                target="_blank"
-                rel="noreferrer"
-                download
-                onClick={(e) => e.stopPropagation()}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={(e) => { e.stopPropagation(); onRetry(); }}
                 className="inline-flex items-center gap-1 text-fuchsia-600 hover:text-fuchsia-700 font-medium"
+                title="Generate again with these settings"
               >
-                <Download className="w-3.5 h-3.5" /> Download
-              </a>
-            )}
+                <RotateCw className="w-3.5 h-3.5" /> Generate again
+              </button>
+              {generation.output_url && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDownload(); }}
+                  className="inline-flex items-center gap-1 text-fuchsia-600 hover:text-fuchsia-700 font-medium"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
