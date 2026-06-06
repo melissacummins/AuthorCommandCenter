@@ -29,10 +29,10 @@ type VercelResponse = {
   end: () => void;
 };
 
-type Provider = 'fal' | 'openai';
+type Provider = 'fal' | 'openai' | 'ideogram';
 
 interface ProviderConfig {
-  table: 'user_fal_keys' | 'user_openai_keys';
+  table: 'user_fal_keys' | 'user_openai_keys' | 'user_ideogram_keys';
   scryptSalt: string;
   minLength: number;
   validate: (key: string) => string | null; // returns error message or null if ok
@@ -52,6 +52,12 @@ const PROVIDERS: Record<Provider, ProviderConfig> = {
     validate: (k) => (k.length < 20 || !k.startsWith('sk-')
       ? 'OpenAI keys start with "sk-" — paste the full secret key from platform.openai.com.'
       : null),
+  },
+  ideogram: {
+    table: 'user_ideogram_keys',
+    scryptSalt: 'media-ideogram-key-v1',
+    minLength: 20,
+    validate: (k) => (k.length < 20 ? 'Ideogram keys are ~40+ chars — paste the full key from ideogram.ai/manage-api.' : null),
   },
 };
 
@@ -78,7 +84,9 @@ function queryParam(req: VercelRequest, name: string): string | null {
 
 function resolveProvider(req: VercelRequest): Provider {
   const raw = queryParam(req, 'provider');
-  return raw === 'openai' ? 'openai' : 'fal';
+  if (raw === 'openai') return 'openai';
+  if (raw === 'ideogram') return 'ideogram';
+  return 'fal';
 }
 
 function deriveMasterKey(secret: string, salt: string): Buffer {
