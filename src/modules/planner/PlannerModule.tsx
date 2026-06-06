@@ -610,8 +610,10 @@ export default function PlannerModule() {
             tasks={tasks}
             blocks={blocks}
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
+            notesById={notesById}
             today={today}
             onOpenDay={openDay}
+            onPatch={patchTask}
           />
         ) : selection.kind === 'stats' ? (
           <StatsView tasks={tasks} sessions={sessions} today={today} />
