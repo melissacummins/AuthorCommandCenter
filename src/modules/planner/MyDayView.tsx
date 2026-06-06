@@ -16,7 +16,7 @@ import { TaskNotes } from './TaskNotes';
 import {
   addDaysISO, blockMinutes, formatClock, formatMinutes, localDay,
   minutesToTime, timeToMinutes, ESTIMATE_PRESETS, phaseInfo, daysBetweenISO,
-  type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo,
+  type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo, type PlannerTimeSession,
 } from './types';
 
 export interface MyDayHandlers {
@@ -34,10 +34,11 @@ export interface MyDayHandlers {
 }
 
 export default function MyDayView({
-  tasks, blocks, dayNotes, settings, today, cal, handlers, jumpTo,
+  tasks, blocks, sessions, dayNotes, settings, today, cal, handlers, jumpTo,
 }: {
   tasks: PlannerTask[];
   blocks: PlannerTimeBlock[];
+  sessions: PlannerTimeSession[];
   dayNotes: Record<string, string>;
   settings: PlannerSettings;
   today: string;
@@ -164,6 +165,12 @@ export default function MyDayView({
     () => tasks.filter(t => t.kind === 'task' && t.done && t.done_at && localDay(t.done_at) === selected).length,
     [tasks, selected],
   );
+  // Real time tracked on the viewed day (from the timer session log), so the
+  // header reflects what you've actually done, not just what's planned.
+  const workedMinutes = useMemo(
+    () => sessions.reduce((sum, s) => sum + (localDay(s.started_at) === selected ? s.minutes : 0), 0),
+    [sessions, selected],
+  );
 
   // Working Phase: when one is active, it scales the day's target down (or up)
   // from the plain baseline — e.g. Recovery proposes a gentle fraction. This
@@ -266,6 +273,11 @@ export default function MyDayView({
             onSetTarget={handlers.onUpdateCapacity}
           />
           {goal != null && goal > 0 && <GoalBar done={completedCount} goal={goal} />}
+          {workedMinutes > 0 && (
+            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-slate-400">
+              <Clock className="w-3 h-3" /> {formatMinutes(workedMinutes)} worked {selected === today ? 'today' : 'this day'}
+            </div>
+          )}
         </div>
       </div>
 
