@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import type { ReactElement } from 'react';
+import { lazy, Suspense, type ReactElement } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { PenNameProvider } from './contexts/PenNameContext';
 import { GATED_MODULES } from './lib/access';
@@ -7,23 +7,27 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import AccessGate from './pages/AccessGate';
 import Home from './pages/Home';
-import InventoryModule from './modules/inventory/InventoryModule';
-import CrossSellModule from './modules/cross-sell/CrossSellModule';
-import BookTrackerModule from './modules/book-tracker/BookTrackerModule';
-import CatalogModule from './modules/catalog/CatalogModule';
-import ProfitTrackModule from './modules/profit-track/ProfitTrackModule';
-import AdAlchemyModule from './modules/ad-alchemy/AdAlchemyModule';
-import MarketingModule from './modules/marketing/MarketingModule';
-import FinStreamModule from './modules/finstream/FinStreamModule';
-import KDPOptimizerModule from './modules/kdp-optimizer/KDPOptimizerModule';
-import LinkShortenerModule from './modules/link-shortener/LinkShortenerModule';
-import ARCsModule from './modules/arcs/ARCsModule';
-import MediaModule from './modules/media/MediaModule';
-import SocialMediaModule from './modules/social-media/SocialMediaModule';
-import SettingsModule from './modules/settings/SettingsModule';
-import TimelineModule from './modules/timeline/TimelineModule';
-import PlannerModule from './modules/planner/PlannerModule';
-import ShopifyCallback from './modules/orders/components/ShopifyCallback';
+
+// Each module is its own route and most users only ever open a handful, so we
+// load them lazily. This keeps the initial bundle to the app shell (Layout +
+// Home) and pulls each module's code only when its route is first visited.
+const InventoryModule = lazy(() => import('./modules/inventory/InventoryModule'));
+const CrossSellModule = lazy(() => import('./modules/cross-sell/CrossSellModule'));
+const BookTrackerModule = lazy(() => import('./modules/book-tracker/BookTrackerModule'));
+const CatalogModule = lazy(() => import('./modules/catalog/CatalogModule'));
+const ProfitTrackModule = lazy(() => import('./modules/profit-track/ProfitTrackModule'));
+const AdAlchemyModule = lazy(() => import('./modules/ad-alchemy/AdAlchemyModule'));
+const MarketingModule = lazy(() => import('./modules/marketing/MarketingModule'));
+const FinStreamModule = lazy(() => import('./modules/finstream/FinStreamModule'));
+const KDPOptimizerModule = lazy(() => import('./modules/kdp-optimizer/KDPOptimizerModule'));
+const LinkShortenerModule = lazy(() => import('./modules/link-shortener/LinkShortenerModule'));
+const ARCsModule = lazy(() => import('./modules/arcs/ARCsModule'));
+const MediaModule = lazy(() => import('./modules/media/MediaModule'));
+const SocialMediaModule = lazy(() => import('./modules/social-media/SocialMediaModule'));
+const SettingsModule = lazy(() => import('./modules/settings/SettingsModule'));
+const TimelineModule = lazy(() => import('./modules/timeline/TimelineModule'));
+const PlannerModule = lazy(() => import('./modules/planner/PlannerModule'));
+const ShopifyCallback = lazy(() => import('./modules/orders/components/ShopifyCallback'));
 
 // Maps each gateable module key to its route element. Keys match GATED_MODULES.
 const GATED_ELEMENTS: Record<string, ReactElement> = {
@@ -68,20 +72,31 @@ function ProtectedRoutes() {
   return (
     <PenNameProvider>
       <Layout>
-        <Routes>
-          <Route index element={<Home />} />
-          {GATED_MODULES.filter(m => visibleModules.has(m.key)).map(m => (
-            <Route key={m.key} path={m.path.replace(/^\//, '')} element={GATED_ELEMENTS[m.key]} />
-          ))}
-          {/* Planner is always available (like Home/Settings) — it's a personal
-              tool, not a sellable area, so it isn't gated and costs no module slot. */}
-          <Route path="planner" element={<PlannerModule />} />
-          <Route path="settings" element={<SettingsModule />} />
-          <Route path="shopify/callback" element={<ShopifyCallback />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <Suspense fallback={<ModuleFallback />}>
+          <Routes>
+            <Route index element={<Home />} />
+            {GATED_MODULES.filter(m => visibleModules.has(m.key)).map(m => (
+              <Route key={m.key} path={m.path.replace(/^\//, '')} element={GATED_ELEMENTS[m.key]} />
+            ))}
+            {/* Planner is always available (like Home/Settings) — it's a personal
+                tool, not a sellable area, so it isn't gated and costs no module slot. */}
+            <Route path="planner" element={<PlannerModule />} />
+            <Route path="settings" element={<SettingsModule />} />
+            <Route path="shopify/callback" element={<ShopifyCallback />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
       </Layout>
     </PenNameProvider>
+  );
+}
+
+// Shown briefly while a lazily-loaded module's chunk is fetched.
+function ModuleFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
+    </div>
   );
 }
 
