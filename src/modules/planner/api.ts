@@ -138,6 +138,18 @@ export async function reorderTasks(updates: { id: string; sort_order: number }[]
   if (failed?.error) throw failed.error;
 }
 
+// Persist a new list (note) ordering after a drag or an alphabetical sort.
+export async function reorderNotes(updates: { id: string; sort_order: number }[]): Promise<void> {
+  const stamp = new Date().toISOString();
+  const results = await Promise.all(
+    updates.map(u =>
+      supabase.from('planner_notes').update({ sort_order: u.sort_order, updated_at: stamp }).eq('id', u.id),
+    ),
+  );
+  const failed = results.find(r => r.error);
+  if (failed?.error) throw failed.error;
+}
+
 export function newChecklistItem(title: string): ChecklistItem {
   return { id: crypto.randomUUID(), title, done: false };
 }
@@ -196,7 +208,7 @@ export async function getSettings(userId: string): Promise<PlannerSettings> {
 export async function updateSettings(
   userId: string,
   patch: Partial<Pick<PlannerSettings,
-    'daily_capacity_minutes' | 'carry_over_capacity' | 'auto_rollover' | 'working_phase' | 'phase_started_on'>>,
+    'daily_capacity_minutes' | 'carry_over_capacity' | 'auto_rollover' | 'working_phase' | 'phase_started_on' | 'daily_goal_count'>>,
 ): Promise<PlannerSettings> {
   const { data, error } = await supabase
     .from('planner_settings')

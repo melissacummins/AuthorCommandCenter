@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MiniMenu } from './MiniMenu';
-import { TimerButton } from './TimerButton';
+import { TimerButton, RunningTimerBar, stopTimerPatch } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
@@ -15,7 +15,7 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon,
+  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
@@ -29,7 +29,7 @@ import {
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
   getSettings, updateSettings, listDayNotes, saveDayNote as apiSaveDayNote,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
-  listTimeSessions, createTimeSessions,
+  listTimeSessions, createTimeSessions, reorderNotes,
 } from './api';
 import {
   bucketForTask, checklistProgress, formatDue, formatMinutes, nextDueDate, sumEstimate, todayISO,
@@ -135,6 +135,33 @@ export default function PlannerModule() {
     () => tasks.filter(t => t.kind === 'task' && !t.done && !t.note_id).length,
     [tasks],
   );
+
+  // The single to-do whose timer is currently running (if any) — surfaced in a
+  // floating bar so it can be stopped from any planner view.
+  const runningTask = useMemo(() => tasks.find(t => !!t.timer_started_at) ?? null, [tasks]);
+
+  // Reorder lists by drag, persisting the new sort_order.
+  const listSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  function handleListDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const from = notes.findIndex(n => n.id === active.id);
+    const to = notes.findIndex(n => n.id === over.id);
+    if (from < 0 || to < 0) return;
+    const reordered = [...notes];
+    const [moved] = reordered.splice(from, 1);
+    reordered.splice(to, 0, moved);
+    const next = reordered.map((n, i) => ({ ...n, sort_order: i }));
+    setNotes(next);
+    reorderNotes(next.map(n => ({ id: n.id, sort_order: n.sort_order }))).catch(e2 => setError((e2 as Error)?.message ?? 'Could not save list order.'));
+  }
+  function sortNotesAZ() {
+    const next = [...notes]
+      .sort((a, b) => (a.title.trim() || 'Untitled list').localeCompare(b.title.trim() || 'Untitled list'))
+      .map((n, i) => ({ ...n, sort_order: i }));
+    setNotes(next);
+    reorderNotes(next.map(n => ({ id: n.id, sort_order: n.sort_order }))).catch(e2 => setError((e2 as Error)?.message ?? 'Could not sort lists.'));
+  }
 
   // ---- mutations (optimistic where it helps responsiveness) ----
 
@@ -392,8 +419,8 @@ export default function PlannerModule() {
       {/* Left rail: smart views + lists. Static from md up; a slide-over on
           mobile so the day/list has full width for adding to-dos. */}
       <aside
-        className={`w-64 shrink-0 border-r border-slate-200 bg-slate-50/60 flex-col overflow-y-auto nice-scrollbar
-          md:static md:flex
+        className={`w-64 shrink-0 border-r border-slate-200 bg-slate-50 flex-col overflow-y-auto nice-scrollbar
+          md:static md:flex md:bg-slate-50/60
           ${railOpen ? 'fixed inset-y-0 left-0 z-50 flex shadow-2xl' : 'hidden md:flex'}`}
       >
         <div className="md:hidden flex justify-end p-2">
@@ -480,31 +507,34 @@ export default function PlannerModule() {
 
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Lists</span>
-          <button onClick={handleNewNote} className="text-slate-400 hover:text-teal-600" title="New list">
-            <Plus className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-1">
+            {notes.length > 1 && (
+              <button onClick={sortNotesAZ} className="text-slate-400 hover:text-teal-600" title="Sort lists A–Z">
+                <ArrowDownAZ className="w-4 h-4" />
+              </button>
+            )}
+            <button onClick={handleNewNote} className="text-slate-400 hover:text-teal-600" title="New list">
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
         </div>
         <nav className="px-3 pb-4 space-y-1">
           {notes.length === 0 && (
             <p className="px-3 py-2 text-xs text-slate-400">No lists yet. Hit + to start one.</p>
           )}
-          {notes.map(n => {
-            const active = selection.kind === 'note' && selection.id === n.id;
-            const open = openCountByNote[n.id] ?? 0;
-            return (
-              <button
-                key={n.id}
-                onClick={() => choose({ kind: 'note', id: n.id })}
-                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
-                }`}
-              >
-                {n.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
-                <span className="flex-1 text-left truncate">{n.title.trim() || 'Untitled list'}</span>
-                {open > 0 && <span className="text-xs text-slate-400">{open}</span>}
-              </button>
-            );
-          })}
+          <DndContext sensors={listSensors} collisionDetection={closestCenter} onDragEnd={handleListDragEnd}>
+            <SortableContext items={notes.map(n => n.id)} strategy={verticalListSortingStrategy}>
+              {notes.map(n => (
+                <SortableListItem
+                  key={n.id}
+                  note={n}
+                  active={selection.kind === 'note' && selection.id === n.id}
+                  open={openCountByNote[n.id] ?? 0}
+                  onChoose={() => choose({ kind: 'note', id: n.id })}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </nav>
       </aside>
 
@@ -529,7 +559,7 @@ export default function PlannerModule() {
             tasks={tasks}
             blocks={blocks}
             dayNotes={dayNotes}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, created_at: '', updated_at: '' }}
             today={today}
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
@@ -539,7 +569,7 @@ export default function PlannerModule() {
           <PlanView
             tasks={tasks}
             blocks={blocks}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, created_at: '', updated_at: '' }}
             today={today}
             onOpenDay={openDay}
           />
@@ -549,7 +579,7 @@ export default function PlannerModule() {
           <LogbookView tasks={tasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
         ) : selection.kind === 'settings' ? (
           <SettingsView
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, created_at: '', updated_at: '' }}
             today={today}
             onUpdate={updatePlannerSettings}
           />
@@ -584,6 +614,17 @@ export default function PlannerModule() {
           <div className="p-8 text-slate-400">Select a note or view.</div>
         )}
       </section>
+
+      {runningTask && (
+        <RunningTimerBar
+          task={runningTask}
+          onStop={() => patchTask(runningTask.id, stopTimerPatch(runningTask))}
+          onOpen={() => {
+            if (runningTask.note_id) setSelection({ kind: 'note', id: runningTask.note_id });
+            else choose({ kind: 'myday' });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1457,6 +1498,41 @@ function ChecklistEditor({
 
 // A tiny click-to-open menu lives in ./MiniMenu (shared with My Day rows).
 
+// A list in the rail: click to open, drag the grip to reorder.
+function SortableListItem({
+  note, active, open, onChoose,
+}: {
+  note: PlannerNote;
+  active: boolean;
+  open: number;
+  onChoose: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
+  const style = { transform: CSS.Transform.toString(transform), transition };
+  return (
+    <div ref={setNodeRef} style={style} className={`group flex items-center rounded-lg ${isDragging ? 'opacity-60 bg-white shadow-sm' : ''}`}>
+      <button
+        {...attributes}
+        {...listeners}
+        className="pl-1.5 py-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+        title="Drag to reorder"
+      >
+        <GripVertical className="w-3.5 h-3.5" />
+      </button>
+      <button
+        onClick={onChoose}
+        className={`flex-1 min-w-0 flex items-center gap-2 pr-3 py-2 rounded-lg text-sm transition-colors ${
+          active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+        }`}
+      >
+        {note.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+        <span className="flex-1 text-left truncate">{note.title.trim() || 'Untitled list'}</span>
+        {open > 0 && <span className="text-xs text-slate-400 shrink-0">{open}</span>}
+      </button>
+    </div>
+  );
+}
+
 function QuickAdd({
   value, onChange, onSubmit, placeholder,
 }: {
@@ -1475,6 +1551,16 @@ function QuickAdd({
         placeholder={placeholder}
         className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
       />
+      <button
+        onClick={onSubmit}
+        disabled={!value.trim()}
+        title="Add (Enter)"
+        className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-slate-300 cursor-default'
+        }`}
+      >
+        <CornerDownLeft className="w-3.5 h-3.5" /> Add
+      </button>
     </div>
   );
 }

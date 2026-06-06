@@ -80,6 +80,9 @@ export interface PlannerSettings {
   // off. phase_started_on is the local day it was entered (for ramped targets).
   working_phase: WorkingPhase | null;
   phase_started_on: string | null;
+  // How many to-dos you aim to finish in a day; the My Day progress bar fills
+  // toward it. null = goal off.
+  daily_goal_count: number | null;
   created_at: string;
   updated_at: string;
 }

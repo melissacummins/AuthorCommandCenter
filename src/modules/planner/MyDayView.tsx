@@ -6,7 +6,7 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
-  CalendarClock, FileText,
+  CalendarClock, FileText, CornerDownLeft,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
@@ -14,7 +14,7 @@ import { MiniMenu } from './MiniMenu';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
 import {
-  addDaysISO, blockMinutes, formatClock, formatMinutes,
+  addDaysISO, blockMinutes, formatClock, formatMinutes, localDay,
   minutesToTime, timeToMinutes, ESTIMATE_PRESETS, phaseInfo, daysBetweenISO,
   type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo,
 } from './types';
@@ -158,6 +158,13 @@ export default function MyDayView({
 
   const plannedMinutes = useMemo(() => plannedFor(selected, events), [plannedFor, selected, events]);
 
+  // Daily goal: how many to-dos were completed on the viewed day vs the target.
+  const goal = settings.daily_goal_count;
+  const completedCount = useMemo(
+    () => tasks.filter(t => t.kind === 'task' && t.done && t.done_at && localDay(t.done_at) === selected).length,
+    [tasks, selected],
+  );
+
   // Working Phase: when one is active, it scales the day's target down (or up)
   // from the plain baseline — e.g. Recovery proposes a gentle fraction. This
   // becomes the effective base the bar and carry-over work from.
@@ -258,6 +265,7 @@ export default function MyDayView({
             carryDeduction={carryDeduction}
             onSetTarget={handlers.onUpdateCapacity}
           />
+          {goal != null && goal > 0 && <GoalBar done={completedCount} goal={goal} />}
         </div>
       </div>
 
@@ -399,6 +407,29 @@ function CapacityBar({
           −{formatMinutes(carryDeduction)} carried over from yesterday ({formatMinutes(target + carryDeduction)} → {formatMinutes(target)})
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Daily goal — a count-based companion to the capacity bar: not "have I done
+// enough hours" but "did I finish the things I set out to."
+// ---------------------------------------------------------------------------
+
+function GoalBar({ done, goal }: { done: number; goal: number }) {
+  const hit = done >= goal;
+  const pct = Math.min(100, Math.round((done / goal) * 100));
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-2 text-xs mb-1">
+        <span className={`font-medium ${hit ? 'text-emerald-600' : 'text-slate-500'}`}>
+          {done} of {goal} done
+        </span>
+        {hit && <span className="ml-auto text-emerald-600 font-medium">🎉 Goal met — nice work!</span>}
+      </div>
+      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${hit ? 'bg-emerald-500' : 'bg-indigo-400'}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }
@@ -888,16 +919,27 @@ function TaskSearch({
 
 function QuickAddTask({ onAdd }: { onAdd: (title: string) => void }) {
   const [value, setValue] = useState('');
+  function submit() { if (value.trim()) { onAdd(value.trim()); setValue(''); } }
   return (
     <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
       <Plus className="w-4 h-4 text-slate-400 shrink-0" />
       <input
         value={value}
         onChange={e => setValue(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter' && value.trim()) { onAdd(value.trim()); setValue(''); } }}
+        onKeyDown={e => { if (e.key === 'Enter') submit(); }}
         placeholder="Add a to-do to this day…"
         className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
       />
+      <button
+        onClick={submit}
+        disabled={!value.trim()}
+        title="Add (Enter)"
+        className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-slate-300 cursor-default'
+        }`}
+      >
+        <CornerDownLeft className="w-3.5 h-3.5" /> Add
+      </button>
     </div>
   );
 }
