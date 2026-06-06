@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link as RouterLink } from 'react-router-dom';
 import {
-  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, ExternalLink, Layers,
+  ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, ExternalLink, Layers,
   ChevronLeft, ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -12,7 +12,7 @@ import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
   getFalKeyStatus, getOpenaiKeyStatus, getIdeogramKeyStatus, type FalKeyStatus,
 } from './lib/client';
-import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
+import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaStylePreset } from './lib/types';
 
 const POLL_INTERVAL_MS = 4000;
 // Cap on simultaneously-in-flight Generate clicks. High enough that you
@@ -21,11 +21,6 @@ const MAX_CONCURRENT_GENERATIONS = 5;
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
-}
-
-function startOfMonthIso(): string {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString();
 }
 
 export default function MediaModule() {
@@ -62,8 +57,6 @@ export default function MediaModule() {
   const [customModels, setCustomModels] = useState<MediaCustomModel[]>([]);
   const [showAllModels, setShowAllModels] = useState(false);
   const [customModelsDrawerOpen, setCustomModelsDrawerOpen] = useState(false);
-  const [settings, setSettings] = useState<MediaSettings | null>(null);
-  const [monthlySpent, setMonthlySpent] = useState(0);
   const [keyStatus, setKeyStatus] = useState<FalKeyStatus | null>(null);
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<FalKeyStatus | null>(null);
   const [ideogramKeyStatus, setIdeogramKeyStatus] = useState<FalKeyStatus | null>(null);
@@ -71,7 +64,6 @@ export default function MediaModule() {
 
   const [filterCollectionId, setFilterCollectionId] = useState<string | null>(null);
   const [stylesDrawerOpen, setStylesDrawerOpen] = useState(false);
-  const [settingsDrawerOpen, setSettingsDrawerOpen] = useState(false);
   const [collectionsDrawerOpen, setCollectionsDrawerOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -192,20 +184,16 @@ export default function MediaModule() {
   const loadAll = useCallback(async () => {
     if (!userId) return;
 
-    const [genRes, colRes, styleRes, settingsRes, monthRes, customRes] = await Promise.all([
+    const [genRes, colRes, styleRes, customRes] = await Promise.all([
       supabase.from('media_generations').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(80),
       supabase.from('media_collections').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('media_style_presets').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
-      supabase.from('media_settings').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('media_generations').select('cost_cents').eq('user_id', userId).gte('created_at', startOfMonthIso()),
       supabase.from('media_custom_models').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
     ]);
 
     setHistory((genRes.data ?? []) as MediaGeneration[]);
     setCollections((colRes.data ?? []) as MediaCollection[]);
     setStylePresets((styleRes.data ?? []) as MediaStylePreset[]);
-    setSettings((settingsRes.data ?? null) as MediaSettings | null);
-    setMonthlySpent(((monthRes.data ?? []) as { cost_cents: number | null }[]).reduce((s, r) => s + (r.cost_cents ?? 0), 0));
     setCustomModels((customRes.data ?? []) as MediaCustomModel[]);
 
     try {
@@ -312,7 +300,6 @@ export default function MediaModule() {
       });
 
       setHistory((prev) => [...gens, ...prev]);
-      setMonthlySpent((prev) => prev + gens.reduce((s, g) => s + (g.cost_cents ?? 0), 0));
       gens.filter((g) => g.status === 'pending').forEach((g) => startPolling(g.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
@@ -401,17 +388,6 @@ export default function MediaModule() {
     if (filterCollectionId === id) setFilterCollectionId(null);
   }
 
-  async function handleSaveSettings(capCents: number) {
-    if (!userId) return;
-    const { data, error: upErr } = await supabase
-      .from('media_settings')
-      .upsert({ user_id: userId, monthly_cap_cents: capCents, updated_at: new Date().toISOString() })
-      .select()
-      .single();
-    if (upErr) { setError(upErr.message); return; }
-    if (data) setSettings(data as MediaSettings);
-  }
-
   async function handleSaveCustomModel(input: Omit<MediaCustomModel, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
     if (!userId) return;
     if (!input.endpoint.startsWith('fal-ai/')) {
@@ -452,45 +428,17 @@ export default function MediaModule() {
     return history.filter((g) => g.collection_id === filterCollectionId);
   }, [history, filterCollectionId]);
 
-  const cap = settings?.monthly_cap_cents ?? 2000;
-  const remainingCents = Math.max(0, cap - monthlySpent);
-  const capPct = cap > 0 ? Math.min(100, Math.round((monthlySpent / cap) * 100)) : 0;
-  const capColor = capPct >= 90 ? 'bg-red-500' : capPct >= 70 ? 'bg-amber-500' : 'bg-emerald-500';
-
   // ---------- render ----------
   return (
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6 gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-xl shadow-lg shadow-fuchsia-500/25">
-            <ImagePlus className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Media</h1>
-            <p className="text-sm text-slate-500">Generate Pinterest pins, new release art, social images, and short video clips.</p>
-          </div>
+      <div className="flex items-center gap-3 mb-6">
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-xl shadow-lg shadow-fuchsia-500/25">
+          <ImagePlus className="w-6 h-6 text-white" />
         </div>
-
-        {/* Spend indicator */}
-        <div className="flex items-center gap-3">
-          <div className="bg-white border border-slate-200 rounded-xl px-4 py-2 min-w-[220px]">
-            <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-              <span>This month</span>
-              <span>{formatCents(monthlySpent)} / {formatCents(cap)}</span>
-            </div>
-            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-              <div className={`h-full ${capColor} transition-all`} style={{ width: `${capPct}%` }} />
-            </div>
-            <div className="text-[11px] text-slate-400 mt-1">{formatCents(remainingCents)} remaining</div>
-          </div>
-          <button
-            onClick={() => setSettingsDrawerOpen(true)}
-            className="p-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500"
-            title="Spend cap settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Media</h1>
+          <p className="text-sm text-slate-500">Generate Pinterest pins, new release art, social images, and short video clips.</p>
         </div>
       </div>
 
@@ -968,13 +916,6 @@ export default function MediaModule() {
           onDelete={handleDeleteCollection}
         />
       )}
-      {settingsDrawerOpen && (
-        <SettingsDrawer
-          cap={cap}
-          onClose={() => setSettingsDrawerOpen(false)}
-          onSave={handleSaveSettings}
-        />
-      )}
       {customModelsDrawerOpen && (
         <CustomModelsDrawer
           models={customModels}
@@ -1220,50 +1161,6 @@ function CollectionsDrawer({
         >
           <Plus className="w-4 h-4" /> Add
         </button>
-      </div>
-    </Drawer>
-  );
-}
-
-function SettingsDrawer({ cap, onClose, onSave }: {
-  cap: number;
-  onClose: () => void;
-  onSave: (capCents: number) => Promise<void>;
-}) {
-  const [dollars, setDollars] = useState((cap / 100).toFixed(2));
-
-  return (
-    <Drawer title="Media settings" onClose={onClose}>
-      <p className="text-sm text-slate-500 mb-5">
-        API keys for Fal and OpenAI live in <RouterLink to="/settings" onClick={onClose} className="text-fuchsia-600 hover:text-fuchsia-700 underline">Settings → Media generator keys</RouterLink> so they're not scattered across modules.
-      </p>
-
-      <div>
-        <h4 className="font-semibold text-slate-800 mb-1">Monthly spend cap</h4>
-        <p className="text-sm text-slate-500 mb-3">New generations are refused when the next request would exceed this amount. Costs are estimates based on the provider's published rates.</p>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Monthly cap (USD)</label>
-        <div className="flex gap-2">
-          <span className="self-center text-slate-500">$</span>
-          <input
-            type="number"
-            min={0}
-            step={0.5}
-            value={dollars}
-            onChange={(e) => setDollars(e.target.value)}
-            className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm"
-          />
-        </div>
-        <button
-          onClick={async () => {
-            const cents = Math.max(0, Math.round(parseFloat(dollars) * 100));
-            await onSave(cents);
-            onClose();
-          }}
-          className="mt-3 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm"
-        >
-          Save cap
-        </button>
-        <p className="text-[11px] text-slate-400 mt-3">Set to $0 to disable the cap entirely.</p>
       </div>
     </Drawer>
   );
