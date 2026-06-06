@@ -78,6 +78,7 @@ export async function createTask(
     sort_order?: number;
     block_id?: string | null;
     estimate_minutes?: number | null;
+    in_orbit?: boolean;
   },
 ): Promise<PlannerTask> {
   const { data, error } = await supabase
@@ -92,6 +93,7 @@ export async function createTask(
       sort_order: input.sort_order ?? 0,
       block_id: input.block_id ?? null,
       estimate_minutes: input.estimate_minutes ?? null,
+      in_orbit: input.in_orbit ?? false,
     })
     .select('*')
     .single();
@@ -104,7 +106,7 @@ export async function updateTask(
   patch: Partial<Pick<PlannerTask,
     'title' | 'notes' | 'done' | 'due_date' | 'someday' | 'note_id' | 'sort_order' | 'checklist' | 'recurrence'
     | 'estimate_minutes' | 'start_at' | 'gcal_event_id' | 'block_id' | 'flagged'
-    | 'actual_minutes' | 'timer_started_at'>>,
+    | 'actual_minutes' | 'timer_started_at' | 'in_orbit'>>,
 ): Promise<PlannerTask> {
   const next: Record<string, unknown> = { ...patch, updated_at: new Date().toISOString() };
   // Keep done_at in step with done so we can show "completed" timestamps later.
@@ -208,7 +210,7 @@ export async function getSettings(userId: string): Promise<PlannerSettings> {
 export async function updateSettings(
   userId: string,
   patch: Partial<Pick<PlannerSettings,
-    'daily_capacity_minutes' | 'carry_over_capacity' | 'auto_rollover' | 'working_phase' | 'phase_started_on' | 'daily_goal_count'>>,
+    'daily_capacity_minutes' | 'carry_over_capacity' | 'auto_rollover' | 'working_phase' | 'phase_started_on' | 'daily_goal_count' | 'orbit_enabled'>>,
 ): Promise<PlannerSettings> {
   const { data, error } = await supabase
     .from('planner_settings')

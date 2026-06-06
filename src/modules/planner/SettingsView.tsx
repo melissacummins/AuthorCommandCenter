@@ -97,6 +97,12 @@ export default function SettingsView({
           checked={settings.auto_rollover}
           onChange={v => onUpdate({ auto_rollover: v })}
         />
+        <Toggle
+          label="Orbit"
+          hint="A staging area for what's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus and are easy to pull into your day. Adds an Orbit view to the rail."
+          checked={settings.orbit_enabled}
+          onChange={v => onUpdate({ orbit_enabled: v })}
+        />
       </Section>
 
       {/* Working Phases */}

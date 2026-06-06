@@ -16,7 +16,7 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target,
+  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
@@ -45,6 +45,7 @@ type Selection =
   | { kind: 'myday' }
   | { kind: 'plan' }
   | { kind: 'inbox' }
+  | { kind: 'orbit' }
   | { kind: 'stats' }
   | { kind: 'logbook' }
   | { kind: 'settings' };
@@ -139,6 +140,12 @@ export default function PlannerModule() {
     [tasks],
   );
 
+  const orbitEnabled = !!settings?.orbit_enabled;
+  const orbitCount = useMemo(
+    () => tasks.filter(t => t.kind === 'task' && !t.done && t.in_orbit).length,
+    [tasks],
+  );
+
   // The single to-do whose timer is currently running (if any) — surfaced in a
   // floating bar so it can be stopped from any planner view.
   const runningTask = useMemo(() => tasks.find(t => !!t.timer_started_at) ?? null, [tasks]);
@@ -199,7 +206,7 @@ export default function PlannerModule() {
 
   async function addTask(input: {
     title: string; note_id?: string | null; due_date?: string | null; someday?: boolean;
-    kind?: 'task' | 'heading'; sort_order?: number; block_id?: string | null; estimate_minutes?: number | null;
+    kind?: 'task' | 'heading'; sort_order?: number; block_id?: string | null; estimate_minutes?: number | null; in_orbit?: boolean;
   }) {
     if (!user || !input.title.trim()) return;
     try {
@@ -459,6 +466,18 @@ export default function PlannerModule() {
             <span className="flex-1 text-left">My Day</span>
             {viewCounts.today > 0 && <span className="text-xs text-slate-400 font-medium">{viewCounts.today}</span>}
           </button>
+          {orbitEnabled && (
+            <button
+              onClick={() => choose({ kind: 'orbit' })}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                selection.kind === 'orbit' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+              }`}
+            >
+              <OrbitIcon className="w-4 h-4 text-violet-500" />
+              <span className="flex-1 text-left">Orbit</span>
+              {orbitCount > 0 && <span className="text-xs text-slate-400 font-medium">{orbitCount}</span>}
+            </button>
+          )}
           <button
             onClick={() => choose({ kind: 'inbox' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
@@ -580,7 +599,7 @@ export default function PlannerModule() {
             blocks={blocks}
             sessions={sessions}
             dayNotes={dayNotes}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
             today={today}
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
@@ -590,7 +609,7 @@ export default function PlannerModule() {
           <PlanView
             tasks={tasks}
             blocks={blocks}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
             today={today}
             onOpenDay={openDay}
           />
@@ -600,14 +619,16 @@ export default function PlannerModule() {
           <LogbookView tasks={tasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
         ) : selection.kind === 'settings' ? (
           <SettingsView
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
             today={today}
             onUpdate={updatePlannerSettings}
           />
-        ) : selection.kind === 'view' || selection.kind === 'inbox' ? (
+        ) : selection.kind === 'view' || selection.kind === 'inbox' || selection.kind === 'orbit' ? (
           <ViewPane
             bucket={selection.kind === 'view' ? selection.bucket : undefined}
             inbox={selection.kind === 'inbox'}
+            orbit={selection.kind === 'orbit'}
+            orbitEnabled={orbitEnabled}
             tasks={tasks}
             today={today}
             notesById={notesById}
@@ -621,6 +642,7 @@ export default function PlannerModule() {
           <NotePane
             key={selectedNote.id}
             note={selectedNote}
+            orbitEnabled={orbitEnabled}
             tasks={tasks.filter(t => t.note_id === selectedNote.id)}
             today={today}
             onSaveNote={saveNote}
@@ -661,6 +683,7 @@ export default function PlannerModule() {
         <FocusPicker
           tasks={tasks}
           notesById={notesById}
+          orbitEnabled={orbitEnabled}
           onStart={id => patchTask(id, { timer_started_at: new Date().toISOString() })}
           onLogTime={logManualMinutes}
           onClose={() => setFocusOpen(false)}
@@ -675,22 +698,26 @@ export default function PlannerModule() {
 // ---------------------------------------------------------------------------
 
 function ViewPane({
-  bucket, inbox = false, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
+  bucket, inbox = false, orbit = false, orbitEnabled = false, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
 }: {
   bucket?: Bucket;
   inbox?: boolean;
+  orbit?: boolean;
+  orbitEnabled?: boolean;
   tasks: PlannerTask[];
   today: string;
   notesById: Record<string, PlannerNote>;
-  onAdd: (i: { title: string; due_date?: string | null; someday?: boolean }) => void;
+  onAdd: (i: { title: string; due_date?: string | null; someday?: boolean; in_orbit?: boolean }) => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
   onOpenNote: (id: string) => void;
   cal: CalendarBridge;
 }) {
-  const meta = inbox
-    ? { label: 'Inbox', icon: Inbox, color: 'text-slate-500' }
-    : VIEWS.find(v => v.bucket === bucket)!;
+  const meta = orbit
+    ? { label: 'Orbit', icon: OrbitIcon, color: 'text-violet-500' }
+    : inbox
+      ? { label: 'Inbox', icon: Inbox, color: 'text-slate-500' }
+      : VIEWS.find(v => v.bucket === bucket)!;
   const Icon = meta.icon;
   const [draft, setDraft] = useState('');
   const { gc, calVersion, onTimeBlock, onUnblock } = cal;
@@ -699,20 +726,24 @@ function ViewPane({
   // Inbox is the catch-all for anything captured but never filed into a list,
   // regardless of date — so you can edit those to-dos without hunting for the
   // day you added them on.
-  const items = inbox
+  const items = orbit
     ? tasks
-        .filter(t => t.kind === 'task' && !t.done && !t.note_id)
+        .filter(t => t.kind === 'task' && !t.done && t.in_orbit)
         .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
-    : tasks
-        .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
-        .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
+    : inbox
+      ? tasks
+          .filter(t => t.kind === 'task' && !t.done && !t.note_id)
+          .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
+      : tasks
+          .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
+          .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
 
   // Pull Google events for the day (Today) or the day range (Upcoming) so they
   // can sit alongside the to-dos. Other buckets have no dates, so no events.
   const dueDates = items.map(t => t.due_date!).filter(Boolean);
   const rangeMin = bucket === 'today' ? today : dueDates[0];
   const rangeMax = bucket === 'today' ? today : dueDates[dueDates.length - 1];
-  const wantsEvents = !inbox && gc.connected && (bucket === 'today' || (bucket === 'upcoming' && dueDates.length > 0));
+  const wantsEvents = !inbox && !orbit && gc.connected && (bucket === 'today' || (bucket === 'upcoming' && dueDates.length > 0));
   const rangeKey = wantsEvents ? `${rangeMin}_${rangeMax}` : '';
 
   useEffect(() => {
@@ -734,6 +765,7 @@ function ViewPane({
   }, [rangeKey, gc.connected, gc.calendarId, gc.fetchEvents, calVersion, wantsEvents]);
 
   const addDefaults =
+    orbit ? { in_orbit: true } :
     bucket === 'today' ? { due_date: today } :
     bucket === 'someday' ? { someday: true } :
     {};
@@ -746,7 +778,7 @@ function ViewPane({
     return (
       <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
         onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
-        onPatch={onPatch} onDelete={onDelete} showSchedule
+        onPatch={onPatch} onDelete={onDelete} showSchedule orbitEnabled={orbitEnabled}
         calConnected={gc.connected}
         onTimeBlock={time => onTimeBlock(t, time)}
         onUnblock={() => onUnblock(t)} />
@@ -760,12 +792,15 @@ function ViewPane({
       <div className="flex items-center gap-3 mb-6">
         <Icon className={`w-6 h-6 ${meta.color}`} />
         <h2 className="text-2xl font-bold text-slate-800">{meta.label}</h2>
-        {(inbox || bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
+        {(orbit || inbox || bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
           <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-slate-500">
             <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
           </span>
         )}
       </div>
+      {orbit && (
+        <p className="text-sm text-slate-400 -mt-4 mb-5">What's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus.</p>
+      )}
 
       <QuickAdd
         value={draft}
@@ -875,7 +910,7 @@ function DayHeader({ date, today, totalMinutes }: { date: string; today: string;
 // ---------------------------------------------------------------------------
 
 function NotePane({
-  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onCreate, onPatch, onDelete, onReorder,
+  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
@@ -887,6 +922,7 @@ function NotePane({
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
   onReorder: (updates: { id: string; sort_order: number }[]) => void;
+  orbitEnabled?: boolean;
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
@@ -1052,6 +1088,7 @@ function NotePane({
                 today={today}
                 enableChecklist
                 showSchedule
+                orbitEnabled={orbitEnabled}
                 focusId={focusId}
                 onFocused={() => setFocusId(null)}
                 onEnter={() => createAfter(t.id)}
@@ -1072,6 +1109,7 @@ function NotePane({
                   today={today}
                   collapsed={collapsed.has(t.id)}
                   childCount={childCount[t.id] ?? 0}
+                  orbitEnabled={orbitEnabled}
                   focusId={focusId}
                   onFocused={() => setFocusId(null)}
                   onToggleCollapse={() => toggleCollapse(t.id)}
@@ -1115,7 +1153,7 @@ function useSortableStyle(id: string) {
 }
 
 function SortableNoteItem({
-  task, today, collapsed, childCount, focusId, onFocused, onToggleCollapse, onAddUnder, onEnter, onPatch, onDelete,
+  task, today, collapsed, childCount, focusId, onFocused, onToggleCollapse, onAddUnder, onEnter, onPatch, onDelete, orbitEnabled = false,
 }: {
   task: PlannerTask;
   today: string;
@@ -1128,6 +1166,7 @@ function SortableNoteItem({
   onEnter: () => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  orbitEnabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, style } = useSortableStyle(task.id);
   const handle = (
@@ -1165,6 +1204,7 @@ function SortableNoteItem({
         dragHandle={handle}
         enableChecklist
         showSchedule
+        orbitEnabled={orbitEnabled}
         focusId={focusId}
         onFocused={onFocused}
         onEnter={onEnter}
@@ -1240,7 +1280,7 @@ function HeadingRow({
 function TaskRow({
   task, today, noteName, onOpenNote, onPatch, onDelete, showSchedule = false,
   enableChecklist = false, dragHandle, calConnected = false, onTimeBlock, onUnblock,
-  focusId, onFocused, onEnter,
+  focusId, onFocused, onEnter, orbitEnabled = false,
 }: {
   task: PlannerTask;
   today: string;
@@ -1257,6 +1297,7 @@ function TaskRow({
   focusId?: string | null;
   onFocused?: () => void;
   onEnter?: () => void;
+  orbitEnabled?: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(task.title);
@@ -1351,6 +1392,15 @@ function TaskRow({
         {showSchedule && !task.done && (
           <div className="flex items-center gap-1.5 shrink-0">
             <TimerButton task={task} onPatch={onPatch} />
+            {orbitEnabled && (
+              <button
+                onClick={() => onPatch(task.id, { in_orbit: !task.in_orbit })}
+                className={`${task.in_orbit ? 'text-violet-500' : 'text-slate-300 hover:text-violet-500 opacity-0 group-hover:opacity-100'} transition-opacity`}
+                title={task.in_orbit ? 'Remove from Orbit' : 'Add to Orbit'}
+              >
+                <OrbitIcon className="w-4 h-4" />
+              </button>
+            )}
             <button
               onClick={() => onPatch(task.id, { flagged: !task.flagged })}
               className={`${task.flagged ? 'text-amber-400' : 'text-slate-300 hover:text-amber-400 opacity-0 group-hover:opacity-100'} transition-opacity`}
