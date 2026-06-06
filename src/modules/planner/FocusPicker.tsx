@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Search, Play, X, Clock, Plus, Check } from 'lucide-react';
+import { Search, Play, X, Clock, Plus, Check, Orbit as OrbitIcon } from 'lucide-react';
 import { formatMinutes, type PlannerNote, type PlannerTask } from './types';
 
 const LOG_PRESETS = [15, 30, 45, 60, 90];
@@ -9,10 +9,11 @@ const LOG_PRESETS = [15, 30, 45, 60, 90];
 // log time you already worked (forgot to start the timer) — without scheduling
 // it or hunting for its row first.
 export function FocusPicker({
-  tasks, notesById, onStart, onLogTime, onClose,
+  tasks, notesById, orbitEnabled = false, onStart, onLogTime, onClose,
 }: {
   tasks: PlannerTask[];
   notesById: Record<string, PlannerNote>;
+  orbitEnabled?: boolean;
   onStart: (id: string) => void;
   onLogTime: (id: string, minutes: number) => void;
   onClose: () => void;
@@ -25,9 +26,12 @@ export function FocusPicker({
     const q = query.trim().toLowerCase();
     return tasks
       .filter(t => t.kind === 'task' && !t.done && (!q || t.title.toLowerCase().includes(q)))
-      .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
+      .sort((a, b) =>
+        // When Orbit is on, currently-relevant to-dos surface first.
+        (orbitEnabled ? Number(b.in_orbit) - Number(a.in_orbit) : 0)
+        || (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
       .slice(0, 60);
-  }, [tasks, query]);
+  }, [tasks, query, orbitEnabled]);
 
   function log(id: string, minutes: number) {
     onLogTime(id, minutes);
@@ -62,6 +66,7 @@ export function FocusPicker({
                 <div className="flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-slate-50">
                   <button onClick={() => { onStart(t.id); onClose(); }} className="flex items-center gap-2 flex-1 min-w-0 text-left" title="Start a timer">
                     <Play className="w-3.5 h-3.5 text-teal-600 shrink-0" />
+                    {orbitEnabled && t.in_orbit && <OrbitIcon className="w-3.5 h-3.5 text-violet-500 shrink-0" />}
                     <span className="flex-1 truncate text-sm text-slate-700">{t.title || 'Untitled'}</span>
                   </button>
                   {list && <span className="text-xs text-slate-400 truncate max-w-[7rem] shrink-0">{list.title.trim() || 'Untitled list'}</span>}

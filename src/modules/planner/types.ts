@@ -47,6 +47,9 @@ export interface PlannerTask {
   estimate_minutes: number | null;
   // True when the to-do is flagged "Important" (a Things-3-style priority star).
   flagged: boolean;
+  // True when the to-do is "in orbit" — currently relevant, surfaced first in
+  // Focus and easy to pull into the day.
+  in_orbit: boolean;
   // Optional timed start (a calendar time block) and the linked Google Calendar
   // event id, set when a to-do is placed on the calendar.
   start_at: string | null;
@@ -83,6 +86,8 @@ export interface PlannerSettings {
   // How many to-dos you aim to finish in a day; the My Day progress bar fills
   // toward it. null = goal off.
   daily_goal_count: number | null;
+  // Whether the Orbit staging area (rail view + per-to-do toggle) is shown.
+  orbit_enabled: boolean;
   created_at: string;
   updated_at: string;
 }
