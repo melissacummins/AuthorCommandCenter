@@ -290,10 +290,15 @@ function formatFalError(detail: unknown, status: number): string {
   return `Fal HTTP ${status}`;
 }
 
-function gptImage1Size(width: number, height: number): 'auto' | '1024x1024' | '1536x1024' | '1024x1536' {
+// Pass-through formatter for gpt-image-2. The API accepts arbitrary
+// "WIDTHxHEIGHT" strings; rather than encode any constraints client-
+// side (and risk lying about them — different sources say different
+// things), we send what the user picked and let OpenAI be the source
+// of truth. If a size is rejected the existing error formatter
+// surfaces the actual API message to the user.
+function gptImage2Size(width: number, height: number): string {
   if (!width || !height) return 'auto';
-  if (width === height) return '1024x1024';
-  return width > height ? '1536x1024' : '1024x1536';
+  return `${Math.round(width)}x${Math.round(height)}`;
 }
 
 function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: number): Record<string, unknown> {
@@ -303,11 +308,9 @@ function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: 
 
   if (model.supportsCustomSize && body.width && body.height) {
     // Most Fal image endpoints take image_size as `{width, height}`.
-    // GPT Image 1 is the exception — it only accepts a fixed enum
-    // ("1024x1024", "1536x1024", "1024x1536", "auto"). Map the picked
-    // size to the closest aspect ratio.
+    // gpt-image-2 expects a "WxH" string with both dims divisible by 16.
     if (model.id === 'gpt-image-2') {
-      payload.image_size = gptImage1Size(body.width, body.height);
+      payload.image_size = gptImage2Size(body.width, body.height);
     } else {
       payload.image_size = { width: body.width, height: body.height };
     }
@@ -394,19 +397,23 @@ interface OpenaiImageResponse {
   error?: { message?: string; type?: string };
 }
 
-// OpenAI's gpt-image-2 only accepts a small set of size strings,
-// same as Fal's wrapper. Map (width, height) to the closest one.
-function openaiSizeFromDimensions(width?: number, height?: number): 'auto' | '1024x1024' | '1536x1024' | '1024x1536' {
+// Same pass-through formatter as the Fal path — gpt-image-2 / OpenAI's
+// /v1/images/{generations,edits} accept arbitrary WxH. We trust what
+// the user picked and forward OpenAI's validation error if any.
+function openaiSizeFromDimensions(width?: number, height?: number): string {
   if (!width || !height) return 'auto';
-  if (width === height) return '1024x1024';
-  return width > height ? '1536x1024' : '1024x1536';
+  return `${Math.round(width)}x${Math.round(height)}`;
 }
 
+// Parse any "WIDTHxHEIGHT" we sent back out, so the history row records
+// the actual generated dimensions when OpenAI doesn't echo them.
 function sizeToDimensions(size: string): { width: number; height: number } | null {
-  if (size === '1024x1024') return { width: 1024, height: 1024 };
-  if (size === '1536x1024') return { width: 1536, height: 1024 };
-  if (size === '1024x1536') return { width: 1024, height: 1536 };
-  return null;
+  const m = /^(\d+)x(\d+)$/.exec(size);
+  if (!m) return null;
+  const width = parseInt(m[1], 10);
+  const height = parseInt(m[2], 10);
+  if (!width || !height) return null;
+  return { width, height };
 }
 
 async function uploadBase64ToOutputs(
@@ -427,7 +434,7 @@ async function uploadBase64ToOutputs(
 interface OpenaiCallArgs {
   openaiKey: string;
   prompt: string;
-  size: 'auto' | '1024x1024' | '1536x1024' | '1024x1536';
+  size: string;
   quality: GptImage1Quality;
   numImages: number;
   inputImageUrls: string[]; // empty for generate, otherwise edit
