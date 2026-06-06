@@ -14,7 +14,7 @@ import { MiniMenu } from './MiniMenu';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
 import {
-  addDaysISO, blockMinutes, formatClock, formatMinutes,
+  addDaysISO, blockMinutes, formatClock, formatMinutes, localDay,
   minutesToTime, timeToMinutes, ESTIMATE_PRESETS, phaseInfo, daysBetweenISO,
   type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo,
 } from './types';
@@ -158,6 +158,13 @@ export default function MyDayView({
 
   const plannedMinutes = useMemo(() => plannedFor(selected, events), [plannedFor, selected, events]);
 
+  // Daily goal: how many to-dos were completed on the viewed day vs the target.
+  const goal = settings.daily_goal_count;
+  const completedCount = useMemo(
+    () => tasks.filter(t => t.kind === 'task' && t.done && t.done_at && localDay(t.done_at) === selected).length,
+    [tasks, selected],
+  );
+
   // Working Phase: when one is active, it scales the day's target down (or up)
   // from the plain baseline — e.g. Recovery proposes a gentle fraction. This
   // becomes the effective base the bar and carry-over work from.
@@ -258,6 +265,7 @@ export default function MyDayView({
             carryDeduction={carryDeduction}
             onSetTarget={handlers.onUpdateCapacity}
           />
+          {goal != null && goal > 0 && <GoalBar done={completedCount} goal={goal} />}
         </div>
       </div>
 
@@ -399,6 +407,29 @@ function CapacityBar({
           −{formatMinutes(carryDeduction)} carried over from yesterday ({formatMinutes(target + carryDeduction)} → {formatMinutes(target)})
         </div>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Daily goal — a count-based companion to the capacity bar: not "have I done
+// enough hours" but "did I finish the things I set out to."
+// ---------------------------------------------------------------------------
+
+function GoalBar({ done, goal }: { done: number; goal: number }) {
+  const hit = done >= goal;
+  const pct = Math.min(100, Math.round((done / goal) * 100));
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-2 text-xs mb-1">
+        <span className={`font-medium ${hit ? 'text-emerald-600' : 'text-slate-500'}`}>
+          {done} of {goal} done
+        </span>
+        {hit && <span className="ml-auto text-emerald-600 font-medium">🎉 Goal met — nice work!</span>}
+      </div>
+      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${hit ? 'bg-emerald-500' : 'bg-indigo-400'}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
   );
 }

@@ -16,11 +16,19 @@ export default function SettingsView({
 }) {
   const baseline = settings.daily_capacity_minutes;
   const [hours, setHours] = useState((baseline / 60).toString());
+  const [goal, setGoal] = useState(settings.daily_goal_count != null ? String(settings.daily_goal_count) : '');
 
   function commitHours() {
     const h = parseFloat(hours);
     if (!isNaN(h) && h > 0) onUpdate({ daily_capacity_minutes: Math.round(h * 60) });
     else setHours((baseline / 60).toString());
+  }
+
+  function commitGoal() {
+    if (goal.trim() === '') { onUpdate({ daily_goal_count: null }); return; }
+    const n = parseInt(goal, 10);
+    if (!isNaN(n) && n > 0) onUpdate({ daily_goal_count: n });
+    else setGoal(settings.daily_goal_count != null ? String(settings.daily_goal_count) : '');
   }
 
   function pickPhase(id: WorkingPhase) {
@@ -54,6 +62,24 @@ export default function SettingsView({
             className="w-20 text-sm border border-slate-200 rounded-lg px-2.5 py-1.5"
           />
           <span className="text-slate-500">hours per day</span>
+        </label>
+      </Section>
+
+      {/* Daily goal */}
+      <Section title="Daily goal" hint="How many to-dos you're aiming to finish in a day. My Day fills a progress bar toward it and cheers when you hit it. Leave blank to turn it off.">
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="number"
+            min="1"
+            step="1"
+            placeholder="off"
+            value={goal}
+            onChange={e => setGoal(e.target.value)}
+            onBlur={commitGoal}
+            onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            className="w-20 text-sm border border-slate-200 rounded-lg px-2.5 py-1.5"
+          />
+          <span className="text-slate-500">to-dos per day</span>
         </label>
       </Section>
 
