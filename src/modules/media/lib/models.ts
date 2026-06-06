@@ -80,6 +80,22 @@ export function gptImage1CostCents(
   return t[quality] ?? t.auto;
 }
 
+// Ideogram v3: 3 rendering speeds with different per-image cost.
+// Used by the Media UI when ideogram-v3 / ideogram-v3-edit is routed
+// directly through the user's Ideogram key.
+export type IdeogramRenderingSpeed = 'TURBO' | 'DEFAULT' | 'QUALITY';
+
+const IDEOGRAM_DIRECT_GENERATE_CENTS: Record<IdeogramRenderingSpeed, number> = {
+  TURBO: 3, DEFAULT: 6, QUALITY: 10,
+};
+const IDEOGRAM_DIRECT_EDIT_CENTS: Record<IdeogramRenderingSpeed, number> = {
+  TURBO: 5, DEFAULT: 8, QUALITY: 12,
+};
+
+export function ideogramCostCents(speed: IdeogramRenderingSpeed, isEdit: boolean): number {
+  return (isEdit ? IDEOGRAM_DIRECT_EDIT_CENTS : IDEOGRAM_DIRECT_GENERATE_CENTS)[speed];
+}
+
 export const MODELS: ModelDef[] = [
   // ============================================
   // FEATURED — image generation

@@ -128,6 +128,9 @@ interface GenerateRequestBody {
   num_images?: number;
   collection_id?: string | null;
   quality?: string;
+  // Ideogram v3 rendering_speed: 'TURBO' | 'DEFAULT' | 'QUALITY'.
+  // Only used when the request routes through Ideogram direct.
+  rendering_speed?: string;
 }
 
 // Hard ceiling on a single batch regardless of what the client asks
@@ -154,6 +157,29 @@ function gptImage1CostCents(quality: GptImage1Quality, isEdit: boolean, provider
     return (isEdit ? GPT_IMAGE_1_OPENAI_EDIT_CENTS : GPT_IMAGE_1_OPENAI_GENERATE_CENTS)[quality];
   }
   return (isEdit ? GPT_IMAGE_1_EDIT_CENTS : GPT_IMAGE_1_GENERATE_CENTS)[quality];
+}
+
+// Ideogram v3 has three rendering speeds with very different per-image
+// pricing. Via Fal direct is roughly equivalent to Ideogram's "Default"
+// rate plus markup; via Ideogram direct you can pick Turbo for ~2×
+// cheaper or Quality for higher fidelity Fal doesn't expose.
+type IdeogramRenderingSpeed = 'TURBO' | 'DEFAULT' | 'QUALITY';
+
+function normalizeIdeogramSpeed(s: unknown): IdeogramRenderingSpeed {
+  return s === 'TURBO' || s === 'QUALITY' ? s : 'DEFAULT';
+}
+
+// Per-image costs in cents @ 1024×1024. Edit adds a small input-image
+// cost (~$0.02). Conservative round-ups.
+const IDEOGRAM_DIRECT_GENERATE_CENTS: Record<IdeogramRenderingSpeed, number> = {
+  TURBO: 3, DEFAULT: 6, QUALITY: 10,
+};
+const IDEOGRAM_DIRECT_EDIT_CENTS: Record<IdeogramRenderingSpeed, number> = {
+  TURBO: 5, DEFAULT: 8, QUALITY: 12,
+};
+
+function ideogramCostCents(speed: IdeogramRenderingSpeed, isEdit: boolean): number {
+  return (isEdit ? IDEOGRAM_DIRECT_EDIT_CENTS : IDEOGRAM_DIRECT_GENERATE_CENTS)[speed];
 }
 
 function authHeader(req: VercelRequest): string | null {
@@ -194,7 +220,7 @@ async function getMonthlyCapCents(supabase: SupabaseClient, userId: string): Pro
 async function resolveBYOKKey(
   supabase: SupabaseClient,
   userId: string,
-  table: 'user_fal_keys' | 'user_openai_keys',
+  table: 'user_fal_keys' | 'user_openai_keys' | 'user_ideogram_keys',
   scryptSalt: string,
 ): Promise<string | null> {
   const masterSecret = process.env.FAL_KEY_ENCRYPTION_SECRET;
@@ -220,6 +246,10 @@ async function resolveBYOKKey(
 
 async function resolveOpenaiKey(supabase: SupabaseClient, userId: string): Promise<string | null> {
   return resolveBYOKKey(supabase, userId, 'user_openai_keys', 'media-openai-key-v1');
+}
+
+async function resolveIdeogramKey(supabase: SupabaseClient, userId: string): Promise<string | null> {
+  return resolveBYOKKey(supabase, userId, 'user_ideogram_keys', 'media-ideogram-key-v1');
 }
 
 // Pulls the caller's stored Fal key (decrypted) or falls back to the
@@ -459,6 +489,119 @@ async function callOpenaiImage(args: OpenaiCallArgs): Promise<OpenaiCallResult> 
   return { ok: true, b64s };
 }
 
+// ============================================================
+// Ideogram direct provider — v3 generate / edit only.
+// ============================================================
+
+interface IdeogramCallArgs {
+  ideogramKey: string;
+  prompt: string;
+  aspectRatio: string;           // e.g. 'ASPECT_1_1', 'ASPECT_16_9'
+  renderingSpeed: IdeogramRenderingSpeed;
+  numImages: number;
+  inputImageUrls: string[];      // empty → generate; non-empty → edit
+}
+
+// Map (width, height) → Ideogram's ASPECT_* enum. Falls back to 1:1.
+function ideogramAspectFromDimensions(width?: number, height?: number): string {
+  if (!width || !height) return 'ASPECT_1_1';
+  if (width === height) return 'ASPECT_1_1';
+  if (width > height) {
+    const r = width / height;
+    if (r >= 2.3) return 'ASPECT_21_9';
+    if (r >= 1.7) return 'ASPECT_16_9';
+    if (r >= 1.4) return 'ASPECT_3_2';
+    return 'ASPECT_4_3';
+  }
+  const r = height / width;
+  if (r >= 2.3) return 'ASPECT_9_21';
+  if (r >= 1.7) return 'ASPECT_9_16';
+  if (r >= 1.4) return 'ASPECT_2_3';
+  return 'ASPECT_3_4';
+}
+
+interface IdeogramImageResult {
+  url?: string;
+  width?: number;
+  height?: number;
+}
+interface IdeogramResponse {
+  data?: IdeogramImageResult[];
+  detail?: string;
+}
+
+async function callIdeogramImage(
+  args: IdeogramCallArgs,
+): Promise<{ ok: true; images: IdeogramImageResult[] } | { ok: false; error: string }> {
+  const { ideogramKey, prompt, aspectRatio, renderingSpeed, numImages, inputImageUrls } = args;
+  const isEdit = inputImageUrls.length > 0;
+  const endpoint = isEdit
+    ? 'https://api.ideogram.ai/v1/ideogram-v3/edit'
+    : 'https://api.ideogram.ai/v1/ideogram-v3/generate';
+
+  let res: Response;
+  if (isEdit) {
+    // Edit takes multipart form-data with the image file.
+    const form = new FormData();
+    form.append('prompt', prompt);
+    form.append('rendering_speed', renderingSpeed);
+    form.append('num_images', String(numImages));
+    // Fetch the reference image and attach as a Blob.
+    const imgRes = await fetch(inputImageUrls[0]);
+    if (!imgRes.ok) return { ok: false, error: `Could not fetch reference image (${imgRes.status}).` };
+    const blob = await imgRes.blob();
+    form.append('image', blob, 'input.png');
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Api-Key': ideogramKey },
+      body: form,
+    });
+  } else {
+    res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Api-Key': ideogramKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        aspect_ratio: aspectRatio,
+        rendering_speed: renderingSpeed,
+        num_images: numImages,
+      }),
+    });
+  }
+
+  const json = (await res.json().catch(() => ({}))) as IdeogramResponse;
+  if (!res.ok) {
+    const msg = typeof json.detail === 'string' ? json.detail : `Ideogram HTTP ${res.status}`;
+    return { ok: false, error: msg };
+  }
+  const images = (json.data ?? []).filter((d) => typeof d.url === 'string');
+  if (images.length === 0) return { ok: false, error: 'Ideogram response did not include image URLs.' };
+  return { ok: true, images };
+}
+
+// Download an Ideogram-hosted image URL and re-upload to our outputs
+// bucket so we have a stable URL even if Ideogram's CDN URLs expire.
+async function copyUrlToOutputs(
+  supabase: SupabaseClient,
+  userId: string,
+  url: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const buffer = Buffer.from(await res.arrayBuffer());
+    const path = `${userId}/ideogram-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`;
+    const { error } = await supabase.storage
+      .from('media-outputs')
+      .upload(path, buffer, { contentType: 'image/png', upsert: false });
+    if (error) return null;
+    const { data: pub } = supabase.storage.from('media-outputs').getPublicUrl(path);
+    return pub.publicUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -523,25 +666,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const requestedNum = Number.isFinite(body.num_images) ? Math.floor(body.num_images as number) : 1;
   const numImages = model.kind === 'image' ? Math.min(MAX_BATCH, Math.max(1, requestedNum)) : 1;
 
-  // Provider selection. GPT Image 1 prefers the user's OpenAI key
-  // when one is configured (much cheaper than via Fal); everything
-  // else stays on Fal.
+  // Provider selection.
+  //   - GPT Image 2 → OpenAI direct if a key is configured (cheaper).
+  //   - Ideogram v3 (generate + edit) → Ideogram direct if a key is
+  //     configured (Turbo is ~2× cheaper than via Fal).
+  //   - Everything else → Fal.
   const openaiKey = model.id === 'gpt-image-2' ? await resolveOpenaiKey(supabase, userId) : null;
-  const provider: 'openai' | 'fal' = openaiKey ? 'openai' : 'fal';
+  const isIdeogramV3 = model.id === 'ideogram-v3' || model.id === 'ideogram-v3-edit';
+  const ideogramKey = isIdeogramV3 ? await resolveIdeogramKey(supabase, userId) : null;
+  const provider: 'openai' | 'ideogram' | 'fal' =
+    openaiKey ? 'openai' : ideogramKey ? 'ideogram' : 'fal';
 
   // Edit endpoints typically cost more than text-to-image, so use
   // editCostCents when we'll route to one. Falls back to the regular
   // estimate when no per-mode price is configured. GPT Image 1's
   // cost also depends on the quality setting and which provider we use.
-  const willEdit = (provider === 'openai')
-    ? (!!body.source_image_url || (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0))
-    : !!model.editEndpoint && (
-        !!body.source_image_url ||
-        (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0)
-      );
+  const hasReference = !!body.source_image_url || (Array.isArray(body.source_image_urls) && body.source_image_urls.length > 0);
+  const willEdit = (provider === 'openai' || provider === 'ideogram')
+    ? hasReference
+    : !!model.editEndpoint && hasReference;
+  const ideogramSpeed = normalizeIdeogramSpeed(body.rendering_speed);
   const perImageCostCents = model.id === 'gpt-image-2'
-    ? gptImage1CostCents(normalizeQuality(body.quality), willEdit, provider)
-    : ((willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents);
+    ? gptImage1CostCents(normalizeQuality(body.quality), willEdit, provider === 'openai' ? 'openai' : 'fal')
+    : (isIdeogramV3 && provider === 'ideogram'
+        ? ideogramCostCents(ideogramSpeed, willEdit)
+        : ((willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents));
   const totalCostCents = perImageCostCents * numImages;
 
   // Spend cap check. If the next generation would push us past the
@@ -588,7 +737,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       source_image_url: firstSource,
       fal_model_endpoint: provider === 'openai'
         ? (willEdit ? 'openai/gpt-image-2/edit' : 'openai/gpt-image-2')
-        : effectiveEndpoint,
+        : provider === 'ideogram'
+          ? (willEdit ? 'ideogram/v3/edit' : 'ideogram/v3/generate')
+          : effectiveEndpoint,
       cost_cents: perImageCostCents,
       status: 'pending',
     })
@@ -682,6 +833,96 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         status: 'completed' as const,
         output_url: url,
         thumbnail_url: url,
+        completed_at: completedAt,
+      }));
+      const { data: extras } = await supabase
+        .from('media_generations')
+        .insert(extraRows)
+        .select();
+      if (extras) generations.push(...extras);
+    }
+
+    res.status(200).json({ generations: generations.length > 0 ? generations : [updated ?? inserted] });
+    return;
+  }
+
+  // Ideogram direct path — v3 generate / edit only. Ideogram returns
+  // CDN-hosted image URLs; we mirror them into our outputs bucket so
+  // the rest of the app sees stable, owned URLs.
+  if (provider === 'ideogram' && ideogramKey && isIdeogramV3) {
+    const inputUrls = (body.source_image_urls && body.source_image_urls.length > 0)
+      ? body.source_image_urls
+      : (body.source_image_url ? [body.source_image_url] : []);
+    const result = await callIdeogramImage({
+      ideogramKey,
+      prompt: fullPrompt,
+      aspectRatio: ideogramAspectFromDimensions(body.width, body.height),
+      renderingSpeed: ideogramSpeed,
+      numImages,
+      inputImageUrls: inputUrls,
+    });
+    if (!result.ok) {
+      const err = (result as { ok: false; error: string }).error;
+      await supabase.from('media_generations').update({
+        status: 'failed',
+        error_message: `${err} — you weren't charged.`,
+        cost_cents: 0,
+      }).eq('id', generationId);
+      res.status(502).json({ error: 'Ideogram request failed', detail: err });
+      return;
+    }
+
+    const mirrored: { url: string; width: number | null; height: number | null }[] = [];
+    for (const img of result.images) {
+      if (!img.url) continue;
+      const ourUrl = await copyUrlToOutputs(supabase, userId, img.url);
+      if (ourUrl) mirrored.push({ url: ourUrl, width: img.width ?? null, height: img.height ?? null });
+    }
+    if (mirrored.length === 0) {
+      await supabase.from('media_generations').update({
+        status: 'failed',
+        error_message: 'Ideogram returned images but they could not be stored.',
+        cost_cents: 0,
+      }).eq('id', generationId);
+      res.status(500).json({ error: 'Failed to store Ideogram images' });
+      return;
+    }
+
+    const completedAt = new Date().toISOString();
+    const generations: unknown[] = [];
+    const first = mirrored[0];
+    const { data: updated } = await supabase
+      .from('media_generations')
+      .update({
+        status: 'completed',
+        output_url: first.url,
+        thumbnail_url: first.url,
+        width: first.width ?? body.width ?? null,
+        height: first.height ?? body.height ?? null,
+        completed_at: completedAt,
+      })
+      .eq('id', generationId)
+      .select()
+      .single();
+    if (updated) generations.push(updated);
+
+    if (mirrored.length > 1) {
+      const extraRows = mirrored.slice(1).map((m) => ({
+        user_id: userId,
+        collection_id: body.collection_id ?? null,
+        kind: model.kind,
+        model: model.id,
+        prompt: body.prompt,
+        full_prompt: fullPrompt,
+        style_preset_id: body.style_preset_id ?? null,
+        width: m.width ?? body.width ?? null,
+        height: m.height ?? body.height ?? null,
+        source_image_url: firstSource,
+        fal_model_endpoint: willEdit ? 'ideogram/v3/edit' : 'ideogram/v3/generate',
+        cost_cents: perImageCostCents,
+        status: 'completed' as const,
+        output_url: m.url,
+        thumbnail_url: m.url,
         completed_at: completedAt,
       }));
       const { data: extras } = await supabase

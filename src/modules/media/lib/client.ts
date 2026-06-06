@@ -26,6 +26,8 @@ export interface GeneratePayload {
   // GPT Image 1 only — 'low' / 'medium' / 'high' / 'auto'. Other
   // models ignore it.
   quality?: string;
+  // Ideogram v3 only — 'TURBO' / 'DEFAULT' / 'QUALITY'.
+  rendering_speed?: string;
 }
 
 // Returns every generation row produced by the request. Image batches
@@ -69,7 +71,7 @@ export interface FalKeyStatus {
 // Provider routing is via ?provider=fal|openai on a single endpoint
 // (Vercel Hobby caps a deployment at 12 serverless functions, so we
 // can't split them into two files).
-type KeyProvider = 'fal' | 'openai';
+type KeyProvider = 'fal' | 'openai' | 'ideogram';
 
 async function getKeyStatus(provider: KeyProvider): Promise<FalKeyStatus> {
   const headers = await authHeader();
@@ -106,6 +108,9 @@ export const removeFalKey = () => deleteKey('fal');
 export const getOpenaiKeyStatus = () => getKeyStatus('openai');
 export const setOpenaiKey = (key: string) => saveKey('openai', key);
 export const removeOpenaiKey = () => deleteKey('openai');
+export const getIdeogramKeyStatus = () => getKeyStatus('ideogram');
+export const setIdeogramKey = (key: string) => saveKey('ideogram', key);
+export const removeIdeogramKey = () => deleteKey('ideogram');
 
 export async function uploadInputImage(file: File): Promise<string> {
   const { data: sessionData } = await supabase.auth.getSession();

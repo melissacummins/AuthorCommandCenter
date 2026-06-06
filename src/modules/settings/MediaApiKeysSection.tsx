@@ -3,6 +3,7 @@ import { ImagePlus, AlertCircle, CheckCircle, Loader2, Trash2, Key } from 'lucid
 import {
   getFalKeyStatus, setFalKey, removeFalKey,
   getOpenaiKeyStatus, setOpenaiKey, removeOpenaiKey,
+  getIdeogramKeyStatus, setIdeogramKey, removeIdeogramKey,
 } from '../media/lib/client';
 import type { FalKeyStatus } from '../media/lib/client';
 
@@ -183,9 +184,9 @@ export default function MediaApiKeysSection() {
         />
 
         <KeyCard
-          title="OpenAI API key — for GPT Image 1"
+          title="OpenAI API key — for GPT Image 2"
           iconColor="text-emerald-600"
-          description="Optional but recommended. When set, GPT Image 1 calls go directly to OpenAI instead of through Fal — roughly 3× cheaper. Other models keep using Fal."
+          description="Optional but recommended. When set, GPT Image 2 calls go directly to OpenAI instead of through Fal — roughly 3× cheaper. Other models keep using Fal."
           placeholder="sk-proj-…  or  sk-…"
           helpUrl="https://platform.openai.com/api-keys"
           helpUrlLabel="Get a key from OpenAI"
@@ -195,6 +196,20 @@ export default function MediaApiKeysSection() {
           getStatus={getOpenaiKeyStatus}
           saveKey={setOpenaiKey}
           removeKey={removeOpenaiKey}
+        />
+
+        <KeyCard
+          title="Ideogram API key — for Ideogram v3"
+          iconColor="text-indigo-600"
+          description="Optional. When set, Ideogram v3 generate and edit go directly to Ideogram instead of through Fal. Unlocks the Turbo rendering speed (~$0.03/image, about half what Fal charges) and the Quality tier Fal doesn't expose."
+          placeholder="Ideogram API key (40+ chars)"
+          helpUrl="https://ideogram.ai/manage-api"
+          helpUrlLabel="Get a key from Ideogram"
+          buttonColor="bg-indigo-600 hover:bg-indigo-700"
+          minLength={20}
+          getStatus={getIdeogramKeyStatus}
+          saveKey={setIdeogramKey}
+          removeKey={removeIdeogramKey}
         />
       </div>
     </section>

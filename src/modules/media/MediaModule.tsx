@@ -6,11 +6,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage1CostCents, type GptImage1Quality } from './lib/models';
+import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage1CostCents, ideogramCostCents, type GptImage1Quality, type IdeogramRenderingSpeed } from './lib/models';
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
-  getFalKeyStatus, getOpenaiKeyStatus, type FalKeyStatus,
+  getFalKeyStatus, getOpenaiKeyStatus, getIdeogramKeyStatus, type FalKeyStatus,
 } from './lib/client';
 import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
 
@@ -66,6 +66,8 @@ export default function MediaModule() {
   const [monthlySpent, setMonthlySpent] = useState(0);
   const [keyStatus, setKeyStatus] = useState<FalKeyStatus | null>(null);
   const [openaiKeyStatus, setOpenaiKeyStatus] = useState<FalKeyStatus | null>(null);
+  const [ideogramKeyStatus, setIdeogramKeyStatus] = useState<FalKeyStatus | null>(null);
+  const [ideogramSpeed, setIdeogramSpeed] = useState<IdeogramRenderingSpeed>('DEFAULT');
 
   const [filterCollectionId, setFilterCollectionId] = useState<string | null>(null);
   const [stylesDrawerOpen, setStylesDrawerOpen] = useState(false);
@@ -142,19 +144,27 @@ export default function MediaModule() {
   // True when this run will route to the model's edit endpoint
   // (dual-mode model + a reference attached). Drives the edit-mode
   // banner, Generate button label, and cost display.
-  // GPT Image 1 routes through OpenAI when a key is configured (much
-  // cheaper than via Fal); everything else uses Fal.
+  // Provider routing per model:
+  //   - GPT Image 2 → OpenAI direct if a key is configured (cheaper).
+  //   - Ideogram v3 / v3-edit → Ideogram direct if a key is configured.
+  //   - Everything else → Fal.
   const gptImage1Provider: 'fal' | 'openai' =
     model.id === 'gpt-image-2' && openaiKeyStatus?.has_key ? 'openai' : 'fal';
-  // When routed via OpenAI, ANY reference image becomes an edit
-  // (regardless of the model's editEndpoint, since OpenAI handles
-  // both modes on its own endpoints).
+  const isIdeogramV3Model = model.id === 'ideogram-v3' || model.id === 'ideogram-v3-edit';
+  const ideogramProvider: 'fal' | 'ideogram' =
+    isIdeogramV3Model && ideogramKeyStatus?.has_key ? 'ideogram' : 'fal';
+  // When routed via OpenAI or Ideogram direct, ANY reference image
+  // becomes an edit (the direct endpoints handle both modes).
   const isEditMode = model.id === 'gpt-image-2' && gptImage1Provider === 'openai'
     ? inputImages.length > 0
-    : (model.hasDualMode && inputImages.length > 0);
+    : isIdeogramV3Model && ideogramProvider === 'ideogram'
+      ? inputImages.length > 0
+      : (model.hasDualMode && inputImages.length > 0);
   const perImageCostCents = model.id === 'gpt-image-2'
     ? gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider)
-    : (isEditMode ? model.editCostCents : model.estimatedCostCents);
+    : (isIdeogramV3Model && ideogramProvider === 'ideogram'
+        ? ideogramCostCents(ideogramSpeed, isEditMode)
+        : (isEditMode ? model.editCostCents : model.estimatedCostCents));
   const sizePreset = useMemo<SizePreset | null>(
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
     [sizePresetId],
@@ -204,6 +214,11 @@ export default function MediaModule() {
       setOpenaiKeyStatus(await getOpenaiKeyStatus());
     } catch {
       setOpenaiKeyStatus({ has_key: false, hint: null, updated_at: null });
+    }
+    try {
+      setIdeogramKeyStatus(await getIdeogramKeyStatus());
+    } catch {
+      setIdeogramKeyStatus({ has_key: false, hint: null, updated_at: null });
     }
   }, [userId]);
 
@@ -289,6 +304,7 @@ export default function MediaModule() {
         source_image_urls: model.canReference ? inputImages.map((i) => i.url) : [],
         num_images: num,
         quality: model.id === 'gpt-image-2' ? gptImage1Quality : undefined,
+        rendering_speed: isIdeogramV3Model && ideogramProvider === 'ideogram' ? ideogramSpeed : undefined,
         collection_id: selectedCollectionId,
       });
 
@@ -588,6 +604,24 @@ export default function MediaModule() {
                 )}
               </p>
             )}
+            {isIdeogramV3Model && (
+              <p className="text-[11px] mt-1">
+                {ideogramProvider === 'ideogram' ? (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-medium">
+                    via Ideogram direct (cheaper)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                    via Fal
+                    {ideogramKeyStatus !== null && !ideogramKeyStatus.has_key && (
+                      <>
+                        {' — '}<RouterLink to="/settings" className="underline">add an Ideogram key</RouterLink>{' to unlock Turbo (~2× cheaper)'}
+                      </>
+                    )}
+                  </span>
+                )}
+              </p>
+            )}
           </div>
 
           {/* Style preset */}
@@ -696,6 +730,34 @@ export default function MediaModule() {
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
                 Low ~{formatCents(gptImage1CostCents('low', isEditMode, gptImage1Provider))} · Medium ~{formatCents(gptImage1CostCents('medium', isEditMode, gptImage1Provider))} · High ~{formatCents(gptImage1CostCents('high', isEditMode, gptImage1Provider))}. Lower quality is fine for drafts.
+              </p>
+            </div>
+          )}
+
+          {/* Ideogram v3 rendering speed — only when routed via Ideogram direct. */}
+          {isIdeogramV3Model && ideogramProvider === 'ideogram' && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Rendering speed</label>
+                <span className="text-[11px] text-slate-400">~{formatCents(ideogramCostCents(ideogramSpeed, isEditMode))} each</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(['TURBO', 'DEFAULT', 'QUALITY'] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setIdeogramSpeed(s)}
+                    className={`py-2 rounded-lg text-xs font-medium border transition-colors ${
+                      ideogramSpeed === s
+                        ? 'bg-indigo-600 text-white border-indigo-600'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {s[0] + s.slice(1).toLowerCase()}
+                  </button>
+                ))}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">
+                Turbo ~{formatCents(ideogramCostCents('TURBO', isEditMode))} · Default ~{formatCents(ideogramCostCents('DEFAULT', isEditMode))} · Quality ~{formatCents(ideogramCostCents('QUALITY', isEditMode))}. Turbo is fast and cheap; Quality has the best detail.
               </p>
             </div>
           )}
