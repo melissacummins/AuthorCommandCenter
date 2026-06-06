@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MiniMenu } from './MiniMenu';
 import { TimerButton, RunningTimerBar, stopTimerPatch } from './TimerButton';
+import { FocusPicker } from './FocusPicker';
 import { TaskNotes } from './TaskNotes';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
@@ -15,7 +16,7 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ,
+  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import StatsView from './StatsView';
@@ -77,6 +78,8 @@ export default function PlannerModule() {
   const [selection, setSelection] = useState<Selection>({ kind: 'myday' });
   // The planner rail is a slide-over on mobile; always-on from md up.
   const [railOpen, setRailOpen] = useState(false);
+  // The search-and-start focus picker (a modal).
+  const [focusOpen, setFocusOpen] = useState(false);
   // A nudge to open a specific day in My Day (e.g. from the Plan view). The
   // bumping counter lets the same day be re-opened.
   const [dayJump, setDayJump] = useState<{ iso: string; n: number }>(() => ({ iso: todayISO(), n: 0 }));
@@ -558,6 +561,7 @@ export default function PlannerModule() {
           <MyDayView
             tasks={tasks}
             blocks={blocks}
+            sessions={sessions}
             dayNotes={dayNotes}
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, created_at: '', updated_at: '' }}
             today={today}
@@ -615,14 +619,33 @@ export default function PlannerModule() {
         )}
       </section>
 
-      {runningTask && (
+      {runningTask ? (
         <RunningTimerBar
           task={runningTask}
+          inToday={runningTask.due_date === today}
+          onAddToday={() => patchTask(runningTask.id, { due_date: today, someday: false })}
           onStop={() => patchTask(runningTask.id, stopTimerPatch(runningTask))}
           onOpen={() => {
             if (runningTask.note_id) setSelection({ kind: 'note', id: runningTask.note_id });
             else choose({ kind: 'myday' });
           }}
+        />
+      ) : (
+        <button
+          onClick={() => setFocusOpen(true)}
+          className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-xl px-4 py-2.5 text-sm font-medium"
+          title="Start a focus timer on any to-do"
+        >
+          <Target className="w-4 h-4" /> Focus
+        </button>
+      )}
+
+      {focusOpen && (
+        <FocusPicker
+          tasks={tasks}
+          notesById={notesById}
+          onStart={id => patchTask(id, { timer_started_at: new Date().toISOString() })}
+          onClose={() => setFocusOpen(false)}
         />
       )}
     </div>
@@ -867,6 +890,9 @@ function NotePane({
   const doneItems = ordered.filter(t => t.kind === 'task' && t.done);
   const flaggedOpen = ordered.filter(t => t.kind === 'task' && !t.done && t.flagged);
   const nextOrder = (ordered.at(-1)?.sort_order ?? 0) + 1;
+  // List rollups: estimate of what's left, and total time tracked on this list.
+  const listEst = sumEstimate(ordered);
+  const listTracked = ordered.reduce((s, t) => s + (t.kind === 'task' ? (t.actual_minutes ?? 0) : 0), 0);
 
   // Walk the list tracking the current heading so we can hide a heading's
   // tasks when it's collapsed and show a "n hidden" count on the heading.
@@ -951,8 +977,15 @@ function NotePane({
         onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
         placeholder="Notes, links, anything you want to remember…"
         rows={2}
-        className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-4"
+        className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-2"
       />
+
+      {(listEst > 0 || listTracked > 0) && (
+        <div className="flex items-center gap-3 text-xs text-slate-400 mb-4">
+          {listEst > 0 && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatMinutes(listEst)} planned</span>}
+          {listTracked > 0 && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-teal-500" /> {formatMinutes(listTracked)} tracked</span>}
+        </div>
+      )}
 
       {/* All / Important filter (Things-3-style) */}
       <div className="flex items-center gap-1 mb-2">

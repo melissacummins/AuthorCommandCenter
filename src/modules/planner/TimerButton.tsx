@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Play, Square } from 'lucide-react';
+import { Play, Square, Plus } from 'lucide-react';
 import { formatMinutes, type PlannerTask } from './types';
 
 // Start/stop time tracker for a single to-do. Routes through onPatch so the
@@ -68,8 +68,16 @@ export function stopTimerPatch(task: PlannerTask): Partial<PlannerTask> {
 }
 
 // A floating control shown across the planner while a timer is running, so it
-// can be stopped (or its to-do opened) from anywhere — no hunting for the row.
-export function RunningTimerBar({ task, onStop, onOpen }: { task: PlannerTask; onStop: () => void; onOpen: () => void }) {
+// can be stopped (or its to-do opened / pulled into today) from anywhere.
+export function RunningTimerBar({
+  task, onStop, onOpen, onAddToday, inToday,
+}: {
+  task: PlannerTask;
+  onStop: () => void;
+  onOpen: () => void;
+  onAddToday: () => void;
+  inToday: boolean;
+}) {
   const [, tick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => tick(n => n + 1), 1000);
@@ -77,7 +85,7 @@ export function RunningTimerBar({ task, onStop, onOpen }: { task: PlannerTask; o
   }, []);
   const ms = task.timer_started_at ? Math.max(0, Date.now() - new Date(task.timer_started_at).getTime()) : 0;
   return (
-    <div className="fixed bottom-4 right-4 z-40 flex items-center gap-3 bg-slate-900 text-white rounded-full shadow-xl pl-4 pr-2 py-2 max-w-[min(90vw,22rem)]">
+    <div className="fixed bottom-4 right-4 z-40 flex items-center gap-3 bg-slate-900 text-white rounded-full shadow-xl pl-4 pr-2 py-2 max-w-[min(92vw,24rem)]">
       <span className="relative flex h-2.5 w-2.5 shrink-0">
         <span className="absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75 animate-ping" />
         <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-rose-500" />
@@ -86,6 +94,15 @@ export function RunningTimerBar({ task, onStop, onOpen }: { task: PlannerTask; o
         {task.title || 'Untitled'}
       </button>
       <span className="tabular-nums text-sm text-slate-200 shrink-0">{formatStopwatch(ms)}</span>
+      {!inToday && (
+        <button
+          onClick={onAddToday}
+          className="shrink-0 inline-flex items-center gap-1 text-slate-200 hover:text-white text-xs font-medium px-1.5"
+          title="Add to today"
+        >
+          <Plus className="w-3.5 h-3.5" /> Today
+        </button>
+      )}
       <button
         onClick={onStop}
         className="shrink-0 inline-flex items-center gap-1 bg-rose-500 hover:bg-rose-600 rounded-full px-3 py-1 text-xs font-semibold"
