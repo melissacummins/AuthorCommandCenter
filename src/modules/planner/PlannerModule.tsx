@@ -279,6 +279,23 @@ export default function PlannerModule() {
     catch (e) { setError((e as Error)?.message ?? 'Could not delete item.'); }
   }
 
+  // Manually log time worked on a to-do (e.g. you forgot to start the timer):
+  // bumps its running total and records a session ending now, so it lands on
+  // today in Stats and "worked today".
+  async function logManualMinutes(taskId: string, minutes: number) {
+    if (!user || minutes <= 0) return;
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const end = new Date();
+    const start = new Date(end.getTime() - minutes * 60_000);
+    setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, actual_minutes: (t.actual_minutes ?? 0) + minutes } : t)));
+    try {
+      await updateTask(taskId, { actual_minutes: (task.actual_minutes ?? 0) + minutes });
+      const created = await createTimeSessions(user.id, [{ task_id: taskId, started_at: start.toISOString(), ended_at: end.toISOString(), minutes }]);
+      setSessions(prev => [...prev, ...created]);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not log time.'); }
+  }
+
   async function reorder(updates: { id: string; sort_order: number }[]) {
     setTasks(prev => {
       const byId = new Map(updates.map(u => [u.id, u.sort_order]));
@@ -645,6 +662,7 @@ export default function PlannerModule() {
           tasks={tasks}
           notesById={notesById}
           onStart={id => patchTask(id, { timer_started_at: new Date().toISOString() })}
+          onLogTime={logManualMinutes}
           onClose={() => setFocusOpen(false)}
         />
       )}
