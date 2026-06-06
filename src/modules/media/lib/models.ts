@@ -141,6 +141,21 @@ export const MODELS: ModelDef[] = [
     group: 'image',
   },
   {
+    id: 'ideogram-v4',
+    label: 'Ideogram v4 (latest)',
+    kind: 'image',
+    endpoint: 'ideogram/v4',
+    acceptsInputImage: false,
+    // v4 doesn't have a documented edit endpoint yet — only generate.
+    // For Ideogram editing, fall back to ideogram-v3-edit.
+    supportsCustomSize: true,
+    description: 'Newest Ideogram model (released June 2026). Native 2K, best-in-class typography. Generate only — v4 edit not yet exposed by the API.',
+    estimatedCostCents: 6,
+    isAsync: false,
+    isFeatured: true,
+    group: 'image',
+  },
+  {
     id: 'ideogram-v3',
     label: 'Ideogram v3',
     kind: 'image',
@@ -148,7 +163,7 @@ export const MODELS: ModelDef[] = [
     acceptsInputImage: false,
     editEndpoint: 'fal-ai/ideogram/v3/edit',
     supportsCustomSize: true,
-    description: 'Best-in-class for text inside images — ideal for Pinterest pins. Attach a reference to edit.',
+    description: 'Previous Ideogram model. Use this if you need image editing (v4 generate-only).',
     estimatedCostCents: 6,
     isAsync: false,
     isFeatured: true,

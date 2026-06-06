@@ -51,6 +51,7 @@ const MODELS: Record<string, ModelDef> = {
   'nano-banana':          { id: 'nano-banana',          endpoint: 'fal-ai/nano-banana',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/nano-banana/edit',       supportsCustomSize: true,  estimatedCostCents: 4   },
   'flux-pro-v11':         { id: 'flux-pro-v11',         endpoint: 'fal-ai/flux-pro/v1.1',                            kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
+  'ideogram-v4':          { id: 'ideogram-v4',          endpoint: 'ideogram/v4',                                     kind: 'image', isAsync: false, acceptsInputImage: false,                                                  supportsCustomSize: true,  estimatedCostCents: 6   },
   'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/ideogram/v3/edit',       supportsCustomSize: true,  estimatedCostCents: 6   },
   'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'gpt-image-2':          { id: 'gpt-image-2',          endpoint: 'openai/gpt-image-2',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'openai/gpt-image-2/edit',        editCostCents: 45, supportsCustomSize: true,  estimatedCostCents: 25  },
@@ -500,6 +501,9 @@ interface IdeogramCallArgs {
   renderingSpeed: IdeogramRenderingSpeed;
   numImages: number;
   inputImageUrls: string[];      // empty → generate; non-empty → edit
+  // Which Ideogram model version to call. v4 generate-only; v3 has
+  // generate + edit. v4 also renamed `prompt` → `text_prompt`.
+  version: 'v3' | 'v4';
 }
 
 // Map (width, height) → Ideogram's ASPECT_* enum. Falls back to 1:1.
@@ -533,11 +537,16 @@ interface IdeogramResponse {
 async function callIdeogramImage(
   args: IdeogramCallArgs,
 ): Promise<{ ok: true; images: IdeogramImageResult[] } | { ok: false; error: string }> {
-  const { ideogramKey, prompt, aspectRatio, renderingSpeed, numImages, inputImageUrls } = args;
+  const { ideogramKey, prompt, aspectRatio, renderingSpeed, numImages, inputImageUrls, version } = args;
   const isEdit = inputImageUrls.length > 0;
+  // v4 is generate-only at the API level today; an edit request on
+  // ideogram-v4 falls back to the v3 edit endpoint silently. The
+  // catalog already nudges users toward ideogram-v3 for editing.
   const endpoint = isEdit
     ? 'https://api.ideogram.ai/v1/ideogram-v3/edit'
-    : 'https://api.ideogram.ai/v1/ideogram-v3/generate';
+    : `https://api.ideogram.ai/v1/ideogram-${version}/generate`;
+  // v4 renamed the text prompt field; v3 still uses `prompt`.
+  const promptField = version === 'v4' && !isEdit ? 'text_prompt' : 'prompt';
 
   let res: Response;
   if (isEdit) {
@@ -561,7 +570,7 @@ async function callIdeogramImage(
       method: 'POST',
       headers: { 'Api-Key': ideogramKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt,
+        [promptField]: prompt,
         aspect_ratio: aspectRatio,
         rendering_speed: renderingSpeed,
         num_images: numImages,
@@ -668,12 +677,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // Provider selection.
   //   - GPT Image 2 → OpenAI direct if a key is configured (cheaper).
-  //   - Ideogram v3 (generate + edit) → Ideogram direct if a key is
-  //     configured (Turbo is ~2× cheaper than via Fal).
+  //   - Ideogram v3 (generate + edit) or v4 (generate only) → Ideogram
+  //     direct if a key is configured. Turbo is ~2× cheaper than Fal.
   //   - Everything else → Fal.
   const openaiKey = model.id === 'gpt-image-2' ? await resolveOpenaiKey(supabase, userId) : null;
+  const isIdeogramV4 = model.id === 'ideogram-v4';
   const isIdeogramV3 = model.id === 'ideogram-v3' || model.id === 'ideogram-v3-edit';
-  const ideogramKey = isIdeogramV3 ? await resolveIdeogramKey(supabase, userId) : null;
+  const isIdeogramDirect = isIdeogramV3 || isIdeogramV4;
+  const ideogramKey = isIdeogramDirect ? await resolveIdeogramKey(supabase, userId) : null;
   const provider: 'openai' | 'ideogram' | 'fal' =
     openaiKey ? 'openai' : ideogramKey ? 'ideogram' : 'fal';
 
@@ -688,7 +699,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const ideogramSpeed = normalizeIdeogramSpeed(body.rendering_speed);
   const perImageCostCents = model.id === 'gpt-image-2'
     ? gptImage1CostCents(normalizeQuality(body.quality), willEdit, provider === 'openai' ? 'openai' : 'fal')
-    : (isIdeogramV3 && provider === 'ideogram'
+    : (isIdeogramDirect && provider === 'ideogram'
         ? ideogramCostCents(ideogramSpeed, willEdit)
         : ((willEdit && model.editCostCents) ? model.editCostCents : model.estimatedCostCents));
   const totalCostCents = perImageCostCents * numImages;
@@ -738,7 +749,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       fal_model_endpoint: provider === 'openai'
         ? (willEdit ? 'openai/gpt-image-2/edit' : 'openai/gpt-image-2')
         : provider === 'ideogram'
-          ? (willEdit ? 'ideogram/v3/edit' : 'ideogram/v3/generate')
+          ? (willEdit ? 'ideogram/v3/edit' : `ideogram/${isIdeogramV4 ? 'v4' : 'v3'}/generate`)
           : effectiveEndpoint,
       cost_cents: perImageCostCents,
       status: 'pending',
@@ -846,10 +857,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  // Ideogram direct path — v3 generate / edit only. Ideogram returns
-  // CDN-hosted image URLs; we mirror them into our outputs bucket so
-  // the rest of the app sees stable, owned URLs.
-  if (provider === 'ideogram' && ideogramKey && isIdeogramV3) {
+  // Ideogram direct path — v3 (generate + edit) or v4 (generate only).
+  // Ideogram returns CDN-hosted image URLs that expire after a short
+  // window, so we mirror them into our outputs bucket for stable URLs.
+  if (provider === 'ideogram' && ideogramKey && isIdeogramDirect) {
     const inputUrls = (body.source_image_urls && body.source_image_urls.length > 0)
       ? body.source_image_urls
       : (body.source_image_url ? [body.source_image_url] : []);
@@ -860,6 +871,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       renderingSpeed: ideogramSpeed,
       numImages,
       inputImageUrls: inputUrls,
+      version: isIdeogramV4 ? 'v4' : 'v3',
     });
     if (!result.ok) {
       const err = (result as { ok: false; error: string }).error;
@@ -918,7 +930,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         width: m.width ?? body.width ?? null,
         height: m.height ?? body.height ?? null,
         source_image_url: firstSource,
-        fal_model_endpoint: willEdit ? 'ideogram/v3/edit' : 'ideogram/v3/generate',
+        fal_model_endpoint: willEdit ? 'ideogram/v3/edit' : `ideogram/${isIdeogramV4 ? 'v4' : 'v3'}/generate`,
         cost_cents: perImageCostCents,
         status: 'completed' as const,
         output_url: m.url,
