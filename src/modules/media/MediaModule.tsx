@@ -654,6 +654,27 @@ export default function MediaModule() {
                   <input type="number" min={256} max={4096} value={customHeight} onChange={(e) => setCustomHeight(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="Height" />
                 </div>
               )}
+              {/* GPT Image 2 only supports 3 fixed sizes — show what the
+                  picked dimensions will actually become, since the rest
+                  of the catalog can produce arbitrary dimensions. */}
+              {model.id === 'gpt-image-2' && (() => {
+                const w = useCustomSize ? customWidth : (sizePreset?.width ?? 0);
+                const h = useCustomSize ? customHeight : (sizePreset?.height ?? 0);
+                if (!w || !h) return null;
+                const actual = w === h ? '1024×1024 (square)'
+                  : w > h ? '1536×1024 (landscape)'
+                  : '1024×1536 (portrait)';
+                const matches = (w === 1024 && h === 1024) || (w === 1536 && h === 1024) || (w === 1024 && h === 1536);
+                if (matches) return null;
+                return (
+                  <p className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                    <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
+                    <span>
+                      GPT Image 2 only outputs <code className="font-mono">1024×1024</code>, <code className="font-mono">1536×1024</code>, or <code className="font-mono">1024×1536</code>. Your <strong>{w}×{h}</strong> will come back as <strong>{actual}</strong>.
+                    </span>
+                  </p>
+                );
+              })()}
             </div>
           )}
 

@@ -191,7 +191,7 @@ export const MODELS: ModelDef[] = [
     editEndpoint: 'openai/gpt-image-2/edit',
     editCostCents: 45,
     supportsCustomSize: true,
-    description: "OpenAI's flagship image model — same one ChatGPT uses now. Cost scales with the Quality setting (Low ~$0.12 → High ~$0.45 for edits, Auto defaults to High).",
+    description: "OpenAI's flagship image model — same one ChatGPT uses now. Outputs at 1024×1024, 1536×1024, or 1024×1536 only (other sizes round to the closest). Cost scales with Quality (Low ~$0.12 → High ~$0.45 for edits, Auto defaults to High).",
     estimatedCostCents: 25,
     isAsync: false,
     isFeatured: true,
