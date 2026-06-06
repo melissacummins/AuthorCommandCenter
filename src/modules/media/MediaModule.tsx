@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Link as RouterLink } from 'react-router-dom';
 import {
   ImagePlus, Wand2, Trash2, Download, Upload, X, Plus, Folder, Sparkles, Loader2, AlertCircle, RefreshCw, Settings, ExternalLink, Layers,
+  ChevronLeft, ChevronRight as ChevronRightIcon,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,6 +15,9 @@ import {
 import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaSettings, MediaStylePreset } from './lib/types';
 
 const POLL_INTERVAL_MS = 4000;
+// Cap on simultaneously-in-flight Generate clicks. High enough that you
+// can keep iterating, low enough that a stuck loop can't blow the bill.
+const MAX_CONCURRENT_GENERATIONS = 5;
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
@@ -43,8 +47,14 @@ export default function MediaModule() {
   const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
 
-  const [generating, setGenerating] = useState(false);
+  // Counter, not boolean — lets the user kick off multiple generations
+  // without waiting for the previous one to finish. Capped by MAX_CONCURRENT
+  // so a runaway loop can't fan out unbounded API calls.
+  const [inflightCount, setInflightCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  // Lightbox state — id of the generation being previewed, or null.
+  const [lightboxId, setLightboxId] = useState<string | null>(null);
+  const [promptHistoryOpen, setPromptHistoryOpen] = useState(false);
 
   const [history, setHistory] = useState<MediaGeneration[]>([]);
   const [collections, setCollections] = useState<MediaCollection[]>([]);
@@ -254,7 +264,7 @@ export default function MediaModule() {
     }
 
     setError(null);
-    setGenerating(true);
+    setInflightCount((n) => n + 1);
     try {
       let width: number | undefined;
       let height: number | undefined;
@@ -288,7 +298,7 @@ export default function MediaModule() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
     } finally {
-      setGenerating(false);
+      setInflightCount((n) => Math.max(0, n - 1));
     }
   }
 
@@ -739,7 +749,16 @@ export default function MediaModule() {
 
           {/* Prompt */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Prompt</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Prompt</label>
+              <button
+                onClick={() => setPromptHistoryOpen(true)}
+                className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1"
+                title="Browse past prompts"
+              >
+                <Sparkles className="w-3 h-3" /> Recent prompts
+              </button>
+            </div>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
@@ -801,13 +820,18 @@ export default function MediaModule() {
 
           <button
             onClick={handleGenerate}
-            disabled={generating || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
+            disabled={inflightCount >= MAX_CONCURRENT_GENERATIONS || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-semibold shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {generating
-              ? <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
-              : <><Wand2 className="w-4 h-4" /> {isEditMode ? 'Edit' : 'Generate'}{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(perImageCostCents * (model.kind === 'image' ? quantity : 1))})</>}
+            <Wand2 className="w-4 h-4" /> {isEditMode ? 'Edit' : 'Generate'}{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(perImageCostCents * (model.kind === 'image' ? quantity : 1))})
           </button>
+          {inflightCount > 0 && (
+            <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              {inflightCount} request{inflightCount > 1 ? 's' : ''} in flight
+              {inflightCount >= MAX_CONCURRENT_GENERATIONS && ' — wait for one to finish to queue more'}
+            </p>
+          )}
         </div>
 
         {/* History */}
@@ -855,6 +879,7 @@ export default function MediaModule() {
                   onDelete={() => handleDelete(g)}
                   onUseAsInput={() => handleUseAsInput(g)}
                   onMoveCollection={(cid) => handleMoveToCollection(g.id, cid)}
+                  onOpenLightbox={() => setLightboxId(g.id)}
                 />
               ))}
             </div>
@@ -893,6 +918,32 @@ export default function MediaModule() {
           onDelete={handleDeleteCustomModel}
         />
       )}
+      {promptHistoryOpen && (
+        <PromptHistoryDrawer
+          history={history}
+          currentPrompt={prompt}
+          onClose={() => setPromptHistoryOpen(false)}
+          onPick={(p) => { setPrompt(p); setPromptHistoryOpen(false); }}
+        />
+      )}
+      {lightboxId && (() => {
+        const lightboxItem = history.find((g) => g.id === lightboxId);
+        if (!lightboxItem || !lightboxItem.output_url) return null;
+        // Allow prev/next navigation through the filtered history so
+        // the user can flip through results without closing the modal.
+        const idx = filteredHistory.findIndex((g) => g.id === lightboxId);
+        const prev = idx > 0 ? filteredHistory[idx - 1] : null;
+        const next = idx >= 0 && idx < filteredHistory.length - 1 ? filteredHistory[idx + 1] : null;
+        return (
+          <Lightbox
+            generation={lightboxItem}
+            prev={prev}
+            next={next}
+            onClose={() => setLightboxId(null)}
+            onJump={(id) => setLightboxId(id)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -902,13 +953,14 @@ export default function MediaModule() {
 // ============================================
 
 function MediaCard({
-  generation, collections, onDelete, onUseAsInput, onMoveCollection,
+  generation, collections, onDelete, onUseAsInput, onMoveCollection, onOpenLightbox,
 }: {
   generation: MediaGeneration;
   collections: MediaCollection[];
   onDelete: () => void;
   onUseAsInput: () => void;
   onMoveCollection: (collectionId: string | null) => void;
+  onOpenLightbox: () => void;
 }) {
   const [showPrompt, setShowPrompt] = useState(false);
   const pending = generation.status === 'pending';
@@ -933,7 +985,13 @@ function MediaCard({
           generation.kind === 'video' ? (
             <video src={generation.output_url} controls className="w-full h-full object-cover" />
           ) : (
-            <img src={generation.output_url} alt={generation.prompt} className="w-full h-full object-cover" />
+            <button
+              onClick={onOpenLightbox}
+              className="w-full h-full block focus:outline-none focus:ring-2 focus:ring-fuchsia-500"
+              title="Preview larger"
+            >
+              <img src={generation.output_url} alt={generation.prompt} className="w-full h-full object-cover hover:opacity-90 transition-opacity cursor-zoom-in" />
+            </button>
           )
         )}
       </div>
@@ -978,19 +1036,23 @@ function MediaCard({
               <RefreshCw className="w-4 h-4" />
             </button>
           )}
+          <button
+            onClick={onDelete}
+            className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500"
+            title="Delete"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
           <select
             value={generation.collection_id ?? ''}
             onChange={(e) => onMoveCollection(e.target.value || null)}
-            className="flex-1 ml-auto text-[11px] px-2 py-1 rounded border border-slate-200 bg-white"
+            className="ml-auto min-w-0 max-w-[140px] text-[11px] px-2 py-1 rounded border border-slate-200 bg-white"
           >
             <option value="">Uncategorised</option>
             {collections.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-          <button onClick={onDelete} className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500" title="Delete">
-            <Trash2 className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </div>
@@ -1277,5 +1339,170 @@ function CustomModelsDrawer({
         </button>
       </div>
     </Drawer>
+  );
+}
+
+// Browse and reuse past prompts. Pulled from the user's media_generations
+// history (already loaded), de-duped, most recent first, with a search
+// box so finding a specific phrasing is fast.
+function PromptHistoryDrawer({
+  history, currentPrompt, onClose, onPick,
+}: {
+  history: MediaGeneration[];
+  currentPrompt: string;
+  onClose: () => void;
+  onPick: (prompt: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const unique = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { prompt: string; lastUsed: string; uses: number }[] = [];
+    for (const g of history) {
+      const p = g.prompt.trim();
+      if (!p) continue;
+      const existing = out.find((o) => o.prompt === p);
+      if (existing) {
+        existing.uses += 1;
+      } else if (!seen.has(p)) {
+        seen.add(p);
+        out.push({ prompt: p, lastUsed: g.created_at, uses: 1 });
+      }
+    }
+    return out;
+  }, [history]);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return unique;
+    return unique.filter((u) => u.prompt.toLowerCase().includes(q));
+  }, [unique, query]);
+
+  return (
+    <Drawer title="Recent prompts" onClose={onClose}>
+      <p className="text-sm text-slate-500 mb-3">Every prompt you've used, most recent first. Click one to load it into the prompt box.</p>
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Filter…"
+        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm mb-4"
+        autoFocus
+      />
+      {filtered.length === 0 ? (
+        <p className="text-sm text-slate-400 italic">No prompts {query ? 'match that filter' : 'yet'}.</p>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map((u) => (
+            <button
+              key={u.prompt}
+              onClick={() => onPick(u.prompt)}
+              className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${
+                u.prompt === currentPrompt
+                  ? 'bg-fuchsia-50 border-fuchsia-300 text-fuchsia-900'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+              }`}
+            >
+              <p className="whitespace-pre-wrap line-clamp-3">{u.prompt}</p>
+              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-400">
+                <span>{new Date(u.lastUsed).toLocaleDateString()}</span>
+                {u.uses > 1 && <span>used {u.uses}×</span>}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </Drawer>
+  );
+}
+
+// Click-to-zoom modal preview for a generated image. Lets you see
+// detail before deciding whether to download / discard. Arrow keys
+// navigate through the visible history.
+function Lightbox({
+  generation, prev, next, onClose, onJump,
+}: {
+  generation: MediaGeneration;
+  prev: MediaGeneration | null;
+  next: MediaGeneration | null;
+  onClose: () => void;
+  onJump: (id: string) => void;
+}) {
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+      else if (e.key === 'ArrowLeft' && prev) onJump(prev.id);
+      else if (e.key === 'ArrowRight' && next) onJump(next.id);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [prev, next, onClose, onJump]);
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] bg-black/85 flex items-center justify-center p-4 sm:p-8"
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
+        title="Close (Esc)"
+      >
+        <X className="w-5 h-5" />
+      </button>
+
+      {/* Prev */}
+      {prev && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onJump(prev.id); }}
+          className="absolute left-2 sm:left-4 p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
+          title="Previous (←)"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Next */}
+      {next && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onJump(next.id); }}
+          className="absolute right-2 sm:right-4 p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
+          title="Next (→)"
+        >
+          <ChevronRightIcon className="w-6 h-6" />
+        </button>
+      )}
+
+      {/* Image + footer */}
+      <div
+        className="flex flex-col items-center gap-4 max-w-[95vw] max-h-[95vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {generation.output_url && (
+          generation.kind === 'video' ? (
+            <video src={generation.output_url} controls className="max-w-full max-h-[80vh] rounded-lg" />
+          ) : (
+            <img src={generation.output_url} alt={generation.prompt} className="max-w-full max-h-[80vh] object-contain rounded-lg" />
+          )
+        )}
+        <div className="bg-white/95 backdrop-blur rounded-xl px-4 py-3 max-w-2xl w-full">
+          <p className="text-xs text-slate-500 whitespace-pre-wrap line-clamp-4">{generation.prompt}</p>
+          <div className="flex items-center justify-between mt-2 text-[11px] text-slate-400">
+            <span>{generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind} · {formatCents(generation.cost_cents)}</span>
+            {generation.output_url && (
+              <a
+                href={generation.output_url}
+                target="_blank"
+                rel="noreferrer"
+                download
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1 text-fuchsia-600 hover:text-fuchsia-700 font-medium"
+              >
+                <Download className="w-3.5 h-3.5" /> Download
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
