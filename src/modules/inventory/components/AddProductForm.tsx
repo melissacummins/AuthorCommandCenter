@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CATEGORIES } from '../utils';
 import { addProduct } from '../api';
-import type { Product } from '../../../lib/types';
+import type { Product, ProductCategory } from '../../../lib/types';
 
 interface AddProductFormProps {
   onClose: () => void;
@@ -48,6 +48,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
     try {
       await addProduct({
         ...form,
+        category: form.category as ProductCategory,
         books_purchased: 0,
         bundles_purchased: 0,
         purchased_via_bundles: 0,
@@ -58,6 +59,9 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
         six_month_bundle_sales: 0,
         csv_avg_daily: 0,
         csv_reorder_threshold: 0,
+        shopify_inventory_item_id: null,
+        shopify_variant_id: null,
+        default_scratch_dent_product_id: null,
       });
       onRefetch();
       onClose();

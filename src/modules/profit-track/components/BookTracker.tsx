@@ -56,7 +56,7 @@ const TableCellInput: React.FC<TableCellInputProps> = ({
         type="number" 
         step="0.01" 
         placeholder="-" 
-        value={value} 
+        value={value as string | number}
         onChange={(e) => onChange(bookId, field, e.target.value)} 
         className="w-24 text-right p-1.5 border border-gray-200 rounded text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-200 bg-transparent placeholder-gray-300" 
       />

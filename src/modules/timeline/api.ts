@@ -243,7 +243,7 @@ async function fetchArcEvents(
   if (range) q = q.gte('recorded_at', `${range.start}T00:00:00`).lte('recorded_at', `${range.end}T23:59:59`);
   const { data, error } = await q;
   if (error) throw error;
-  return ((data ?? []) as Array<{
+  return ((data ?? []) as unknown as Array<{
     relationship: 'applied' | 'received' | 'reviewed';
     recorded_at: string;
     reader: { name: string } | null;

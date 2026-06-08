@@ -54,8 +54,10 @@ export default function ImportTab({ userId, onImported }: Props) {
       setError(null);
       setSummary(null);
     } else {
+      // strictNullChecks is off in this project, which defeats the usual
+      // discriminated-union narrowing here — assert the error variant.
       setParsed(null);
-      setError(result.error);
+      setError((result as { ok: false; error: string }).error);
     }
   }
 

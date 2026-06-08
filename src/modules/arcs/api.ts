@@ -430,7 +430,7 @@ function rowToInsert(row: NotionArcRow): ArcReaderInsert | null {
   const name = pickStr(row, ['Name', 'Full Name']);
   if (!name) return null;
   const statusStr = pickStr(row, ['Status']);
-  const status = (statusStr && NOTION_STATUS_MAP[statusStr]) ?? 'new';
+  const status = (statusStr && NOTION_STATUS_MAP[statusStr]) || 'new';
   return {
     name,
     email: pickStr(row, ['Email Address', 'Email']) || null,

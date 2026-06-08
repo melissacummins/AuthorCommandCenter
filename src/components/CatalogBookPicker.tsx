@@ -95,6 +95,8 @@ export default function CatalogBookPicker({
         series: null,
         series_position: null,
         pen_name_id: selectedPenNameId,
+        parent_book_id: null,
+        language: null,
         status: 'published',
         publish_date: null,
         pre_order_date: null,
