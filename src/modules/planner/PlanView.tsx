@@ -8,7 +8,6 @@ import {
   type PlannerNote, type PlannerSettings, type PlannerTask, type PlannerTimeBlock,
 } from './types';
 
-const WEEKS_SHOWN = 6;
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // Local YYYY-MM-DD for a Date.
@@ -75,25 +74,19 @@ export default function PlanView({
     const task = tasks.find(t => t.id === id);
     if (!task) return;
     const dest = String(over.id);
-    let due: string;
-    if (dest.startsWith('d:')) {
-      due = dest.slice(2);
-    } else if (dest.startsWith('w:')) {
-      // Keep the weekday, just move into the dropped week.
-      const wk = dest.slice(2);
-      const offset = task.due_date ? (new Date(task.due_date + 'T00:00:00').getDay() + 6) % 7 : 0;
-      due = addDaysISO(wk, offset);
-    } else return;
+    if (!dest.startsWith('d:')) return;
+    const due = dest.slice(2);
     if (due !== task.due_date) onPatch(id, { due_date: due, someday: false, block_id: null });
   }
 
   function shift(dir: number) {
     setAnchor(a => range === 'week'
-      ? addDaysISO(a, dir * 7 * WEEKS_SHOWN)
+      ? addDaysISO(a, dir * 7)
       : isoOf(new Date(new Date(a + 'T00:00:00').getFullYear(), new Date(a + 'T00:00:00').getMonth() + dir, 1)));
   }
 
-  const weeks = useMemo(() => dayRange(weekStartMon(anchor), WEEKS_SHOWN * 7).filter((_, i) => i % 7 === 0), [anchor]);
+  // The seven days (Mon–Sun) of the anchored week.
+  const weekDays = useMemo(() => dayRange(weekStartMon(anchor), 7), [anchor]);
   const monthGrid = useMemo(() => {
     const d = new Date(anchor + 'T00:00:00');
     const first = isoOf(new Date(d.getFullYear(), d.getMonth(), 1));
@@ -102,7 +95,7 @@ export default function PlanView({
   const monthIndex = new Date(anchor + 'T00:00:00').getMonth();
 
   const rangeLabel = range === 'week'
-    ? `${labelDate(weeks[0])} – ${labelDate(addDaysISO(weeks[weeks.length - 1], 6))}`
+    ? `Week ${isoWeek(weekDays[0])} · ${labelDate(weekDays[0])} – ${labelDate(weekDays[6])}`
     : new Date(anchor + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
   return (
@@ -131,28 +124,20 @@ export default function PlanView({
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         {range === 'week' ? (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {weeks.map(wk => {
-              const days = dayRange(wk, 7);
-              const items = days.flatMap(d => byDay[d] ?? []);
-              const planned = days.reduce((s, d) => s + plannedOn(d), 0);
-              const capacity = target * 7;
-              const over = planned > capacity;
-              const isThisWeek = wk === weekStartMon(today);
-              return (
-                <WeekCard
-                  key={wk}
-                  weekStart={wk}
-                  isThisWeek={isThisWeek}
-                  items={items}
-                  planned={planned}
-                  over={over}
-                  notesById={notesById}
-                  today={today}
-                  onOpenDay={onOpenDay}
-                />
-              );
-            })}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+            {weekDays.map(day => (
+              <DayPlanCard
+                key={day}
+                day={day}
+                isToday={day === today}
+                items={byDay[day] ?? []}
+                planned={plannedOn(day)}
+                over={plannedOn(day) > target}
+                notesById={notesById}
+                today={today}
+                onOpenDay={onOpenDay}
+              />
+            ))}
           </div>
         ) : (
           <div>
@@ -183,11 +168,12 @@ function labelDate(iso: string): string {
   return new Date(iso + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function WeekCard({
-  weekStart, isThisWeek, items, planned, over, notesById, today, onOpenDay,
+// One day of the week view: a droppable column showing that day's to-dos.
+function DayPlanCard({
+  day, isToday, items, planned, over, notesById, today, onOpenDay,
 }: {
-  weekStart: string;
-  isThisWeek: boolean;
+  day: string;
+  isToday: boolean;
   items: PlannerTask[];
   planned: number;
   over: boolean;
@@ -195,29 +181,31 @@ function WeekCard({
   today: string;
   onOpenDay: (iso: string) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `w:${weekStart}` });
-  const end = addDaysISO(weekStart, 6);
+  const { setNodeRef, isOver } = useDroppable({ id: `d:${day}` });
+  const d = new Date(day + 'T00:00:00');
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-2xl border bg-white p-3 min-h-[9rem] flex flex-col transition-colors ${
-        isOver ? 'border-teal-400 ring-2 ring-teal-100' : isThisWeek ? 'border-teal-300' : 'border-slate-200'
+      className={`rounded-2xl border bg-white p-2.5 min-h-[8rem] flex flex-col transition-colors ${
+        isOver ? 'border-teal-400 ring-2 ring-teal-100' : isToday ? 'border-teal-300' : 'border-slate-200'
       }`}
     >
-      <div className="flex items-baseline justify-between mb-2">
-        <div className={`text-sm font-bold ${isThisWeek ? 'text-teal-700' : 'text-slate-700'}`}>
-          Week {isoWeek(weekStart)}
-          <span className="ml-1.5 text-xs font-medium text-slate-400">{labelDate(weekStart)} – {labelDate(end)}</span>
-        </div>
+      <button onClick={() => onOpenDay(day)} className="flex items-baseline justify-between mb-2 text-left w-full">
+        <span className={`text-sm font-bold ${isToday ? 'text-teal-700' : 'text-slate-700'}`}>
+          {d.toLocaleDateString(undefined, { weekday: 'short' })}
+          <span className="ml-1.5 text-xs font-medium text-slate-400">{d.getDate()}</span>
+        </span>
         {planned > 0 && (
           <span className={`text-[11px] font-medium shrink-0 ${over ? 'text-rose-500' : 'text-slate-400'}`}>{formatMinutes(planned)}</span>
         )}
-      </div>
+      </button>
       {items.length === 0 ? (
-        <p className="text-xs text-slate-300 flex-1">Nothing planned. Drag a to-do here.</p>
+        <button onClick={() => onOpenDay(day)} className="text-xs text-slate-300 flex-1 text-left hover:text-slate-400">
+          Drag a to-do here
+        </button>
       ) : (
         <ul className="space-y-1">
-          {items.map(t => <TaskChip key={t.id} task={t} notesById={notesById} today={today} onOpenDay={onOpenDay} showDay />)}
+          {items.map(t => <TaskChip key={t.id} task={t} notesById={notesById} today={today} onOpenDay={onOpenDay} />)}
         </ul>
       )}
     </div>
