@@ -290,7 +290,7 @@ export default function MediaModule() {
       }
 
       const num = Math.min(Math.max(1, quantity), model.maxImages);
-      const gens = await requestGeneration({
+      const { generations: gens, error: failureMessage } = await requestGeneration({
         model: model.id,
         prompt: prompt.trim(),
         full_prompt: fullPrompt || prompt.trim(),
@@ -304,7 +304,12 @@ export default function MediaModule() {
         collection_id: selectedCollectionId,
       });
 
-      setHistory((prev) => [...gens, ...prev]);
+      // Add returned rows to history regardless of outcome — the
+      // server includes the failed row in error responses too, so the
+      // user sees a failed card with the full provider message
+      // immediately instead of having to refresh.
+      if (gens.length > 0) setHistory((prev) => [...gens, ...prev]);
+      if (failureMessage) setError(failureMessage);
       gens.filter((g) => g.status === 'pending').forEach((g) => startPolling(g.id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');

@@ -33,7 +33,16 @@ export interface GeneratePayload {
 // Returns every generation row produced by the request. Image batches
 // (num_images > 1) yield one row per image; video and single-image
 // requests yield exactly one.
-export async function requestGeneration(payload: GeneratePayload): Promise<MediaGeneration[]> {
+export interface GenerationResponse {
+  generations: MediaGeneration[];
+  // Set when the server signalled a failure. The full provider-side
+  // message (e.g. an OpenAI safety violation explanation) gets surfaced
+  // here so the caller can show it immediately instead of waiting for
+  // the user to refresh.
+  error?: string;
+}
+
+export async function requestGeneration(payload: GeneratePayload): Promise<GenerationResponse> {
   const headers = await authHeader();
   const res = await fetch('/api/media/generate', {
     method: 'POST',
@@ -41,13 +50,18 @@ export async function requestGeneration(payload: GeneratePayload): Promise<Media
     body: JSON.stringify(payload),
   });
   const data = await res.json().catch(() => ({}));
+  const generations: MediaGeneration[] = Array.isArray(data.generations)
+    ? (data.generations as MediaGeneration[])
+    : (data.generation ? [data.generation as MediaGeneration] : []);
   if (!res.ok) {
-    const message = typeof data?.error === 'string' ? data.error : `Request failed (${res.status})`;
-    throw new Error(message);
+    // Prefer the descriptive `detail` (full provider message) over the
+    // short `error` header so the user sees what actually happened.
+    const message = typeof data?.detail === 'string' ? data.detail
+      : typeof data?.error === 'string' ? data.error
+      : `Request failed (${res.status})`;
+    return { generations, error: message };
   }
-  if (Array.isArray(data.generations)) return data.generations as MediaGeneration[];
-  if (data.generation) return [data.generation as MediaGeneration];
-  return [];
+  return { generations };
 }
 
 export async function pollGenerationStatus(id: string): Promise<MediaGeneration> {
