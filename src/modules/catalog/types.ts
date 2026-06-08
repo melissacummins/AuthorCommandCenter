@@ -72,6 +72,18 @@ export interface Book {
 export type BookInsert = Omit<Book, 'id' | 'user_id' | 'created_at' | 'updated_at'>;
 export type BookUpdate = Partial<BookInsert>;
 
+// A dated snapshot of a book's word count — one row per (book, day). Lets the
+// Catalog chart progress over time rather than only the latest number.
+export interface BookWordLog {
+  id: string;
+  user_id: string;
+  book_id: string;
+  day: string; // YYYY-MM-DD
+  word_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export const STATUS_LABELS: Record<BookStatus, string> = {
   idea: 'Idea',
   drafting: 'Drafting',

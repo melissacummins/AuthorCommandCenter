@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { Book, BookInsert, BookUpdate } from './types';
+import type { Book, BookInsert, BookUpdate, BookWordLog } from './types';
 
 export async function listBooks(userId: string): Promise<Book[]> {
   const { data, error } = await supabase
@@ -47,6 +47,58 @@ export async function updateBook(id: string, patch: BookUpdate): Promise<Book> {
 export async function deleteBook(id: string): Promise<void> {
   const { error } = await supabase.from('books').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ---- Word-count history ----------------------------------------------------
+
+// Every dated word-count snapshot for a book, oldest first (for charting).
+export async function listWordLogs(bookId: string): Promise<BookWordLog[]> {
+  const { data, error } = await supabase
+    .from('book_word_logs')
+    .select('*')
+    .eq('book_id', bookId)
+    .order('day', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as BookWordLog[];
+}
+
+// Record (or refresh) today's word count for a book. One row per (book, day),
+// so saving again on the same day overwrites that day's snapshot.
+export async function logWordCount(
+  userId: string,
+  bookId: string,
+  day: string,
+  wordCount: number,
+): Promise<BookWordLog> {
+  const { data, error } = await supabase
+    .from('book_word_logs')
+    .upsert(
+      { user_id: userId, book_id: bookId, day, word_count: wordCount, updated_at: new Date().toISOString() },
+      { onConflict: 'book_id,day' },
+    )
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as BookWordLog;
+}
+
+// Total minutes tracked against a book, summed from the planner lists (notes)
+// linked to it. Mirrors the per-list "tracked" rollup the Planner shows. RLS
+// scopes both queries to the owner.
+export async function bookTrackedMinutes(bookId: string): Promise<number> {
+  const { data: notes, error: notesErr } = await supabase
+    .from('planner_notes')
+    .select('id')
+    .eq('book_id', bookId);
+  if (notesErr) throw notesErr;
+  const noteIds = (notes ?? []).map(n => n.id as string);
+  if (noteIds.length === 0) return 0;
+  const { data: tasks, error: tasksErr } = await supabase
+    .from('planner_tasks')
+    .select('actual_minutes')
+    .in('note_id', noteIds);
+  if (tasksErr) throw tasksErr;
+  return (tasks ?? []).reduce((sum, t) => sum + ((t.actual_minutes as number) ?? 0), 0);
 }
 
 function safeExt(file: File): string {

@@ -25,6 +25,7 @@ import SettingsView from './SettingsView';
 import PlanView from './PlanView';
 import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
+import CatalogBookPicker from '../../components/CatalogBookPicker';
 import {
   listNotes, createNote, updateNote, deleteNote,
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
@@ -1035,6 +1036,29 @@ function NotePane({
         rows={2}
         className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-2"
       />
+
+      {/* Link this list to a Catalog book so its tracked time rolls up into
+          that book's "hours worked". */}
+      <div className="flex items-center gap-2 mb-3 max-w-md">
+        <div className="flex-1">
+          <CatalogBookPicker
+            value={note.book_id}
+            filterByPenName={false}
+            placeholder="Link to a book in Catalog…"
+            onChange={bookId => onSaveNote(note.id, { book_id: bookId })}
+          />
+        </div>
+        {note.book_id && (
+          <button
+            type="button"
+            onClick={() => onSaveNote(note.id, { book_id: null })}
+            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 shrink-0"
+            title="Unlink from book"
+          >
+            <Link2Off className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
       {(listEst > 0 || listTracked > 0) && (
         <div className="flex items-center gap-3 text-xs text-slate-400 mb-4">
