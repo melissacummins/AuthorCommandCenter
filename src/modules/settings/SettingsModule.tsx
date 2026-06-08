@@ -16,8 +16,7 @@ import {
   daysSinceLastBackup,
 } from './backup';
 import type { BackupFile } from './tables';
-import KlaviyoSection from './KlaviyoSection';
-import MediaApiKeysSection from './MediaApiKeysSection';
+import ApiKeysSection from './ApiKeysSection';
 import PenNamesSection from './PenNamesSection';
 import MySidebarSection from './MySidebarSection';
 import AdminSection from './AdminSection';
@@ -137,9 +136,7 @@ export default function SettingsModule() {
 
       <PenNamesSection />
 
-      <MediaApiKeysSection />
-
-      <KlaviyoSection />
+      <ApiKeysSection />
 
       <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
         <div className="flex items-center gap-3 mb-2">
