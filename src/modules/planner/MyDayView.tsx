@@ -6,7 +6,7 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
-  CalendarClock, FileText, CornerDownLeft, Sparkles,
+  CalendarClock, FileText, CornerDownLeft, Sparkles, Info,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
@@ -209,7 +209,7 @@ export default function MyDayView({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const sel = new Date(selected + 'T00:00:00');
 
-  // ---- AI planning assists (Suggest my day · Triage) --------------------
+  // ---- AI planning assists (Suggest my day · Catch up) ------------------
   // Which assist is open, plus its async state. The shared panel renders the
   // result; applying a pick schedules the to-do via onPatchTask.
   const [aiFeature, setAiFeature] = useState<'day' | 'triage' | null>(null);
@@ -259,19 +259,29 @@ export default function MyDayView({
           <button
             onClick={() => runAi('triage')}
             className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1.5"
-            title="Let Claude spread your open to-dos gently across the next few days"
+            title="Let Claude spread your overdue and unscheduled to-dos across the next few days"
           >
-            <Sparkles className="w-3.5 h-3.5" /> Triage
+            <Sparkles className="w-3.5 h-3.5" /> Catch up
           </button>
+          {/* What the two AI assists do — hover to learn without clicking. */}
+          <span className="relative group">
+            <Info className="w-4 h-4 text-slate-300 hover:text-violet-500 cursor-help" />
+            <span className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-7 z-30 w-72 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs leading-relaxed text-slate-600 shadow-lg">
+              <span className="flex items-center gap-1 font-semibold text-slate-700 mb-1.5"><Sparkles className="w-3.5 h-3.5 text-violet-500" /> AI planning help</span>
+              <span className="block"><span className="font-medium text-slate-700">Suggest my day</span> — picks a realistic set of to-dos to tackle today, sized to your daily capacity and Working Phase.</span>
+              <span className="block mt-1.5"><span className="font-medium text-slate-700">Catch up</span> — when you're behind, spreads your overdue and unscheduled to-dos gently across the next few days.</span>
+              <span className="block mt-1.5 text-slate-400">Uses your Claude key (Settings → API Keys). You review every suggestion before anything changes.</span>
+            </span>
+          </span>
           <ConnectControls gc={gc} />
         </div>
       </div>
 
       <AiSuggestPanel
         open={aiFeature !== null}
-        title={aiFeature === 'triage' ? 'Triage the next few days' : 'Suggest my day'}
+        title={aiFeature === 'triage' ? 'Catch up' : 'Suggest my day'}
         intro={aiFeature === 'triage'
-          ? 'Spread your open to-dos gently across the next 5 days.'
+          ? 'Spread your overdue and unscheduled to-dos gently across the next 5 days.'
           : 'A realistic set of to-dos to tackle today.'}
         loading={aiLoading}
         error={aiError}
