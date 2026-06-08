@@ -249,6 +249,29 @@ async function resolveOpenaiKey(supabase: SupabaseClient, userId: string): Promi
   return resolveBYOKKey(supabase, userId, 'user_openai_keys', 'media-openai-key-v1');
 }
 
+// Mark a generation as failed and return the updated row. Used by
+// every sync failure path so the response can include the full row
+// (with the descriptive error_message) — the client uses that to
+// surface a failed card in history immediately instead of waiting
+// for the user to refresh.
+async function failGeneration(
+  supabase: SupabaseClient,
+  generationId: string,
+  errorMessage: string,
+): Promise<unknown | null> {
+  const { data } = await supabase
+    .from('media_generations')
+    .update({
+      status: 'failed',
+      error_message: errorMessage,
+      cost_cents: 0,
+    })
+    .eq('id', generationId)
+    .select()
+    .single();
+  return data ?? null;
+}
+
 async function resolveIdeogramKey(supabase: SupabaseClient, userId: string): Promise<string | null> {
   return resolveBYOKKey(supabase, userId, 'user_ideogram_keys', 'media-ideogram-key-v1');
 }
@@ -792,12 +815,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     if (!result.ok) {
       const err = (result as OpenaiCallErr).error;
-      await supabase.from('media_generations').update({
-        status: 'failed',
-        error_message: `${err} — you weren't charged.`,
-        cost_cents: 0,
-      }).eq('id', generationId);
-      res.status(502).json({ error: 'OpenAI request failed', detail: err });
+      const message = `${err} — you weren't charged.`;
+      const failed = await failGeneration(supabase, generationId, message);
+      res.status(502).json({ error: 'OpenAI request failed', detail: message, generation: failed });
       return;
     }
 
@@ -809,12 +829,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (url) uploadedUrls.push(url);
     }
     if (uploadedUrls.length === 0) {
-      await supabase.from('media_generations').update({
-        status: 'failed',
-        error_message: 'OpenAI returned images but they could not be stored.',
-        cost_cents: 0,
-      }).eq('id', generationId);
-      res.status(500).json({ error: 'Failed to store OpenAI images' });
+      const failed = await failGeneration(supabase, generationId, 'OpenAI returned images but they could not be stored.');
+      res.status(500).json({ error: 'Failed to store OpenAI images', detail: 'OpenAI returned images but they could not be stored.', generation: failed });
       return;
     }
 
@@ -886,12 +902,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
     if (!result.ok) {
       const err = (result as { ok: false; error: string }).error;
-      await supabase.from('media_generations').update({
-        status: 'failed',
-        error_message: `${err} — you weren't charged.`,
-        cost_cents: 0,
-      }).eq('id', generationId);
-      res.status(502).json({ error: 'Ideogram request failed', detail: err });
+      const message = `${err} — you weren't charged.`;
+      const failed = await failGeneration(supabase, generationId, message);
+      res.status(502).json({ error: 'Ideogram request failed', detail: message, generation: failed });
       return;
     }
 
@@ -902,12 +915,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (ourUrl) mirrored.push({ url: ourUrl, width: img.width ?? null, height: img.height ?? null });
     }
     if (mirrored.length === 0) {
-      await supabase.from('media_generations').update({
-        status: 'failed',
-        error_message: 'Ideogram returned images but they could not be stored.',
-        cost_cents: 0,
-      }).eq('id', generationId);
-      res.status(500).json({ error: 'Failed to store Ideogram images' });
+      const failed = await failGeneration(supabase, generationId, 'Ideogram returned images but they could not be stored.');
+      res.status(500).json({ error: 'Failed to store Ideogram images', detail: 'Ideogram returned images but they could not be stored.', generation: failed });
       return;
     }
 
@@ -978,23 +987,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const friendly = falRes.status === 404
         ? `This model is unavailable at "${effectiveEndpoint}" (Fal returned 404). You weren't charged.`
         : `${formatFalError(falJson.detail, falRes.status)} — you weren't charged.`;
-      await supabase.from('media_generations').update({
-        status: 'failed',
-        error_message: friendly,
-        cost_cents: 0,
-      }).eq('id', generationId);
-      res.status(502).json({ error: 'Fal request failed', detail: friendly, status: falRes.status });
+      const failed = await failGeneration(supabase, generationId, friendly);
+      res.status(502).json({ error: 'Fal request failed', detail: friendly, status: falRes.status, generation: failed });
       return;
     }
 
     const outputs = extractSyncOutputs(falJson);
     if (outputs.length === 0) {
-      await supabase.from('media_generations').update({
-        status: 'failed',
-        error_message: 'Fal response did not include an output URL',
-        cost_cents: 0,
-      }).eq('id', generationId);
-      res.status(502).json({ error: 'No output URL in Fal response' });
+      const failed = await failGeneration(supabase, generationId, 'Fal response did not include an output URL');
+      res.status(502).json({ error: 'No output URL in Fal response', detail: 'Fal response did not include an output URL', generation: failed });
       return;
     }
 
@@ -1067,12 +1068,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const friendly = queueRes.status === 404
       ? `This model is unavailable at "${effectiveEndpoint}" (Fal returned 404). You weren't charged.`
       : `${formatFalError(queueJson.detail, queueRes.status)} — you weren't charged.`;
-    await supabase.from('media_generations').update({
-      status: 'failed',
-      error_message: friendly,
-      cost_cents: 0,
-    }).eq('id', generationId);
-    res.status(502).json({ error: 'Fal queue submission failed', detail: friendly });
+    const failed = await failGeneration(supabase, generationId, friendly);
+    res.status(502).json({ error: 'Fal queue submission failed', detail: friendly, generation: failed });
     return;
   }
 
