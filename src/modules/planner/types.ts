@@ -10,6 +10,10 @@ export interface PlannerNote {
   pinned: boolean;
   archived: boolean;
   sort_order: number;
+  // Optional link to a Catalog book. When set, the time tracked on this list's
+  // to-dos rolls up into that book's "hours worked" in the Catalog. null = not
+  // tied to a book. ON DELETE SET NULL frees it if the book is deleted.
+  book_id: string | null;
   created_at: string;
   updated_at: string;
 }

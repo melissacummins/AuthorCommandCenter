@@ -2,13 +2,20 @@ import { useEffect, useMemo, useState } from 'react';
 import { Library, Plus, BookOpen, ArrowLeft, Search } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePenNames } from '../../contexts/PenNameContext';
-import { createBook, deleteBook, listBooks, removeBookCover, updateBook, uploadBookCover } from './api';
+import { createBook, deleteBook, listBooks, logWordCount, removeBookCover, updateBook, uploadBookCover } from './api';
 import type { Book, BookInsert } from './types';
 import { STATUS_COLORS, STATUS_LABELS, languageLabel } from './types';
 import BookForm from './components/BookForm';
 import CatalogOverview from './components/CatalogOverview';
 import PenNameChip from '../../components/PenNameChip';
 import { fetchSelectedKeywordCountsByBook } from '../kdp-optimizer/api';
+
+// Local (not UTC) YYYY-MM-DD for "today", so the word-count snapshot lands on
+// the day matching the user's clock.
+function todayISO(): string {
+  const d = new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
 
 type Tab = 'overview' | 'books';
 type View =
@@ -87,6 +94,9 @@ export default function CatalogModule() {
         const url = await uploadBookCover(user.id, created.id, coverFile);
         final = await updateBook(created.id, { cover_url: url });
       }
+      if (input.word_count != null) {
+        await logWordCount(user.id, final.id, todayISO(), input.word_count).catch(() => undefined);
+      }
       setBooks(prev => [final, ...prev]);
       setView({ mode: 'list', tab: 'books' });
     } catch (err) {
@@ -109,6 +119,9 @@ export default function CatalogModule() {
         patch.cover_url = null;
       }
       const updated = await updateBook(id, patch);
+      if (input.word_count != null) {
+        await logWordCount(user.id, id, todayISO(), input.word_count).catch(() => undefined);
+      }
       setBooks(prev => prev.map(b => (b.id === id ? updated : b)));
       setView({ mode: 'list', tab: 'books' });
     } catch (err) {

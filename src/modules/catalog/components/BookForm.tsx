@@ -7,10 +7,10 @@ import { penNameClasses } from '../../../components/PenNameChip';
 import { fetchKdpDataForCatalogBook } from '../../kdp-optimizer/api';
 import type { KdpBook, Keyword } from '../../kdp-optimizer/types';
 import { getMetadataWords, optimizeKeywords } from '../../kdp-optimizer/utils';
-import type { Book, BookInsert, BookStatus, ReviewExcerpt } from '../types';
+import type { Book, BookInsert, BookStatus, BookWordLog, ReviewExcerpt } from '../types';
 import { STATUS_LABELS, TRANSLATION_LANGUAGES, languageLabel, detectTranslationSuffix } from '../types';
-import { listBooks } from '../api';
-import { Languages, Link2 } from 'lucide-react';
+import { listBooks, listWordLogs, bookTrackedMinutes } from '../api';
+import { Languages, Link2, Clock } from 'lucide-react';
 
 interface BookFormProps {
   initial?: Book | null;
@@ -76,6 +76,21 @@ function linesToArray(value: string): string[] {
     .filter(Boolean);
 }
 
+// "3h 30m" / "45m" / "2h" from minutes; "0m" when empty.
+function formatHm(mins: number): string {
+  if (!mins || mins <= 0) return '0m';
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h && m) return `${h}h ${m}m`;
+  if (h) return `${h}h`;
+  return `${m}m`;
+}
+
+// Short "Jun 8" label for a YYYY-MM-DD log day.
+function logDayLabel(day: string): string {
+  return new Date(day + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
 const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
 const inputCls =
   'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-white';
@@ -112,6 +127,23 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       .catch(() => { /* surfacing the link is best-effort */ });
     return () => { cancelled = true; };
   }, [user, initial?.id]);
+
+  // Progress history for this book: dated word-count snapshots (charted in
+  // Production & progress) and the hours tracked against it via linked planner
+  // lists. Best-effort, loaded once when editing an existing book.
+  const [wordLogs, setWordLogs] = useState<BookWordLog[]>([]);
+  const [trackedMinutes, setTrackedMinutes] = useState(0);
+  useEffect(() => {
+    if (!initial?.id) return;
+    let cancelled = false;
+    listWordLogs(initial.id)
+      .then(rows => { if (!cancelled) setWordLogs(rows); })
+      .catch(() => { /* best-effort — the form still works without history */ });
+    bookTrackedMinutes(initial.id)
+      .then(mins => { if (!cancelled) setTrackedMinutes(mins); })
+      .catch(() => { /* best-effort */ });
+    return () => { cancelled = true; };
+  }, [initial?.id]);
 
   // Catalog books — used to populate the 'Translation of' picker and
   // to auto-suggest a parent based on the current book's title suffix.
@@ -517,6 +549,59 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
             <input className={inputCls} value={draft.current_chapter ?? ''} onChange={e => setText('current_chapter', e.target.value)} />
           </div>
         </div>
+
+        {/* Hours worked — rolled up from any planner lists linked to this book. */}
+        {trackedMinutes > 0 && (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <Clock className="w-4 h-4 text-teal-500 shrink-0" />
+            <span className="font-semibold">{formatHm(trackedMinutes)}</span>
+            <span className="text-slate-400 text-xs">worked — tracked via linked planner lists</span>
+          </div>
+        )}
+
+        {/* Word-count history — a snapshot is auto-recorded each time you save. */}
+        {wordLogs.length > 0 && (() => {
+          const max = Math.max(...wordLogs.map(l => l.word_count), 1);
+          const first = wordLogs[0];
+          const last = wordLogs[wordLogs.length - 1];
+          const gained = last.word_count - first.word_count;
+          return (
+            <div>
+              <div className="flex items-baseline justify-between mb-2">
+                <span className="text-xs font-medium text-slate-600">Word-count history</span>
+                <span className="text-xs text-slate-400">
+                  {wordLogs.length} {wordLogs.length === 1 ? 'entry' : 'entries'}
+                  {wordLogs.length > 1 && gained !== 0 && (
+                    <span className={gained > 0 ? 'text-emerald-600 ml-1' : 'text-rose-600 ml-1'}>
+                      ({gained > 0 ? '+' : ''}{gained.toLocaleString()})
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-end gap-1 h-16">
+                {wordLogs.map(l => (
+                  <div
+                    key={l.id}
+                    className="flex-1 flex flex-col justify-end"
+                    title={`${logDayLabel(l.day)} · ${l.word_count.toLocaleString()} words`}
+                  >
+                    <div
+                      className="w-full rounded-t bg-indigo-400 hover:bg-indigo-500 transition-colors"
+                      style={{ height: `${Math.max(4, (l.word_count / max) * 100)}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+                <span>{logDayLabel(first.day)}</span>
+                {wordLogs.length > 1 && <span>{logDayLabel(last.day)}</span>}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-2">
+                A snapshot is recorded automatically each time you save this book.
+              </p>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Identifiers */}

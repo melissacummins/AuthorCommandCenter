@@ -32,7 +32,7 @@ export async function createNote(userId: string, title = ''): Promise<PlannerNot
 
 export async function updateNote(
   id: string,
-  patch: Partial<Pick<PlannerNote, 'title' | 'body' | 'pinned' | 'archived' | 'sort_order'>>,
+  patch: Partial<Pick<PlannerNote, 'title' | 'body' | 'pinned' | 'archived' | 'sort_order' | 'book_id'>>,
 ): Promise<PlannerNote> {
   const { data, error } = await supabase
     .from('planner_notes')
