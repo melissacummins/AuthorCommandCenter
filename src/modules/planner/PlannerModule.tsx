@@ -607,6 +607,8 @@ export default function PlannerModule() {
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
             jumpTo={dayJump}
+            notesById={notesById}
+            lists={notes.filter(n => !n.archived)}
           />
         ) : selection.kind === 'plan' ? (
           <PlanView
