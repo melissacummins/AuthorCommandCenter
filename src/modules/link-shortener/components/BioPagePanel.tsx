@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
-  type DragEndEvent,
+  type DragEndEvent, type DraggableAttributes,
 } from '@dnd-kit/core';
 import {
   arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
@@ -642,7 +642,7 @@ function useSortableStyle(id: string) {
   return { ...sortable, style };
 }
 
-function DragHandle({ attributes, listeners }: { attributes: Record<string, unknown>; listeners: Record<string, unknown> | undefined }) {
+function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes; listeners: Record<string, unknown> | undefined }) {
   return (
     <button
       {...(attributes as React.HTMLAttributes<HTMLButtonElement>)}

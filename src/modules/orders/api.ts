@@ -216,7 +216,7 @@ export interface FetchOrdersParams {
 }
 
 export async function fetchShopifyOrders(params?: FetchOrdersParams) {
-  const data = await callShopifyProxy('get_orders', params);
+  const data = await callShopifyProxy('get_orders', params as Record<string, unknown> | undefined);
   return {
     orders: data.orders || [],
     nextPageInfo: data.nextPageInfo || null,
