@@ -16,9 +16,11 @@ import {
   NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
   CalendarClock, Layers, Moon, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon,
+  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
+import { AiSuggestPanel } from './AiSuggestPanel';
+import { suggestOrbitPicks, type AiResult } from './aiAssist';
 import StatsView from './StatsView';
 import LogbookView from './LogbookView';
 import SettingsView from './SettingsView';
@@ -631,6 +633,7 @@ export default function PlannerModule() {
             inbox={selection.kind === 'inbox'}
             orbit={selection.kind === 'orbit'}
             orbitEnabled={orbitEnabled}
+            settings={settings ?? null}
             tasks={tasks}
             today={today}
             notesById={notesById}
@@ -700,12 +703,13 @@ export default function PlannerModule() {
 // ---------------------------------------------------------------------------
 
 function ViewPane({
-  bucket, inbox = false, orbit = false, orbitEnabled = false, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
+  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
 }: {
   bucket?: Bucket;
   inbox?: boolean;
   orbit?: boolean;
   orbitEnabled?: boolean;
+  settings?: PlannerSettings | null;
   tasks: PlannerTask[];
   today: string;
   notesById: Record<string, PlannerNote>;
@@ -789,17 +793,72 @@ function ViewPane({
 
   const totalMinutes = sumEstimate(items);
 
+  // ---- Smart Orbit picks (Orbit view only) ------------------------------
+  // Ask Claude which open to-dos are most worth pulling into Orbit; applying a
+  // pick flips its in_orbit flag. Local state, like the My Day assists.
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<AiResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const aiSettings = settings ?? {
+    user_id: '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false,
+    auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3,
+    orbit_enabled: true, created_at: '', updated_at: '',
+  };
+  const tasksById = useMemo(() => {
+    const m: Record<string, PlannerTask> = {};
+    for (const t of tasks) m[t.id] = t;
+    return m;
+  }, [tasks]);
+
+  async function runOrbitAi() {
+    setAiOpen(true);
+    setAiResult(null);
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      setAiResult(await suggestOrbitPicks(tasks, aiSettings, today, notesById));
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Something went wrong — try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Icon className={`w-6 h-6 ${meta.color}`} />
         <h2 className="text-2xl font-bold text-slate-800">{meta.label}</h2>
+        {orbit && orbitEnabled && (
+          <button
+            onClick={runOrbitAi}
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1.5"
+            title="Let Claude suggest which to-dos to pull into Orbit"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Suggest picks
+          </button>
+        )}
         {(orbit || inbox || bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
           <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-slate-500">
             <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
           </span>
         )}
       </div>
+      {orbit && orbitEnabled && (
+        <AiSuggestPanel
+          open={aiOpen}
+          title="Suggest Orbit picks"
+          intro="The 3–7 to-dos most worth pulling into Orbit right now."
+          loading={aiLoading}
+          error={aiError}
+          result={aiResult}
+          tasksById={tasksById}
+          showDates={false}
+          onApply={picks => { for (const p of picks) onPatch(p.id, { in_orbit: true }); }}
+          onClose={() => setAiOpen(false)}
+        />
+      )}
       {orbit && (
         <p className="text-sm text-slate-400 -mt-4 mb-5">What's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus.</p>
       )}

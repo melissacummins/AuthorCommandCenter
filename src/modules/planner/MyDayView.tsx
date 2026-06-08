@@ -6,17 +6,19 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
-  CalendarClock, FileText, CornerDownLeft,
+  CalendarClock, FileText, CornerDownLeft, Sparkles,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import { MiniMenu } from './MiniMenu';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
+import { AiSuggestPanel } from './AiSuggestPanel';
+import { suggestDayPlan, suggestPhaseTriage, type AiResult } from './aiAssist';
 import {
   addDaysISO, blockMinutes, formatClock, formatMinutes, localDay,
   minutesToTime, timeToMinutes, ESTIMATE_PRESETS, phaseInfo, daysBetweenISO,
-  type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo, type PlannerTimeSession,
+  type PlannerNote, type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo, type PlannerTimeSession,
 } from './types';
 
 export interface MyDayHandlers {
@@ -34,7 +36,7 @@ export interface MyDayHandlers {
 }
 
 export default function MyDayView({
-  tasks, blocks, sessions, dayNotes, settings, today, cal, handlers, jumpTo,
+  tasks, blocks, sessions, dayNotes, settings, today, cal, handlers, jumpTo, notesById = {},
 }: {
   tasks: PlannerTask[];
   blocks: PlannerTimeBlock[];
@@ -46,6 +48,7 @@ export default function MyDayView({
   handlers: MyDayHandlers;
   // A nudge from elsewhere (the Plan view) to open a specific day.
   jumpTo?: { iso: string; n: number };
+  notesById?: Record<string, PlannerNote>;
 }) {
   const { gc, calVersion } = cal;
   const carryOver = !!settings.carry_over_capacity;
@@ -206,14 +209,78 @@ export default function MyDayView({
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const sel = new Date(selected + 'T00:00:00');
 
+  // ---- AI planning assists (Suggest my day · Triage) --------------------
+  // Which assist is open, plus its async state. The shared panel renders the
+  // result; applying a pick schedules the to-do via onPatchTask.
+  const [aiFeature, setAiFeature] = useState<'day' | 'triage' | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<AiResult | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const tasksById = useMemo(() => {
+    const m: Record<string, PlannerTask> = {};
+    for (const t of tasks) m[t.id] = t;
+    return m;
+  }, [tasks]);
+
+  async function runAi(feature: 'day' | 'triage') {
+    setAiFeature(feature);
+    setAiResult(null);
+    setAiError(null);
+    setAiLoading(true);
+    try {
+      const fn = feature === 'day' ? suggestDayPlan : suggestPhaseTriage;
+      setAiResult(await fn(tasks, settings, today, notesById));
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'Something went wrong — try again.');
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function applyAiPicks(picks: { id: string; date: string | null }[]) {
+    for (const p of picks) handlers.onPatchTask(p.id, { due_date: p.date, someday: false, block_id: null });
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       {/* Title + Google connection */}
       <div className="flex items-center gap-3 mb-5">
         <Sun className="w-6 h-6 text-amber-500" />
         <h2 className="text-2xl font-bold text-slate-800">My Day</h2>
-        <div className="ml-auto"><ConnectControls gc={gc} /></div>
+        {/* AI planning assists — let Claude shape today or spread the load. */}
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => runAi('day')}
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1.5"
+            title="Let Claude suggest a realistic set of to-dos for today"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Suggest my day
+          </button>
+          <button
+            onClick={() => runAi('triage')}
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1.5"
+            title="Let Claude spread your open to-dos gently across the next few days"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Triage
+          </button>
+          <ConnectControls gc={gc} />
+        </div>
       </div>
+
+      <AiSuggestPanel
+        open={aiFeature !== null}
+        title={aiFeature === 'triage' ? 'Triage the next few days' : 'Suggest my day'}
+        intro={aiFeature === 'triage'
+          ? 'Spread your open to-dos gently across the next 5 days.'
+          : 'A realistic set of to-dos to tackle today.'}
+        loading={aiLoading}
+        error={aiError}
+        result={aiResult}
+        tasksById={tasksById}
+        showDates
+        onApply={applyAiPicks}
+        onClose={() => setAiFeature(null)}
+      />
 
       {gc.error && (
         <div className="mb-4 flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">
