@@ -28,6 +28,7 @@ export interface Product {
   shipping_supplies_cost: number;
   pa_costs: number;
   qa_cost: number;
+  defect_rate: number;
   handling_fee_add_on: number;
   tt_shop_price: number;
   free_shipping: number;

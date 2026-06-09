@@ -22,6 +22,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
     shipping_supplies_cost: duplicateFrom?.shipping_supplies_cost ?? 0,
     pa_costs: duplicateFrom?.pa_costs ?? 0,
     qa_cost: duplicateFrom?.qa_cost ?? 0,
+    defect_rate: duplicateFrom?.defect_rate ?? 0,
     handling_fee_add_on: duplicateFrom?.handling_fee_add_on ?? 0,
     tt_shop_price: duplicateFrom?.tt_shop_price ?? 0,
     free_shipping: duplicateFrom?.free_shipping ?? 0,
@@ -119,6 +120,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
           <NumberField label="Shipping Supplies" value={form.shipping_supplies_cost} onChange={v => updateField('shipping_supplies_cost', v)} />
           <NumberField label="PA Costs" value={form.pa_costs} onChange={v => updateField('pa_costs', v)} />
           <NumberField label="QA Cost (per unit)" value={form.qa_cost} onChange={v => updateField('qa_cost', v)} />
+          <NumberField label="Defect Rate (%)" value={form.defect_rate} onChange={v => updateField('defect_rate', v)} />
           <NumberField label="Handling Fee Add-On" value={form.handling_fee_add_on} onChange={v => updateField('handling_fee_add_on', v)} />
           <NumberField label="Free Shipping" value={form.free_shipping} onChange={v => updateField('free_shipping', v)} />
         </div>

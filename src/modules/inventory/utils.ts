@@ -28,6 +28,17 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
   // Net Margin %: netMargin / basePrice
   const netMarginPercent = product.base_price > 0 ? (netMargin / product.base_price) * 100 : 0;
 
+  // Reprint-adjusted "true cost per good book":
+  // Printer reprints damaged books for free, but the PA still has to QA every
+  // reprint. So QA cost effectively scales by (1 + defect_rate / 100).
+  // Print/shipping/PA labor on the original order don't change — she paid
+  // for N books, ends up with N good + a few scratch-and-dent.
+  const defectFactor = Math.max(0, product.defect_rate || 0) / 100;
+  const reprintQaCost = product.qa_cost * defectFactor;
+  const trueCostPerGoodBook = totalCostPerUnit + reprintQaCost;
+  const trueNetMargin = revenuePerUnit - trueCostPerGoodBook;
+  const trueNetMarginPercent = product.base_price > 0 ? (trueNetMargin / product.base_price) * 100 : 0;
+
   // TikTok Fees: (ttShopPrice * 0.08) + 0.30
   const ttFees = product.tt_shop_price > 0
     ? (product.tt_shop_price * FEE_RATES.TIKTOK_FEE_PERCENT) + FEE_RATES.TIKTOK_FEE_FIXED
@@ -114,6 +125,10 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     revenuePerUnit,
     netMargin,
     netMarginPercent,
+    reprintQaCost,
+    trueCostPerGoodBook,
+    trueNetMargin,
+    trueNetMarginPercent,
     ttFees,
     ttTotalCostPerUnit,
     ttNetMargin,
