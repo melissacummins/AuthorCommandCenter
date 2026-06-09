@@ -26,7 +26,8 @@ const SYSTEM =
   'You are a warm, pragmatic planning assistant for an indie author. Be realistic and gentle — never overload a day. '
   + 'Respond with ONLY a JSON object, no prose, no markdown fences, matching: '
   + '{"summary": string, "suggestions": [{"id": string, "reason": string, "date": string|null}]}. '
-  + 'Use only ids from the provided list. `date` is YYYY-MM-DD or null.';
+  + 'Use only ids from the provided list. `date` is YYYY-MM-DD or null. '
+  + 'Keep each reason to a short phrase (8 words max) and the summary to one sentence, so the JSON stays compact.';
 
 // One candidate task per line, compact and id-prefixed so Claude can refer back
 // to it: `- [id] "title" · est 30m · List name · due 2026-06-09 · flagged`.
@@ -48,44 +49,67 @@ function contextHeader(settings: PlannerSettings, today: string): string {
   return lines.join('\n');
 }
 
-// Strip fences, slice to the JSON object, parse, validate, and drop any
-// suggestion whose id isn't a real candidate. Throws a friendly error on junk.
-function parseResult(raw: string, candidateIds: Set<string>): AiResult {
-  const stripped = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
-  const first = stripped.indexOf('{');
-  const last = stripped.lastIndexOf('}');
-  if (first === -1 || last === -1 || last < first) {
-    throw new Error('The AI returned an unexpected response — try again.');
-  }
-  let data: unknown;
-  try {
-    data = JSON.parse(stripped.slice(first, last + 1));
-  } catch {
-    throw new Error('The AI returned an unexpected response — try again.');
-  }
-  if (!data || typeof data !== 'object') {
-    throw new Error('The AI returned an unexpected response — try again.');
-  }
-  const obj = data as { summary?: unknown; suggestions?: unknown };
-  const summary = typeof obj.summary === 'string' ? obj.summary : '';
-  const rawSuggestions = Array.isArray(obj.suggestions) ? obj.suggestions : [];
-  const suggestions: AiSuggestion[] = [];
-  for (const s of rawSuggestions) {
+// Pull valid suggestions out of a parsed array, dropping any whose id isn't a
+// real candidate (guards against a hallucinated id acting on the wrong task).
+function coerceSuggestions(arr: unknown, candidateIds: Set<string>): AiSuggestion[] {
+  const out: AiSuggestion[] = [];
+  if (!Array.isArray(arr)) return out;
+  for (const s of arr) {
     if (!s || typeof s !== 'object') continue;
     const cand = s as { id?: unknown; reason?: unknown; date?: unknown };
     if (typeof cand.id !== 'string' || !candidateIds.has(cand.id)) continue;
-    suggestions.push({
+    out.push({
       id: cand.id,
       reason: typeof cand.reason === 'string' ? cand.reason : '',
       date: typeof cand.date === 'string' ? cand.date : null,
     });
   }
+  return out;
+}
+
+// Parse Claude's reply into AiResult. Tries the whole JSON object first; if that
+// fails — most often because a long list hit the output-token cap and the JSON
+// is truncated mid-array — it salvages whatever complete suggestion objects it
+// can rather than discarding the whole reply. Only throws if nothing is usable.
+function parseResult(raw: string, candidateIds: Set<string>): AiResult {
+  const stripped = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const first = stripped.indexOf('{');
+  const last = stripped.lastIndexOf('}');
+
+  // Happy path: a complete JSON object.
+  if (first !== -1 && last > first) {
+    try {
+      const data = JSON.parse(stripped.slice(first, last + 1)) as { summary?: unknown; suggestions?: unknown };
+      if (data && typeof data === 'object') {
+        return {
+          summary: typeof data.summary === 'string' ? data.summary : '',
+          suggestions: coerceSuggestions(data.suggestions, candidateIds),
+        };
+      }
+    } catch {
+      // fall through to salvage
+    }
+  }
+
+  // Salvage path: grab the summary and every complete {…} suggestion object that
+  // survived truncation. Our suggestion objects are flat (no nested braces).
+  const summaryMatch = stripped.match(/"summary"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+  const summary = summaryMatch ? summaryMatch[1] : '';
+  const salvaged: unknown[] = [];
+  for (const chunk of stripped.match(/\{[^{}]*\}/g) ?? []) {
+    try { salvaged.push(JSON.parse(chunk)); } catch { /* skip an incomplete object */ }
+  }
+  const suggestions = coerceSuggestions(salvaged, candidateIds);
+  if (suggestions.length === 0) {
+    throw new Error('The AI returned an unexpected response — try again.');
+  }
   return { summary, suggestions };
 }
 
-// Run a prompt and parse it against the candidate set in one place.
+// Run a prompt and parse it against the candidate set in one place. Requests
+// generous headroom so longer lists (esp. Catch up) don't get truncated.
 async function ask(prompt: string, candidates: PlannerTask[]): Promise<AiResult> {
-  const text = await plannerComplete({ prompt, system: SYSTEM });
+  const text = await plannerComplete({ prompt, system: SYSTEM, maxTokens: 4096 });
   return parseResult(text, new Set(candidates.map(t => t.id)));
 }
 
