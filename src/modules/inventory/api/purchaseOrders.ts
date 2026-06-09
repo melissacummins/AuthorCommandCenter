@@ -181,6 +181,32 @@ export async function getPendingByProduct(): Promise<Map<string, number>> {
 }
 
 // Get recent PO notes for a specific product (for showing in product detail)
+export interface DefectStats {
+  totalReceived: number;
+  totalDamaged: number;
+  defectRate: number;
+  orderCount: number;
+}
+
+export async function getDefectStatsForProduct(productId: string): Promise<DefectStats> {
+  const { data, error } = await supabase
+    .from('purchase_orders')
+    .select('actual_quantity, scratch_dent_quantity')
+    .eq('product_id', productId)
+    .eq('status', 'arrived')
+    .not('actual_quantity', 'is', null);
+  if (error) throw error;
+  const rows = data || [];
+  let totalReceived = 0;
+  let totalDamaged = 0;
+  for (const r of rows) {
+    totalReceived += r.actual_quantity || 0;
+    totalDamaged += r.scratch_dent_quantity || 0;
+  }
+  const defectRate = totalReceived > 0 ? (totalDamaged / totalReceived) * 100 : 0;
+  return { totalReceived, totalDamaged, defectRate, orderCount: rows.length };
+}
+
 export async function getNotesForProduct(productId: string): Promise<PurchaseOrder[]> {
   const { data, error } = await supabase
     .from('purchase_orders')

@@ -3,7 +3,8 @@ import { Search, ChevronDown, ChevronUp, ChevronRight, Edit2, Check, X, Plus, Tr
 import type { Product, PurchaseOrder } from '../../../lib/types';
 import { calculateProductMetrics, formatCurrency, formatPercent, marginColor, CATEGORIES, STATUSES } from '../utils';
 import { updateProduct, deleteProduct } from '../api';
-import { getNotesForProduct } from '../api/purchaseOrders';
+import { getNotesForProduct, getDefectStatsForProduct } from '../api/purchaseOrders';
+import type { DefectStats } from '../api/purchaseOrders';
 
 interface ProductTableProps {
   products: Product[];
@@ -15,6 +16,7 @@ interface ProductTableProps {
 
 const BULK_FIELDS: Array<{ value: string; label: string }> = [
   { value: 'qa_cost', label: 'QA Cost' },
+  { value: 'defect_rate', label: 'Defect Rate (%)' },
   { value: 'pa_costs', label: 'PA Costs' },
   { value: 'production_cost', label: 'Production Cost' },
   { value: 'shipping_cost', label: 'Shipping Cost' },
@@ -82,7 +84,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
   async function saveEdit(id: string, field: string) {
     try {
       const numericFields = ['base_price', 'production_cost', 'shipping_cost', 'shipping_supplies_cost',
-        'pa_costs', 'qa_cost', 'handling_fee_add_on', 'tt_shop_price', 'free_shipping', 'lead_time',
+        'pa_costs', 'qa_cost', 'defect_rate', 'handling_fee_add_on', 'tt_shop_price', 'free_shipping', 'lead_time',
         'book_stock', 'books_purchased', 'bundles_purchased', 'purchased_via_bundles',
         'six_month_book_sales', 'six_month_bundle_sales', 'csv_avg_daily', 'csv_reorder_threshold'];
       const value = numericFields.includes(field) ? Number(editValue) : editValue;
@@ -642,6 +644,46 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                                     {formatCurrency(product.metrics.netMargin)} ({product.metrics.netMarginPercent.toFixed(1)}%)
                                   </span>
                                 </div>
+
+                                {/* Reprint adjustment — true cost when printer reprints damaged books for free
+                                    but PA still QAs every reprint */}
+                                <div className="flex justify-between items-baseline pt-3 mt-1 border-t border-slate-200">
+                                  <span
+                                    className="text-slate-600"
+                                    title="% of books per order that arrive damaged and trigger a free reprint. PA still has to QA every reprint book."
+                                  >
+                                    Defect / Reprint Rate
+                                  </span>
+                                  <span className="inline-flex items-center">
+                                    <EditableCell id={product.id} field="defect_rate" value={product.defect_rate || 0} suffix="%" />
+                                  </span>
+                                </div>
+                                {(product.defect_rate || 0) > 0 && (
+                                  <>
+                                    <div className="flex justify-between items-baseline">
+                                      <span className="text-slate-600" title="QA cost × defect rate — the QA you pay on free reprints">
+                                        Extra QA on reprints
+                                      </span>
+                                      <span className="font-medium text-slate-800">{formatCurrency(product.metrics.reprintQaCost)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-baseline pt-1.5 border-t border-slate-100">
+                                      <span
+                                        className="text-slate-700 font-medium"
+                                        title="Total cost per unit + extra QA on reprints. This is the true cost to compare against quoted printer prices."
+                                      >
+                                        True Cost / Good Book
+                                      </span>
+                                      <span className="font-semibold text-slate-900">{formatCurrency(product.metrics.trueCostPerGoodBook)}</span>
+                                    </div>
+                                    <div className="flex justify-between items-baseline">
+                                      <span className="text-slate-700 font-medium">True Net Margin</span>
+                                      <span className={`font-semibold ${marginColor(product.metrics.trueNetMarginPercent)}`}>
+                                        {formatCurrency(product.metrics.trueNetMargin)} ({product.metrics.trueNetMarginPercent.toFixed(1)}%)
+                                      </span>
+                                    </div>
+                                  </>
+                                )}
+                                <DefectStatsHint productId={product.id} />
                               </div>
                             </div>
                           </div>
@@ -844,5 +886,24 @@ function POProductNotes({ productId }: { productId: string }) {
         ))}
       </div>
     </div>
+  );
+}
+
+function DefectStatsHint({ productId }: { productId: string }) {
+  const [stats, setStats] = useState<DefectStats | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getDefectStatsForProduct(productId)
+      .then(s => { if (!cancelled) setStats(s); })
+      .catch(() => { /* silent — hint only */ });
+    return () => { cancelled = true; };
+  }, [productId]);
+
+  if (!stats || stats.orderCount === 0 || stats.totalReceived === 0) return null;
+  return (
+    <p className="text-[11px] text-slate-400 pt-1.5 italic">
+      Your POs: {stats.totalDamaged} of {stats.totalReceived} books damaged across {stats.orderCount} order{stats.orderCount === 1 ? '' : 's'} ({stats.defectRate.toFixed(1)}%)
+    </p>
   );
 }

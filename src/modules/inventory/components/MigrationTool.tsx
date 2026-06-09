@@ -26,6 +26,7 @@ function mapProduct(d: any) {
     shipping_supplies_cost: d.shippingSuppliesCost ?? d.shipping_supplies_cost ?? 0,
     pa_costs: d.paCosts ?? d.pa_costs ?? 0,
     qa_cost: d.qaCost ?? d.qa_cost ?? 0,
+    defect_rate: d.defectRate ?? d.defect_rate ?? 0,
     handling_fee_add_on: d.handlingFeeAddOn ?? d.handling_fee_add_on ?? 0,
     tt_shop_price: d.ttShopPrice ?? d.tt_shop_price ?? 0,
     free_shipping: d.freeShipping ?? d.free_shipping ?? 0,
