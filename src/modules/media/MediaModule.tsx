@@ -6,7 +6,60 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage1CostCents, ideogramCostCents, type GptImage1Quality, type IdeogramRenderingSpeed } from './lib/models';
+import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage1CostCents, ideogramCostCents, type GptImage1Quality, type IdeogramRenderingSpeed, type SizeHandling } from './lib/models';
+
+// Pick the closest supported aspect-ratio string (e.g. "3:4") for a
+// model whose size field carries that list. Mirrors the server-side
+// closestAspectRatio() so the UI hint matches what the request will
+// actually send.
+function closestAspectRatio(width: number, height: number, supported: string[]): string {
+  if (!width || !height) return 'auto';
+  const target = width / height;
+  let best = supported[0] ?? 'auto';
+  let bestDiff = Infinity;
+  for (const ratio of supported) {
+    const [w, h] = ratio.split(':').map((n) => parseInt(n, 10));
+    if (!w || !h) continue;
+    const diff = Math.abs(Math.log(target) - Math.log(w / h));
+    if (diff < bestDiff) { bestDiff = diff; best = ratio; }
+  }
+  return best;
+}
+
+function snap16(n: number): number {
+  return Math.max(16, Math.round(n / 16) * 16);
+}
+
+// Returns a one-line "what we'll actually send" string for the current
+// (model, dimensions) combo. Returns null when the size you picked
+// goes through unchanged.
+function describeEffectiveSize(
+  size: SizeHandling | undefined,
+  width: number,
+  height: number,
+  hasReference: boolean,
+): string | null {
+  if (!size) return null;
+  switch (size.type) {
+    case 'pixels':
+      return null;
+    case 'pixelsStringSnap16': {
+      const w = snap16(width), h = snap16(height);
+      if (w === width && h === height) return null;
+      return `Sent as ${w}×${h} (snapped to multiple of 16)`;
+    }
+    case 'aspectRatio': {
+      const ar = closestAspectRatio(width, height, size.ratios);
+      return `Sent as aspect ratio ${ar} — model picks its own resolution`;
+    }
+    case 'preserveInput':
+      return hasReference
+        ? 'Output keeps the reference image\'s aspect ratio — your size selection is ignored'
+        : 'Output dimensions match the input image';
+    case 'fixed':
+      return 'Model uses its own default size — your size selection is ignored';
+  }
+}
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
   requestGeneration, pollGenerationStatus, uploadInputImage,
@@ -95,6 +148,7 @@ export default function MediaModule() {
         estimatedCostCents: curated.estimatedCostCents,
         editCostCents: curated.editCostCents ?? curated.estimatedCostCents,
         maxImages: maxImagesForGroup(curated.kind, curated.group),
+        size: curated.size,
         isCustom: false,
       };
     }
@@ -134,6 +188,7 @@ export default function MediaModule() {
       estimatedCostCents: first.estimatedCostCents,
       editCostCents: first.editCostCents ?? first.estimatedCostCents,
       maxImages: maxImagesForGroup(first.kind, first.group),
+      size: first.size,
       isCustom: false,
     };
   }, [modelId, customModels]);
@@ -758,6 +813,17 @@ export default function MediaModule() {
                   <input type="number" min={256} max={4096} value={customHeight} onChange={(e) => setCustomHeight(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="Height" />
                 </div>
               )}
+              {(() => {
+                const w = useCustomSize ? customWidth : sizePreset?.width ?? 0;
+                const h = useCustomSize ? customHeight : sizePreset?.height ?? 0;
+                const note = describeEffectiveSize(model.size, w, h, inputImages.length > 0);
+                return note ? (
+                  <p className="mt-2 flex items-start gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5">
+                    <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-slate-400" />
+                    <span>{note}</span>
+                  </p>
+                ) : null;
+              })()}
             </div>
           )}
 
