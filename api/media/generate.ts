@@ -30,6 +30,15 @@ type VercelResponse = {
   end: () => void;
 };
 
+// How a model accepts size. Mirrors the SizeHandling type on the
+// client side (src/modules/media/lib/models.ts) so they stay in sync.
+type SizeHandling =
+  | { type: 'pixels' }
+  | { type: 'pixelsStringSnap16' }
+  | { type: 'aspectRatio'; ratios: string[] }
+  | { type: 'preserveInput' }
+  | { type: 'fixed' };
+
 interface ModelDef {
   id: string;
   endpoint: string;
@@ -39,8 +48,21 @@ interface ModelDef {
   editEndpoint?: string;
   editCostCents?: number;
   supportsCustomSize: boolean;
+  // Size handling. Defaults to { type: 'pixels' } when unspecified —
+  // standard Fal {width, height} payload. Set explicitly per model in
+  // the MODELS map below to override.
+  size?: SizeHandling;
   estimatedCostCents: number;
 }
+
+const NANO_BANANA_ASPECTS = [
+  '1:1', '4:5', '5:4', '3:4', '4:3', '2:3', '3:2', '9:16', '16:9', '21:9',
+  '1:4', '4:1', '1:8', '8:1',
+];
+const FLUX_KONTEXT_ASPECTS = [
+  '21:9', '16:9', '4:3', '3:2', '1:1', '2:3', '3:4', '9:16', '9:21',
+];
+const IMAGEN_ASPECTS = ['1:1', '9:16', '16:9', '3:4', '4:3'];
 
 // Server-side copy of the curated model catalogue. Kept in sync with
 // src/modules/media/lib/models.ts. When the requested model id is not
@@ -48,18 +70,18 @@ interface ModelDef {
 // any fal-ai/* endpoint they've added themselves.
 const MODELS: Record<string, ModelDef> = {
   // Image generation
-  'nano-banana':          { id: 'nano-banana',          endpoint: 'fal-ai/nano-banana',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/nano-banana/edit',       supportsCustomSize: true,  estimatedCostCents: 4   },
+  'nano-banana':          { id: 'nano-banana',          endpoint: 'fal-ai/nano-banana',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/nano-banana/edit',       supportsCustomSize: true,  estimatedCostCents: 4,   size: { type: 'aspectRatio', ratios: NANO_BANANA_ASPECTS } },
   'flux-pro-v11':         { id: 'flux-pro-v11',         endpoint: 'fal-ai/flux-pro/v1.1',                            kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-schnell':         { id: 'flux-schnell',         endpoint: 'fal-ai/flux/schnell',                             kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 1   },
   'ideogram-v4':          { id: 'ideogram-v4',          endpoint: 'ideogram/v4',                                     kind: 'image', isAsync: false, acceptsInputImage: false,                                                  supportsCustomSize: true,  estimatedCostCents: 6   },
   'ideogram-v3':          { id: 'ideogram-v3',          endpoint: 'fal-ai/ideogram/v3',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/ideogram/v3/edit',       supportsCustomSize: true,  estimatedCostCents: 6   },
-  'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
-  'gpt-image-2':          { id: 'gpt-image-2',          endpoint: 'openai/gpt-image-2',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'openai/gpt-image-2/edit',        editCostCents: 45, supportsCustomSize: true,  estimatedCostCents: 25  },
+  'imagen4':              { id: 'imagen4',              endpoint: 'fal-ai/imagen4/preview',                          kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5,   size: { type: 'aspectRatio', ratios: IMAGEN_ASPECTS } },
+  'gpt-image-2':          { id: 'gpt-image-2',          endpoint: 'openai/gpt-image-2',                              kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'openai/gpt-image-2/edit',        editCostCents: 45, supportsCustomSize: true,  estimatedCostCents: 25,  size: { type: 'pixelsStringSnap16' } },
   'recraft-v3':           { id: 'recraft-v3',           endpoint: 'fal-ai/recraft-v3',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'flux-dev':             { id: 'flux-dev',             endpoint: 'fal-ai/flux/dev',                                 kind: 'image', isAsync: false, acceptsInputImage: false, editEndpoint: 'fal-ai/flux/dev/image-to-image', supportsCustomSize: true,  estimatedCostCents: 3   },
-  'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8   },
+  'flux-pro-ultra':       { id: 'flux-pro-ultra',       endpoint: 'fal-ai/flux-pro/v1.1-ultra',                      kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 8,   size: { type: 'aspectRatio', ratios: FLUX_KONTEXT_ASPECTS } },
   'flux-lora':            { id: 'flux-lora',            endpoint: 'fal-ai/flux-lora',                                kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
-  'imagen3':              { id: 'imagen3',              endpoint: 'fal-ai/imagen3',                                  kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
+  'imagen3':              { id: 'imagen3',              endpoint: 'fal-ai/imagen3',                                  kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4,   size: { type: 'aspectRatio', ratios: IMAGEN_ASPECTS } },
   'ideogram-v2':          { id: 'ideogram-v2',          endpoint: 'fal-ai/ideogram/v2',                              kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 5   },
   'ideogram-v2-turbo':    { id: 'ideogram-v2-turbo',    endpoint: 'fal-ai/ideogram/v2-turbo',                        kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3   },
   'sd35-large':           { id: 'sd35-large',           endpoint: 'fal-ai/stable-diffusion-v35-large',               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 4   },
@@ -71,14 +93,14 @@ const MODELS: Record<string, ModelDef> = {
   'qwen-image':           { id: 'qwen-image',           endpoint: 'fal-ai/qwen-image',                               kind: 'image', isAsync: false, acceptsInputImage: false, supportsCustomSize: true,  estimatedCostCents: 3   },
 
   // Image editing
-  'nano-banana-edit':     { id: 'nano-banana-edit',     endpoint: 'fal-ai/nano-banana/edit',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 4   },
-  'flux-kontext':         { id: 'flux-kontext',         endpoint: 'fal-ai/flux-pro/kontext',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 6   },
+  'nano-banana-edit':     { id: 'nano-banana-edit',     endpoint: 'fal-ai/nano-banana/edit',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 4,   size: { type: 'aspectRatio', ratios: NANO_BANANA_ASPECTS } },
+  'flux-kontext':         { id: 'flux-kontext',         endpoint: 'fal-ai/flux-pro/kontext',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 6,   size: { type: 'aspectRatio', ratios: FLUX_KONTEXT_ASPECTS } },
   'ideogram-v3-edit':     { id: 'ideogram-v3-edit',     endpoint: 'fal-ai/ideogram/v3/edit',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 6   },
   'flux-i2i':             { id: 'flux-i2i',             endpoint: 'fal-ai/flux/dev/image-to-image',                  kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: true,  estimatedCostCents: 3   },
-  'bria-eraser':          { id: 'bria-eraser',          endpoint: 'fal-ai/bria/eraser',                              kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 4   },
-  'birefnet-bg-remove':   { id: 'birefnet-bg-remove',   endpoint: 'fal-ai/birefnet',                                 kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 1   },
-  'clarity-upscaler':     { id: 'clarity-upscaler',     endpoint: 'fal-ai/clarity-upscaler',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 3   },
-  'aura-sr':              { id: 'aura-sr',              endpoint: 'fal-ai/aura-sr',                                  kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 2   },
+  'bria-eraser':          { id: 'bria-eraser',          endpoint: 'fal-ai/bria/eraser',                              kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 4,   size: { type: 'preserveInput' } },
+  'birefnet-bg-remove':   { id: 'birefnet-bg-remove',   endpoint: 'fal-ai/birefnet',                                 kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 1,   size: { type: 'preserveInput' } },
+  'clarity-upscaler':     { id: 'clarity-upscaler',     endpoint: 'fal-ai/clarity-upscaler',                         kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 3,   size: { type: 'preserveInput' } },
+  'aura-sr':              { id: 'aura-sr',              endpoint: 'fal-ai/aura-sr',                                  kind: 'image', isAsync: false, acceptsInputImage: true,  supportsCustomSize: false, estimatedCostCents: 2,   size: { type: 'preserveInput' } },
 
   // Video
   'kling-video':          { id: 'kling-video',          endpoint: 'fal-ai/kling-video/v2/master/text-to-video',      kind: 'video', isAsync: true,  acceptsInputImage: false, supportsCustomSize: false, estimatedCostCents: 140 },
@@ -326,31 +348,19 @@ function gptImage2Size(width: number, height: number): string {
   return `${snap16(width)}x${snap16(height)}`;
 }
 
-// Nano Banana (Google Gemini Image) doesn't accept arbitrary pixel
-// dimensions — it takes a named `aspect_ratio` enum and picks its
-// own resolution. The Fal endpoint silently ignores image_size and
-// falls back to the default 896×1152, which is why "1080×1440 (3:4)"
-// and "720×1280 (9:16)" both came back as the same default size.
-//
-// Supported aspect_ratio values (per fal.ai/models/fal-ai/nano-banana):
-//   auto, 1:1, 4:5, 5:4, 3:4, 4:3, 2:3, 3:2, 9:16, 16:9, 21:9,
-//   1:4, 4:1, 1:8, 8:1
-const NANO_BANANA_ASPECTS: readonly string[] = [
-  '1:1', '4:5', '5:4', '3:4', '4:3', '2:3', '3:2', '9:16', '16:9', '21:9',
-  '1:4', '4:1', '1:8', '8:1',
-];
 
-function nanoBananaAspectRatio(width: number, height: number): string {
+// Pick the closest supported aspect ratio for an aspect_ratio-style
+// model. Uses log-space distance so the comparison is proportional
+// (3:4 is closer to 4:5 than to 2:3, even though linear distance
+// would call them similar).
+function closestAspectRatio(width: number | undefined, height: number | undefined, supported: string[]): string {
   if (!width || !height) return 'auto';
   const target = width / height;
-  let best = '1:1';
+  let best = supported[0] ?? 'auto';
   let bestDiff = Infinity;
-  for (const ratio of NANO_BANANA_ASPECTS) {
+  for (const ratio of supported) {
     const [w, h] = ratio.split(':').map((n) => parseInt(n, 10));
     if (!w || !h) continue;
-    // Log-space distance gives a proportional comparison: 3:4 (0.75)
-    // is closer to 4:5 (0.8) than to 2:3 (0.667) by ratio, even
-    // though linear distance would call them similar.
     const diff = Math.abs(Math.log(target) - Math.log(w / h));
     if (diff < bestDiff) { bestDiff = diff; best = ratio; }
   }
@@ -362,25 +372,29 @@ function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: 
     prompt: body.full_prompt ?? body.prompt,
   };
 
-  const isNanoBanana = model.id === 'nano-banana' || model.id === 'nano-banana-edit';
-
-  if (isNanoBanana) {
-    // Nano Banana uses a named aspect_ratio enum, not image_size.
-    // Mapping the picked dimensions to the closest supported ratio
-    // so platform / aspect presets actually take effect.
-    payload.aspect_ratio = body.width && body.height
-      ? nanoBananaAspectRatio(body.width, body.height)
-      : 'auto';
-  } else if (model.supportsCustomSize && body.width && body.height) {
-    // Most Fal image endpoints take image_size as `{width, height}`.
-    // gpt-image-2 expects a "WxH" string with both dims divisible by 16.
-    if (model.id === 'gpt-image-2') {
-      payload.image_size = gptImage2Size(body.width, body.height);
-    } else {
-      payload.image_size = { width: body.width, height: body.height };
+  // Per-model size handling. Default to 'pixels' (the standard Fal
+  // {width, height} payload) when the model entry doesn't override.
+  const sizeKind = model.size?.type ?? 'pixels';
+  switch (sizeKind) {
+    case 'pixels':
+      if (model.supportsCustomSize && body.width && body.height) {
+        payload.image_size = { width: body.width, height: body.height };
+      }
+      break;
+    case 'pixelsStringSnap16':
+      payload.image_size = body.width && body.height
+        ? gptImage2Size(body.width, body.height)
+        : 'auto';
+      break;
+    case 'aspectRatio': {
+      const ratios = (model.size as { type: 'aspectRatio'; ratios: string[] }).ratios;
+      payload.aspect_ratio = closestAspectRatio(body.width, body.height, ratios);
+      break;
     }
-  } else if (model.id === 'gpt-image-2') {
-    payload.image_size = 'auto';
+    case 'preserveInput':
+    case 'fixed':
+      // Don't send a size — let the model do what it does.
+      break;
   }
 
   // GPT Image 1 has a `quality` parameter that swings cost by ~10×.

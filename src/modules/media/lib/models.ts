@@ -10,6 +10,42 @@
 
 export type MediaKind = 'image' | 'video';
 
+// How a model accepts size from us. Every Fal-hosted model has its own
+// parameter convention; sending the wrong shape (e.g. `image_size` to
+// a model that wants `aspect_ratio`) means it silently ignores the
+// request and uses its default size. The server's buildFalPayload
+// dispatches on this discriminator so we can fix a model in one place
+// without touching everything else.
+//
+//   pixels:                  send { width, height }                 (most Flux family, SD, Recraft, Sana, …)
+//   pixelsStringSnap16:      send "WxH" string, dims snapped to /16 (gpt-image-2)
+//   aspectRatio:             send aspect_ratio: "<n>:<m>"            (Nano Banana, Flux Kontext, Imagen, …)
+//   preserveInput:           model uses the reference image's        (Flux Kontext when a ref is attached,
+//                            aspect / dimensions; nothing to send.    BiRefNet, upscalers)
+//   fixed:                   model picks its own size; nothing to    (some legacy or unknown endpoints)
+//                            send. Use when we genuinely don't know.
+//
+// `aspectRatio` carries the list of supported ratios so the server
+// can pick the closest match; each model's list is different (Nano
+// Banana has 14, Kontext has 9, Imagen has 5).
+export type SizeHandling =
+  | { type: 'pixels' }
+  | { type: 'pixelsStringSnap16' }
+  | { type: 'aspectRatio'; ratios: string[] }
+  | { type: 'preserveInput' }
+  | { type: 'fixed' };
+
+// Aspect-ratio supersets — one declared once and reused so we don't
+// scatter copies of "1:1, 4:5, …" across the catalogue.
+export const NANO_BANANA_ASPECTS = [
+  '1:1', '4:5', '5:4', '3:4', '4:3', '2:3', '3:2', '9:16', '16:9', '21:9',
+  '1:4', '4:1', '1:8', '8:1',
+] as const;
+export const FLUX_KONTEXT_ASPECTS = [
+  '21:9', '16:9', '4:3', '3:2', '1:1', '2:3', '3:4', '9:16', '9:21',
+] as const;
+export const IMAGEN_ASPECTS = ['1:1', '9:16', '16:9', '3:4', '4:3'] as const;
+
 export interface ModelDef {
   id: string;
   label: string;
@@ -26,6 +62,10 @@ export interface ModelDef {
   // image too). When unset, falls back to estimatedCostCents.
   editCostCents?: number;
   supportsCustomSize: boolean;
+  // How this model wants to receive size. Defaults to { type: 'pixels' }
+  // (the standard {width, height} payload) when unspecified — which is
+  // what the majority of Fal endpoints accept.
+  size?: SizeHandling;
   description: string;
   estimatedCostCents: number;
   isAsync: boolean;
@@ -108,6 +148,7 @@ export const MODELS: ModelDef[] = [
     acceptsInputImage: false,
     editEndpoint: 'fal-ai/nano-banana/edit',
     supportsCustomSize: true,
+    size: { type: 'aspectRatio', ratios: [...NANO_BANANA_ASPECTS] },
     description: "Google's Gemini image model. Picks the closest supported aspect ratio (1:1, 4:5, 3:4, 2:3, 9:16, 3:2, 4:3, 16:9, 21:9, 5:4, plus 1:4 / 4:1 / 1:8 / 8:1) — exact pixel dimensions aren't supported. Attach a reference image to edit.",
     estimatedCostCents: 4,
     isAsync: false,
@@ -176,7 +217,8 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/imagen4/preview',
     acceptsInputImage: false,
     supportsCustomSize: true,
-    description: "Google Imagen 4 — strong photorealism and prompt adherence.",
+    size: { type: 'aspectRatio', ratios: [...IMAGEN_ASPECTS] },
+    description: "Google Imagen 4 — strong photorealism and prompt adherence. Picks the closest of 1:1, 9:16, 16:9, 3:4, 4:3.",
     estimatedCostCents: 5,
     isAsync: false,
     isFeatured: true,
@@ -191,6 +233,7 @@ export const MODELS: ModelDef[] = [
     editEndpoint: 'openai/gpt-image-2/edit',
     editCostCents: 45,
     supportsCustomSize: true,
+    size: { type: 'pixelsStringSnap16' },
     description: "OpenAI's flagship image model — same one ChatGPT uses now. Honours your chosen aspect ratio; dimensions snap to the nearest multiple of 16 since that's an OpenAI API requirement (e.g. 1080×1350 → 1088×1344, still 4:5). Cost scales with Quality (Low ~$0.12 → High ~$0.45 for edits, Auto defaults to High).",
     estimatedCostCents: 25,
     isAsync: false,
@@ -220,8 +263,9 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/nano-banana/edit',
     acceptsInputImage: true,
-    supportsCustomSize: false,
-    description: 'Edit an existing image with a text prompt.',
+    supportsCustomSize: true,
+    size: { type: 'aspectRatio', ratios: [...NANO_BANANA_ASPECTS] },
+    description: 'Edit an existing image with a text prompt. Honors the aspect-ratio you pick (1:1, 4:5, 3:4, 2:3, 9:16, etc.).',
     estimatedCostCents: 4,
     isAsync: false,
     isFeatured: true,
@@ -233,8 +277,13 @@ export const MODELS: ModelDef[] = [
     kind: 'image',
     endpoint: 'fal-ai/flux-pro/kontext',
     acceptsInputImage: true,
-    supportsCustomSize: false,
-    description: 'Image editing that preserves identity and structure better than vanilla edit models.',
+    supportsCustomSize: true,
+    // Kontext takes aspect_ratio when no input image is attached, but
+    // when one IS attached it copies the input's aspect ratio at ~1MP
+    // total and ignores anything we send. Server picks 'preserveInput'
+    // for the edit path and 'aspectRatio' for plain generate.
+    size: { type: 'aspectRatio', ratios: [...FLUX_KONTEXT_ASPECTS] },
+    description: 'Image editing that preserves identity / structure. When you attach a reference image, Kontext keeps the source image\'s aspect ratio at ~1 megapixel — your size selection only takes effect on generate-from-scratch.',
     estimatedCostCents: 6,
     isAsync: false,
     isFeatured: true,
@@ -321,7 +370,8 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/flux-pro/v1.1-ultra',
     acceptsInputImage: false,
     supportsCustomSize: true,
-    description: 'Ultra-high resolution Flux. Slower and more expensive than regular v1.1.',
+    size: { type: 'aspectRatio', ratios: ['21:9', '16:9', '4:3', '3:2', '1:1', '2:3', '3:4', '9:16', '9:21'] },
+    description: 'Ultra-high resolution Flux. Slower and more expensive than regular v1.1. Picks the closest aspect ratio.',
     estimatedCostCents: 8,
     isAsync: false,
     isFeatured: false,
@@ -347,7 +397,8 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/imagen3',
     acceptsInputImage: false,
     supportsCustomSize: true,
-    description: 'Previous-gen Google Imagen. Still solid and slightly cheaper than v4.',
+    size: { type: 'aspectRatio', ratios: [...IMAGEN_ASPECTS] },
+    description: 'Previous-gen Google Imagen. Picks the closest of 1:1, 9:16, 16:9, 3:4, 4:3. Slightly cheaper than v4.',
     estimatedCostCents: 4,
     isAsync: false,
     isFeatured: false,
@@ -507,6 +558,7 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/bria/eraser',
     acceptsInputImage: true,
     supportsCustomSize: false,
+    size: { type: 'preserveInput' },
     description: 'Remove objects from an image cleanly.',
     estimatedCostCents: 4,
     isAsync: false,
@@ -520,6 +572,7 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/birefnet',
     acceptsInputImage: true,
     supportsCustomSize: false,
+    size: { type: 'preserveInput' },
     description: 'Clean background removal.',
     estimatedCostCents: 1,
     isAsync: false,
@@ -533,6 +586,7 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/clarity-upscaler',
     acceptsInputImage: true,
     supportsCustomSize: false,
+    size: { type: 'preserveInput' },
     description: 'Upscale and sharpen an existing image.',
     estimatedCostCents: 3,
     isAsync: false,
@@ -546,6 +600,7 @@ export const MODELS: ModelDef[] = [
     endpoint: 'fal-ai/aura-sr',
     acceptsInputImage: true,
     supportsCustomSize: false,
+    size: { type: 'preserveInput' },
     description: 'Super-resolution upscaling.',
     estimatedCostCents: 2,
     isAsync: false,
