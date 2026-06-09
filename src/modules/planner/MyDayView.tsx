@@ -6,18 +6,16 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
-  CalendarClock, FileText, CornerDownLeft, Sparkles, Info, ListPlus,
+  CornerDownLeft, Sparkles, Info,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
-import { MiniMenu } from './MiniMenu';
-import { TimerButton } from './TimerButton';
-import { TaskNotes } from './TaskNotes';
+import { TaskRow } from './TaskRow';
 import { AiSuggestPanel } from './AiSuggestPanel';
 import { suggestDayPlan, suggestPhaseTriage, type AiResult } from './aiAssist';
 import {
   addDaysISO, blockMinutes, formatClock, formatMinutes, localDay,
-  minutesToTime, timeToMinutes, ESTIMATE_PRESETS, phaseInfo, daysBetweenISO,
+  minutesToTime, timeToMinutes, phaseInfo, daysBetweenISO,
   type PlannerNote, type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type PhaseInfo, type PlannerTimeSession,
 } from './types';
 
@@ -54,6 +52,7 @@ export default function MyDayView({
 }) {
   const { gc, calVersion } = cal;
   const carryOver = !!settings.carry_over_capacity;
+  const orbitEnabled = !!settings.orbit_enabled;
   const [selected, setSelected] = useState(today);
   const prevDay = addDaysISO(selected, -1);
   const [showMonth, setShowMonth] = useState(false);
@@ -380,6 +379,7 @@ export default function MyDayView({
                       task={t}
                       today={today}
                       lists={lists}
+                      orbitEnabled={orbitEnabled}
                       onPatch={handlers.onPatchTask}
                       onDelete={handlers.onDeleteTask}
                       draggable={false}
@@ -397,6 +397,7 @@ export default function MyDayView({
                 tasks={tasksByBlock[b.id] ?? []}
                 today={today}
                 lists={lists}
+                orbitEnabled={orbitEnabled}
                 gcConnected={gc.connected}
                 handlers={handlers}
               />
@@ -406,6 +407,7 @@ export default function MyDayView({
               tasks={looseTasks}
               today={today}
               lists={lists}
+              orbitEnabled={orbitEnabled}
               hasBlocks={dayBlocks.length > 0}
               onPatch={handlers.onPatchTask}
               onDelete={handlers.onDeleteTask}
@@ -561,12 +563,13 @@ function PhaseBanner({ phase, target, planned, daysIn }: { phase: PhaseInfo; tar
 // ---------------------------------------------------------------------------
 
 function BlockCard({
-  block, tasks, today, lists, gcConnected, handlers,
+  block, tasks, today, lists, orbitEnabled, gcConnected, handlers,
 }: {
   block: PlannerTimeBlock;
   tasks: PlannerTask[];
   today: string;
   lists: PlannerNote[];
+  orbitEnabled: boolean;
   gcConnected: boolean;
   handlers: MyDayHandlers;
 }) {
@@ -631,8 +634,8 @@ function BlockCard({
       </div>
 
       <ul className="ml-6 space-y-0.5">
-        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} />)}
-        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} />)}
+        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} />)}
+        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} />)}
       </ul>
       {tasks.length === 0 && <p className="ml-6 text-xs text-slate-400">Drop a to-do here, or add one below.</p>}
 
@@ -659,11 +662,12 @@ function BlockCard({
 // ---------------------------------------------------------------------------
 
 function LooseZone({
-  tasks, today, lists, hasBlocks, onPatch, onDelete,
+  tasks, today, lists, orbitEnabled, hasBlocks, onPatch, onDelete,
 }: {
   tasks: PlannerTask[];
   today: string;
   lists: PlannerNote[];
+  orbitEnabled: boolean;
   hasBlocks: boolean;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
@@ -684,8 +688,8 @@ function LooseZone({
     <div ref={setNodeRef} className={`rounded-2xl border bg-white p-4 transition-colors ${isOver ? 'border-teal-400 ring-2 ring-teal-100' : 'border-slate-200'}`}>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">{hasBlocks ? 'Not in a block' : 'Scheduled today'}</p>
       <ul className="space-y-0.5">
-        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} onPatch={onPatch} onDelete={onDelete} />)}
-        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} onPatch={onPatch} onDelete={onDelete} />)}
+        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} />)}
+        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} />)}
       </ul>
       {open.length === 0 && done.length === 0 && <p className="text-xs text-slate-400">Drag a to-do here to pull it out of its block.</p>}
     </div>
@@ -696,8 +700,11 @@ function LooseZone({
 // A draggable to-do row (compact)
 // ---------------------------------------------------------------------------
 
+// A My Day to-do row: the unified TaskRow wrapped with dnd-kit's useDraggable so
+// it can be dragged between time blocks and the loose zone. The drag handle is
+// passed into TaskRow; everything else (chips, ⋯ menu, expand card) is shared.
 function DraggableTaskRow({
-  task, today, onPatch, onDelete, draggable = true, onMoveToToday, lists = [],
+  task, today, onPatch, onDelete, draggable = true, onMoveToToday, lists = [], orbitEnabled = false,
 }: {
   task: PlannerTask;
   today: string;
@@ -706,141 +713,48 @@ function DraggableTaskRow({
   draggable?: boolean;
   onMoveToToday?: () => void;
   lists?: PlannerNote[];
+  orbitEnabled?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, disabled: !draggable });
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(task.title);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const hasNotes = !!task.notes?.trim();
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
+  const listName = task.note_id ? (lists.find(l => l.id === task.note_id)?.title.trim() || 'Untitled list') : undefined;
 
-  function commit() {
-    setEditing(false);
-    const next = title.trim();
-    if (next && next !== task.title) onPatch(task.id, { title: next });
-    else setTitle(task.title);
+  const handle = draggable ? (
+    <button
+      {...attributes}
+      {...listeners}
+      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+      title="Drag between blocks"
+    >
+      <GripVertical className="w-4 h-4" />
+    </button>
+  ) : undefined;
+
+  // Rescheduling from My Day also pops the to-do out of its time block (whose
+  // block lives on the old day) so it can't vanish from both days.
+  function patchFromRow(id: string, patch: Partial<PlannerTask>) {
+    if ('due_date' in patch) onPatch(id, { block_id: null, ...patch });
+    else onPatch(id, patch);
   }
 
   return (
-    <li ref={setNodeRef} style={style} className={`group ${isDragging ? 'opacity-50' : ''}`}>
-      <div className="flex items-center gap-2 py-1">
-      {draggable && (
-        <button
-          {...attributes}
-          {...listeners}
-          className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
-          title="Drag between blocks"
-        >
-          <GripVertical className="w-4 h-4" />
-        </button>
-      )}
-      <button
-        onClick={() => onPatch(task.id, { done: !task.done })}
-        className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
-        title={task.done ? 'Mark not done' : 'Mark done'}
-      >
-        {task.done
-          ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-600 text-white"><Check className="w-2.5 h-2.5" /></span>
-          : <Circle className="w-4 h-4" />}
-      </button>
-      {editing ? (
-        <input
-          autoFocus
-          value={title}
-          onChange={e => setTitle(e.target.value)}
-          onBlur={commit}
-          onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { setTitle(task.title); setEditing(false); } }}
-          className="flex-1 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
-        />
-      ) : (
-        <span
-          onClick={() => !task.done && setEditing(true)}
-          className={`flex-1 text-sm cursor-text ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}
-        >
-          {task.title || 'Untitled'}
-        </span>
-      )}
-      {task.estimate_minutes ? <span className="text-xs font-medium text-slate-400 shrink-0">{formatMinutes(task.estimate_minutes)}</span> : null}
-      {task.start_at && (
-        <span className="text-xs text-sky-600 shrink-0">{new Date(task.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}</span>
-      )}
-      <TimerButton task={task} onPatch={onPatch} />
-      {!task.done && (
-        <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Set / clear a time estimate. */}
-          <MiniMenu title="Time estimate" icon={<Clock className={`w-4 h-4 ${task.estimate_minutes ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
-            {close => (
-              <div className="py-1">
-                {ESTIMATE_PRESETS.map(p => (
-                  <button key={p} onClick={() => { onPatch(task.id, { estimate_minutes: p }); close(); }}
-                    className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.estimate_minutes === p ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
-                    {formatMinutes(p)}
-                  </button>
-                ))}
-                <button onClick={() => { onPatch(task.id, { estimate_minutes: null }); close(); }}
-                  className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">No estimate</button>
-              </div>
-            )}
-          </MiniMenu>
-
-          {/* Reschedule to another day. Also pops it out of any time block (whose
-              block lives on the old day) so it can't vanish from both days, and
-              clearing the date moves it to Anytime. */}
-          <label className="relative cursor-pointer text-slate-300 hover:text-teal-600" title="Move to another day">
-            <CalendarClock className="w-4 h-4" />
-            <input
-              type="date"
-              value={task.due_date ?? ''}
-              onChange={e => onPatch(task.id, { due_date: e.target.value || null, block_id: null, someday: false })}
-              className="absolute inset-0 opacity-0 cursor-pointer w-4"
-            />
-          </label>
-
-          {/* File this to-do into a list (or the Inbox) without leaving My Day. */}
-          <MiniMenu title="Move to list" icon={<ListPlus className={`w-4 h-4 ${task.note_id ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
-            {close => (
-              <div className="py-1">
-                {lists.map(l => (
-                  <button key={l.id} onClick={() => { onPatch(task.id, { note_id: l.id }); close(); }}
-                    className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 truncate ${task.note_id === l.id ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
-                    {l.title.trim() || 'Untitled list'}
-                  </button>
-                ))}
-                <button onClick={() => { onPatch(task.id, { note_id: null }); close(); }}
-                  className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 border-t border-slate-100 ${task.note_id ? 'text-slate-500' : 'text-teal-600 font-medium'}`}>
-                  Inbox (no list)
-                </button>
-              </div>
-            )}
-          </MiniMenu>
-        </div>
-      )}
-      <button
-        onClick={() => setNotesOpen(v => !v)}
-        className={`shrink-0 transition-opacity ${hasNotes || notesOpen ? 'opacity-100 text-teal-600' : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-teal-600'}`}
-        title={hasNotes ? 'Notes' : 'Add notes'}
-      >
-        <FileText className="w-3.5 h-3.5" />
-      </button>
-      {onMoveToToday && !task.done && (
-        <button onClick={onMoveToToday} className="text-xs font-medium text-teal-600 hover:text-teal-700 shrink-0" title="Move to today">
-          → Today
-        </button>
-      )}
-      <button onClick={() => onDelete(task.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" title="Delete">
-        <Trash2 className="w-3.5 h-3.5" />
-      </button>
-      </div>
-      {notesOpen ? (
-        <div className="ml-6 mb-1.5"><TaskNotes task={task} onPatch={onPatch} autoFocus /></div>
-      ) : hasNotes ? (
-        <button
-          onClick={() => setNotesOpen(true)}
-          className="ml-6 mb-1 block text-left text-xs text-slate-400 hover:text-slate-600 truncate max-w-full"
-        >
-          {task.notes!.trim().split('\n')[0]}
-        </button>
-      ) : null}
+    <li ref={setNodeRef} style={style} className={isDragging ? 'opacity-50' : ''}>
+      <TaskRow
+        task={task}
+        today={today}
+        onPatch={patchFromRow}
+        onDelete={onDelete}
+        dragHandle={handle}
+        lists={lists}
+        listName={listName}
+        showTimer
+        canFlag
+        canSomeday
+        orbitEnabled={orbitEnabled}
+        enableRecurrence
+        enableChecklist
+        onMoveToToday={onMoveToToday}
+      />
     </li>
   );
 }

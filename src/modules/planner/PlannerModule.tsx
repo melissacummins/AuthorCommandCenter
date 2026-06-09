@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { MiniMenu } from './MiniMenu';
-import { TimerButton, RunningTimerBar, stopTimerPatch } from './TimerButton';
+import { RunningTimerBar, stopTimerPatch } from './TimerButton';
 import { FocusPicker } from './FocusPicker';
-import { TaskNotes } from './TaskNotes';
+import { TaskRow } from './TaskRow';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   type DragEndEvent,
@@ -13,10 +12,10 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  NotebookPen, Plus, Check, Circle, Trash2, Pin, PinOff, Archive,
-  CalendarClock, Layers, Moon, Inbox, X, GripVertical,
-  Heading as HeadingIcon, ChevronRight, ChevronDown, Repeat, Clock, CalendarDays, CalendarPlus, Link2Off, Sun, BarChart3,
-  Star, Menu, CalendarRange, BookCheck, FileText, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
+  NotebookPen, Plus, Trash2, Pin, PinOff, Archive,
+  CalendarClock, Layers, Inbox, X, GripVertical,
+  Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
+  Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -36,9 +35,9 @@ import {
   listTimeSessions, createTimeSessions, reorderNotes,
 } from './api';
 import {
-  bucketForTask, checklistProgress, formatDue, formatMinutes, nextDueDate, sumEstimate, todayISO,
-  elapsedMinutes, ESTIMATE_PRESETS, RECURRENCE_LABELS, DEFAULT_DAILY_CAPACITY,
-  type ChecklistItem, type PlannerNote, type PlannerTask, type Bucket, type Recurrence,
+  bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
+  elapsedMinutes, DEFAULT_DAILY_CAPACITY,
+  type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
 } from './types';
 
@@ -640,6 +639,7 @@ export default function PlannerModule() {
             tasks={tasks}
             today={today}
             notesById={notesById}
+            lists={notes.filter(n => !n.archived)}
             onAdd={addTask}
             onPatch={patchTask}
             onDelete={removeTask}
@@ -653,6 +653,7 @@ export default function PlannerModule() {
             orbitEnabled={orbitEnabled}
             tasks={tasks.filter(t => t.note_id === selectedNote.id)}
             today={today}
+            lists={notes.filter(n => !n.archived)}
             onSaveNote={saveNote}
             onDeleteNote={removeNote}
             onAdd={addTask}
@@ -706,7 +707,7 @@ export default function PlannerModule() {
 // ---------------------------------------------------------------------------
 
 function ViewPane({
-  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, onAdd, onPatch, onDelete, onOpenNote, cal,
+  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onOpenNote, cal,
 }: {
   bucket?: Bucket;
   inbox?: boolean;
@@ -716,6 +717,7 @@ function ViewPane({
   tasks: PlannerTask[];
   today: string;
   notesById: Record<string, PlannerNote>;
+  lists: PlannerNote[];
   onAdd: (i: { title: string; due_date?: string | null; someday?: boolean; in_orbit?: boolean }) => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
@@ -785,9 +787,13 @@ function ViewPane({
 
   function renderRow(t: PlannerTask) {
     return (
-      <TaskRow key={t.id} task={t} today={today} noteName={noteNameFor(t)}
-        onOpenNote={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
-        onPatch={onPatch} onDelete={onDelete} showSchedule orbitEnabled={orbitEnabled}
+      <TaskRow key={t.id} task={t} today={today}
+        lists={lists}
+        listName={noteNameFor(t)}
+        onOpenList={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
+        onPatch={onPatch} onDelete={onDelete}
+        showTimer canFlag canSomeday orbitEnabled={orbitEnabled}
+        enableRecurrence enableChecklist
         calConnected={gc.connected}
         onTimeBlock={time => onTimeBlock(t, time)}
         onUnblock={() => onUnblock(t)} />
@@ -974,11 +980,12 @@ function DayHeader({ date, today, totalMinutes }: { date: string; today: string;
 // ---------------------------------------------------------------------------
 
 function NotePane({
-  note, tasks, today, onSaveNote, onDeleteNote, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
+  note, tasks, today, lists, onSaveNote, onDeleteNote, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
   today: string;
+  lists: PlannerNote[];
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
   onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
@@ -1173,8 +1180,12 @@ function NotePane({
                 key={t.id}
                 task={t}
                 today={today}
+                lists={lists}
+                showTimer
+                canFlag
+                canSomeday
+                enableRecurrence
                 enableChecklist
-                showSchedule
                 orbitEnabled={orbitEnabled}
                 focusId={focusId}
                 onFocused={() => setFocusId(null)}
@@ -1194,6 +1205,7 @@ function NotePane({
                   key={t.id}
                   task={t}
                   today={today}
+                  lists={lists}
                   collapsed={collapsed.has(t.id)}
                   childCount={childCount[t.id] ?? 0}
                   orbitEnabled={orbitEnabled}
@@ -1220,7 +1232,7 @@ function NotePane({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Done</p>
           <ul className="divide-y divide-slate-100">
             {doneItems.map(t => (
-              <TaskRow key={t.id} task={t} today={today} onPatch={onPatch} onDelete={onDelete} />
+              <TaskRow key={t.id} task={t} today={today} showTimer onPatch={onPatch} onDelete={onDelete} />
             ))}
           </ul>
         </div>
@@ -1240,10 +1252,11 @@ function useSortableStyle(id: string) {
 }
 
 function SortableNoteItem({
-  task, today, collapsed, childCount, focusId, onFocused, onToggleCollapse, onAddUnder, onEnter, onPatch, onDelete, orbitEnabled = false,
+  task, today, lists, collapsed, childCount, focusId, onFocused, onToggleCollapse, onAddUnder, onEnter, onPatch, onDelete, orbitEnabled = false,
 }: {
   task: PlannerTask;
   today: string;
+  lists: PlannerNote[];
   collapsed: boolean;
   childCount: number;
   focusId: string | null;
@@ -1289,8 +1302,12 @@ function SortableNoteItem({
         task={task}
         today={today}
         dragHandle={handle}
+        lists={lists}
+        showTimer
+        canFlag
+        canSomeday
+        enableRecurrence
         enableChecklist
-        showSchedule
         orbitEnabled={orbitEnabled}
         focusId={focusId}
         onFocused={onFocused}
@@ -1362,329 +1379,9 @@ function HeadingRow({
   );
 }
 
-// ---------------------------------------------------------------------------
-
-function TaskRow({
-  task, today, noteName, onOpenNote, onPatch, onDelete, showSchedule = false,
-  enableChecklist = false, dragHandle, calConnected = false, onTimeBlock, onUnblock,
-  focusId, onFocused, onEnter, orbitEnabled = false,
-}: {
-  task: PlannerTask;
-  today: string;
-  noteName?: string;
-  onOpenNote?: () => void;
-  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
-  onDelete: (id: string) => void;
-  showSchedule?: boolean;
-  enableChecklist?: boolean;
-  dragHandle?: ReactNode;
-  calConnected?: boolean;
-  onTimeBlock?: (time: string) => void;
-  onUnblock?: () => void;
-  focusId?: string | null;
-  onFocused?: () => void;
-  onEnter?: () => void;
-  orbitEnabled?: boolean;
-}) {
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(task.title);
-  const [expanded, setExpanded] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [blockTime, setBlockTime] = useState('09:00');
-  const hasNotes = !!task.notes?.trim();
-  const overdue = !task.done && !!task.due_date && task.due_date < today;
-  const progress = checklistProgress(task);
-  const hasChecklist = progress.total > 0;
-
-  // Open for editing when the keyboard flow points focus at this row.
-  useEffect(() => {
-    if (focusId && focusId === task.id) { setEditing(true); onFocused?.(); }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [focusId, task.id]);
-
-  // Commit on blur; a row left blank (a new one never typed into) is removed.
-  function blurCommit() {
-    setEditing(false);
-    const next = title.trim();
-    if (!next) { if (!task.title) onDelete(task.id); else setTitle(task.title); return; }
-    if (next !== task.title) onPatch(task.id, { title: next });
-  }
-
-  // Enter commits, then (via onEnter) spawns the next sibling to-do and focuses
-  // it. Pressing Enter on a still-blank row just ends entry instead.
-  function enterCommit() {
-    const next = title.trim();
-    if (!next) { setEditing(false); if (!task.title) onDelete(task.id); return; }
-    if (next !== task.title) onPatch(task.id, { title: next });
-    setEditing(false);
-    onEnter?.();
-  }
-
-  function setChecklist(items: ChecklistItem[]) {
-    onPatch(task.id, { checklist: items });
-  }
-
-  return (
-    <div className="py-2 group">
-      <div className="flex items-center gap-2">
-        {dragHandle}
-        <button
-          onClick={() => onPatch(task.id, { done: !task.done })}
-          className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
-          title={task.done ? 'Mark not done' : 'Mark done'}
-        >
-          {task.done
-            ? <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-teal-600 text-white"><Check className="w-3.5 h-3.5" /></span>
-            : <Circle className="w-5 h-5" />}
-        </button>
-
-        {editing ? (
-          <input
-            autoFocus
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            onBlur={blurCommit}
-            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); enterCommit(); } if (e.key === 'Escape') { setTitle(task.title); setEditing(false); } }}
-            className="flex-1 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
-          />
-        ) : (
-          <span
-            onClick={() => !task.done && setEditing(true)}
-            className={`flex-1 text-sm cursor-text ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}
-          >
-            {task.title || 'Untitled'}
-          </span>
-        )}
-
-        {/* Checklist toggle / progress */}
-        {enableChecklist && !task.done && (
-          <button
-            onClick={() => setExpanded(v => !v)}
-            className={`flex items-center gap-1 text-xs shrink-0 ${hasChecklist ? 'text-slate-500' : 'text-slate-300 hover:text-slate-500'}`}
-            title="Checklist"
-          >
-            {hasChecklist
-              ? <span className="font-medium tabular-nums">{progress.done}/{progress.total}</span>
-              : <Check className="w-3.5 h-3.5" />}
-            {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          </button>
-        )}
-
-        {noteName && (
-          <button onClick={onOpenNote} className="text-xs text-slate-400 hover:text-teal-600 truncate max-w-[10rem] shrink-0">
-            {noteName}
-          </button>
-        )}
-
-        {showSchedule && !task.done && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <TimerButton task={task} onPatch={onPatch} />
-            {orbitEnabled && (
-              <button
-                onClick={() => onPatch(task.id, { in_orbit: !task.in_orbit })}
-                className={`${task.in_orbit ? 'text-violet-500' : 'text-slate-300 hover:text-violet-500 opacity-0 group-hover:opacity-100'} transition-opacity`}
-                title={task.in_orbit ? 'Remove from Orbit' : 'Add to Orbit'}
-              >
-                <OrbitIcon className="w-4 h-4" />
-              </button>
-            )}
-            <button
-              onClick={() => onPatch(task.id, { flagged: !task.flagged })}
-              className={`${task.flagged ? 'text-amber-400' : 'text-slate-300 hover:text-amber-400 opacity-0 group-hover:opacity-100'} transition-opacity`}
-              title={task.flagged ? 'Unflag' : 'Flag as Important'}
-            >
-              <Star className="w-4 h-4" fill={task.flagged ? 'currentColor' : 'none'} />
-            </button>
-            {task.estimate_minutes ? (
-              <span className="text-xs font-medium text-slate-400">{formatMinutes(task.estimate_minutes)}</span>
-            ) : null}
-            {task.due_date && (
-              <span className={`text-xs font-medium ${overdue ? 'text-rose-500' : 'text-slate-500'}`}>
-                {formatDue(task.due_date, today)}
-              </span>
-            )}
-            <label className="relative cursor-pointer text-slate-300 hover:text-teal-600" title="Schedule a day">
-              <CalendarClock className="w-4 h-4" />
-              <input
-                type="date"
-                value={task.due_date ?? ''}
-                onChange={e => onPatch(task.id, { due_date: e.target.value || null, someday: false })}
-                className="absolute inset-0 opacity-0 cursor-pointer w-4"
-              />
-            </label>
-
-            <MiniMenu title="Time estimate" icon={<Clock className={`w-4 h-4 ${task.estimate_minutes ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
-              {close => (
-                <div className="py-1">
-                  {ESTIMATE_PRESETS.map(p => (
-                    <button key={p} onClick={() => { onPatch(task.id, { estimate_minutes: p }); close(); }}
-                      className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.estimate_minutes === p ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
-                      {formatMinutes(p)}
-                    </button>
-                  ))}
-                  <button onClick={() => { onPatch(task.id, { estimate_minutes: null }); close(); }}
-                    className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">No estimate</button>
-                </div>
-              )}
-            </MiniMenu>
-
-            <MiniMenu title="Repeat" icon={<Repeat className={`w-4 h-4 ${task.recurrence ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`} />}>
-              {close => (
-                <div className="py-1">
-                  {(['daily', 'weekdays', 'weekly', 'monthly'] as Recurrence[]).map(r => (
-                    <button key={r} onClick={() => { onPatch(task.id, { recurrence: r, ...(task.due_date ? {} : { due_date: today, someday: false }) }); close(); }}
-                      className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.recurrence === r ? 'text-teal-600 font-medium' : 'text-slate-700'}`}>
-                      {RECURRENCE_LABELS[r]}
-                    </button>
-                  ))}
-                  <button onClick={() => { onPatch(task.id, { recurrence: null }); close(); }}
-                    className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400">Don’t repeat</button>
-                </div>
-              )}
-            </MiniMenu>
-
-            {/* Time block: drop this to-do onto the calendar (or pull it off). */}
-            {onTimeBlock && task.gcal_event_id ? (
-              <button
-                onClick={onUnblock}
-                className="inline-flex items-center gap-0.5 text-xs font-medium text-sky-600 hover:text-rose-500"
-                title="Remove time block from calendar"
-              >
-                {task.start_at && new Date(task.start_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
-                <Link2Off className="w-3.5 h-3.5" />
-              </button>
-            ) : onTimeBlock && calConnected ? (
-              <MiniMenu title="Add to calendar as a time block" icon={<CalendarPlus className="w-4 h-4 text-slate-300 hover:text-sky-600" />}>
-                {close => (
-                  <div className="p-2 flex items-center gap-2">
-                    <input type="time" value={blockTime} onChange={e => setBlockTime(e.target.value)}
-                      className="text-sm border border-slate-200 rounded px-2 py-1" />
-                    <button onClick={() => { onTimeBlock(blockTime); close(); }}
-                      className="text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 rounded px-2 py-1">Block</button>
-                  </div>
-                )}
-              </MiniMenu>
-            ) : null}
-
-            <button
-              onClick={() => onPatch(task.id, { someday: !task.someday, due_date: null, ...(!task.someday ? { recurrence: null } : {}) })}
-              className={`${task.someday ? 'text-indigo-500' : 'text-slate-300 hover:text-indigo-500'}`}
-              title={task.someday ? 'In Someday — click to move to Anytime' : 'Move to Someday'}
-            >
-              <Moon className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-
-        <button
-          onClick={() => setNotesOpen(v => !v)}
-          className={`shrink-0 transition-opacity ${hasNotes || notesOpen ? 'opacity-100 text-teal-600' : 'opacity-0 group-hover:opacity-100 text-slate-300 hover:text-teal-600'}`}
-          title={hasNotes ? 'Notes' : 'Add notes'}
-        >
-          <FileText className="w-4 h-4" />
-        </button>
-
-        <button
-          onClick={() => onDelete(task.id)}
-          className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-          title="Delete"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Notes body: open editor, or a one-line preview that opens it. */}
-      {notesOpen ? (
-        <div className="ml-7 mt-1.5">
-          <TaskNotes task={task} onPatch={onPatch} autoFocus />
-        </div>
-      ) : hasNotes ? (
-        <button
-          onClick={() => setNotesOpen(true)}
-          className="ml-7 mt-0.5 block text-left text-xs text-slate-400 hover:text-slate-600 truncate max-w-full"
-        >
-          {task.notes!.trim().split('\n')[0]}
-        </button>
-      ) : null}
-
-      {/* Checklist body */}
-      {enableChecklist && (expanded || hasChecklist) && !task.done && (
-        <ChecklistEditor
-          items={task.checklist ?? []}
-          expanded={expanded}
-          onToggleExpand={() => setExpanded(v => !v)}
-          onChange={setChecklist}
-        />
-      )}
-    </div>
-  );
-}
-
-function ChecklistEditor({
-  items, expanded, onToggleExpand, onChange,
-}: {
-  items: ChecklistItem[];
-  expanded: boolean;
-  onToggleExpand: () => void;
-  onChange: (items: ChecklistItem[]) => void;
-}) {
-  const [draft, setDraft] = useState('');
-
-  function toggle(id: string) { onChange(items.map(i => (i.id === id ? { ...i, done: !i.done } : i))); }
-  function rename(id: string, title: string) { onChange(items.map(i => (i.id === id ? { ...i, title } : i))); }
-  function remove(id: string) { onChange(items.filter(i => i.id !== id)); }
-  function add() {
-    const title = draft.trim();
-    if (!title) return;
-    onChange([...items, newChecklistItem(title)]);
-    setDraft('');
-  }
-
-  return (
-    <div className="ml-7 mt-1 pl-3 border-l-2 border-slate-100 space-y-1">
-      {items.map(item => (
-        <div key={item.id} className="flex items-center gap-2 group/ci">
-          <button
-            onClick={() => toggle(item.id)}
-            className={`shrink-0 ${item.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
-          >
-            {item.done
-              ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-600 text-white"><Check className="w-2.5 h-2.5" /></span>
-              : <Circle className="w-4 h-4" />}
-          </button>
-          <input
-            value={item.title}
-            onChange={e => rename(item.id, e.target.value)}
-            className={`flex-1 text-sm bg-transparent outline-none ${item.done ? 'text-slate-400 line-through' : 'text-slate-600'}`}
-          />
-          <button
-            onClick={() => remove(item.id)}
-            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/ci:opacity-100 transition-opacity shrink-0"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      ))}
-      {expanded && (
-        <div className="flex items-center gap-2">
-          <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
-          <input
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') add(); }}
-            placeholder="Add a sub-step…"
-            className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-300 text-slate-600"
-          />
-        </div>
-      )}
-      {!expanded && items.length > 0 && (
-        <button onClick={onToggleExpand} className="text-xs text-slate-400 hover:text-teal-600">+ add sub-step</button>
-      )}
-    </div>
-  );
-}
-
-// A tiny click-to-open menu lives in ./MiniMenu (shared with My Day rows).
+// The unified TaskRow (resting chips + ⋯ menu + expand card) lives in ./TaskRow,
+// shared with My Day. Headings are rendered by HeadingRow above, not routed
+// through it.
 
 // A list in the rail: click to open, drag the grip to reorder.
 function SortableListItem({
