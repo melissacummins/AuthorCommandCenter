@@ -326,12 +326,52 @@ function gptImage2Size(width: number, height: number): string {
   return `${snap16(width)}x${snap16(height)}`;
 }
 
+// Nano Banana (Google Gemini Image) doesn't accept arbitrary pixel
+// dimensions — it takes a named `aspect_ratio` enum and picks its
+// own resolution. The Fal endpoint silently ignores image_size and
+// falls back to the default 896×1152, which is why "1080×1440 (3:4)"
+// and "720×1280 (9:16)" both came back as the same default size.
+//
+// Supported aspect_ratio values (per fal.ai/models/fal-ai/nano-banana):
+//   auto, 1:1, 4:5, 5:4, 3:4, 4:3, 2:3, 3:2, 9:16, 16:9, 21:9,
+//   1:4, 4:1, 1:8, 8:1
+const NANO_BANANA_ASPECTS: readonly string[] = [
+  '1:1', '4:5', '5:4', '3:4', '4:3', '2:3', '3:2', '9:16', '16:9', '21:9',
+  '1:4', '4:1', '1:8', '8:1',
+];
+
+function nanoBananaAspectRatio(width: number, height: number): string {
+  if (!width || !height) return 'auto';
+  const target = width / height;
+  let best = '1:1';
+  let bestDiff = Infinity;
+  for (const ratio of NANO_BANANA_ASPECTS) {
+    const [w, h] = ratio.split(':').map((n) => parseInt(n, 10));
+    if (!w || !h) continue;
+    // Log-space distance gives a proportional comparison: 3:4 (0.75)
+    // is closer to 4:5 (0.8) than to 2:3 (0.667) by ratio, even
+    // though linear distance would call them similar.
+    const diff = Math.abs(Math.log(target) - Math.log(w / h));
+    if (diff < bestDiff) { bestDiff = diff; best = ratio; }
+  }
+  return best;
+}
+
 function buildFalPayload(model: ModelDef, body: GenerateRequestBody, numImages: number): Record<string, unknown> {
   const payload: Record<string, unknown> = {
     prompt: body.full_prompt ?? body.prompt,
   };
 
-  if (model.supportsCustomSize && body.width && body.height) {
+  const isNanoBanana = model.id === 'nano-banana' || model.id === 'nano-banana-edit';
+
+  if (isNanoBanana) {
+    // Nano Banana uses a named aspect_ratio enum, not image_size.
+    // Mapping the picked dimensions to the closest supported ratio
+    // so platform / aspect presets actually take effect.
+    payload.aspect_ratio = body.width && body.height
+      ? nanoBananaAspectRatio(body.width, body.height)
+      : 'auto';
+  } else if (model.supportsCustomSize && body.width && body.height) {
     // Most Fal image endpoints take image_size as `{width, height}`.
     // gpt-image-2 expects a "WxH" string with both dims divisible by 16.
     if (model.id === 'gpt-image-2') {

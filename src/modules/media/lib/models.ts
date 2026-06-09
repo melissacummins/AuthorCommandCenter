@@ -108,7 +108,7 @@ export const MODELS: ModelDef[] = [
     acceptsInputImage: false,
     editEndpoint: 'fal-ai/nano-banana/edit',
     supportsCustomSize: true,
-    description: "Google's Gemini image model. Great all-rounder; attach a reference image to edit.",
+    description: "Google's Gemini image model. Picks the closest supported aspect ratio (1:1, 4:5, 3:4, 2:3, 9:16, 3:2, 4:3, 16:9, 21:9, 5:4, plus 1:4 / 4:1 / 1:8 / 8:1) — exact pixel dimensions aren't supported. Attach a reference image to edit.",
     estimatedCostCents: 4,
     isAsync: false,
     isFeatured: true,
