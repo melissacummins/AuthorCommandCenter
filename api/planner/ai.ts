@@ -38,7 +38,7 @@ const KEY_SALT = 'planner-anthropic-key-v1';
 
 const ALLOWED_MODELS = new Set(['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-opus-4-8']);
 const DEFAULT_MODEL = 'claude-sonnet-4-6';
-const MAX_OUTPUT_TOKENS = 1500;
+const MAX_OUTPUT_TOKENS = 4096;
 
 function bearer(req: VercelRequest): string | null {
   const raw = req.headers['authorization'] ?? req.headers['Authorization'];
