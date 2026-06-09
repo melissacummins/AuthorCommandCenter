@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Check, Circle, Trash2, Repeat, Clock, CalendarClock, CalendarPlus, Link2Off,
-  Star, Moon, Orbit as OrbitIcon, MoreHorizontal, Plus, ChevronRight, ChevronLeft,
+  Star, Moon, Orbit as OrbitIcon, MoreHorizontal, Plus, ChevronRight, ChevronLeft, ChevronDown,
   Pencil, ListPlus, Inbox,
 } from 'lucide-react';
 import { TimerButton } from './TimerButton';
@@ -65,17 +65,35 @@ export function TaskRow(props: TaskRowProps) {
   } = props;
 
   const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(task.title);
   const hasNotes = !!task.notes?.trim();
   const overdue = !task.done && !!task.due_date && task.due_date < today;
   const progress = checklistProgress(task);
   const running = !!task.timer_started_at;
 
-  // The keyboard add flow points focus at a freshly created row: open it
-  // expanded with the title focused (replaces the old auto-edit).
+  // The keyboard add flow points focus at a freshly created row: open a light
+  // inline title edit (NOT the detail card), so rapid capture stays thin — type
+  // a title, Enter commits + spawns the next sibling. The card is opt-in.
   useEffect(() => {
-    if (focusId && focusId === task.id) { setExpanded(true); onFocused?.(); }
+    if (focusId && focusId === task.id) { setEditing(true); setDraft(task.title); onFocused?.(); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusId, task.id]);
+
+  // Light inline rename (the row title) — distinct from the opt-in detail card.
+  function blurCommit() {
+    setEditing(false);
+    const next = draft.trim();
+    if (!next) { if (!task.title) onDelete(task.id); else setDraft(task.title); return; }
+    if (next !== task.title) onPatch(task.id, { title: next });
+  }
+  function enterCommit() {
+    const next = draft.trim();
+    if (!next) { setEditing(false); if (!task.title) onDelete(task.id); return; }
+    if (next !== task.title) onPatch(task.id, { title: next });
+    setEditing(false);
+    onEnter?.();  // spawn + focus the next sibling (stays thin)
+  }
 
   return (
     <div className="py-1.5 group">
@@ -91,13 +109,28 @@ export function TaskRow(props: TaskRowProps) {
             : <Circle className="w-5 h-5" />}
         </button>
 
-        <button
-          onClick={() => { if (!task.done) setExpanded(v => !v); }}
-          className={`flex-1 min-w-0 text-left text-sm truncate ${task.done ? 'text-slate-400 line-through cursor-default' : 'text-slate-700 cursor-text'}`}
-          title={task.done ? undefined : 'Open details'}
-        >
-          {task.title || 'Untitled'}
-        </button>
+        {editing && !task.done ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onBlur={blurCommit}
+            onKeyDown={e => {
+              if (e.key === 'Enter') { e.preventDefault(); enterCommit(); }
+              if (e.key === 'Escape') { setDraft(task.title); setEditing(false); }
+            }}
+            placeholder="To-do title…"
+            className="flex-1 min-w-0 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
+          />
+        ) : (
+          <button
+            onClick={() => { if (!task.done) { setDraft(task.title); setEditing(true); } }}
+            className={`flex-1 min-w-0 text-left text-sm truncate ${task.done ? 'text-slate-400 line-through cursor-default' : 'text-slate-700 cursor-text'}`}
+            title={task.done ? undefined : 'Click to rename · chevron or ⋯ for details'}
+          >
+            {task.title || 'Untitled'}
+          </button>
+        )}
 
         {/* Quiet chips — only shown when the value is set. Non-interactive-looking. */}
         {!task.done && (
@@ -156,7 +189,16 @@ export function TaskRow(props: TaskRowProps) {
           </button>
         )}
 
-        {/* Hover: a single ⋯ "More" button. */}
+        {/* Hover: open the detail card (opt-in), then the ⋯ "More" menu. */}
+        {!task.done && (
+          <button
+            onClick={() => { setEditing(false); setExpanded(v => !v); }}
+            className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            title={expanded ? 'Close details' : 'Open details'}
+          >
+            {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+        )}
         {!task.done && (
           <TaskActionsMenu
             task={task}
@@ -200,8 +242,7 @@ export function TaskRow(props: TaskRowProps) {
           canFlag={canFlag}
           enableRecurrence={enableRecurrence}
           enableChecklist={enableChecklist}
-          autoFocusTitle={focusId == null || focusId === task.id}
-          onEnter={onEnter}
+          autoFocusTitle={false}
         />
       )}
 
