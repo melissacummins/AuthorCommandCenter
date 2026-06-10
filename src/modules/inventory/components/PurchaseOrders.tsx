@@ -483,11 +483,25 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed }: {
   const [goodQty, setGoodQty] = useState(po.quantity);
   const [addToInv, setAddToInv] = useState(po.quantity);
   const [sdQty, setSdQty] = useState(0);
+  // Once she manually edits scratch & dent, stop auto-filling it from goodQty
+  // (covers the case where she received fewer than ordered).
+  const [sdTouched, setSdTouched] = useState(false);
   const [sdProductId, setSdProductId] = useState<string>(defaultSdProductId);
   const [saveAsDefault, setSaveAsDefault] = useState(false);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  function handleGoodQtyChange(next: number) {
+    if (addToInv === goodQty) setAddToInv(next);
+    setGoodQty(next);
+    if (!sdTouched) setSdQty(Math.max(0, po.quantity - next));
+  }
+
+  function handleSdChange(next: number) {
+    setSdQty(next);
+    setSdTouched(true);
+  }
 
   async function handleConfirm() {
     if (sdQty > 0 && !sdProductId) {
@@ -533,13 +547,13 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed }: {
         <div>
           <label className="block text-xs text-slate-500 mb-1">Good Qty Received</label>
           <input type="number" min={0} value={goodQty}
-            onChange={e => { setGoodQty(Number(e.target.value)); if (addToInv === goodQty) setAddToInv(Number(e.target.value)); }}
+            onChange={e => handleGoodQtyChange(Number(e.target.value))}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
         </div>
         <div>
           <label className="block text-xs text-slate-500 mb-1">Scratch & Dent</label>
           <input type="number" min={0} value={sdQty}
-            onChange={e => setSdQty(Number(e.target.value))}
+            onChange={e => handleSdChange(Number(e.target.value))}
             className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
         </div>
         <div>
