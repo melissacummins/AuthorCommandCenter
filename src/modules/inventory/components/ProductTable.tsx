@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext } from 'react';
 import { Search, ChevronDown, ChevronUp, ChevronRight, Edit2, Check, X, Plus, Trash2, FileText, Copy } from 'lucide-react';
 import type { Product, PurchaseOrder } from '../../../lib/types';
 import { calculateProductMetrics, formatCurrency, formatPercent, marginColor, CATEGORIES, STATUSES } from '../utils';
@@ -29,6 +29,43 @@ const BULK_FIELDS: Array<{ value: string; label: string }> = [
 ];
 
 type SortKey = 'name' | 'category' | 'base_price' | 'netMarginPercent' | 'book_inventory' | 'status';
+
+// EditableCell lives at module scope (not nested inside ProductTable) so that
+// React doesn't see it as a new component type on every keystroke. Without
+// this, the input was unmounted/remounted each render, autoFocus fired again,
+// and the cursor snapped back to the end of the field.
+type EditCtx = {
+  editingField: { id: string; field: string } | null;
+  editValue: string;
+  setEditValue: (v: string) => void;
+  startEdit: (id: string, field: string, currentValue: string | number) => void;
+  saveEdit: (id: string, field: string) => void;
+  cancelEdit: () => void;
+};
+const EditContext = createContext<EditCtx | null>(null);
+
+function EditableCell({ id, field, value, format, suffix }: { id: string; field: string; value: string | number; format?: (v: number) => string; suffix?: string }) {
+  const ctx = useContext(EditContext);
+  if (!ctx) return null;
+  const isEditing = ctx.editingField?.id === id && ctx.editingField?.field === field;
+  if (isEditing) {
+    return (
+      <div className="flex items-center gap-1">
+        <input type="text" value={ctx.editValue} onChange={e => ctx.setEditValue(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') ctx.saveEdit(id, field); if (e.key === 'Escape') ctx.cancelEdit(); }}
+          className="w-20 px-1 py-0.5 border border-blue-400 rounded text-sm focus:outline-none" autoFocus />
+        <button onClick={() => ctx.saveEdit(id, field)} className="text-green-600"><Check className="w-3 h-3" /></button>
+        <button onClick={ctx.cancelEdit} className="text-slate-400"><X className="w-3 h-3" /></button>
+      </div>
+    );
+  }
+  const display = format ? format(Number(value)) : `${value}${suffix || ''}`;
+  return (
+    <span className="cursor-pointer hover:bg-blue-50 px-1 py-0.5 rounded group inline-flex items-center gap-1" onClick={() => ctx.startEdit(id, field, value)} title="Click to edit">
+      {display}<Edit2 className="w-3 h-3 text-slate-300 group-hover:text-blue-400 opacity-0 group-hover:opacity-100" />
+    </span>
+  );
+}
 
 export default function ProductTable({ products, onRefetch, onAdjustStock, onDuplicate, pendingStock }: ProductTableProps) {
   const [search, setSearch] = useState('');
@@ -195,26 +232,14 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
     return sortAsc ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
   }
 
-  function EditableCell({ id, field, value, format, suffix }: { id: string; field: string; value: string | number; format?: (v: number) => string; suffix?: string }) {
-    const isEditing = editingField?.id === id && editingField?.field === field;
-    if (isEditing) {
-      return (
-        <div className="flex items-center gap-1">
-          <input type="text" value={editValue} onChange={e => setEditValue(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') saveEdit(id, field); if (e.key === 'Escape') setEditingField(null); }}
-            className="w-20 px-1 py-0.5 border border-blue-400 rounded text-sm focus:outline-none" autoFocus />
-          <button onClick={() => saveEdit(id, field)} className="text-green-600"><Check className="w-3 h-3" /></button>
-          <button onClick={() => setEditingField(null)} className="text-slate-400"><X className="w-3 h-3" /></button>
-        </div>
-      );
-    }
-    const display = format ? format(Number(value)) : `${value}${suffix || ''}`;
-    return (
-      <span className="cursor-pointer hover:bg-blue-50 px-1 py-0.5 rounded group inline-flex items-center gap-1" onClick={() => startEdit(id, field, value)} title="Click to edit">
-        {display}<Edit2 className="w-3 h-3 text-slate-300 group-hover:text-blue-400 opacity-0 group-hover:opacity-100" />
-      </span>
-    );
-  }
+  const editCtx: EditCtx = {
+    editingField,
+    editValue,
+    setEditValue,
+    startEdit,
+    saveEdit,
+    cancelEdit: () => setEditingField(null),
+  };
 
   function ReadOnlyCell({ value, format, className }: { value: number | string; format?: (v: number) => string; className?: string }) {
     const display = format ? format(Number(value)) : value;
@@ -308,6 +333,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
   }
 
   return (
+    <EditContext.Provider value={editCtx}>
     <div className="space-y-4">
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -844,6 +870,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
         </div>
       </div>
     </div>
+    </EditContext.Provider>
   );
 }
 
