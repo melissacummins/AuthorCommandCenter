@@ -59,13 +59,16 @@ function secretsMatch(provided: string, expected: string): boolean {
   try { return timingSafeEqual(a, b); } catch { return false; }
 }
 
-// Parse JSON, falling back to form-urlencoded; always returns a plain object.
-function parsePayload(raw: string, contentType: string): Record<string, unknown> {
+// Parse a webhook body as JSON or URL-encoded form params, whichever parses.
+// BookFunnel's "JSON" mode has a known connection bug, so authors use "PARAMS"
+// (form) mode — we accept either without relying on the Content-Type header.
+function parseBody(raw: string): Record<string, unknown> {
   const text = raw.trim();
   if (!text) return {};
-  if (!contentType.includes('urlencoded')) {
-    try { return JSON.parse(text) as Record<string, unknown>; } catch { /* try form */ }
-  }
+  try {
+    const j = JSON.parse(text);
+    if (j && typeof j === 'object') return j as Record<string, unknown>;
+  } catch { /* not JSON — try form params */ }
   try {
     const params = new URLSearchParams(text);
     const obj: Record<string, unknown> = {};
@@ -74,6 +77,17 @@ function parsePayload(raw: string, contentType: string): Record<string, unknown>
   } catch { /* ignore */ }
   // Last resort: keep the raw text so nothing is lost.
   return { _raw: text };
+}
+
+// Some senders append the data to the URL itself (one PARAMS-mode variant),
+// alongside our auth params — collect everything except u and t.
+function queryData(req: VercelRequest): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(req.query)) {
+    if (k === 'u' || k === 't') continue;
+    out[k] = Array.isArray(v) ? v[0] : v;
+  }
+  return out;
 }
 
 // Flatten one level of common nesting so lookups find fields whether BookFunnel
@@ -142,9 +156,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  // Capture the payload whether BookFunnel sends a JSON body, a form-encoded
+  // body (PARAMS mode), or appends the fields to the URL — merge all sources
+  // (a body value wins over a same-named URL param).
   const rawBody = await readRawBody(req);
-  const contentType = (Array.isArray(req.headers['content-type']) ? req.headers['content-type'][0] : req.headers['content-type']) ?? '';
-  const payload = parsePayload(rawBody.toString('utf8'), contentType);
+  const payload = { ...queryData(req), ...parseBody(rawBody.toString('utf8')) };
   const flat = flatten(payload);
 
   // Event type can arrive as a field or as the integration's configured event.
