@@ -117,9 +117,53 @@ function pick(flat: Record<string, unknown>, keys: string[]): string | null {
   return null;
 }
 
+// Our secret is 64 hex chars. If BookFunnel's PARAMS mode appends data to the
+// URL (corrupting the `t` value, e.g. "<secret>?email=…"), pull the secret back
+// out so a mangled query still validates.
+function extractSecret(t: string): string {
+  const m = t.match(/[0-9a-f]{64}/i);
+  return m ? m[0] : t;
+}
+
+function secretAccepted(token: string, stored: string | null | undefined): boolean {
+  if (!stored) return false;
+  return secretsMatch(token, stored) || secretsMatch(extractSecret(token), stored);
+}
+
+function makeClient() {
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceKey) return null;
+  return createClient(supabaseUrl, serviceKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // A browser GET is handy for confirming the URL is live.
   if (req.method === 'GET') {
+    // Browser diagnostic: append &debug=1 to the webhook URL. Reports whether
+    // the function can see this user's stored secret + tables — without ever
+    // echoing the secret — so a failing setup can be pinpointed in a browser.
+    if (queryParam(req, 'debug') === '1') {
+      const u = queryParam(req, 'u');
+      const t = queryParam(req, 't');
+      const supabase = makeClient();
+      if (!supabase) { res.status(200).json({ env_ok: false }); return; }
+      let settings_row_found = false;
+      let secret_matches = false;
+      let events_table_ok = false;
+      try {
+        const { data } = await supabase.from('bookfunnel_settings').select('webhook_secret').eq('user_id', u).maybeSingle();
+        settings_row_found = !!data?.webhook_secret;
+        secret_matches = secretAccepted(t, data?.webhook_secret);
+      } catch { /* table may not exist */ }
+      try {
+        const { error } = await supabase.from('bookfunnel_events').select('id').eq('user_id', u).limit(1);
+        events_table_ok = !error;
+      } catch { /* ignore */ }
+      res.status(200).json({ env_ok: true, settings_row_found, secret_matches, events_table_ok, received_t_length: t.length });
+      return;
+    }
     res.status(200).send('BookFunnel webhook endpoint is live. Configure it in BookFunnel to receive new_subscriber events.');
     return;
   }
@@ -135,15 +179,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!supabaseUrl || !serviceKey) {
+  const supabase = makeClient();
+  if (!supabase) {
     res.status(500).send('Service not configured');
     return;
   }
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
 
   const { data: settings } = await supabase
     .from('bookfunnel_settings')
@@ -151,7 +191,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (!settings?.webhook_secret || !secretsMatch(token, settings.webhook_secret)) {
+  if (!secretAccepted(token, settings?.webhook_secret)) {
     res.status(403).send('Invalid webhook secret');
     return;
   }
