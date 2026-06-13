@@ -165,7 +165,7 @@ export default function BookFunnelModule() {
               <li>In BookFunnel, go to <span className="font-medium">Integrations → Add Integration</span>.</li>
               <li>Choose <span className="font-medium">"BookFunnel API"</span> and create an API key.</li>
               <li>Add a webhook and paste the URL above.</li>
-              <li>Choose <span className="font-medium">JSON</span> format.</li>
+              <li>Set <span className="font-medium">Send Data As → PARAMS</span> <span className="text-slate-400">(BookFunnel's JSON mode has a connection bug — PARAMS works).</span></li>
               <li>Select the <span className="font-medium">new_subscriber</span> event.</li>
             </ol>
           </>
