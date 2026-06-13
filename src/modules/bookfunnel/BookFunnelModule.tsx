@@ -51,8 +51,9 @@ export default function BookFunnelModule() {
     reload();
   }, [user, reload]);
 
+  // Path-based (…/<user>/<secret>) — BookFunnel drops query strings on send.
   const webhookUrl = secret
-    ? `${window.location.origin}/api/bookfunnel/webhook?u=${userId}&t=${secret}`
+    ? `${window.location.origin}/api/bookfunnel/${userId}/${secret}`
     : '';
 
   const unhandledCount = useMemo(() => events.filter(e => !e.handled).length, [events]);
