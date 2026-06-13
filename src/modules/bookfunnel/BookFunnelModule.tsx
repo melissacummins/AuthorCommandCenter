@@ -51,9 +51,10 @@ export default function BookFunnelModule() {
     reload();
   }, [user, reload]);
 
-  // Path-based (…/<user>/<secret>) — BookFunnel drops query strings on send.
+  // One path segment "<user>_<secret>" — BookFunnel drops query strings, and
+  // this Vercel setup only serves single-segment dynamic routes.
   const webhookUrl = secret
-    ? `${window.location.origin}/api/bookfunnel/${userId}/${secret}`
+    ? `${window.location.origin}/api/bookfunnel/${userId}_${secret}`
     : '';
 
   const unhandledCount = useMemo(() => events.filter(e => !e.handled).length, [events]);
