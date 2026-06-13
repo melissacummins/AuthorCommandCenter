@@ -28,7 +28,11 @@ export interface ChecklistItem {
 export type TaskKind = 'task' | 'heading';
 
 // How often a to-do repeats; null = one-off.
-export type Recurrence = 'daily' | 'weekdays' | 'weekly' | 'monthly';
+export type RecurrenceUnit = 'day' | 'week' | 'month';
+export const RECURRENCE_PRESETS = ['daily', 'weekdays', 'weekly', 'biweekly', 'monthly'] as const;
+export type RecurrencePreset = typeof RECURRENCE_PRESETS[number];
+// Either a named preset or a custom "every:<n>:<unit>" (e.g. 'every:2:week').
+export type Recurrence = RecurrencePreset | `every:${number}:${RecurrenceUnit}`;
 
 export interface PlannerTask {
   id: string;
@@ -233,12 +237,33 @@ export function daysBetweenISO(from: string, to: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
-export const RECURRENCE_LABELS: Record<Recurrence, string> = {
+export const RECURRENCE_LABELS: Record<RecurrencePreset, string> = {
   daily: 'Every day',
   weekdays: 'Weekdays',
   weekly: 'Every week',
+  biweekly: 'Every 2 weeks',
   monthly: 'Every month',
 };
+
+// Parse a custom "every:<n>:<unit>" recurrence; null for presets / invalid input.
+export function parseCustomRecurrence(r: Recurrence | null | undefined): { n: number; unit: RecurrenceUnit } | null {
+  if (!r) return null;
+  const m = /^every:([1-9][0-9]*):(day|week|month)$/.exec(r);
+  return m ? { n: parseInt(m[1], 10), unit: m[2] as RecurrenceUnit } : null;
+}
+
+// Build a custom recurrence value from a count + unit.
+export function customRecurrence(n: number, unit: RecurrenceUnit): Recurrence {
+  return `every:${Math.max(1, Math.round(n))}:${unit}`;
+}
+
+// Human label for any recurrence — preset or custom.
+export function recurrenceLabel(r: Recurrence | null | undefined): string {
+  if (!r) return '';
+  const c = parseCustomRecurrence(r);
+  if (c) return c.n === 1 ? `Every ${c.unit}` : `Every ${c.n} ${c.unit}s`;
+  return RECURRENCE_LABELS[r as RecurrencePreset] ?? 'Repeats';
+}
 
 // Preset estimates offered in the time menu (minutes).
 export const ESTIMATE_PRESETS = [15, 30, 45, 60, 90, 120, 180];
@@ -281,6 +306,20 @@ function toISO(d: Date): string {
 // The next occurrence of a recurring to-do after the given due date.
 export function nextDueDate(due: string, rule: Recurrence): string {
   const d = new Date(due + 'T00:00:00');
+
+  // Custom "every N days/weeks/months".
+  const custom = parseCustomRecurrence(rule);
+  if (custom) {
+    if (custom.unit === 'day') d.setDate(d.getDate() + custom.n);
+    else if (custom.unit === 'week') d.setDate(d.getDate() + custom.n * 7);
+    else {
+      const day = d.getDate();
+      d.setMonth(d.getMonth() + custom.n);
+      if (d.getDate() < day) d.setDate(0); // clamp short months
+    }
+    return toISO(d);
+  }
+
   switch (rule) {
     case 'daily':
       d.setDate(d.getDate() + 1);
@@ -290,6 +329,9 @@ export function nextDueDate(due: string, rule: Recurrence): string {
       break;
     case 'weekly':
       d.setDate(d.getDate() + 7);
+      break;
+    case 'biweekly':
+      d.setDate(d.getDate() + 14);
       break;
     case 'monthly': {
       const day = d.getDate();

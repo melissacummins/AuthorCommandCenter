@@ -9,8 +9,9 @@ import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
 import { newChecklistItem } from './api';
 import {
-  checklistProgress, formatDue, formatMinutes, ESTIMATE_PRESETS, RECURRENCE_LABELS,
-  type ChecklistItem, type PlannerNote, type PlannerTask, type Recurrence,
+  checklistProgress, formatDue, formatMinutes, ESTIMATE_PRESETS,
+  RECURRENCE_PRESETS, recurrenceLabel, parseCustomRecurrence, customRecurrence,
+  type ChecklistItem, type PlannerNote, type PlannerTask, type Recurrence, type RecurrenceUnit,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -526,21 +527,68 @@ export function RepeatOptions({
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDone: () => void;
 }) {
+  const current = parseCustomRecurrence(task.recurrence);
+  const [showCustom, setShowCustom] = useState(!!current);
+  const [count, setCount] = useState(String(current?.n ?? 2));
+  const [unit, setUnit] = useState<RecurrenceUnit>(current?.unit ?? 'week');
+
+  // Setting a recurrence on an unscheduled task also schedules it for today.
+  function choose(r: Recurrence) {
+    onPatch(task.id, { recurrence: r, ...(task.due_date ? {} : { due_date: today, someday: false }) });
+    onDone();
+  }
+  function applyCustom() {
+    const n = parseInt(count, 10);
+    if (!n || n < 1) return;
+    choose(customRecurrence(n, unit));
+  }
+
   return (
-    <div className="py-1">
-      {(['daily', 'weekdays', 'weekly', 'monthly'] as Recurrence[]).map(r => (
+    <div className="py-1 min-w-[12rem]">
+      {RECURRENCE_PRESETS.map(r => (
         <button
           key={r}
-          // Setting a recurrence on an unscheduled task also schedules it for today.
-          onClick={() => { onPatch(task.id, { recurrence: r, ...(task.due_date ? {} : { due_date: today, someday: false }) }); onDone(); }}
+          onClick={() => choose(r)}
           className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.recurrence === r ? 'text-teal-600 font-medium' : 'text-slate-700'}`}
         >
-          {RECURRENCE_LABELS[r]}
+          {recurrenceLabel(r)}
         </button>
       ))}
+
+      {showCustom ? (
+        <div className="px-3 py-1.5 flex items-center gap-1.5">
+          <span className="text-sm text-slate-500">Every</span>
+          <input
+            type="number"
+            min="1"
+            value={count}
+            onChange={e => setCount(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') applyCustom(); }}
+            className="w-12 text-sm border border-slate-200 rounded px-1.5 py-0.5"
+          />
+          <select
+            value={unit}
+            onChange={e => setUnit(e.target.value as RecurrenceUnit)}
+            className="text-sm border border-slate-200 rounded px-1 py-0.5"
+          >
+            <option value="day">days</option>
+            <option value="week">weeks</option>
+            <option value="month">months</option>
+          </select>
+          <button onClick={applyCustom} className="text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 rounded px-2 py-1">Set</button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setShowCustom(true)}
+          className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-700"
+        >
+          Custom…
+        </button>
+      )}
+
       <button
         onClick={() => { onPatch(task.id, { recurrence: null }); onDone(); }}
-        className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400"
+        className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400 border-t border-slate-100"
       >
         Don’t repeat
       </button>
@@ -668,7 +716,7 @@ export function TaskDetail({
           <ChipPicker
             active={!!task.recurrence}
             icon={<Repeat className="w-3.5 h-3.5" />}
-            label={task.recurrence ? RECURRENCE_LABELS[task.recurrence] : 'Repeat'}
+            label={task.recurrence ? recurrenceLabel(task.recurrence) : 'Repeat'}
           >
             {close => <RepeatOptions task={task} today={today} onPatch={onPatch} onDone={close} />}
           </ChipPicker>
