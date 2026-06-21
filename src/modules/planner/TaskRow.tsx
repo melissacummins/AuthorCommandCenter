@@ -194,7 +194,7 @@ export function TaskRow(props: TaskRowProps) {
         {!task.done && (
           <button
             onClick={() => { setEditing(false); setExpanded(v => !v); }}
-            className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
             title={expanded ? 'Close details' : 'Open details'}
           >
             {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -222,7 +222,7 @@ export function TaskRow(props: TaskRowProps) {
         {task.done && (
           <button
             onClick={() => onDelete(task.id)}
-            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
@@ -293,7 +293,7 @@ export function TaskActionsMenu({
     <Popover
       icon={<MoreHorizontal className="w-4 h-4 text-slate-300 hover:text-slate-600" />}
       title="More"
-      triggerClassName="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+      triggerClassName="shrink-0 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity"
     >
       {close => (
         <MenuBody
@@ -822,7 +822,7 @@ export function ChecklistEditor({
           />
           <button
             onClick={() => remove(item.id)}
-            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/ci:opacity-100 transition-opacity shrink-0"
+            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/ci:opacity-100 touch:opacity-100 transition-opacity shrink-0"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>

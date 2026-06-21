@@ -723,7 +723,7 @@ function DraggableTaskRow({
     <button
       {...attributes}
       {...listeners}
-      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
       title="Drag between blocks"
     >
       <GripVertical className="w-4 h-4" />

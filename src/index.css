@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Touch devices have no hover, so any control that is only revealed on hover
+   (opacity-0 group-hover:opacity-100) is otherwise invisible/unusable on mobile.
+   Add `touch:opacity-100` alongside those to keep them visible on touch. */
+@custom-variant touch (@media (hover: none));
+
 @theme {
   --color-brand-50: var(--color-brand-50);
   --color-brand-100: var(--color-brand-100);
