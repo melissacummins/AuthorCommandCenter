@@ -14,6 +14,10 @@ export interface PlannerNote {
   // to-dos rolls up into that book's "hours worked" in the Catalog. null = not
   // tied to a book. ON DELETE SET NULL frees it if the book is deleted.
   book_id: string | null;
+  // Optional link to a pen name. When set, this list (and its to-dos) belongs
+  // to that author identity, so the planner's pen-name filter can scope to it.
+  // null = unassigned. ON DELETE SET NULL frees it if the pen name is deleted.
+  pen_name_id: string | null;
   created_at: string;
   updated_at: string;
 }
