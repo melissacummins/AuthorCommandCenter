@@ -7,7 +7,8 @@ import {
 import {
   fetchShopifyLocations, fetchShopifyOrders, upsertOrders,
   logSync, updateLastSync, updateDefaultLocation,
-  applyOrdersToInventory, syncShopifyProductMapping, pushInventoryToShopify
+  applyOrdersToInventory, syncShopifyProductMapping, pushInventoryToShopify,
+  getSyncedOrders
 } from '../api';
 import type { InventoryUpdate } from '../api';
 import { useShopifyOrders } from '../hooks/useShopifyOrders';
@@ -240,8 +241,14 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
       await refetchOrders();
       await loadProducts();
 
-      // Auto-apply to inventory
-      const inventoryUpdates = buildInventoryUpdates(filteredOrders, products);
+      // Auto-apply to inventory.
+      // applyOrdersToInventory uses cumulative delta tracking — it compares
+      // `books_purchased` (lifetime total) against `quantitySold`. So we
+      // have to feed it the lifetime total from local DB, not just this
+      // sync window's batch, or syncs that follow earlier ones get skipped
+      // when (window_qty - books_purchased) goes negative.
+      const allLocalOrders = await getSyncedOrders();
+      const inventoryUpdates = buildInventoryUpdates(allLocalOrders as unknown as Record<string, unknown>[], products);
       if (inventoryUpdates.length > 0) {
         const appliedCount = await applyOrdersToInventory(inventoryUpdates);
         await loadProducts(); // refresh products after update
