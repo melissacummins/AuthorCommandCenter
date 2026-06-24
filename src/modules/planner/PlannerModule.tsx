@@ -16,6 +16,7 @@ import {
   CalendarClock, Layers, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
+  CopyPlus, Check, Users as UsersIcon,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -28,12 +29,14 @@ import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import CatalogBookPicker from '../../components/CatalogBookPicker';
 import {
-  listNotes, createNote, updateNote, deleteNote,
+  listNotes, createNote, updateNote, deleteNote, duplicateList,
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
   getSettings, updateSettings, listDayNotes, saveDayNote as apiSaveDayNote,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
   listTimeSessions, createTimeSessions, reorderNotes,
 } from './api';
+import { listPenNames, type PenName } from '../../lib/penNames';
+import { penNameClasses } from '../../components/PenNameChip';
 import {
   bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
   elapsedMinutes, DEFAULT_DAILY_CAPACITY,
@@ -76,6 +79,10 @@ export default function PlannerModule() {
   const [sessions, setSessions] = useState<PlannerTimeSession[]>([]);
   const [dayNotes, setDayNotes] = useState<Record<string, string>>({});
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
+  const [penNames, setPenNames] = useState<PenName[]>([]);
+  // Whole-planner pen-name focus: null = All (show everything, today's behavior).
+  // Persisted only in component state, not the DB.
+  const [penFilter, setPenFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>({ kind: 'myday' });
@@ -97,12 +104,14 @@ export default function PlannerModule() {
     Promise.all([
       listNotes(user.id, true), listTasks(user.id), listTimeBlocks(user.id),
       listDayNotes(user.id), getSettings(user.id), listTimeSessions(user.id),
+      listPenNames(user.id),
     ])
-      .then(([n, t, b, dn, s, ts]) => {
+      .then(([n, t, b, dn, s, ts, pn]) => {
         if (!active) return;
         setNotes(n); setTasks(t); setBlocks(b); setSessions(ts);
         setDayNotes(Object.fromEntries((dn as PlannerDayNote[]).map(d => [d.day, d.body])));
         setSettings(s);
+        setPenNames(pn);
       })
       .catch(e => { if (active) setError(e?.message ?? 'Could not load your planner.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -133,6 +142,27 @@ export default function PlannerModule() {
   const archivedNotes = useMemo(
     () => notes.filter(n => n.archived).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')),
     [notes],
+  );
+  const penNamesById = useMemo(() => Object.fromEntries(penNames.map(p => [p.id, p])), [penNames]);
+  // A focused pen name drops any list it no longer matches; All keeps everything.
+  // The pinned-first / sort_order order from activeNotes is preserved.
+  const railNotes = useMemo(
+    () => (penFilter ? activeNotes.filter(n => n.pen_name_id === penFilter) : activeNotes),
+    [activeNotes, penFilter],
+  );
+  // The active (non-archived) lists handed to views for "move to list" — scoped
+  // to the focused pen name when a filter is on, else all active lists.
+  const listsForViews = useMemo(
+    () => (penFilter ? activeNotes.filter(n => n.pen_name_id === penFilter) : notes.filter(n => !n.archived)),
+    [activeNotes, notes, penFilter],
+  );
+  // The task set the VISIBLE views render: when a pen name is focused, only
+  // to-dos whose list carries that pen name (loose/Inbox to-dos have no list,
+  // hence no pen name, so they're hidden under a focus — intended). Under All
+  // (penFilter === null) this is exactly the full `tasks`, so nothing changes.
+  const scopedTasks = useMemo(
+    () => (penFilter ? tasks.filter(t => t.note_id != null && notesById[t.note_id]?.pen_name_id === penFilter) : tasks),
+    [tasks, notesById, penFilter],
   );
   const [showArchived, setShowArchived] = useState(false);
   const openCountByNote = useMemo(() => {
@@ -174,16 +204,17 @@ export default function PlannerModule() {
   function handleListDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const from = activeNotes.findIndex(n => n.id === active.id);
-    const to = activeNotes.findIndex(n => n.id === over.id);
+    // Reorder within the visible rail set (which is scoped by penFilter).
+    const from = railNotes.findIndex(n => n.id === active.id);
+    const to = railNotes.findIndex(n => n.id === over.id);
     if (from < 0 || to < 0) return;
-    const reordered = [...activeNotes];
+    const reordered = [...railNotes];
     const [moved] = reordered.splice(from, 1);
     reordered.splice(to, 0, moved);
     persistOrder(reordered, 'Could not save list order.');
   }
   function sortNotesAZ() {
-    const sorted = [...activeNotes].sort((a, b) => (a.title.trim() || 'Untitled list').localeCompare(b.title.trim() || 'Untitled list'));
+    const sorted = [...railNotes].sort((a, b) => (a.title.trim() || 'Untitled list').localeCompare(b.title.trim() || 'Untitled list'));
     persistOrder(sorted, 'Could not sort lists.');
   }
 
@@ -218,6 +249,18 @@ export default function PlannerModule() {
     setSelection({ kind: 'myday' });
     try { await deleteNote(id); }
     catch (e) { setError((e as Error)?.message ?? 'Could not delete note.'); }
+  }
+
+  // Duplicate a list + its to-dos/headings into a fresh "(copy)" and open it.
+  async function duplicateNote(note: PlannerNote) {
+    if (!user) return;
+    try {
+      const noteTasks = tasks.filter(t => t.note_id === note.id);
+      const { note: copy, tasks: copied } = await duplicateList(user.id, note, noteTasks);
+      setNotes(prev => [copy, ...prev]);
+      setTasks(prev => [...prev, ...copied]);
+      setSelection({ kind: 'note', id: copy.id });
+    } catch (e) { setError((e as Error)?.message ?? 'Could not duplicate the list.'); }
   }
 
   async function addTask(input: {
@@ -560,10 +603,20 @@ export default function PlannerModule() {
           </button>
         </nav>
 
+        {penNames.length > 0 && (
+          <div className="px-3 pt-1 pb-2 border-b border-slate-200/70">
+            <PenFilterSwitcher
+              penNames={penNames}
+              value={penFilter}
+              onChange={setPenFilter}
+            />
+          </div>
+        )}
+
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Lists</span>
           <div className="flex items-center gap-1">
-            {activeNotes.length > 1 && (
+            {railNotes.length > 1 && (
               <button onClick={sortNotesAZ} className="text-slate-400 hover:text-teal-600" title="Sort lists A–Z">
                 <ArrowDownAZ className="w-4 h-4" />
               </button>
@@ -574,17 +627,20 @@ export default function PlannerModule() {
           </div>
         </div>
         <nav className="px-3 pb-4 space-y-1">
-          {activeNotes.length === 0 && (
-            <p className="px-3 py-2 text-xs text-slate-400">No lists yet. Hit + to start one.</p>
+          {railNotes.length === 0 && (
+            <p className="px-3 py-2 text-xs text-slate-400">
+              {penFilter ? 'No lists for this pen name yet.' : 'No lists yet. Hit + to start one.'}
+            </p>
           )}
           <DndContext sensors={listSensors} collisionDetection={closestCenter} onDragEnd={handleListDragEnd}>
-            <SortableContext items={activeNotes.map(n => n.id)} strategy={verticalListSortingStrategy}>
-              {activeNotes.map(n => (
+            <SortableContext items={railNotes.map(n => n.id)} strategy={verticalListSortingStrategy}>
+              {railNotes.map(n => (
                 <SortableListItem
                   key={n.id}
                   note={n}
                   active={selection.kind === 'note' && selection.id === n.id}
                   open={openCountByNote[n.id] ?? 0}
+                  penName={n.pen_name_id ? penNamesById[n.pen_name_id] : undefined}
                   onChoose={() => choose({ kind: 'note', id: n.id })}
                 />
               ))}
@@ -640,7 +696,7 @@ export default function PlannerModule() {
           <div className="p-8 text-slate-400">Loading your planner…</div>
         ) : selection.kind === 'myday' ? (
           <MyDayView
-            tasks={tasks}
+            tasks={scopedTasks}
             blocks={blocks}
             sessions={sessions}
             dayNotes={dayNotes}
@@ -650,11 +706,11 @@ export default function PlannerModule() {
             handlers={myDayHandlers}
             jumpTo={dayJump}
             notesById={notesById}
-            lists={notes.filter(n => !n.archived)}
+            lists={listsForViews}
           />
         ) : selection.kind === 'plan' ? (
           <PlanView
-            tasks={tasks}
+            tasks={scopedTasks}
             blocks={blocks}
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
             notesById={notesById}
@@ -663,9 +719,9 @@ export default function PlannerModule() {
             onPatch={patchTask}
           />
         ) : selection.kind === 'stats' ? (
-          <StatsView tasks={tasks} sessions={sessions} today={today} />
+          <StatsView tasks={scopedTasks} sessions={sessions} today={today} />
         ) : selection.kind === 'logbook' ? (
-          <LogbookView tasks={tasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
+          <LogbookView tasks={scopedTasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
         ) : selection.kind === 'settings' ? (
           <SettingsView
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
@@ -679,10 +735,10 @@ export default function PlannerModule() {
             orbit={selection.kind === 'orbit'}
             orbitEnabled={orbitEnabled}
             settings={settings ?? null}
-            tasks={tasks}
+            tasks={scopedTasks}
             today={today}
             notesById={notesById}
-            lists={notes.filter(n => !n.archived)}
+            lists={listsForViews}
             onAdd={addTask}
             onPatch={patchTask}
             onDelete={removeTask}
@@ -696,9 +752,11 @@ export default function PlannerModule() {
             orbitEnabled={orbitEnabled}
             tasks={tasks.filter(t => t.note_id === selectedNote.id)}
             today={today}
-            lists={notes.filter(n => !n.archived)}
+            lists={listsForViews}
+            penNames={penNames}
             onSaveNote={saveNote}
             onDeleteNote={removeNote}
+            onDuplicateNote={duplicateNote}
             onAdd={addTask}
             onCreate={createTaskReturning}
             onPatch={patchTask}
@@ -1023,14 +1081,16 @@ function DayHeader({ date, today, totalMinutes }: { date: string; today: string;
 // ---------------------------------------------------------------------------
 
 function NotePane({
-  note, tasks, today, lists, onSaveNote, onDeleteNote, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
+  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
   today: string;
   lists: PlannerNote[];
+  penNames: PenName[];
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
+  onDuplicateNote: (note: PlannerNote) => void;
   onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
   onCreate: (i: { title?: string; note_id: string; kind?: 'task' | 'heading' }) => Promise<PlannerTask | undefined>;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
@@ -1123,12 +1183,22 @@ function NotePane({
           className="flex-1 text-2xl font-bold text-slate-800 bg-transparent outline-none placeholder:text-slate-300"
         />
         <div className="flex items-center gap-1 pt-2">
+          {penNames.length > 0 && (
+            <NotePenNamePicker
+              penNames={penNames}
+              value={note.pen_name_id}
+              onChange={penId => onSaveNote(note.id, { pen_name_id: penId })}
+            />
+          )}
           <button
             onClick={() => onSaveNote(note.id, { pinned: !note.pinned })}
             className={`p-2 rounded-lg hover:bg-slate-100 ${note.pinned ? 'text-amber-500' : 'text-slate-400'}`}
             title={note.pinned ? 'Unpin' : 'Pin to top'}
           >
             {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+          </button>
+          <button onClick={() => onDuplicateNote(note)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-teal-600" title="Duplicate this list (copy its to-dos, reset completion)">
+            <CopyPlus className="w-4 h-4" />
           </button>
           <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Archive">
             <Archive className="w-4 h-4" />
@@ -1427,12 +1497,151 @@ function HeadingRow({
 // through it.
 
 // A list in the rail: click to open, drag the grip to reorder.
+// The whole-planner pen-name focus, sitting above the Lists rail. A compact
+// dropdown of All + one row per pen name (with color dots), like the global
+// PenNamePicker but driven by local state instead of the pen-name context.
+function PenFilterSwitcher({
+  penNames, value, onChange,
+}: {
+  penNames: PenName[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickAway(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickAway);
+    return () => document.removeEventListener('mousedown', onClickAway);
+  }, [open]);
+
+  const selected = value ? penNames.find(p => p.id === value) : undefined;
+  const dot = selected ? penNameClasses(selected.color).dot : 'bg-slate-300';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-700"
+        title="Focus the planner on one pen name"
+      >
+        <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+        <span className="flex-1 text-left font-medium truncate">{selected?.name ?? 'All pen names'}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+          <button
+            onClick={() => { onChange(null); setOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+          >
+            <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+            <span className="flex-1 font-medium text-slate-700">All pen names</span>
+            {value === null && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+          </button>
+          <div className="my-1 border-t border-slate-100" />
+          {penNames.map(pn => {
+            const c = penNameClasses(pn.color);
+            return (
+              <button
+                key={pn.id}
+                onClick={() => { onChange(pn.id); setOpen(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
+                <span className="flex-1 font-medium text-slate-700 truncate">{pn.name}</span>
+                {pn.id === value && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Per-list pen-name assignment, shown in the list header. A compact dropdown of
+// "No pen name" + one row per pen name (with color dots). Picking writes the
+// note's pen_name_id (null clears it).
+function NotePenNamePicker({
+  penNames, value, onChange,
+}: {
+  penNames: PenName[];
+  value: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onClickAway(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', onClickAway);
+    return () => document.removeEventListener('mousedown', onClickAway);
+  }, [open]);
+
+  const selected = value ? penNames.find(p => p.id === value) : undefined;
+  const dot = selected ? penNameClasses(selected.color).dot : 'bg-slate-300';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="inline-flex items-center gap-1.5 px-2 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+        title="Assign a pen name to this list"
+      >
+        {selected
+          ? <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
+          : <UsersIcon className="w-4 h-4" />}
+        <span className="max-w-[8rem] truncate">{selected?.name ?? 'No pen name'}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+          <button
+            onClick={() => { onChange(null); setOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+          >
+            <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
+            <span className="flex-1 font-medium text-slate-700">No pen name</span>
+            {value === null && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+          </button>
+          <div className="my-1 border-t border-slate-100" />
+          {penNames.map(pn => {
+            const c = penNameClasses(pn.color);
+            return (
+              <button
+                key={pn.id}
+                onClick={() => { onChange(pn.id); setOpen(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+              >
+                <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
+                <span className="flex-1 font-medium text-slate-700 truncate">{pn.name}</span>
+                {pn.id === value && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SortableListItem({
-  note, active, open, onChoose,
+  note, active, open, penName, onChoose,
 }: {
   note: PlannerNote;
   active: boolean;
   open: number;
+  penName?: PenName;
   onChoose: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
@@ -1455,6 +1664,7 @@ function SortableListItem({
       >
         {note.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
         <span className="flex-1 text-left truncate">{note.title.trim() || 'Untitled list'}</span>
+        {penName && <span className={`w-2 h-2 rounded-full shrink-0 ${penNameClasses(penName.color).dot}`} title={penName.name} />}
         {open > 0 && <span className="text-xs text-slate-400 shrink-0">{open}</span>}
       </button>
     </div>

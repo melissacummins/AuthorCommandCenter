@@ -32,7 +32,7 @@ export async function createNote(userId: string, title = ''): Promise<PlannerNot
 
 export async function updateNote(
   id: string,
-  patch: Partial<Pick<PlannerNote, 'title' | 'body' | 'pinned' | 'archived' | 'sort_order' | 'book_id'>>,
+  patch: Partial<Pick<PlannerNote, 'title' | 'body' | 'pinned' | 'archived' | 'sort_order' | 'book_id' | 'pen_name_id'>>,
 ): Promise<PlannerNote> {
   const { data, error } = await supabase
     .from('planner_notes')
@@ -48,6 +48,69 @@ export async function deleteNote(id: string): Promise<void> {
   // planner_tasks cascade on note delete via the FK.
   const { error } = await supabase.from('planner_notes').delete().eq('id', id);
   if (error) throw error;
+}
+
+// Duplicate a list into a fresh "(copy)" — a template workflow: keep a list set
+// up the way you start a kind of work, then duplicate it when you begin. Copies
+// the note's pen name (its author identity) but not its book link (a copy isn't
+// the same book's work) and resets every per-instance field on the to-dos so
+// the copy starts clean: nothing done, scheduled, in orbit, blocked or timing.
+export async function duplicateList(
+  userId: string,
+  note: PlannerNote,
+  tasks: PlannerTask[],
+): Promise<{ note: PlannerNote; tasks: PlannerTask[] }> {
+  const { data: noteData, error: noteErr } = await supabase
+    .from('planner_notes')
+    .insert({
+      user_id: userId,
+      title: `${note.title.trim() || 'Untitled list'} (copy)`,
+      body: note.body,
+      pen_name_id: note.pen_name_id,
+      // A copy is a template instance, not the original book's work — don't
+      // roll its time up into the linked book.
+      book_id: null,
+      // Float to the top so the new copy is easy to find.
+      sort_order: 0,
+    })
+    .select('*')
+    .single();
+  if (noteErr) throw noteErr;
+  const newNote = noteData as PlannerNote;
+
+  const rows = tasks
+    .filter(t => t.note_id === note.id)
+    .map(t => ({
+      user_id: userId,
+      note_id: newNote.id,
+      title: t.title,
+      kind: t.kind,
+      sort_order: t.sort_order,
+      estimate_minutes: t.estimate_minutes,
+      recurrence: t.recurrence,
+      flagged: t.flagged,
+      // Deep-copy the checklist with fresh item ids.
+      checklist: (t.checklist ?? []).map(i => ({ ...i, id: crypto.randomUUID(), done: false })),
+      // Reset everything instance-specific so the copy starts fresh.
+      done: false,
+      done_at: null,
+      due_date: null,
+      someday: false,
+      in_orbit: false,
+      block_id: null,
+      timer_started_at: null,
+      start_at: null,
+      gcal_event_id: null,
+    }));
+
+  if (!rows.length) return { note: newNote, tasks: [] };
+
+  const { data: taskData, error: taskErr } = await supabase
+    .from('planner_tasks')
+    .insert(rows)
+    .select('*');
+  if (taskErr) throw taskErr;
+  return { note: newNote, tasks: (taskData ?? []) as PlannerTask[] };
 }
 
 // ---- Tasks ----------------------------------------------------------------
