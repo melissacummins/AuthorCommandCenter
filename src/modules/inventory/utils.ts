@@ -9,6 +9,25 @@ export const FEE_RATES = {
   TIKTOK_FEE_FIXED: 0.30,         // $0.30 fixed TikTok fee
 };
 
+// Reusable "what would the true cost per good book be if we used this print
+// + shipping price?" formula. Holds the rest of the cost stack (supplies, PA,
+// QA, fees, defect rate) constant. Use it to score printer quotes against the
+// product's current production_cost line.
+export function calculateTrueCostForQuote(product: Product, quoteUnitCost: number, quoteShipping: number) {
+  const transactionFees = product.base_price > 0
+    ? (product.base_price * FEE_RATES.TRANSACTION_FEE_PERCENT) + FEE_RATES.TRANSACTION_FEE_FIXED
+    : 0;
+  const defectFactor = Math.max(0, product.defect_rate || 0) / 100;
+  const reprintQaCost = product.qa_cost * defectFactor;
+  const trueCost =
+    quoteUnitCost + quoteShipping + product.shipping_supplies_cost +
+    product.pa_costs + product.qa_cost + reprintQaCost + transactionFees;
+  const revenuePerUnit = product.base_price + product.handling_fee_add_on;
+  const netMargin = revenuePerUnit - trueCost;
+  const netMarginPercent = product.base_price > 0 ? (netMargin / product.base_price) * 100 : 0;
+  return { trueCost, reprintQaCost, netMargin, netMarginPercent };
+}
+
 export function calculateProductMetrics(product: Product, allProducts?: Product[]) {
   // Transaction Fees: (basePrice * 0.029) + 0.30
   const transactionFees = product.base_price > 0
