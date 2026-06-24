@@ -101,6 +101,12 @@ export interface BookSpec {
   isbn: string;
   weight: number;
   notes: string;
+  format: string;
+  lamination: string;
+  paper_gsm: string;
+  special_addons: string;
+  bw_pages: number;
+  color_pages: number;
   created_at: string;
   updated_at: string;
 }
@@ -118,6 +124,7 @@ export interface PrinterQuote {
   quote_date: string;
   expires_date: string;
   notes: string;
+  past_order_count: number;
   created_at: string;
   updated_at: string;
 }
