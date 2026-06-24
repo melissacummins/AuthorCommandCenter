@@ -171,22 +171,25 @@ export default function PlannerModule() {
     return m;
   }, [tasks]);
 
+  // Smart-view + Inbox + Orbit badge counts track the focused set, so the rail
+  // badges match what each view actually shows under a pen-name filter. (Under
+  // All, scopedTasks === tasks, so these are unchanged.)
   const viewCounts = useMemo(() => {
     const c: Record<Bucket, number> = { today: 0, upcoming: 0, anytime: 0, someday: 0 };
-    for (const t of tasks) if (t.kind === 'task' && !t.done) c[bucketForTask(t, today)]++;
+    for (const t of scopedTasks) if (t.kind === 'task' && !t.done) c[bucketForTask(t, today)]++;
     return c;
-  }, [tasks, today]);
+  }, [scopedTasks, today]);
 
   // Open to-dos captured but never filed into a list — the Inbox count.
   const inboxCount = useMemo(
-    () => tasks.filter(t => t.kind === 'task' && !t.done && !t.note_id).length,
-    [tasks],
+    () => scopedTasks.filter(t => t.kind === 'task' && !t.done && !t.note_id).length,
+    [scopedTasks],
   );
 
   const orbitEnabled = !!settings?.orbit_enabled;
   const orbitCount = useMemo(
-    () => tasks.filter(t => t.kind === 'task' && !t.done && t.in_orbit).length,
-    [tasks],
+    () => scopedTasks.filter(t => t.kind === 'task' && !t.done && t.in_orbit).length,
+    [scopedTasks],
   );
 
   // The single to-do whose timer is currently running (if any) — surfaced in a
