@@ -12,7 +12,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useAuth } from '../../contexts/AuthContext';
 import {
-  NotebookPen, Plus, Trash2, Pin, PinOff, Archive,
+  NotebookPen, Plus, Trash2, Pin, PinOff, Archive, ArchiveRestore,
   CalendarClock, Layers, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
@@ -95,7 +95,7 @@ export default function PlannerModule() {
     if (!user) return;
     let active = true;
     Promise.all([
-      listNotes(user.id), listTasks(user.id), listTimeBlocks(user.id),
+      listNotes(user.id, true), listTasks(user.id), listTimeBlocks(user.id),
       listDayNotes(user.id), getSettings(user.id), listTimeSessions(user.id),
     ])
       .then(([n, t, b, dn, s, ts]) => {
@@ -124,6 +124,17 @@ export default function PlannerModule() {
   }, [user, loading, settings?.auto_rollover, tasks]);
 
   const notesById = useMemo(() => Object.fromEntries(notes.map(n => [n.id, n])), [notes]);
+  // The rail shows non-archived lists, pinned ones floated to the top. Archived
+  // lists live in their own collapsible section so archive stays recoverable.
+  const activeNotes = useMemo(
+    () => notes.filter(n => !n.archived).sort((a, b) => (Number(b.pinned) - Number(a.pinned)) || (a.sort_order - b.sort_order)),
+    [notes],
+  );
+  const archivedNotes = useMemo(
+    () => notes.filter(n => n.archived).sort((a, b) => (b.updated_at || '').localeCompare(a.updated_at || '')),
+    [notes],
+  );
+  const [showArchived, setShowArchived] = useState(false);
   const openCountByNote = useMemo(() => {
     const m: Record<string, number> = {};
     for (const t of tasks) if (t.note_id && t.kind === 'task' && !t.done) m[t.note_id] = (m[t.note_id] ?? 0) + 1;
@@ -154,25 +165,26 @@ export default function PlannerModule() {
 
   // Reorder lists by drag, persisting the new sort_order.
   const listSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  // Persist a new order for the (non-archived) lists, writing sort_order by index.
+  function persistOrder(ordered: PlannerNote[], failMsg: string) {
+    const orderById = new Map(ordered.map((n, i) => [n.id, i]));
+    setNotes(prev => prev.map(n => (orderById.has(n.id) ? { ...n, sort_order: orderById.get(n.id)! } : n)));
+    reorderNotes(ordered.map((n, i) => ({ id: n.id, sort_order: i }))).catch(e2 => setError((e2 as Error)?.message ?? failMsg));
+  }
   function handleListDragEnd(e: DragEndEvent) {
     const { active, over } = e;
     if (!over || active.id === over.id) return;
-    const from = notes.findIndex(n => n.id === active.id);
-    const to = notes.findIndex(n => n.id === over.id);
+    const from = activeNotes.findIndex(n => n.id === active.id);
+    const to = activeNotes.findIndex(n => n.id === over.id);
     if (from < 0 || to < 0) return;
-    const reordered = [...notes];
+    const reordered = [...activeNotes];
     const [moved] = reordered.splice(from, 1);
     reordered.splice(to, 0, moved);
-    const next = reordered.map((n, i) => ({ ...n, sort_order: i }));
-    setNotes(next);
-    reorderNotes(next.map(n => ({ id: n.id, sort_order: n.sort_order }))).catch(e2 => setError((e2 as Error)?.message ?? 'Could not save list order.'));
+    persistOrder(reordered, 'Could not save list order.');
   }
   function sortNotesAZ() {
-    const next = [...notes]
-      .sort((a, b) => (a.title.trim() || 'Untitled list').localeCompare(b.title.trim() || 'Untitled list'))
-      .map((n, i) => ({ ...n, sort_order: i }));
-    setNotes(next);
-    reorderNotes(next.map(n => ({ id: n.id, sort_order: n.sort_order }))).catch(e2 => setError((e2 as Error)?.message ?? 'Could not sort lists.'));
+    const sorted = [...activeNotes].sort((a, b) => (a.title.trim() || 'Untitled list').localeCompare(b.title.trim() || 'Untitled list'));
+    persistOrder(sorted, 'Could not sort lists.');
   }
 
   // ---- mutations (optimistic where it helps responsiveness) ----
@@ -193,6 +205,8 @@ export default function PlannerModule() {
 
   async function saveNote(id: string, patch: Partial<PlannerNote>) {
     patchNoteLocal(id, patch);
+    // Archiving the open list would otherwise leave its editor stranded.
+    if (patch.archived === true) setSelection(sel => (sel.kind === 'note' && sel.id === id ? { kind: 'myday' } : sel));
     try { await updateNote(id, patch); }
     catch (e) { setError((e as Error)?.message ?? 'Could not save note.'); }
   }
@@ -549,7 +563,7 @@ export default function PlannerModule() {
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Lists</span>
           <div className="flex items-center gap-1">
-            {notes.length > 1 && (
+            {activeNotes.length > 1 && (
               <button onClick={sortNotesAZ} className="text-slate-400 hover:text-teal-600" title="Sort lists A–Z">
                 <ArrowDownAZ className="w-4 h-4" />
               </button>
@@ -560,12 +574,12 @@ export default function PlannerModule() {
           </div>
         </div>
         <nav className="px-3 pb-4 space-y-1">
-          {notes.length === 0 && (
+          {activeNotes.length === 0 && (
             <p className="px-3 py-2 text-xs text-slate-400">No lists yet. Hit + to start one.</p>
           )}
           <DndContext sensors={listSensors} collisionDetection={closestCenter} onDragEnd={handleListDragEnd}>
-            <SortableContext items={notes.map(n => n.id)} strategy={verticalListSortingStrategy}>
-              {notes.map(n => (
+            <SortableContext items={activeNotes.map(n => n.id)} strategy={verticalListSortingStrategy}>
+              {activeNotes.map(n => (
                 <SortableListItem
                   key={n.id}
                   note={n}
@@ -576,6 +590,35 @@ export default function PlannerModule() {
               ))}
             </SortableContext>
           </DndContext>
+
+          {/* Archived lists — collapsed by default, with restore + delete. */}
+          {archivedNotes.length > 0 && (
+            <div className="mt-2 pt-2 border-t border-slate-200/70">
+              <button
+                onClick={() => setShowArchived(v => !v)}
+                className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+              >
+                {showArchived ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                Archived ({archivedNotes.length})
+              </button>
+              {showArchived && (
+                <div className="mt-0.5 space-y-0.5">
+                  {archivedNotes.map(n => (
+                    <div key={n.id} className="group/arch flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:bg-white/70">
+                      <Archive className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                      <span className="flex-1 truncate">{n.title.trim() || 'Untitled list'}</span>
+                      <button onClick={() => saveNote(n.id, { archived: false })} className="text-slate-300 hover:text-teal-600 shrink-0" title="Restore list">
+                        <ArchiveRestore className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => removeNote(n.id)} className="text-slate-300 hover:text-rose-500 shrink-0" title="Delete list">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
       </aside>
 
