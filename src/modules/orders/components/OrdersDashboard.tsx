@@ -252,6 +252,10 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
       if (inventoryUpdates.length > 0) {
         const appliedCount = await applyOrdersToInventory(inventoryUpdates);
         await loadProducts(); // refresh products after update
+        // Tell the Inventory module's product list to refetch — its realtime
+        // subscription doesn't always wake up in time, and tabs that aren't
+        // mounted miss the event entirely.
+        window.dispatchEvent(new CustomEvent('inventory:products-updated'));
         setInventoryApplied(true);
         setSyncSuccess(`Synced ${count} orders and updated inventory for ${appliedCount} products`);
       } else {

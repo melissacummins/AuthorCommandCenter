@@ -27,7 +27,15 @@ export function useProducts() {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Fallback path: Shopify sync (and any other cross-module mutation) fires
+    // this event so we refresh even when Realtime isn't wired up for products.
+    const onUpdated = () => { fetchProducts(); };
+    window.addEventListener('inventory:products-updated', onUpdated);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener('inventory:products-updated', onUpdated);
+    };
   }, [fetchProducts]);
 
   return { products, loading, refetch: fetchProducts };
