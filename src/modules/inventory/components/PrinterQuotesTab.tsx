@@ -4,8 +4,19 @@ import type { Product, PrinterQuote } from '../../../lib/types';
 import { supabase } from '../../../lib/supabase';
 import { useProducts } from '../hooks/useProducts';
 import { getAllQuotes, upsertQuoteForPrinterAndProduct, deleteQuote, type QuotePatch } from '../api/printerQuotes';
+import { getPrinterProfiles, upsertPrinterProfile, type PrinterProfile, type PrinterStatus } from '../api/printerProfiles';
 import { calculateTrueCostForQuote, formatCurrency } from '../utils';
 import CsvImporter, { type ParsedRow } from './CsvImporter';
+
+const STATUS_OPTIONS: Array<{ value: PrinterStatus; label: string; chip: string }> = [
+  { value: 'active',   label: 'Active',   chip: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'current',  label: 'Current',  chip: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  { value: 'rejected', label: 'Rejected', chip: 'bg-red-100 text-red-700 border-red-200' },
+];
+
+function statusChipClass(status: PrinterStatus): string {
+  return STATUS_OPTIONS.find(o => o.value === status)?.chip ?? STATUS_OPTIONS[0].chip;
+}
 
 interface RowState {
   unit_cost: number;
@@ -36,6 +47,43 @@ export default function PrinterQuotesTab() {
   // completed with zero rows" so a transient empty response (auth-token
   // refresh, network blip) doesn't make the table look empty.
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [profiles, setProfiles] = useState<PrinterProfile[]>([]);
+  const [targetMargin, setTargetMargin] = useState<number>(60);
+  const [showRejected, setShowRejected] = useState(false);
+
+  async function reloadProfiles() {
+    try {
+      const data = await getPrinterProfiles();
+      setProfiles(data);
+    } catch (err) {
+      console.error('Failed to load printer profiles', err);
+    }
+  }
+
+  useEffect(() => { reloadProfiles(); }, []);
+
+  function statusFor(printer: string): PrinterStatus {
+    return profiles.find(p => p.printer === printer)?.status ?? 'active';
+  }
+
+  async function setStatus(printer: string, status: PrinterStatus) {
+    // Optimistic update so the chip switches instantly
+    setProfiles(prev => {
+      const i = prev.findIndex(p => p.printer === printer);
+      if (i >= 0) {
+        const next = [...prev];
+        next[i] = { ...next[i], status };
+        return next;
+      }
+      return [...prev, { id: '', user_id: '', printer, status, notes: '', created_at: '', updated_at: '' }];
+    });
+    try {
+      await upsertPrinterProfile(printer, { status });
+      await reloadProfiles();
+    } catch (err) {
+      console.error('Failed to save printer status', err);
+    }
+  }
 
   async function reloadQuotes() {
     try {
@@ -70,10 +118,53 @@ export default function PrinterQuotesTab() {
     return Array.from(set).sort();
   }, [quotes]);
 
-  // Auto-select first printer when none selected
+  // Per-printer aggregate stats: average True Cost / Good Book across all
+  // books with a non-zero quote, plus how many of those books beat the
+  // target margin. Drives the rankings table.
+  const rankings = useMemo(() => {
+    const byProduct = new Map(products.map(p => [p.id, p]));
+    return printers.map(printer => {
+      const status = statusFor(printer);
+      const printerQuotes = quotes.filter(q => q.printer === printer && q.unit_cost > 0);
+      let totalCost = 0;
+      let totalMargin = 0;
+      let booksHittingTarget = 0;
+      let counted = 0;
+      let booksCheaperThanCurrent = 0;
+      for (const q of printerQuotes) {
+        const p = byProduct.get(q.product_id);
+        if (!p || p.category === 'Bundle' || p.category === 'Book Box') continue;
+        const r = calculateTrueCostForQuote(p, q.unit_cost, q.shipping_estimate);
+        const current = calculateTrueCostForQuote(p, p.production_cost, p.shipping_cost);
+        totalCost += r.trueCost;
+        totalMargin += r.netMarginPercent;
+        if (r.netMarginPercent >= targetMargin) booksHittingTarget++;
+        if (r.trueCost < current.trueCost) booksCheaperThanCurrent++;
+        counted++;
+      }
+      return {
+        printer,
+        status,
+        bookCount: counted,
+        avgTrueCost: counted > 0 ? totalCost / counted : 0,
+        avgMarginPercent: counted > 0 ? totalMargin / counted : 0,
+        booksHittingTarget,
+        booksCheaperThanCurrent,
+      };
+    }).filter(r => r.bookCount > 0)
+      .sort((a, b) => a.avgTrueCost - b.avgTrueCost);
+  }, [printers, quotes, products, profiles, targetMargin]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const visibleRankings = useMemo(
+    () => showRejected ? rankings : rankings.filter(r => r.status !== 'rejected'),
+    [rankings, showRejected]
+  );
+  const rejectedCount = useMemo(() => rankings.filter(r => r.status === 'rejected').length, [rankings]);
+
+  // Auto-select first non-rejected printer when none selected
   useEffect(() => {
-    if (!selectedPrinter && printers.length > 0) setSelectedPrinter(printers[0]);
-  }, [printers, selectedPrinter]);
+    if (!selectedPrinter && visibleRankings.length > 0) setSelectedPrinter(visibleRankings[0].printer);
+  }, [visibleRankings, selectedPrinter]);
 
   const books = useMemo(() => {
     return products
@@ -194,6 +285,83 @@ export default function PrinterQuotesTab() {
         }}
       />
 
+      {/* Rankings */}
+      {hasLoaded && rankings.length > 0 && (
+        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div>
+              <h3 className="text-sm font-semibold text-slate-800">Printer Rankings</h3>
+              <p className="text-[11px] text-slate-500">Ranked by average True Cost / Good Book across the books you've quoted. Click a row to load it below.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                Target margin
+                <input
+                  type="number"
+                  value={targetMargin}
+                  onChange={e => setTargetMargin(Number(e.target.value) || 0)}
+                  className="w-14 px-1.5 py-1 border border-slate-200 rounded text-xs text-right focus:outline-none focus:border-blue-400"
+                />
+                %
+              </label>
+              {rejectedCount > 0 && (
+                <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                  <input type="checkbox" checked={showRejected} onChange={e => setShowRejected(e.target.checked)} className="rounded" />
+                  Show rejected ({rejectedCount})
+                </label>
+              )}
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[11px] uppercase text-slate-500 tracking-wider border-b border-slate-100">
+                  <th className="text-left py-2 px-2 font-medium">#</th>
+                  <th className="text-left py-2 px-2 font-medium">Printer</th>
+                  <th className="text-left py-2 px-2 font-medium">Status</th>
+                  <th className="text-right py-2 px-2 font-medium" title="Books in this printer with a non-zero quote">Books</th>
+                  <th className="text-right py-2 px-2 font-medium" title="Average True Cost / Good Book across quoted books">Avg True Cost</th>
+                  <th className="text-right py-2 px-2 font-medium" title="Average net margin % across quoted books at this printer">Avg Margin %</th>
+                  <th className="text-right py-2 px-2 font-medium" title={`Books whose margin meets or beats ${targetMargin}%`}>≥ Target</th>
+                  <th className="text-right py-2 px-2 font-medium" title="Books where this printer's true cost is cheaper than your current production_cost + shipping_cost">Beats Current</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleRankings.map((r, i) => {
+                  const isSelected = r.printer === selectedPrinter;
+                  return (
+                    <tr
+                      key={r.printer}
+                      onClick={() => setSelectedPrinter(r.printer)}
+                      className={`border-b border-slate-50 cursor-pointer hover:bg-slate-50/60 ${isSelected ? 'bg-blue-50/40' : ''}`}
+                    >
+                      <td className="py-1.5 px-2 text-slate-400 text-xs">{i + 1}</td>
+                      <td className="py-1.5 px-2 font-medium text-slate-800">{r.printer}</td>
+                      <td className="py-1.5 px-2" onClick={e => e.stopPropagation()}>
+                        <select
+                          value={r.status}
+                          onChange={e => setStatus(r.printer, e.target.value as PrinterStatus)}
+                          className={`px-2 py-0.5 text-[11px] rounded-full border focus:outline-none ${statusChipClass(r.status)}`}
+                        >
+                          {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-slate-600">{r.bookCount}</td>
+                      <td className="py-1.5 px-2 text-right font-medium text-slate-800">{formatCurrency(r.avgTrueCost)}</td>
+                      <td className={`py-1.5 px-2 text-right font-medium ${r.avgMarginPercent >= targetMargin ? 'text-emerald-600' : 'text-slate-600'}`}>
+                        {r.avgMarginPercent.toFixed(1)}%
+                      </td>
+                      <td className="py-1.5 px-2 text-right text-slate-600">{r.booksHittingTarget}/{r.bookCount}</td>
+                      <td className="py-1.5 px-2 text-right text-slate-600">{r.booksCheaperThanCurrent}/{r.bookCount}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Printer Selector */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4 flex flex-wrap items-center gap-3">
         <label className="text-sm font-medium text-slate-700">Printer</label>
@@ -203,8 +371,17 @@ export default function PrinterQuotesTab() {
           className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 min-w-[200px]"
         >
           <option value="">Select a printer…</option>
-          {printers.map(p => <option key={p} value={p}>{p}</option>)}
+          {printers.filter(p => showRejected || statusFor(p) !== 'rejected').map(p => <option key={p} value={p}>{p}</option>)}
         </select>
+        {selectedPrinter && (
+          <select
+            value={statusFor(selectedPrinter)}
+            onChange={e => setStatus(selectedPrinter, e.target.value as PrinterStatus)}
+            className={`px-2 py-1 text-xs rounded-full border focus:outline-none ${statusChipClass(statusFor(selectedPrinter))}`}
+          >
+            {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+        )}
         <button
           onClick={addPrinter}
           className="flex items-center gap-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
