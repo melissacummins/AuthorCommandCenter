@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Upload } from 'lucide-react';
 import type { Product, PrinterQuote } from '../../../lib/types';
 import { useProducts } from '../hooks/useProducts';
 import { getAllQuotes, upsertQuoteForPrinterAndProduct, deleteQuote, type QuotePatch } from '../api/printerQuotes';
 import { calculateTrueCostForQuote, formatCurrency } from '../utils';
+import CsvImporter, { type ParsedRow } from './CsvImporter';
 
 interface RowState {
   unit_cost: number;
@@ -31,6 +32,7 @@ export default function PrinterQuotesTab() {
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [includeSD, setIncludeSD] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   async function reloadQuotes() {
     try {
@@ -131,11 +133,48 @@ export default function PrinterQuotesTab() {
           <h2 className="text-xl font-semibold text-slate-800">Printer Quotes</h2>
           <p className="text-sm text-slate-500 mt-1">Pick a printer, then fill in quote prices per book to compare against your current vendor.</p>
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600">
-          <input type="checkbox" checked={includeSD} onChange={e => setIncludeSD(e.target.checked)} className="rounded" />
-          Include S&amp;D variants
-        </label>
+        <div className="flex items-center gap-3">
+          <label className="flex items-center gap-2 text-sm text-slate-600">
+            <input type="checkbox" checked={includeSD} onChange={e => setIncludeSD(e.target.checked)} className="rounded" />
+            Include S&amp;D variants
+          </label>
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
+        </div>
       </div>
+
+      <CsvImporter
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        products={products}
+        kind="printer-quotes"
+        onComplete={reloadQuotes}
+        onImportRows={async (rows: ParsedRow[]) => {
+          let imported = 0;
+          let failed = 0;
+          for (const r of rows) {
+            if (!r.productId || !r.printer) continue;
+            try {
+              const num = (s: string) => Number(s.replace(/[$,\s]/g, '')) || 0;
+              const patch: QuotePatch = { printer: r.printer };
+              if (r.fields.unit_cost) patch.unit_cost = num(r.fields.unit_cost);
+              if (r.fields.shipping_estimate) patch.shipping_estimate = num(r.fields.shipping_estimate);
+              if (r.fields.past_order_count) patch.past_order_count = num(r.fields.past_order_count);
+              if (r.fields.notes) patch.notes = r.fields.notes;
+              await upsertQuoteForPrinterAndProduct(r.printer, r.productId, patch);
+              imported++;
+            } catch (err) {
+              console.error('Row failed', r, err);
+              failed++;
+            }
+          }
+          return { imported, failed };
+        }}
+      />
 
       {/* Printer Selector */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4 flex flex-wrap items-center gap-3">

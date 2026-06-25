@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Upload } from 'lucide-react';
 import type { Product, BookSpec } from '../../../lib/types';
 import { useProducts } from '../hooks/useProducts';
 import { getAllBookSpecs, upsertBookSpec, deleteBookSpecForProduct, type BookSpecPatch } from '../api/bookSpecs';
+import CsvImporter, { type ParsedRow } from './CsvImporter';
 
 type Field = keyof Pick<BookSpec, 'format' | 'trim_size' | 'lamination' | 'paper_gsm' | 'special_addons' | 'bw_pages' | 'color_pages' | 'isbn' | 'notes'>;
 
@@ -48,6 +49,7 @@ export default function BookSpecsTab() {
   const [rows, setRows] = useState<Record<string, RowState>>({});
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [showAddPicker, setShowAddPicker] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const addPickerRef = useRef<HTMLDivElement | null>(null);
 
   async function reloadSpecs() {
@@ -142,6 +144,13 @@ export default function BookSpecsTab() {
             Physical specs per book — pull these up when you're getting a fresh quote. Add the books you want to track below.
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+          >
+            <Upload className="w-4 h-4" /> Import CSV
+          </button>
         <div className="relative" ref={addPickerRef}>
           <button
             onClick={() => setShowAddPicker(s => !s)}
@@ -165,7 +174,41 @@ export default function BookSpecsTab() {
             </div>
           )}
         </div>
+        </div>
       </div>
+
+      <CsvImporter
+        open={showImport}
+        onClose={() => setShowImport(false)}
+        products={products}
+        kind="book-specs"
+        onComplete={reloadSpecs}
+        onImportRows={async (rows: ParsedRow[]) => {
+          let imported = 0;
+          let failed = 0;
+          for (const r of rows) {
+            if (!r.productId) continue;
+            try {
+              const patch: BookSpecPatch = {};
+              if (r.fields.format) patch.format = r.fields.format;
+              if (r.fields.trim_size) patch.trim_size = r.fields.trim_size;
+              if (r.fields.lamination) patch.lamination = r.fields.lamination;
+              if (r.fields.paper_gsm) patch.paper_gsm = r.fields.paper_gsm;
+              if (r.fields.special_addons) patch.special_addons = r.fields.special_addons;
+              if (r.fields.isbn) patch.isbn = r.fields.isbn;
+              if (r.fields.notes) patch.notes = r.fields.notes;
+              if (r.fields.bw_pages) patch.bw_pages = Number(r.fields.bw_pages) || 0;
+              if (r.fields.color_pages) patch.color_pages = Number(r.fields.color_pages) || 0;
+              await upsertBookSpec(r.productId, patch);
+              imported++;
+            } catch (err) {
+              console.error('Row failed', r, err);
+              failed++;
+            }
+          }
+          return { imported, failed };
+        }}
+      />
 
       {trackedBooks.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 italic">
