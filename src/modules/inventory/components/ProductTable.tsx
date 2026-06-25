@@ -5,8 +5,6 @@ import { calculateProductMetrics, formatCurrency, formatPercent, marginColor, CA
 import { updateProduct, deleteProduct } from '../api';
 import { getNotesForProduct, getDefectStatsForProduct } from '../api/purchaseOrders';
 import type { DefectStats } from '../api/purchaseOrders';
-import BookSpecsPanel from './BookSpecsPanel';
-import PrinterQuotesPanel from './PrinterQuotesPanel';
 
 interface ProductTableProps {
   products: Product[];
@@ -842,12 +840,6 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                             </div>
                           </div>
                         )}
-
-                        {/* Book Specifications */}
-                        <BookSpecsPanel productId={product.id} />
-
-                        {/* Printer Quotes */}
-                        <PrinterQuotesPanel product={product} />
 
                         {/* Recent PO Notes */}
                         <POProductNotes productId={product.id} />

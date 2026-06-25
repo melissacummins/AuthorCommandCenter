@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, List, Plus, Download, ShoppingCart, Settings, Truck } from 'lucide-react';
+import { LayoutDashboard, List, Plus, Download, ShoppingCart, Settings, Truck, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { useProducts } from './hooks/useProducts';
 import { useShopifySettings } from '../orders/hooks/useShopifyOrders';
 import Dashboard from './components/Dashboard';
@@ -8,13 +8,15 @@ import AddProductForm from './components/AddProductForm';
 import StockModal from './components/StockModal';
 import MigrationTool from './components/MigrationTool';
 import PurchaseOrders from './components/PurchaseOrders';
+import BookSpecsTab from './components/BookSpecsTab';
+import PrinterQuotesTab from './components/PrinterQuotesTab';
 import OrdersDashboard from '../orders/components/OrdersDashboard';
 import ShopifySetup from '../orders/components/ShopifySetup';
 import Modal from '../../components/Modal';
 import { getPendingByProduct } from './api/purchaseOrders';
 import type { Product } from '../../lib/types';
 
-type Tab = 'dashboard' | 'products' | 'purchase-orders' | 'orders';
+type Tab = 'dashboard' | 'products' | 'book-specs' | 'printer-quotes' | 'purchase-orders' | 'orders';
 
 export default function InventoryModule() {
   const { products, loading, refetch } = useProducts();
@@ -72,6 +74,22 @@ export default function InventoryModule() {
             }`}
           >
             <List className="w-4 h-4" /> Products
+          </button>
+          <button
+            onClick={() => setTab('book-specs')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              tab === 'book-specs' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <BookOpen className="w-4 h-4" /> Book Specs
+          </button>
+          <button
+            onClick={() => setTab('printer-quotes')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              tab === 'printer-quotes' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            <FileSpreadsheet className="w-4 h-4" /> Printer Quotes
           </button>
           <button
             onClick={() => setTab('purchase-orders')}
@@ -136,6 +154,8 @@ export default function InventoryModule() {
           pendingStock={pendingStock}
         />
       )}
+      {tab === 'book-specs' && <BookSpecsTab />}
+      {tab === 'printer-quotes' && <PrinterQuotesTab />}
       {tab === 'purchase-orders' && (
         <PurchaseOrders
           products={products}
