@@ -9,18 +9,16 @@ import CsvImporter, { type ParsedRow } from './CsvImporter';
 interface RowState {
   unit_cost: number;
   shipping_estimate: number;
-  past_order_count: number;
   notes: string;
 }
 
-const EMPTY_ROW: RowState = { unit_cost: 0, shipping_estimate: 0, past_order_count: 0, notes: '' };
+const EMPTY_ROW: RowState = { unit_cost: 0, shipping_estimate: 0, notes: '' };
 
 function quoteToRow(q: PrinterQuote | undefined): RowState {
   if (!q) return EMPTY_ROW;
   return {
     unit_cost: q.unit_cost || 0,
     shipping_estimate: q.shipping_estimate || 0,
-    past_order_count: q.past_order_count || 0,
     notes: q.notes || '',
   };
 }
@@ -163,7 +161,6 @@ export default function PrinterQuotesTab() {
               const patch: QuotePatch = { printer: r.printer };
               if (r.fields.unit_cost) patch.unit_cost = num(r.fields.unit_cost);
               if (r.fields.shipping_estimate) patch.shipping_estimate = num(r.fields.shipping_estimate);
-              if (r.fields.past_order_count) patch.past_order_count = num(r.fields.past_order_count);
               if (r.fields.notes) patch.notes = r.fields.notes;
               await upsertQuoteForPrinterAndProduct(r.printer, r.productId, patch);
               imported++;
@@ -215,7 +212,6 @@ export default function PrinterQuotesTab() {
                   <th className="text-right py-2.5 px-3 font-medium" title="Your current production_cost + shipping_cost">Current Cost</th>
                   <th className="text-right py-2.5 px-3 font-medium">Quote / Copy</th>
                   <th className="text-right py-2.5 px-3 font-medium">Shipping</th>
-                  <th className="text-right py-2.5 px-3 font-medium" title="How many times you've ordered from this printer">Past Orders</th>
                   <th className="text-right py-2.5 px-3 font-medium" title="Reprint-adjusted cost per good book if you used this printer">True Cost / Good</th>
                   <th className="text-right py-2.5 px-3 font-medium" title="Net margin % at this printer vs. your current setup">Net Margin %</th>
                   <th className="text-right py-2.5 px-3 font-medium" title="True cost diff vs. current — negative is cheaper">vs Current</th>
@@ -240,7 +236,6 @@ export default function PrinterQuotesTab() {
                       <td className="py-2 px-3 text-right text-slate-500">{formatCurrency(p.production_cost + p.shipping_cost)}</td>
                       <QuoteNumCell value={row.unit_cost} onChange={v => updateLocal(p.id, 'unit_cost', v)} onSave={v => saveField(p.id, 'unit_cost', v)} saving={savingCell === `${p.id}:unit_cost`} highlight />
                       <QuoteNumCell value={row.shipping_estimate} onChange={v => updateLocal(p.id, 'shipping_estimate', v)} onSave={v => saveField(p.id, 'shipping_estimate', v)} saving={savingCell === `${p.id}:shipping_estimate`} />
-                      <QuoteIntCell value={row.past_order_count} onChange={v => updateLocal(p.id, 'past_order_count', v)} onSave={v => saveField(p.id, 'past_order_count', v)} saving={savingCell === `${p.id}:past_order_count`} />
                       <td className="py-2 px-3 text-right font-medium text-slate-800">{row.unit_cost > 0 ? formatCurrency(result.trueCost) : '—'}</td>
                       <td className={`py-2 px-3 text-right font-medium ${row.unit_cost > 0 ? marginColor : 'text-slate-300'}`}>
                         {row.unit_cost > 0 ? `${result.netMarginPercent.toFixed(1)}%` : '—'}
@@ -258,7 +253,7 @@ export default function PrinterQuotesTab() {
                   );
                 })}
                 {books.length === 0 && (
-                  <tr><td colSpan={10} className="py-12 text-center text-slate-400 italic">No books to show.</td></tr>
+                  <tr><td colSpan={9} className="py-12 text-center text-slate-400 italic">No books to show.</td></tr>
                 )}
               </tbody>
             </table>
@@ -285,22 +280,6 @@ function QuoteNumCell({ value, onChange, onSave, saving, highlight }: { value: n
         onChange={e => onChange(Number(e.target.value))}
         onBlur={() => onSave(value)}
         className={`w-24 px-2 py-1.5 border border-transparent hover:border-slate-200 focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${highlight ? 'font-medium' : ''} ${saving ? 'bg-blue-50/40' : ''}`}
-      />
-    </td>
-  );
-}
-
-function QuoteIntCell({ value, onChange, onSave, saving }: { value: number; onChange: (v: number) => void; onSave: (v: number) => void; saving: boolean }) {
-  return (
-    <td className="py-1 px-2 align-top">
-      <input
-        type="number"
-        min={0}
-        value={value || ''}
-        placeholder="0"
-        onChange={e => onChange(Number(e.target.value))}
-        onBlur={() => onSave(value)}
-        className={`w-16 px-2 py-1.5 border border-transparent hover:border-slate-200 focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
       />
     </td>
   );
