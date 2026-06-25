@@ -122,7 +122,6 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
       ['special_addons', ['special add-ons', 'special addons', 'add-ons', 'addons']],
       ['bw_pages', ['b/w pages', 'bw pages', 'b w pages']],
       ['color_pages', ['color pages']],
-      ['isbn', ['isbn']],
       ['notes', ['notes']],
     ];
     const quoteFields: Array<[string, string[]]> = [
@@ -198,7 +197,7 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
           </h3>
           <p className="text-xs text-slate-500 mt-1">
             {kind === 'book-specs'
-              ? 'Expected columns: Title, Format, Size, Lamination, Paper GSM, Special Add-ons, B/W Pages, Color Pages.'
+              ? 'Expected columns: Title, Format, Size, Lamination, Paper GSM, Special Add-ons, B/W Pages, Color Pages, Notes.'
               : 'Expected columns: Printer Name, For copy (book title), Quote for One Copy, Shipping, Past Order Count, Notes.'}
           </p>
         </div>
