@@ -3,9 +3,11 @@ import { Plus, Trash2, Upload } from 'lucide-react';
 import type { Product, BookSpec } from '../../../lib/types';
 import { useProducts } from '../hooks/useProducts';
 import { getAllBookSpecs, upsertBookSpec, deleteBookSpecForProduct, type BookSpecPatch } from '../api/bookSpecs';
+import { getAddonTags, upsertAddonTagColor } from '../api/addonTags';
 import CsvImporter, { type ParsedRow } from './CsvImporter';
+import TagMultiSelect, { type TagColor } from './TagMultiSelect';
 
-type Field = keyof Pick<BookSpec, 'format' | 'trim_size' | 'lamination' | 'paper_gsm' | 'special_addons' | 'bw_pages' | 'color_pages' | 'isbn' | 'notes'>;
+type Field = keyof Pick<BookSpec, 'format' | 'trim_size' | 'lamination' | 'paper_gsm' | 'special_addons' | 'bw_pages' | 'color_pages' | 'notes'>;
 
 interface RowState {
   format: string;
@@ -15,13 +17,12 @@ interface RowState {
   special_addons: string;
   bw_pages: number;
   color_pages: number;
-  isbn: string;
   notes: string;
 }
 
 const EMPTY_ROW: RowState = {
   format: '', trim_size: '', lamination: '', paper_gsm: '', special_addons: '',
-  bw_pages: 0, color_pages: 0, isbn: '', notes: '',
+  bw_pages: 0, color_pages: 0, notes: '',
 };
 
 const FORMAT_OPTIONS = ['Paperback', 'Hardcover'];
@@ -38,7 +39,6 @@ function specToRow(s: BookSpec | undefined): RowState {
     special_addons: s.special_addons || '',
     bw_pages: s.bw_pages || 0,
     color_pages: s.color_pages || 0,
-    isbn: s.isbn || '',
     notes: s.notes || '',
   };
 }
@@ -51,6 +51,33 @@ export default function BookSpecsTab() {
   const [showAddPicker, setShowAddPicker] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const addPickerRef = useRef<HTMLDivElement | null>(null);
+  const [tagColorMap, setTagColorMap] = useState<Map<string, string>>(new Map());
+
+  async function reloadTagColors() {
+    try {
+      const data = await getAddonTags();
+      const m = new Map<string, string>();
+      for (const t of data) m.set(t.label.toLowerCase(), t.color);
+      setTagColorMap(m);
+    } catch (err) {
+      console.error('Failed to load addon tag colors', err);
+    }
+  }
+
+  useEffect(() => { reloadTagColors(); }, []);
+
+  async function handleSetTagColor(label: string, color: TagColor) {
+    setTagColorMap(prev => {
+      const next = new Map(prev);
+      next.set(label.toLowerCase(), color);
+      return next;
+    });
+    try {
+      await upsertAddonTagColor(label, color);
+    } catch (err) {
+      console.error('Failed to save tag color', err);
+    }
+  }
 
   async function reloadSpecs() {
     try {
@@ -91,6 +118,18 @@ export default function BookSpecsTab() {
       .filter(p => trackedProductIds.has(p.id))
       .sort((a, b) => a.name.localeCompare(b.name));
   }, [products, trackedProductIds]);
+
+  // Every tag the user has used anywhere — feeds the multi-select autocomplete.
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    for (const s of specs) {
+      for (const raw of (s.special_addons || '').split(',')) {
+        const t = raw.trim();
+        if (t) set.add(t);
+      }
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [specs]);
 
   // Candidates for the Add dropdown: products not yet tracked
   const candidateProducts = useMemo(() => {
@@ -195,7 +234,6 @@ export default function BookSpecsTab() {
               if (r.fields.lamination) patch.lamination = r.fields.lamination;
               if (r.fields.paper_gsm) patch.paper_gsm = r.fields.paper_gsm;
               if (r.fields.special_addons) patch.special_addons = r.fields.special_addons;
-              if (r.fields.isbn) patch.isbn = r.fields.isbn;
               if (r.fields.notes) patch.notes = r.fields.notes;
               if (r.fields.bw_pages) patch.bw_pages = Number(r.fields.bw_pages) || 0;
               if (r.fields.color_pages) patch.color_pages = Number(r.fields.color_pages) || 0;
@@ -227,8 +265,7 @@ export default function BookSpecsTab() {
                   <th className="text-left py-2.5 px-3 font-medium">Paper GSM</th>
                   <th className="text-right py-2.5 px-3 font-medium">B/W</th>
                   <th className="text-right py-2.5 px-3 font-medium">Color</th>
-                  <th className="text-left py-2.5 px-3 font-medium">Special Add-ons</th>
-                  <th className="text-left py-2.5 px-3 font-medium">ISBN</th>
+                  <th className="text-left py-2.5 px-3 font-medium min-w-[260px]">Special Add-ons</th>
                   <th className="text-left py-2.5 px-3 font-medium">Notes</th>
                   <th className="py-2.5 px-2"></th>
                 </tr>
@@ -248,8 +285,15 @@ export default function BookSpecsTab() {
                       <TextCell value={row.paper_gsm} placeholder="80 Uncoated" onChange={v => updateLocal(p.id, 'paper_gsm', v)} onSave={v => saveField(p, 'paper_gsm', v)} saving={savingCell === `${p.id}:paper_gsm`} />
                       <NumCell value={row.bw_pages} onChange={v => updateLocal(p.id, 'bw_pages', v)} onSave={v => saveField(p, 'bw_pages', v)} saving={savingCell === `${p.id}:bw_pages`} />
                       <NumCell value={row.color_pages} onChange={v => updateLocal(p.id, 'color_pages', v)} onSave={v => saveField(p, 'color_pages', v)} saving={savingCell === `${p.id}:color_pages`} />
-                      <TextCell value={row.special_addons} placeholder="" wide onChange={v => updateLocal(p.id, 'special_addons', v)} onSave={v => saveField(p, 'special_addons', v)} saving={savingCell === `${p.id}:special_addons`} />
-                      <TextCell value={row.isbn} placeholder="" onChange={v => updateLocal(p.id, 'isbn', v)} onSave={v => saveField(p, 'isbn', v)} saving={savingCell === `${p.id}:isbn`} />
+                      <td className="py-1 px-2 align-top">
+                        <TagMultiSelect
+                          value={row.special_addons}
+                          allTags={allTags}
+                          colorMap={tagColorMap}
+                          onSetTagColor={handleSetTagColor}
+                          onChange={v => { updateLocal(p.id, 'special_addons', v); saveField(p, 'special_addons', v); }}
+                        />
+                      </td>
                       <TextCell value={row.notes} placeholder="" wide onChange={v => updateLocal(p.id, 'notes', v)} onSave={v => saveField(p, 'notes', v)} saving={savingCell === `${p.id}:notes`} />
                       <td className="py-1 px-2 align-top">
                         <button onClick={() => removeBook(p)} className="p-1 text-red-400 hover:bg-red-50 rounded" title="Remove from Book Specs">

@@ -35,7 +35,7 @@ export async function deleteBookSpecForProduct(productId: string): Promise<void>
 
 export type BookSpecPatch = Partial<Pick<BookSpec,
   'format' | 'trim_size' | 'lamination' | 'paper_gsm' | 'special_addons' |
-  'bw_pages' | 'color_pages' | 'isbn' | 'notes'
+  'bw_pages' | 'color_pages' | 'notes'
 >>;
 
 export async function upsertBookSpec(productId: string, patch: BookSpecPatch): Promise<void> {
