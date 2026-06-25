@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, List, Plus, Download, ShoppingCart, Settings, Truck, BookOpen, FileSpreadsheet } from 'lucide-react';
+import { LayoutDashboard, List, Plus, ShoppingCart, Settings, Truck, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { useProducts } from './hooks/useProducts';
 import { useShopifySettings } from '../orders/hooks/useShopifyOrders';
 import Dashboard from './components/Dashboard';
 import ProductTable from './components/ProductTable';
 import AddProductForm from './components/AddProductForm';
 import StockModal from './components/StockModal';
-import MigrationTool from './components/MigrationTool';
 import PurchaseOrders from './components/PurchaseOrders';
 import BookSpecsTab from './components/BookSpecsTab';
 import PrinterQuotesTab from './components/PrinterQuotesTab';
@@ -35,7 +34,6 @@ export default function InventoryModule() {
     setShowAddProduct(false);
     setDuplicateFrom(null);
   }
-  const [showMigration, setShowMigration] = useState(false);
   const [showShopifySettings, setShowShopifySettings] = useState(false);
   const [pendingStock, setPendingStock] = useState<Map<string, number>>(new Map());
 
@@ -119,20 +117,12 @@ export default function InventoryModule() {
             </button>
           )}
           {(tab === 'dashboard' || tab === 'products') && (
-            <>
-              <button
-                onClick={() => setShowMigration(true)}
-                className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
-              >
-                <Download className="w-4 h-4" /> Import from Firebase
-              </button>
-              <button
-                onClick={() => setShowAddProduct(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm"
-              >
-                <Plus className="w-4 h-4" /> Add Product
-              </button>
-            </>
+            <button
+              onClick={() => setShowAddProduct(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Add Product
+            </button>
           )}
         </div>
       </div>
@@ -181,11 +171,6 @@ export default function InventoryModule() {
         {stockProduct && (
           <StockModal product={stockProduct} onClose={() => setStockProduct(null)} onRefetch={refetch} />
         )}
-      </Modal>
-
-      {/* Migration Modal */}
-      <Modal open={showMigration} onClose={() => setShowMigration(false)} title="Import from InventoryPro">
-        <MigrationTool onComplete={() => { refetch(); }} />
       </Modal>
 
       {/* Shopify Settings Modal */}
