@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Trash2, Upload } from 'lucide-react';
 import type { Product, PrinterQuote } from '../../../lib/types';
+import { supabase } from '../../../lib/supabase';
 import { useProducts } from '../hooks/useProducts';
 import { getAllQuotes, upsertQuoteForPrinterAndProduct, deleteQuote, type QuotePatch } from '../api/printerQuotes';
 import { calculateTrueCostForQuote, formatCurrency } from '../utils';
@@ -31,17 +32,37 @@ export default function PrinterQuotesTab() {
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [includeSD, setIncludeSD] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  // hasLoaded distinguishes "first fetch hasn't completed yet" from "fetch
+  // completed with zero rows" so a transient empty response (auth-token
+  // refresh, network blip) doesn't make the table look empty.
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   async function reloadQuotes() {
     try {
       const all = await getAllQuotes();
       setQuotes(all);
+      setHasLoaded(true);
     } catch (err) {
       console.error('Failed to load quotes', err);
     }
   }
 
   useEffect(() => { reloadQuotes(); }, []);
+
+  // Refetch when the Supabase auth token rotates and when the tab regains
+  // focus — covers transient empty results during token refresh or after
+  // the tab has sat idle.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') reloadQuotes();
+    });
+    function onFocus() { reloadQuotes(); }
+    window.addEventListener('focus', onFocus);
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   const printers = useMemo(() => {
     const set = new Set<string>();
@@ -202,7 +223,11 @@ export default function PrinterQuotesTab() {
       </div>
 
       {/* Per-book quote table */}
-      {selectedPrinter ? (
+      {!hasLoaded ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      ) : selectedPrinter ? (
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
