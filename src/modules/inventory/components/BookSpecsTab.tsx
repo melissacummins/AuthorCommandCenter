@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Upload } from 'lucide-react';
 import type { Product, BookSpec } from '../../../lib/types';
+import { supabase } from '../../../lib/supabase';
 import { useProducts } from '../hooks/useProducts';
 import { getAllBookSpecs, upsertBookSpec, deleteBookSpecForProduct, type BookSpecPatch } from '../api/bookSpecs';
 import { getAddonTags, upsertAddonTagColor } from '../api/addonTags';
@@ -52,6 +53,10 @@ export default function BookSpecsTab() {
   const [showImport, setShowImport] = useState(false);
   const addPickerRef = useRef<HTMLDivElement | null>(null);
   const [tagColorMap, setTagColorMap] = useState<Map<string, string>>(new Map());
+  // hasLoaded distinguishes "first fetch hasn't completed yet" from "fetch
+  // completed and returned zero". Without it, a transient fetch failure
+  // (e.g. auth token refresh window) makes the page look like data was wiped.
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   async function reloadTagColors() {
     try {
@@ -83,12 +88,31 @@ export default function BookSpecsTab() {
     try {
       const data = await getAllBookSpecs();
       setSpecs(data);
+      setHasLoaded(true);
     } catch (err) {
       console.error('Failed to load specs', err);
     }
   }
 
   useEffect(() => { reloadSpecs(); }, []);
+
+  // Refetch when the Supabase auth token rotates and when the tab regains
+  // focus after sitting idle — both moments where a stale fetch could have
+  // returned empty and left the UI in a misleading "no rows" state.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
+        reloadSpecs();
+        reloadTagColors();
+      }
+    });
+    function onFocus() { reloadSpecs(); reloadTagColors(); }
+    window.addEventListener('focus', onFocus);
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
 
   // Rebuild row state when products or specs change
   useEffect(() => {
@@ -248,7 +272,11 @@ export default function BookSpecsTab() {
         }}
       />
 
-      {trackedBooks.length === 0 ? (
+      {!hasLoaded ? (
+        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+          <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+        </div>
+      ) : trackedBooks.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 italic">
           No books tracked yet. Click "Add Book" to pick one from your products.
         </div>
