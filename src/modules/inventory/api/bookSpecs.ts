@@ -25,6 +25,14 @@ export async function getAllBookSpecs(): Promise<BookSpec[]> {
   return (data || []) as BookSpec[];
 }
 
+export async function deleteBookSpecForProduct(productId: string): Promise<void> {
+  const { error } = await supabase
+    .from('book_specs')
+    .delete()
+    .eq('product_id', productId);
+  if (error) throw error;
+}
+
 export type BookSpecPatch = Partial<Pick<BookSpec,
   'format' | 'trim_size' | 'lamination' | 'paper_gsm' | 'special_addons' |
   'bw_pages' | 'color_pages' | 'isbn' | 'notes'
