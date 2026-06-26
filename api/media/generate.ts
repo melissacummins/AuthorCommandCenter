@@ -18,6 +18,7 @@ import { createDecipheriv, scryptSync } from 'node:crypto';
 
 type VercelRequest = {
   method?: string;
+  url?: string;
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
 };
@@ -699,6 +700,45 @@ async function copyUrlToOutputs(
   }
 }
 
+// Parse a query param off req.url since the lightweight VercelRequest
+// shape above doesn't expose req.query.
+function queryParam(req: VercelRequest, name: string): string | null {
+  if (!req.url) return null;
+  try {
+    return new URL(req.url, 'http://placeholder.local').searchParams.get(name);
+  } catch {
+    return null;
+  }
+}
+
+// Run Florence-2's detailed-caption endpoint against an image URL to
+// produce a Midjourney/SD-style descriptor the user can seed their
+// prompt with. Used by the `?action=describe` branch below.
+async function describeImageWithFal(falKey: string, imageUrl: string): Promise<{ caption: string } | { error: string; status: number }> {
+  const res = await fetch('https://fal.run/fal-ai/florence-2-large/detailed-caption', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Key ${falKey}` },
+    body: JSON.stringify({ image_url: imageUrl }),
+  });
+  const data = (await res.json().catch(() => ({}))) as { results?: unknown; detail?: unknown };
+  if (!res.ok) {
+    return { error: formatFalError(data.detail ?? data, res.status), status: res.status };
+  }
+  // Florence-2 returns { results: "<caption>" } for the simple caption tasks.
+  // Defensive: also handle object shapes (e.g. {results: {caption: "..."}})
+  // since Fal occasionally evolves these wrappers.
+  let caption = '';
+  if (typeof data.results === 'string') caption = data.results;
+  else if (data.results && typeof data.results === 'object') {
+    const r = data.results as Record<string, unknown>;
+    if (typeof r.caption === 'string') caption = r.caption;
+    else if (typeof r['<DETAILED_CAPTION>'] === 'string') caption = r['<DETAILED_CAPTION>'] as string;
+  }
+  caption = caption.trim();
+  if (!caption) return { error: 'Florence-2 returned no caption.', status: 502 };
+  return { caption };
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
@@ -732,6 +772,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const falKey = await resolveFalKey(supabase, userId);
   if (!falKey) {
     res.status(400).json({ error: 'No Fal API key configured. Add yours in Media settings to get started.', code: 'NO_FAL_KEY' });
+    return;
+  }
+
+  // `?action=describe` — image-to-prompt via Florence-2. Returns the
+  // caption without touching media_generations or the spend cap; this
+  // is a cheap helper users invoke before a real generation.
+  if (queryParam(req, 'action') === 'describe') {
+    let describeBody: { image_url?: unknown };
+    try {
+      describeBody = (typeof req.body === 'string' ? JSON.parse(req.body) : req.body) as { image_url?: unknown };
+    } catch {
+      res.status(400).json({ error: 'Invalid JSON body' });
+      return;
+    }
+    const imageUrl = typeof describeBody?.image_url === 'string' ? describeBody.image_url.trim() : '';
+    if (!imageUrl) {
+      res.status(400).json({ error: 'image_url is required' });
+      return;
+    }
+    const result = await describeImageWithFal(falKey, imageUrl);
+    if ('error' in result) {
+      res.status(result.status).json({ error: result.error });
+      return;
+    }
+    res.status(200).json({ caption: result.caption });
     return;
   }
 
