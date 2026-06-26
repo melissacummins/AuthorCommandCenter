@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, gptImage1CostCents, ideogramCostCents, type GptImage1Quality, type IdeogramRenderingSpeed, type SizeHandling } from './lib/models';
+import { MODELS, findModel, maxImagesForGroup, supportsReferenceImages, type GptImage1Quality, type IdeogramRenderingSpeed, type SizeHandling } from './lib/models';
 
 // Pick the closest supported aspect-ratio string (e.g. "3:4") for a
 // model whose size field carries that list. Mirrors the server-side
@@ -71,10 +71,6 @@ const POLL_INTERVAL_MS = 4000;
 // Cap on simultaneously-in-flight Generate clicks. High enough that you
 // can keep iterating, low enough that a stuck loop can't blow the bill.
 const MAX_CONCURRENT_GENERATIONS = 5;
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 export default function MediaModule() {
   const { user } = useAuth();
@@ -215,11 +211,6 @@ export default function MediaModule() {
     : isIdeogramDirectModel && ideogramProvider === 'ideogram'
       ? inputImages.length > 0
       : (model.hasDualMode && inputImages.length > 0);
-  const perImageCostCents = model.id === 'gpt-image-2'
-    ? gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider)
-    : (isIdeogramDirectModel && ideogramProvider === 'ideogram'
-        ? ideogramCostCents(ideogramSpeed, isEditMode)
-        : (isEditMode ? model.editCostCents : model.estimatedCostCents));
   const sizePreset = useMemo<SizePreset | null>(
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
     [sizePresetId],
@@ -655,30 +646,30 @@ export default function MediaModule() {
                   <>
                     <optgroup label="Image — generate">
                       {visibleCurated.filter((m) => m.group === 'image').map((m) => (
-                        <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                        <option key={m.id} value={m.id}>{m.label}</option>
                       ))}
                     </optgroup>
                     <optgroup label="Image — edit">
                       {visibleCurated.filter((m) => m.group === 'image-edit').map((m) => (
-                        <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                        <option key={m.id} value={m.id}>{m.label}</option>
                       ))}
                     </optgroup>
                     {forceShowAll && visibleCurated.some((m) => m.group === 'image-upscale') && (
                       <optgroup label="Image — upscale & utility">
                         {visibleCurated.filter((m) => m.group === 'image-upscale').map((m) => (
-                          <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                          <option key={m.id} value={m.id}>{m.label}</option>
                         ))}
                       </optgroup>
                     )}
                     <optgroup label="Video">
                       {visibleCurated.filter((m) => m.group === 'video').map((m) => (
-                        <option key={m.id} value={m.id}>{m.label} — ~{formatCents(m.estimatedCostCents)}</option>
+                        <option key={m.id} value={m.id}>{m.label}</option>
                       ))}
                     </optgroup>
                     {customModels.length > 0 && (
                       <optgroup label="Your custom models">
                         {customModels.map((c) => (
-                          <option key={c.id} value={c.id}>{c.label} — ~{formatCents(c.estimated_cost_cents)}</option>
+                          <option key={c.id} value={c.id}>{c.label}</option>
                         ))}
                       </optgroup>
                     )}
@@ -830,10 +821,7 @@ export default function MediaModule() {
           {/* GPT Image 1 quality */}
           {model.id === 'gpt-image-2' && (
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Quality</label>
-                <span className="text-[11px] text-slate-400">~{formatCents(gptImage1CostCents(gptImage1Quality, isEditMode, gptImage1Provider))} each</span>
-              </div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Quality</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {(['low', 'medium', 'high', 'auto'] as const).map((q) => (
                   <button
@@ -850,7 +838,7 @@ export default function MediaModule() {
                 ))}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                Low ~{formatCents(gptImage1CostCents('low', isEditMode, gptImage1Provider))} · Medium ~{formatCents(gptImage1CostCents('medium', isEditMode, gptImage1Provider))} · High ~{formatCents(gptImage1CostCents('high', isEditMode, gptImage1Provider))}. Lower quality is fine for drafts.
+                Lower quality is fine for drafts; High has the best detail.
               </p>
             </div>
           )}
@@ -858,10 +846,7 @@ export default function MediaModule() {
           {/* Ideogram v3 rendering speed — only when routed via Ideogram direct. */}
           {isIdeogramDirectModel && ideogramProvider === 'ideogram' && (
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Rendering speed</label>
-                <span className="text-[11px] text-slate-400">~{formatCents(ideogramCostCents(ideogramSpeed, isEditMode))} each</span>
-              </div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Rendering speed</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {(['TURBO', 'DEFAULT', 'QUALITY'] as const).map((s) => (
                   <button
@@ -878,7 +863,7 @@ export default function MediaModule() {
                 ))}
               </div>
               <p className="text-[11px] text-slate-400 mt-1">
-                Turbo ~{formatCents(ideogramCostCents('TURBO', isEditMode))} · Default ~{formatCents(ideogramCostCents('DEFAULT', isEditMode))} · Quality ~{formatCents(ideogramCostCents('QUALITY', isEditMode))}. Turbo is fast and cheap; Quality has the best detail.
+                Turbo is fast; Quality has the best detail.
               </p>
             </div>
           )}
@@ -988,7 +973,7 @@ export default function MediaModule() {
                   Edit mode — {inputImages.length} reference image{inputImages.length > 1 ? 's' : ''} attached.
                 </p>
                 <p className="text-amber-800/90 mt-0.5">
-                  This request will route to <code className="font-mono">{model.label.split(' —')[0]}</code>'s edit endpoint (~{formatCents(model.editCostCents)} per image vs ~{formatCents(model.estimatedCostCents)} to generate).
+                  This request will route to <code className="font-mono">{model.label.split(' —')[0]}</code>'s edit endpoint.
                 </p>
               </div>
               <button
@@ -1006,7 +991,7 @@ export default function MediaModule() {
             disabled={inflightCount >= MAX_CONCURRENT_GENERATIONS || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
             className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-semibold shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Wand2 className="w-4 h-4" /> {isEditMode ? 'Edit' : 'Generate'}{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''} (~{formatCents(perImageCostCents * (model.kind === 'image' ? quantity : 1))})
+            <Wand2 className="w-4 h-4" /> {isEditMode ? 'Edit' : 'Generate'}{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''}
           </button>
           {inflightCount > 0 && (
             <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
@@ -1049,7 +1034,7 @@ export default function MediaModule() {
             </div>
           )}
           {/* Collection filter chips */}
-          <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-4 pb-1">
             <button
               onClick={() => setFilterCollectionId(null)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${filterCollectionId === null ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
@@ -1236,14 +1221,13 @@ function MediaCard({
           <p className="text-[11px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded p-2 max-h-32 overflow-y-auto">{generation.full_prompt}</p>
         )}
 
-        <div className="flex items-center justify-between text-[11px] text-slate-400">
+        <div className="flex items-center text-[11px] text-slate-400">
           <span className="flex items-center gap-1">
             {generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}
             {generation.source_image_url && (
               <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 text-[10px] font-medium">edited</span>
             )}
           </span>
-          <span>{formatCents(generation.cost_cents)}</span>
         </div>
 
         <div className="flex items-center gap-1 mt-1">
@@ -1413,7 +1397,7 @@ function CustomModelsDrawer({
   const [isAsync, setIsAsync] = useState(false);
   const [acceptsInputImage, setAcceptsInputImage] = useState(false);
   const [supportsCustomSize, setSupportsCustomSize] = useState(true);
-  const [costDollars, setCostDollars] = useState('0.05');
+  const [costDollars] = useState('0');
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -1433,7 +1417,7 @@ function CustomModelsDrawer({
         description: description.trim() || null,
       });
       setLabel(''); setEndpoint('fal-ai/'); setKind('image'); setIsAsync(false);
-      setAcceptsInputImage(false); setSupportsCustomSize(true); setCostDollars('0.05'); setDescription('');
+      setAcceptsInputImage(false); setSupportsCustomSize(true); setDescription('');
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'Save failed');
     } finally {
@@ -1469,7 +1453,6 @@ function CustomModelsDrawer({
               {m.is_async && <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">async</span>}
               {m.accepts_input_image && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">input image</span>}
               {m.supports_custom_size && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">custom size</span>}
-              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">~${(m.estimated_cost_cents / 100).toFixed(2)}</span>
             </div>
           </div>
         ))}
@@ -1489,18 +1472,12 @@ function CustomModelsDrawer({
           <p className="text-[11px] text-slate-400 mt-1">Must start with <code className="font-mono">fal-ai/</code>.</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kind</label>
-            <select value={kind} onChange={(e) => { const k = e.target.value as 'image' | 'video'; setKind(k); setIsAsync(k === 'video'); }} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
-              <option value="image">Image</option>
-              <option value="video">Video</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Est. cost (USD)</label>
-            <input type="number" min={0} step={0.01} value={costDollars} onChange={(e) => setCostDollars(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
-          </div>
+        <div>
+          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kind</label>
+          <select value={kind} onChange={(e) => { const k = e.target.value as 'image' | 'video'; setKind(k); setIsAsync(k === 'video'); }} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
+            <option value="image">Image</option>
+            <option value="video">Video</option>
+          </select>
         </div>
 
         <div className="grid grid-cols-1 gap-1.5 text-sm">
@@ -1684,7 +1661,7 @@ function Lightbox({
         <div className="bg-white/95 backdrop-blur rounded-xl px-4 py-3 max-w-2xl w-full">
           <p className="text-xs text-slate-500 whitespace-pre-wrap line-clamp-4">{generation.prompt}</p>
           <div className="flex items-center justify-between mt-2 text-[11px] text-slate-400">
-            <span>{generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind} · {formatCents(generation.cost_cents)}</span>
+            <span>{generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}</span>
             <div className="flex items-center gap-3">
               <button
                 onClick={(e) => { e.stopPropagation(); onRetry(); }}
