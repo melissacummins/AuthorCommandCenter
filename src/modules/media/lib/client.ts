@@ -64,6 +64,22 @@ export async function requestGeneration(payload: GeneratePayload): Promise<Gener
   return { generations };
 }
 
+// Image-to-prompt via Florence-2 (run through Fal). Pass a URL that
+// the server can reach — i.e. an already-uploaded media-inputs URL.
+export async function describeImage(imageUrl: string): Promise<string> {
+  const headers = await authHeader();
+  const res = await fetch('/api/media/generate?action=describe', {
+    method: 'POST',
+    headers: { ...headers, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image_url: imageUrl }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(typeof data?.error === 'string' ? data.error : `Describe failed (${res.status})`);
+  }
+  return typeof data?.caption === 'string' ? data.caption : '';
+}
+
 export async function pollGenerationStatus(id: string): Promise<MediaGeneration> {
   const headers = await authHeader();
   const res = await fetch(`/api/media/status?id=${encodeURIComponent(id)}`, {

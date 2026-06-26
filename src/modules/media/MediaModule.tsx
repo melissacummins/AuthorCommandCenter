@@ -62,10 +62,10 @@ function describeEffectiveSize(
 }
 import { SIZE_PRESETS, type SizePreset } from './lib/sizePresets';
 import {
-  requestGeneration, pollGenerationStatus, uploadInputImage,
+  requestGeneration, pollGenerationStatus, uploadInputImage, describeImage,
   getFalKeyStatus, getOpenaiKeyStatus, getIdeogramKeyStatus, type FalKeyStatus,
 } from './lib/client';
-import type { MediaCollection, MediaCustomModel, MediaGeneration, MediaStylePreset } from './lib/types';
+import type { MediaCollection, MediaCustomModel, MediaGeneration } from './lib/types';
 
 const POLL_INTERVAL_MS = 4000;
 // Cap on simultaneously-in-flight Generate clicks. High enough that you
@@ -88,8 +88,15 @@ export default function MediaModule() {
   const [quantity, setQuantity] = useState(1);
   const [gptImage1Quality, setGptImage1Quality] = useState<GptImage1Quality>('medium');
 
-  const [selectedStyleId, setSelectedStyleId] = useState<string | null>(null);
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null);
+
+  // Image-to-prompt panel state. The user uploads a reference image,
+  // we get a description back from Florence-2, and let them seed/append
+  // it to the prompt textarea.
+  const [describeImageUrl, setDescribeImageUrl] = useState<string | null>(null);
+  const [describeThumbDataUrl, setDescribeThumbDataUrl] = useState<string | null>(null);
+  const [describing, setDescribing] = useState(false);
+  const [caption, setCaption] = useState('');
 
   // Counter, not boolean — lets the user kick off multiple generations
   // without waiting for the previous one to finish. Capped by MAX_CONCURRENT
@@ -102,7 +109,6 @@ export default function MediaModule() {
 
   const [history, setHistory] = useState<MediaGeneration[]>([]);
   const [collections, setCollections] = useState<MediaCollection[]>([]);
-  const [stylePresets, setStylePresets] = useState<MediaStylePreset[]>([]);
   const [customModels, setCustomModels] = useState<MediaCustomModel[]>([]);
   const [showAllModels, setShowAllModels] = useState(false);
   const [customModelsDrawerOpen, setCustomModelsDrawerOpen] = useState(false);
@@ -112,7 +118,6 @@ export default function MediaModule() {
   const [ideogramSpeed, setIdeogramSpeed] = useState<IdeogramRenderingSpeed>('DEFAULT');
 
   const [filterCollectionId, setFilterCollectionId] = useState<string | null>(null);
-  const [stylesDrawerOpen, setStylesDrawerOpen] = useState(false);
   const [collectionsDrawerOpen, setCollectionsDrawerOpen] = useState(false);
   // Selection set for bulk delete / move-to-collection.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -215,36 +220,23 @@ export default function MediaModule() {
     () => SIZE_PRESETS.find((p) => p.id === sizePresetId) ?? null,
     [sizePresetId],
   );
-  const selectedStyle = useMemo(
-    () => stylePresets.find((s) => s.id === selectedStyleId) ?? null,
-    [selectedStyleId, stylePresets],
-  );
-
   // Keep the chosen quantity within the current model's max.
   useEffect(() => {
     setQuantity((q) => Math.min(Math.max(1, q), model.maxImages));
   }, [model.maxImages]);
 
-  const fullPrompt = useMemo(() => {
-    if (!prompt.trim()) return '';
-    if (!selectedStyle) return prompt.trim();
-    return `${selectedStyle.prompt_snippet.trim()}\n\n${prompt.trim()}`;
-  }, [prompt, selectedStyle]);
-
   // ---------- data load ----------
   const loadAll = useCallback(async () => {
     if (!userId) return;
 
-    const [genRes, colRes, styleRes, customRes] = await Promise.all([
+    const [genRes, colRes, customRes] = await Promise.all([
       supabase.from('media_generations').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(80),
       supabase.from('media_collections').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
-      supabase.from('media_style_presets').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
       supabase.from('media_custom_models').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
     ]);
 
     setHistory((genRes.data ?? []) as MediaGeneration[]);
     setCollections((colRes.data ?? []) as MediaCollection[]);
-    setStylePresets((styleRes.data ?? []) as MediaStylePreset[]);
     setCustomModels((customRes.data ?? []) as MediaCustomModel[]);
 
     try {
@@ -339,8 +331,8 @@ export default function MediaModule() {
       const { generations: gens, error: failureMessage } = await requestGeneration({
         model: model.id,
         prompt: prompt.trim(),
-        full_prompt: fullPrompt || prompt.trim(),
-        style_preset_id: selectedStyleId,
+        full_prompt: prompt.trim(),
+        style_preset_id: null,
         width,
         height,
         source_image_urls: model.canReference ? inputImages.map((i) => i.url) : [],
@@ -403,25 +395,28 @@ export default function MediaModule() {
     if (!model.canReference) setModelId('nano-banana');
   }
 
-  async function handleSaveStyle(name: string, snippet: string) {
-    if (!userId) return;
-    const { data, error: insertErr } = await supabase
-      .from('media_style_presets')
-      .insert({ user_id: userId, name, prompt_snippet: snippet })
-      .select()
-      .single();
-    if (insertErr) {
-      setError(insertErr.message);
-      return;
+  async function handleDescribeImage(file: File) {
+    setDescribing(true);
+    setError(null);
+    try {
+      const reader = new FileReader();
+      reader.onload = () => setDescribeThumbDataUrl(typeof reader.result === 'string' ? reader.result : null);
+      reader.readAsDataURL(file);
+      const url = await uploadInputImage(file);
+      setDescribeImageUrl(url);
+      const text = await describeImage(url);
+      setCaption(text);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to describe image');
+    } finally {
+      setDescribing(false);
     }
-    if (data) setStylePresets((prev) => [...prev, data as MediaStylePreset]);
   }
 
-  async function handleDeleteStyle(id: string) {
-    const { error: delErr } = await supabase.from('media_style_presets').delete().eq('id', id);
-    if (delErr) { setError(delErr.message); return; }
-    setStylePresets((prev) => prev.filter((s) => s.id !== id));
-    if (selectedStyleId === id) setSelectedStyleId(null);
+  function handleClearDescribe() {
+    setDescribeImageUrl(null);
+    setDescribeThumbDataUrl(null);
+    setCaption('');
   }
 
   async function handleSaveCollection(name: string) {
@@ -546,7 +541,6 @@ export default function MediaModule() {
   function handleRetry(gen: MediaGeneration) {
     setPrompt(gen.prompt);
     setModelId(gen.model);
-    if (gen.style_preset_id) setSelectedStyleId(gen.style_preset_id);
     if (gen.collection_id) setSelectedCollectionId(gen.collection_id);
     if (gen.width && gen.height) {
       // Match a known size preset if the dimensions line up; else use Custom.
@@ -725,26 +719,73 @@ export default function MediaModule() {
             )}
           </div>
 
-          {/* Style preset */}
+          {/* Describe an image — drop a reference to seed your prompt. */}
           <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Style preset</label>
-              <button onClick={() => setStylesDrawerOpen(true)} className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" /> Manage
-              </button>
-            </div>
-            <select
-              value={selectedStyleId ?? ''}
-              onChange={(e) => setSelectedStyleId(e.target.value || null)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
-            >
-              <option value="">No style — use prompt as-is</option>
-              {stylePresets.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-            {selectedStyle && (
-              <p className="text-[11px] text-slate-400 mt-1 italic">Prepended: "{selectedStyle.prompt_snippet.slice(0, 80)}{selectedStyle.prompt_snippet.length > 80 ? '…' : ''}"</p>
+            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+              <Sparkles className="w-3 h-3" /> Describe an image
+            </label>
+            {!describeImageUrl ? (
+              <label className={`flex flex-col items-center justify-center gap-1.5 px-3 py-4 rounded-lg border-2 border-dashed text-xs cursor-pointer transition-colors ${describing ? 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700' : 'border-slate-200 text-slate-500 hover:border-fuchsia-300 hover:bg-fuchsia-50/40'}`}>
+                {describing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Reading image…
+                  </>
+                ) : (
+                  <>
+                    <Upload className="w-4 h-4" />
+                    <span>Drop an image to get a prompt-style description</span>
+                  </>
+                )}
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={describing}
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) handleDescribeImage(f);
+                    e.target.value = '';
+                  }}
+                  className="hidden"
+                />
+              </label>
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
+                <div className="flex items-start gap-2">
+                  {describeThumbDataUrl && (
+                    <img src={describeThumbDataUrl} alt="Reference" className="w-14 h-14 rounded object-cover border border-slate-200 shrink-0" />
+                  )}
+                  <textarea
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    rows={4}
+                    placeholder={describing ? 'Reading image…' : 'Caption appears here — edit before using'}
+                    className="flex-1 px-2 py-1.5 rounded border border-slate-200 text-xs bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    disabled={!caption.trim()}
+                    onClick={() => setPrompt(caption.trim())}
+                    className="px-2.5 py-1 rounded-md bg-fuchsia-600 text-white text-[11px] font-semibold hover:bg-fuchsia-700 disabled:opacity-40"
+                  >
+                    Use as prompt
+                  </button>
+                  <button
+                    disabled={!caption.trim()}
+                    onClick={() => setPrompt((p) => (p.trim() ? `${p.trim()}\n\n${caption.trim()}` : caption.trim()))}
+                    className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-[11px] font-semibold hover:bg-slate-100 disabled:opacity-40"
+                  >
+                    Append to prompt
+                  </button>
+                  <button
+                    onClick={handleClearDescribe}
+                    className="ml-auto px-2 py-1 rounded-md text-slate-400 hover:text-slate-700 text-[11px]"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 
@@ -1089,14 +1130,6 @@ export default function MediaModule() {
         </div>
       </div>
 
-      {stylesDrawerOpen && (
-        <StyleDrawer
-          presets={stylePresets}
-          onClose={() => setStylesDrawerOpen(false)}
-          onSave={handleSaveStyle}
-          onDelete={handleDeleteStyle}
-        />
-      )}
       {collectionsDrawerOpen && (
         <CollectionsDrawer
           collections={collections}
@@ -1293,56 +1326,6 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
         <div className="p-5">{children}</div>
       </div>
     </div>
-  );
-}
-
-function StyleDrawer({
-  presets, onClose, onSave, onDelete,
-}: {
-  presets: MediaStylePreset[];
-  onClose: () => void;
-  onSave: (name: string, snippet: string) => Promise<void>;
-  onDelete: (id: string) => Promise<void>;
-}) {
-  const [name, setName] = useState('');
-  const [snippet, setSnippet] = useState('');
-  const [saving, setSaving] = useState(false);
-  return (
-    <Drawer title="Style presets" onClose={onClose}>
-      <p className="text-sm text-slate-500 mb-4">Save a "voice" snippet that gets prepended to your prompts — e.g. brand colors, mood, typography. Pick one in the generator to apply it.</p>
-
-      <div className="space-y-3 mb-5">
-        {presets.length === 0 && <p className="text-sm text-slate-400 italic">No styles yet.</p>}
-        {presets.map((s) => (
-          <div key={s.id} className="border border-slate-200 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-medium text-sm text-slate-800">{s.name}</span>
-              <button onClick={() => onDelete(s.id)} className="text-slate-400 hover:text-red-500">
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 whitespace-pre-wrap">{s.prompt_snippet}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="border-t border-slate-100 pt-4 space-y-2">
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Add new</h4>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Name (e.g. 'Moody brand')" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
-        <textarea value={snippet} onChange={(e) => setSnippet(e.target.value)} rows={4} placeholder="Style snippet to prepend, e.g. 'moody, dark teal background, gold serif text, high contrast, painterly'" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
-        <button
-          disabled={saving || !name.trim() || !snippet.trim()}
-          onClick={async () => {
-            setSaving(true);
-            await onSave(name.trim(), snippet.trim());
-            setName(''); setSnippet(''); setSaving(false);
-          }}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm disabled:opacity-50"
-        >
-          <Plus className="w-4 h-4" /> Save style
-        </button>
-      </div>
-    </Drawer>
   );
 }
 
