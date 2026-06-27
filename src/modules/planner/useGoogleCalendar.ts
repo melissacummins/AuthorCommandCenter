@@ -12,8 +12,13 @@ const SELECTED_KEY = 'planner-gcal-calendar';
 // tracks connection + the chosen calendar, and re-exposes the event CRUD
 // helpers. Access tokens are minted server-side from a stored refresh
 // token, so we never prompt on mount and never silently unlink.
-export function useGoogleCalendar() {
-  const configured = isCalendarConfigured();
+export function useGoogleCalendar(enabled = true) {
+  // Owner-only: the Calendar feature uses a sensitive Google OAuth scope that
+  // would require Google app verification to offer to external customers, so we
+  // keep it admin-only. When disabled the hook reports unavailable and the
+  // planner shows no calendar UI at all.
+  const available = enabled;
+  const configured = enabled && isCalendarConfigured();
   // Optimistically render connected if we connected before; getStatus()
   // on mount confirms (and flips us off cleanly if the grant was revoked).
   const [connected, setConnected] = useState(() => configured && wasConnected());
@@ -100,6 +105,7 @@ export function useGoogleCalendar() {
   );
 
   return {
+    available,
     configured,
     connected,
     busy,

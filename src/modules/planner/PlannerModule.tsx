@@ -72,7 +72,7 @@ const VIEWS: { bucket: Bucket; label: string; icon: typeof Inbox; color: string 
 ];
 
 export default function PlannerModule() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [notes, setNotes] = useState<PlannerNote[]>([]);
   const [tasks, setTasks] = useState<PlannerTask[]>([]);
   const [blocks, setBlocks] = useState<PlannerTimeBlock[]>([]);
@@ -94,7 +94,7 @@ export default function PlannerModule() {
   // bumping counter lets the same day be re-opened.
   const [dayJump, setDayJump] = useState<{ iso: string; n: number }>(() => ({ iso: todayISO(), n: 0 }));
   const today = todayISO();
-  const gc = useGoogleCalendar();
+  const gc = useGoogleCalendar(isAdmin);
   // Bumped whenever a time block is added/removed so the views re-fetch events.
   const [calVersion, setCalVersion] = useState(0);
 

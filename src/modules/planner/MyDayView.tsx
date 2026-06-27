@@ -299,7 +299,7 @@ export default function MyDayView({
           <button onClick={() => gc.setError(null)}><X className="w-4 h-4" /></button>
         </div>
       )}
-      {!gc.configured && <NotConfiguredCard />}
+      {gc.available && !gc.configured && <NotConfiguredCard />}
 
       {/* Search any task and jump to the day it's on / was done */}
       <TaskSearch tasks={tasks} taskDay={taskDay} onJump={goToDay} />
