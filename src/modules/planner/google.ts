@@ -16,6 +16,15 @@ const CONNECTED_KEY = 'planner-gcal-connected';
 // Cache the short-lived access token for the tab session so navigating away
 // from the planner (or a reload) resumes silently instead of re-prompting.
 const TOKEN_KEY = 'planner-gcal-token';
+// Set once a silent resume has actually needed the user (expired Google session,
+// revoked grant, blocked third-party cookies). While set we DON'T retry the
+// silent resume — that retry is what reopened Google's consent popup on every
+// refresh. Cleared by an explicit Connect. Per-tab (sessionStorage) so a fresh
+// tab gets one more silent attempt.
+const NEEDS_CONSENT_KEY = 'planner-gcal-needs-consent';
+function markNeedsConsent() { try { sessionStorage.setItem(NEEDS_CONSENT_KEY, '1'); } catch { /* ignore */ } }
+function clearNeedsConsent() { try { sessionStorage.removeItem(NEEDS_CONSENT_KEY); } catch { /* ignore */ } }
+function needsConsent(): boolean { try { return sessionStorage.getItem(NEEDS_CONSENT_KEY) === '1'; } catch { return false; } }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObj = any;
@@ -86,6 +95,7 @@ function requestToken(prompt: '' | 'consent'): Promise<string> {
         accessToken = resp.access_token;
         tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000 - 60_000;
         localStorage.setItem(CONNECTED_KEY, '1');
+        clearNeedsConsent(); // a token came back — the silent path is healthy again
         try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ t: accessToken, e: tokenExpiry })); } catch { /* quota/private mode */ }
         resolve(accessToken!);
       };
@@ -127,14 +137,23 @@ export class GCalNeedsReconnect extends Error {
   constructor() { super('Google Calendar needs to be reconnected.'); this.name = 'GCalNeedsReconnect'; }
 }
 
-// Non-interactive token accessor. Returns the cached token or signals that a
-// reconnect is needed — it NEVER calls requestAccessToken. Only an explicit
-// connect() (inside a user click) may open Google's popup. The old silent
-// resume (requestToken('')) escalated to a *visible* consent popup on browsers
-// that block third-party cookies, which reopened the popup on every refresh.
+// Token accessor with a guarded silent resume. The cached token lives ~1h (and
+// only for the tab session), so without a resume the integration "unlinks" the
+// moment it lapses. We resume silently using the existing Google session — but
+// AT MOST ONCE per lapse: if that resume actually needs the user, we mark
+// consent-needed and fall back to the Connect button, so a failed resume can't
+// reopen Google's popup on every refresh (the bug the previous version had).
 async function token(): Promise<string> {
   if (hasValidToken()) return accessToken!;
-  throw new GCalNeedsReconnect();
+  // Never connected, or a prior silent resume already needed the user — don't
+  // attempt one (and don't risk a popup); the caller shows Connect instead.
+  if (!wasConnected() || needsConsent()) throw new GCalNeedsReconnect();
+  try {
+    return await requestToken('');
+  } catch {
+    markNeedsConsent();
+    throw new GCalNeedsReconnect();
+  }
 }
 
 // Warm up the GIS script + token client ahead of time so an explicit Connect
@@ -147,6 +166,7 @@ export function prepare(): void {
 }
 
 export async function connect(): Promise<void> {
+  clearNeedsConsent(); // explicit reconnect — re-enable the silent path
   await requestToken('consent');
 }
 
@@ -155,6 +175,7 @@ export function disconnect(): void {
   accessToken = null;
   tokenExpiry = 0;
   localStorage.removeItem(CONNECTED_KEY);
+  clearNeedsConsent();
   try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
   if (tok) (window as AnyObj).google?.accounts?.oauth2?.revoke?.(tok, () => {});
 }

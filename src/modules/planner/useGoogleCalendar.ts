@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   connect as gConnect, disconnect as gDisconnect, isCalendarConfigured, wasConnected, prepare as gPrepare,
-  hasValidToken, GCalNeedsReconnect,
+  GCalNeedsReconnect,
   listCalendars, listEvents, createEvent, updateEvent, deleteEvent,
   type GCalCalendar, type GCalEvent,
 } from './google';
@@ -12,11 +12,11 @@ const SELECTED_KEY = 'planner-gcal-calendar';
 // connection + the chosen calendar, and re-exposes the event CRUD helpers.
 export function useGoogleCalendar() {
   const configured = isCalendarConfigured();
-  // Start connected only if we connected before AND still hold a valid token
-  // from this tab session, so a reload resumes silently. Without a live token we
-  // show the Connect button rather than auto-prompting (which reopened Google's
-  // popup on every refresh).
-  const [connected, setConnected] = useState(() => configured && wasConnected() && hasValidToken());
+  // Stay "connected" if we connected before — even after the ~1h token lapses —
+  // so the integration doesn't unlink the moment the token expires. The first
+  // calendar call then silently resumes the token; only if that resume actually
+  // needs the user (and fails) do we drop back to the Connect button.
+  const [connected, setConnected] = useState(() => configured && wasConnected());
   const [calendars, setCalendars] = useState<GCalCalendar[]>([]);
   const [calendarId, setCalendarId] = useState<string>(() => localStorage.getItem(SELECTED_KEY) ?? '');
   const [error, setError] = useState<string | null>(null);
@@ -43,13 +43,14 @@ export function useGoogleCalendar() {
   }, []);
 
   // On mount, warm up GIS so a later Connect click can open the popup within the
-  // user-gesture window. Only auto-load calendars when we still hold a valid
-  // token — never trigger a token request here, or Google's consent popup
-  // reopens on every refresh.
+  // user-gesture window, and — if we were connected — load calendars. That goes
+  // through the guarded silent resume in google.ts: it refreshes the token
+  // silently when it can, and only needs the user once per genuine lapse (after
+  // which it won't retry, so the consent popup can't reopen on every refresh).
   useEffect(() => {
     if (!configured) return;
     gPrepare();
-    if (wasConnected() && hasValidToken()) loadCalendars();
+    if (wasConnected()) loadCalendars();
   }, [configured, loadCalendars]);
 
   const connect = useCallback(async () => {
