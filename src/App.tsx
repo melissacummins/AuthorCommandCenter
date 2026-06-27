@@ -22,7 +22,6 @@ const FinStreamModule = lazy(() => import('./modules/finstream/FinStreamModule')
 const KDPOptimizerModule = lazy(() => import('./modules/kdp-optimizer/KDPOptimizerModule'));
 const LinkShortenerModule = lazy(() => import('./modules/link-shortener/LinkShortenerModule'));
 const ARCsModule = lazy(() => import('./modules/arcs/ARCsModule'));
-const BookFunnelModule = lazy(() => import('./modules/bookfunnel/BookFunnelModule'));
 const MediaModule = lazy(() => import('./modules/media/MediaModule'));
 const SocialMediaModule = lazy(() => import('./modules/social-media/SocialMediaModule'));
 const SettingsModule = lazy(() => import('./modules/settings/SettingsModule'));
@@ -44,7 +43,6 @@ const GATED_ELEMENTS: Record<string, ReactElement> = {
   'kdp-optimizer': <KDPOptimizerModule />,
   'links': <LinkShortenerModule />,
   'arcs': <ARCsModule />,
-  'bookfunnel': <BookFunnelModule />,
   'media': <MediaModule />,
   'social-media': <SocialMediaModule />,
 };

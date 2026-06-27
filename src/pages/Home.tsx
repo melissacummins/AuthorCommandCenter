@@ -5,7 +5,7 @@ import { moduleKeyForPath } from '../lib/access';
 import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock, UserPlus,
+  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
   ChevronDown, ChevronRight,
 } from 'lucide-react';
 
@@ -115,14 +115,6 @@ const moduleByPath: Record<string, ModuleCard> = {
     gradient: 'from-pink-500 to-pink-600',
     shadow: 'shadow-pink-500/25',
   },
-  '/bookfunnel': {
-    name: 'BookFunnel',
-    description: 'Capture every newsletter opt-in from your BookFunnel reader magnets and get alerted to new subscribers to export.',
-    path: '/bookfunnel',
-    icon: UserPlus,
-    gradient: 'from-pink-500 to-rose-600',
-    shadow: 'shadow-pink-500/25',
-  },
   '/media': {
     name: 'Media',
     description: 'Generate Pinterest pins, new release art, social images, and short video clips with AI.',
@@ -145,7 +137,7 @@ const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/kdp-optimizer', '/links', '/arcs', '/bookfunnel'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 export default function Home() {
