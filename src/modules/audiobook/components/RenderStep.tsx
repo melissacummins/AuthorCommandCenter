@@ -1,60 +1,55 @@
 import { useRef, useState } from 'react';
-import { Play, Loader2, AudioLines, Download, AlertTriangle, RefreshCw } from 'lucide-react';
-import type { AudiobookSegment } from '../types';
+import { Play, Loader2, AudioLines, Download, AlertTriangle, RefreshCw, ChevronDown, ChevronRight } from 'lucide-react';
+import type { AudiobookChapter, AudiobookSegment } from '../types';
 
-// Step 4 — turn the reviewed segments into audio. Renders pending segments one at
-// a time (sequential keeps the user's ElevenLabs concurrency happy and lets us
-// show clear progress), then offers per-clip playback and a stitched download.
+// Step 4 — render the reviewed segments to audio, chapter by chapter. Sequential
+// rendering keeps progress clear and is gentle on ElevenLabs rate limits. Each
+// chapter exports its own .mp3 (what audiobook platforms want) and there's a
+// stitched full-book download too. Per-line re-render fixes a single bad clip.
 export default function RenderStep({
-  segments, castReady, voiceMissingFor, renderOne, getAudioUrl, onDownloadAll,
+  chapters, segmentsByChapter, castReady, voiceMissingFor, renderOne, getAudioUrl, onDownloadChapter, onDownloadAll,
 }: {
-  segments: AudiobookSegment[];
+  chapters: AudiobookChapter[];
+  segmentsByChapter: Record<string, AudiobookSegment[]>;
   castReady: boolean;
   voiceMissingFor: (s: AudiobookSegment) => boolean;
   renderOne: (s: AudiobookSegment) => Promise<void>;
   getAudioUrl: (path: string) => Promise<string>;
+  onDownloadChapter: (chapterId: string) => Promise<void>;
   onDownloadAll: () => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
+  const [downloading, setDownloading] = useState<string | null>(null); // chapterId | 'all'
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const pending = segments.filter(s => s.status !== 'rendered');
-  const rendered = segments.filter(s => s.status === 'rendered').length;
+  const allSegments = chapters.flatMap(c => segmentsByChapter[c.id] ?? []);
+  const renderedCount = allSegments.filter(s => s.status === 'rendered').length;
+  const pendingCount = allSegments.filter(s => s.status !== 'rendered' && !voiceMissingFor(s)).length;
 
-  async function renderAll() {
-    const todo = segments.filter(s => s.status !== 'rendered' && !voiceMissingFor(s));
+  async function renderList(segs: AudiobookSegment[]) {
+    const todo = segs.filter(s => s.status !== 'rendered' && !voiceMissingFor(s));
     if (!todo.length) return;
     setBusy(true); setError(null);
     let done = 0;
     setProgress({ done: 0, total: todo.length });
     try {
-      for (const s of todo) {
-        await renderOne(s);
-        done += 1;
-        setProgress({ done, total: todo.length });
-      }
-    } catch (e) {
-      setError((e as Error)?.message ?? 'Rendering failed.');
-    } finally {
-      setBusy(false); setProgress(null);
-    }
+      for (const s of todo) { await renderOne(s); done += 1; setProgress({ done, total: todo.length }); }
+    } catch (e) { setError((e as Error)?.message ?? 'Rendering failed.'); }
+    finally { setBusy(false); setProgress(null); }
   }
 
   async function play(path: string) {
-    try {
-      const url = await getAudioUrl(path);
-      if (audioRef.current) { audioRef.current.src = url; await audioRef.current.play(); }
-    } catch { /* ignore playback errors */ }
+    try { const url = await getAudioUrl(path); if (audioRef.current) { audioRef.current.src = url; await audioRef.current.play(); } }
+    catch { /* ignore playback errors */ }
   }
 
-  async function download() {
-    setDownloading(true); setError(null);
-    try { await onDownloadAll(); }
+  async function download(which: string, fn: () => Promise<void>) {
+    setDownloading(which); setError(null);
+    try { await fn(); }
     catch (e) { setError((e as Error)?.message ?? 'Could not build the download.'); }
-    finally { setDownloading(false); }
+    finally { setDownloading(null); }
   }
 
   if (!castReady) {
@@ -68,45 +63,95 @@ export default function RenderStep({
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <button onClick={renderAll} disabled={busy || pending.length === 0}
+        <button onClick={() => renderList(allSegments)} disabled={busy || pendingCount === 0}
           className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <AudioLines className="w-4 h-4" />}
-          {busy && progress ? `Rendering ${progress.done}/${progress.total}` : `Render ${pending.length || 'all'} pending`}
+          {busy && progress ? `Rendering ${progress.done}/${progress.total}` : `Render ${pendingCount || 'all'} pending`}
         </button>
-        <button onClick={download} disabled={downloading || rendered === 0}
+        <button onClick={() => download('all', onDownloadAll)} disabled={downloading !== null || renderedCount === 0}
           className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50">
-          {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download audiobook (.mp3)
+          {downloading === 'all' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} Download full audiobook
         </button>
-        <span className="text-sm text-slate-400">{rendered}/{segments.length} rendered</span>
+        <span className="text-sm text-slate-400">{renderedCount}/{allSegments.length} rendered</span>
       </div>
-
       {error && <p className="text-sm text-rose-600">{error}</p>}
-
       <audio ref={audioRef} preload="none" />
 
-      <div className="space-y-1.5">
-        {segments.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg border border-slate-100 text-sm">
-            <span className="text-xs text-slate-400 w-8 shrink-0">{i + 1}</span>
-            <span className={`text-xs px-1.5 py-0.5 rounded ${s.speaker === 'female' ? 'bg-pink-50 text-pink-600' : s.speaker === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
-              {s.speaker}
-            </span>
-            <span className="flex-1 truncate text-slate-600">{s.text}</span>
-            {voiceMissingFor(s) ? (
-              <span className="text-xs text-amber-600">no voice</span>
-            ) : s.status === 'rendered' && s.audio_path ? (
-              <>
-                <button onClick={() => play(s.audio_path!)} className="text-slate-400 hover:text-violet-600"><Play className="w-4 h-4" /></button>
-                <button onClick={() => renderOne(s)} title="Re-render" className="text-slate-300 hover:text-slate-600"><RefreshCw className="w-3.5 h-3.5" /></button>
-              </>
-            ) : s.status === 'error' ? (
-              <span className="text-xs text-rose-600" title={s.error ?? ''}>error</span>
-            ) : (
-              <span className="text-xs text-slate-300">pending</span>
-            )}
-          </div>
+      <div className="space-y-2">
+        {chapters.map((c, i) => (
+          <ChapterRender
+            key={c.id} index={i} chapter={c} segments={segmentsByChapter[c.id] ?? []}
+            voiceMissingFor={voiceMissingFor} onRenderChapter={renderList} onRenderOne={renderOne} onPlay={play}
+            onDownload={() => download(c.id, () => onDownloadChapter(c.id))} downloading={downloading === c.id} disabledControls={busy}
+          />
         ))}
       </div>
+    </div>
+  );
+}
+
+function ChapterRender({
+  index, chapter, segments, voiceMissingFor, onRenderChapter, onRenderOne, onPlay, onDownload, downloading, disabledControls,
+}: {
+  index: number;
+  chapter: AudiobookChapter;
+  segments: AudiobookSegment[];
+  voiceMissingFor: (s: AudiobookSegment) => boolean;
+  onRenderChapter: (segs: AudiobookSegment[]) => Promise<void>;
+  onRenderOne: (s: AudiobookSegment) => Promise<void>;
+  onPlay: (path: string) => void;
+  onDownload: () => void;
+  downloading: boolean;
+  disabledControls: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const rendered = segments.filter(s => s.status === 'rendered').length;
+  const pending = segments.filter(s => s.status !== 'rendered' && !voiceMissingFor(s)).length;
+
+  return (
+    <div className="rounded-xl border border-slate-200">
+      <div className="flex items-center gap-2 p-3">
+        <button onClick={() => setOpen(o => !o)} className="text-slate-400 hover:text-slate-600">
+          {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+        </button>
+        <span className="text-xs text-slate-400 w-6">{index + 1}</span>
+        <span className="flex-1 text-sm font-medium text-slate-800 truncate">{chapter.title}</span>
+        <span className="text-xs text-slate-400">{rendered}/{segments.length}</span>
+        <button onClick={() => onRenderChapter(segments)} disabled={disabledControls || pending === 0}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">
+          <AudioLines className="w-3.5 h-3.5" /> Render
+        </button>
+        <button onClick={onDownload} disabled={downloading || rendered === 0}
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50">
+          {downloading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} .mp3
+        </button>
+      </div>
+      {open && (
+        <div className="border-t border-slate-100 p-2 space-y-1.5">
+          {segments.length === 0 && <p className="text-xs text-slate-400 px-1">No segments — analyze this chapter in the Script step.</p>}
+          {segments.map((s, j) => (
+            <div key={s.id} className="flex items-center gap-3 p-2 rounded-lg border border-slate-100 text-sm">
+              <span className="text-xs text-slate-400 w-8 shrink-0">{j + 1}</span>
+              <span className={`text-xs px-1.5 py-0.5 rounded ${s.speaker === 'female' ? 'bg-pink-50 text-pink-600' : s.speaker === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                {s.speaker}
+              </span>
+              <span className="flex-1 truncate text-slate-600">{s.text}</span>
+              {voiceMissingFor(s) ? (
+                <span className="text-xs text-amber-600">no voice</span>
+              ) : s.status === 'rendered' && s.audio_path ? (
+                <>
+                  <button onClick={() => onPlay(s.audio_path!)} className="text-slate-400 hover:text-violet-600"><Play className="w-4 h-4" /></button>
+                  <button onClick={() => onRenderOne(s)} title="Re-render" className="text-slate-300 hover:text-slate-600"><RefreshCw className="w-3.5 h-3.5" /></button>
+                </>
+              ) : s.status === 'error' ? (
+                <button onClick={() => onRenderOne(s)} title={s.error ?? 'Retry'} className="text-xs text-rose-600 hover:underline">retry</button>
+              ) : (
+                <span className="text-xs text-slate-300">pending</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
