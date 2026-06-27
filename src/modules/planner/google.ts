@@ -1,35 +1,39 @@
-// Browser-only Google Calendar access.
+// Google Calendar access via a backend OAuth flow with a refresh token.
 //
-// We use Google Identity Services (GIS) to get a short-lived OAuth access token
-// in the browser, then call the Calendar REST API directly with it. There is no
-// backend and no client secret — only a public OAuth *client id*, supplied as
-// VITE_GOOGLE_CLIENT_ID. The trade-off is that sync only happens while the app
-// is open (tokens live ~1 hour and are re-requested silently while the Google
-// session is active).
+// The browser never sees the refresh token or the client secret. Instead:
+//   - connect() opens a popup to /api/google/oauth-start's authorize_url;
+//     the callback stores an ENCRYPTED refresh token server-side and
+//     postMessages back to us.
+//   - token() POSTs /api/google/token, which decrypts the refresh token
+//     server-side and mints a fresh short-lived ACCESS token. That access
+//     token is all the browser ever holds, cached for the tab session.
+//
+// This replaces the old browser-only GIS flow: the integration never
+// silently unlinks and never re-prompts (the refresh token persists).
+// The Calendar REST functions below are unchanged — they just get their
+// access token from the backend now.
+
+import { supabase } from '../../lib/supabase';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
-// Full calendar scope so we can read every calendar (Business Tasks, Deadlines…)
-// and create/update time-block events.
-const SCOPE = 'https://www.googleapis.com/auth/calendar';
-const GIS_SRC = 'https://accounts.google.com/gsi/client';
 const CONNECTED_KEY = 'planner-gcal-connected';
-// Cache the short-lived access token for the tab session so navigating away
-// from the planner (or a reload) resumes silently instead of re-prompting.
+// Cache the short-lived access token for the tab session so navigating
+// away from the planner (or a reload) resumes silently without a popup.
 const TOKEN_KEY = 'planner-gcal-token';
-// Set once a silent resume has actually needed the user (expired Google session,
-// revoked grant, blocked third-party cookies). While set we DON'T retry the
-// silent resume — that retry is what reopened Google's consent popup on every
-// refresh. Cleared by an explicit Connect. Per-tab (sessionStorage) so a fresh
-// tab gets one more silent attempt.
-const NEEDS_CONSENT_KEY = 'planner-gcal-needs-consent';
-function markNeedsConsent() { try { sessionStorage.setItem(NEEDS_CONSENT_KEY, '1'); } catch { /* ignore */ } }
-function clearNeedsConsent() { try { sessionStorage.removeItem(NEEDS_CONSENT_KEY); } catch { /* ignore */ } }
-function needsConsent(): boolean { try { return sessionStorage.getItem(NEEDS_CONSENT_KEY) === '1'; } catch { return false; } }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObj = any;
 
+async function authHeader(): Promise<Record<string, string>> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error('Not signed in.');
+  return { Authorization: `Bearer ${token}` };
+}
+
 export function isCalendarConfigured(): boolean {
+  // The real config check is server-side; we only gate the Connect UI on
+  // the public client id being present.
   return !!CLIENT_ID;
 }
 
@@ -37,30 +41,17 @@ export function wasConnected(): boolean {
   return localStorage.getItem(CONNECTED_KEY) === '1';
 }
 
-// --- GIS script + token client -------------------------------------------
-
-let gisPromise: Promise<void> | null = null;
-function loadGis(): Promise<void> {
-  if (gisPromise) return gisPromise;
-  gisPromise = new Promise<void>((resolve, reject) => {
-    if ((window as AnyObj).google?.accounts?.oauth2) return resolve();
-    const s = document.createElement('script');
-    s.src = GIS_SRC;
-    s.async = true;
-    s.defer = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error('Could not load Google sign-in.'));
-    document.head.appendChild(s);
-  });
-  return gisPromise;
+function setWasConnected(v: boolean): void {
+  if (v) localStorage.setItem(CONNECTED_KEY, '1');
+  else localStorage.removeItem(CONNECTED_KEY);
 }
 
-let tokenClient: AnyObj = null;
+// --- Access-token cache ----------------------------------------------------
+
 let accessToken: string | null = null;
 let tokenExpiry = 0;
 
-// Restore a still-valid token cached earlier this tab session, so a remount or
-// reload doesn't trigger a fresh consent/popup.
+// Restore a still-valid access token cached earlier this tab session.
 try {
   const raw = sessionStorage.getItem(TOKEN_KEY);
   if (raw) {
@@ -69,115 +60,137 @@ try {
   }
 } catch { /* ignore malformed cache */ }
 
-async function ensureTokenClient(): Promise<void> {
-  if (!CLIENT_ID) throw new Error('Google Calendar isn’t configured yet.');
-  await loadGis();
-  if (!tokenClient) {
-    tokenClient = (window as AnyObj).google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPE,
-      callback: () => {}, // replaced per-request below
-    });
-  }
+function cacheToken(tok: string, expiresInSec: number): void {
+  accessToken = tok;
+  // Refresh a minute early to avoid using a token that expires mid-flight.
+  tokenExpiry = Date.now() + expiresInSec * 1000 - 60_000;
+  try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ t: accessToken, e: tokenExpiry })); } catch { /* quota/private mode */ }
 }
 
-// prompt='consent' forces the account picker / consent (first connect);
-// prompt='' tries to refresh silently using the existing Google session.
-function requestToken(prompt: '' | 'consent'): Promise<string> {
-  return new Promise<string>((resolve, reject) => {
-    // Wire up the per-request callbacks, then ask GIS for a token.
-    const fire = () => {
-      tokenClient.callback = (resp: AnyObj) => {
-        if (resp.error) {
-          reject(new Error(resp.error_description || resp.error));
-          return;
-        }
-        accessToken = resp.access_token;
-        tokenExpiry = Date.now() + (resp.expires_in ?? 3600) * 1000 - 60_000;
-        localStorage.setItem(CONNECTED_KEY, '1');
-        clearNeedsConsent(); // a token came back — the silent path is healthy again
-        try { sessionStorage.setItem(TOKEN_KEY, JSON.stringify({ t: accessToken, e: tokenExpiry })); } catch { /* quota/private mode */ }
-        resolve(accessToken!);
-      };
-      // Without this, a silent (prompt='') resume that actually needs the user
-      // — expired Google session, revoked grant, blocked popup — fires GIS's
-      // error path instead of `callback`, leaving the promise pending forever.
-      // That hang is what left the planner stuck "connected" with no events and
-      // no way to re-open the consent popup. Rejecting here lets the caller fall
-      // back to showing the Connect button again.
-      tokenClient.error_callback = (err: AnyObj) => {
-        reject(new Error(err?.message || 'Google sign-in was cancelled or blocked.'));
-      };
-      tokenClient.requestAccessToken({ prompt });
-    };
-
-    // The consent popup is opened by GIS via window.open, which browsers only
-    // allow inside the synchronous user-gesture call stack. If the token client
-    // is already initialised (prepare() runs on planner mount), fire SYNCHRONOUSLY
-    // here — `new Promise`'s executor runs synchronously, so this stays inside the
-    // click handler and the popup isn't blocked. Only fall back to the async GIS
-    // load when we weren't prepared in time.
-    if (tokenClient) {
-      try { fire(); } catch (e) { reject(e as Error); }
-      return;
-    }
-    ensureTokenClient().then(fire).catch(reject);
-  });
+function clearTokenCache(): void {
+  accessToken = null;
+  tokenExpiry = 0;
+  try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
 }
 
-// True when we hold a still-valid access token cached earlier this tab session
-// — i.e. we can call Calendar without any user-visible prompt.
-export function hasValidToken(): boolean {
+function hasValidToken(): boolean {
   return !!accessToken && Date.now() < tokenExpiry;
 }
 
-// Thrown when a Calendar call needs a token we don't have. Callers should fall
-// back to the Connect button rather than forcing a prompt.
+// Thrown when a Calendar call needs a token we can't mint (no stored
+// connection). Callers fall back to the Connect button rather than
+// forcing a prompt.
 export class GCalNeedsReconnect extends Error {
   constructor() { super('Google Calendar needs to be reconnected.'); this.name = 'GCalNeedsReconnect'; }
 }
 
-// Token accessor with a guarded silent resume. The cached token lives ~1h (and
-// only for the tab session), so without a resume the integration "unlinks" the
-// moment it lapses. We resume silently using the existing Google session — but
-// AT MOST ONCE per lapse: if that resume actually needs the user, we mark
-// consent-needed and fall back to the Connect button, so a failed resume can't
-// reopen Google's popup on every refresh (the bug the previous version had).
+interface TokenResponse {
+  connected: boolean;
+  access_token?: string;
+  expires_in?: number;
+  google_email?: string | null;
+}
+
+// POST /api/google/token — mint (or status-check) an access token.
+async function fetchToken(): Promise<TokenResponse> {
+  const headers = await authHeader();
+  const res = await fetch('/api/google/token', { method: 'POST', headers });
+  const data = (await res.json().catch(() => ({}))) as TokenResponse & { error?: string };
+  if (!res.ok) {
+    throw new Error(typeof data?.error === 'string' ? data.error : `Token request failed (${res.status}).`);
+  }
+  if (data.connected && data.access_token) {
+    cacheToken(data.access_token, data.expires_in ?? 3600);
+    setWasConnected(true);
+  }
+  return data;
+}
+
+// Non-interactive token accessor. Returns the cached access token if
+// valid, else mints a fresh one via the backend. NEVER opens a popup.
 async function token(): Promise<string> {
   if (hasValidToken()) return accessToken!;
-  // Never connected, or a prior silent resume already needed the user — don't
-  // attempt one (and don't risk a popup); the caller shows Connect instead.
-  if (!wasConnected() || needsConsent()) throw new GCalNeedsReconnect();
-  try {
-    return await requestToken('');
-  } catch {
-    markNeedsConsent();
+  const res = await fetchToken();
+  if (!res.connected || !res.access_token) {
+    setWasConnected(false);
     throw new GCalNeedsReconnect();
   }
+  return res.access_token;
 }
 
-// Warm up the GIS script + token client ahead of time so an explicit Connect
-// click can open the consent popup synchronously within the user-gesture window,
-// instead of awaiting a network script load (which browsers may treat as a lost
-// gesture and block the popup). Safe to call repeatedly; failures are ignored.
-export function prepare(): void {
-  if (!CLIENT_ID) return;
-  ensureTokenClient().catch(() => { /* surfaced later on an explicit connect */ });
+// Connection-status probe used on mount: tells us whether we're connected
+// (and caches the access token) without ever prompting.
+export async function getStatus(): Promise<{ connected: boolean; google_email?: string | null }> {
+  const res = await fetchToken();
+  setWasConnected(res.connected);
+  return { connected: res.connected, google_email: res.google_email ?? null };
 }
 
+// --- Connect / disconnect --------------------------------------------------
+
+interface OAuthStartResponse { authorize_url: string }
+
+// Opens the Google consent popup and resolves once the callback posts
+// back { type:'gcal-oauth', ok:true }. Must be called inside a user
+// gesture so the popup isn't blocked.
 export async function connect(): Promise<void> {
-  clearNeedsConsent(); // explicit reconnect — re-enable the silent path
-  await requestToken('consent');
+  const headers = await authHeader();
+  const res = await fetch('/api/google/oauth-start', { method: 'POST', headers });
+  const data = (await res.json().catch(() => ({}))) as OAuthStartResponse & { error?: string };
+  if (!res.ok || !data.authorize_url) {
+    throw new Error(typeof data?.error === 'string' ? data.error : `Failed to start OAuth (${res.status}).`);
+  }
+
+  const width = 500;
+  const height = 640;
+  const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+  const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+  const popup = window.open(
+    data.authorize_url,
+    'gcal-oauth',
+    `width=${width},height=${height},left=${left},top=${top}`,
+  );
+
+  await new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener('message', onMessage);
+      window.clearInterval(poll);
+      fn();
+    };
+
+    function onMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      const d = event.data as { type?: string; ok?: boolean; error?: string } | undefined;
+      if (d?.type !== 'gcal-oauth') return;
+      if (d.ok) {
+        setWasConnected(true);
+        finish(resolve);
+      } else {
+        finish(() => reject(new Error(d.error || 'Google connection failed.')));
+      }
+    }
+
+    // If the popup is closed before posting a message, give up cleanly.
+    const poll = window.setInterval(() => {
+      if (popup && popup.closed) {
+        finish(() => reject(new Error('Connection window closed before finishing.')));
+      }
+    }, 500);
+
+    window.addEventListener('message', onMessage);
+  });
 }
 
-export function disconnect(): void {
-  const tok = accessToken;
-  accessToken = null;
-  tokenExpiry = 0;
-  localStorage.removeItem(CONNECTED_KEY);
-  clearNeedsConsent();
-  try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
-  if (tok) (window as AnyObj).google?.accounts?.oauth2?.revoke?.(tok, () => {});
+export async function disconnect(): Promise<void> {
+  clearTokenCache();
+  setWasConnected(false);
+  try {
+    const headers = await authHeader();
+    await fetch('/api/google/disconnect', { method: 'POST', headers });
+  } catch { /* best-effort; cache already cleared */ }
 }
 
 // --- Calendar REST API ----------------------------------------------------
