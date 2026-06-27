@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen
+  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen, AudioLines
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -24,6 +24,7 @@ const modules = [
   { name: 'ARCs', path: '/arcs', icon: Users, color: 'text-pink-400' },
   { name: 'Media', path: '/media', icon: ImagePlus, color: 'text-fuchsia-400' },
   { name: 'Social Media', path: '/social-media', icon: Share2, color: 'text-violet-400' },
+  { name: 'Audiobook', path: '/audiobook', icon: AudioLines, color: 'text-fuchsia-400' },
   { name: 'Settings', path: '/settings', icon: Settings, color: 'text-slate-300' },
 ];
 
@@ -33,7 +34,7 @@ const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/kdp-optimizer', '/links', '/arcs'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 const moduleByPath = Object.fromEntries(modules.map(m => [m.path, m]));

@@ -6,7 +6,7 @@ import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
-  ChevronDown, ChevronRight,
+  ChevronDown, ChevronRight, AudioLines,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -131,13 +131,21 @@ const moduleByPath: Record<string, ModuleCard> = {
     gradient: 'from-violet-500 to-fuchsia-600',
     shadow: 'shadow-violet-500/25',
   },
+  '/audiobook': {
+    name: 'Audiobook',
+    description: 'Turn a manuscript into multi-voice narration with ElevenLabs — AI tags who speaks each line, you correct it, then render.',
+    path: '/audiobook',
+    icon: AudioLines,
+    gradient: 'from-fuchsia-500 to-purple-600',
+    shadow: 'shadow-fuchsia-500/25',
+  },
 };
 
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/kdp-optimizer', '/links', '/arcs'] },
+  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 export default function Home() {
