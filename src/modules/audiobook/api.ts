@@ -6,6 +6,7 @@
 import { supabase } from '../../lib/supabase';
 import type {
   AudiobookProject, AudiobookProjectInsert, AudiobookProjectUpdate, AudiobookSegment,
+  AudiobookChapter, ChapterDraft,
 } from './types';
 import type { AttributedSegment } from './lib/attribution';
 
@@ -110,6 +111,68 @@ export async function updateSegment(id: string, patch: Partial<AudiobookSegment>
 export async function deleteSegment(id: string): Promise<void> {
   const { error } = await supabase.from('audiobook_segments').delete().eq('id', id);
   if (error) throw error;
+}
+
+// ---- Chapters ----
+
+export async function listChapters(projectId: string): Promise<AudiobookChapter[]> {
+  const { data, error } = await supabase
+    .from('audiobook_chapters')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('idx', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as AudiobookChapter[];
+}
+
+// Replace the project's whole chapter breakdown with an accepted scan. Clears
+// any prior chapters (their segments cascade) plus any stray flat segments and
+// all rendered audio for the project, then inserts the new chapters in order.
+export async function saveChapters(
+  projectId: string,
+  userId: string,
+  drafts: ChapterDraft[],
+): Promise<AudiobookChapter[]> {
+  const folder = `${userId}/${projectId}`;
+  const { data: files } = await supabase.storage.from(BUCKET).list(folder);
+  if (files?.length) await supabase.storage.from(BUCKET).remove(files.map(f => `${folder}/${f.name}`));
+  await supabase.from('audiobook_segments').delete().eq('project_id', projectId);
+  await supabase.from('audiobook_chapters').delete().eq('project_id', projectId);
+  if (!drafts.length) return [];
+  const rows = drafts.map((d, i) => ({
+    project_id: projectId, user_id: userId, idx: i, title: d.title, source_text: d.source_text, status: 'draft' as const,
+  }));
+  const { data, error } = await supabase.from('audiobook_chapters').insert(rows).select('*').order('idx', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as AudiobookChapter[];
+}
+
+export async function updateChapter(id: string, patch: Partial<AudiobookChapter>): Promise<AudiobookChapter> {
+  const { data, error } = await supabase.from('audiobook_chapters').update(patch).eq('id', id).select('*').single();
+  if (error) throw error;
+  return data as AudiobookChapter;
+}
+
+// Replace one chapter's segments with a freshly-attributed list (clears that
+// chapter's prior segments + their audio first).
+export async function replaceChapterSegments(
+  chapterId: string,
+  projectId: string,
+  userId: string,
+  segments: AttributedSegment[],
+): Promise<AudiobookSegment[]> {
+  const { data: prior } = await supabase.from('audiobook_segments').select('audio_path').eq('chapter_id', chapterId);
+  const paths = (prior ?? []).map(p => (p as { audio_path: string | null }).audio_path).filter((p): p is string => !!p);
+  if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
+  await supabase.from('audiobook_segments').delete().eq('chapter_id', chapterId);
+  if (!segments.length) return [];
+  const rows = segments.map((s, i) => ({
+    project_id: projectId, chapter_id: chapterId, user_id: userId, idx: i,
+    speaker: s.speaker, character_name: s.character_name, text: s.text, status: 'pending' as const,
+  }));
+  const { data, error } = await supabase.from('audiobook_segments').insert(rows).select('*').order('idx', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as AudiobookSegment[];
 }
 
 // ---- Audio storage ----

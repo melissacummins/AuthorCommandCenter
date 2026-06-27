@@ -162,6 +162,39 @@ function coerceSegments(raw: string, fallbackText: string): AttributedSegment[] 
   return [{ speaker: 'narrator', character_name: null, text: fallbackText }];
 }
 
+// ---- Claude chapter scan ---------------------------------------------------
+
+const CHAPTERS_SYSTEM = [
+  'You split a book manuscript into chapters.',
+  'Return ONLY a JSON object: {"chapters":[{"title":string,"first_line":string}]}.',
+  '- One entry per chapter, in reading order.',
+  '- "title" is the chapter\'s title. Use the manuscript\'s own heading (e.g. "Chapter One", "Prologue") when present; otherwise infer a short, sensible title.',
+  '- "first_line" is the EXACT verbatim text (copied character-for-character, ~5 to 15 words) of where that chapter begins in the manuscript — including the heading line if there is one. It must appear verbatim in the text so it can be located.',
+  '- Cover the whole manuscript in order; do not skip chapters or invent text.',
+  'No commentary, no code fences.',
+].join('\n');
+
+interface ChapterMarker { title: string; first_line: string }
+
+function coerceChapterMarkers(raw: string): ChapterMarker[] {
+  let s = raw.trim().replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
+  const first = s.indexOf('{');
+  const last = s.lastIndexOf('}');
+  if (first >= 0 && last > first) s = s.slice(first, last + 1);
+  try {
+    const parsed = JSON.parse(s) as { chapters?: unknown };
+    const list = Array.isArray(parsed.chapters) ? parsed.chapters : [];
+    const out: ChapterMarker[] = [];
+    for (const item of list) {
+      const c = item as Record<string, unknown>;
+      const firstLine = typeof c.first_line === 'string' ? c.first_line : '';
+      if (!firstLine.trim()) continue;
+      out.push({ title: typeof c.title === 'string' ? c.title : '', first_line: firstLine });
+    }
+    return out;
+  } catch { return []; }
+}
+
 // ---- Handler ---------------------------------------------------------------
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -255,6 +288,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const data = (await r.json()) as { content?: Array<{ type: string; text?: string }> };
       const out = (data.content ?? []).filter(b => b.type === 'text').map(b => b.text ?? '').join('').trim();
       res.status(200).json({ segments: coerceSegments(out, text) });
+    } catch (e) {
+      res.status(502).json({ error: (e as Error)?.message ?? 'Could not reach Claude.' });
+    }
+    return;
+  }
+
+  // ---- AI chapter scan (action=chapters) — uses the user's Claude key ----
+  if (action === 'chapters') {
+    if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed.' }); return; }
+    const anthropicSecret = process.env.ANTHROPIC_KEY_ENCRYPTION_SECRET;
+    if (!anthropicSecret || anthropicSecret.length < 32) {
+      res.status(500).json({ error: 'AI chapter scan not configured (missing ANTHROPIC_KEY_ENCRYPTION_SECRET).' });
+      return;
+    }
+    const apiKey = await resolveStoredKey(supabase, ANTHROPIC_KEY_TABLE, userId, anthropicSecret, ANTHROPIC_KEY_SALT);
+    if (!apiKey) {
+      res.status(412).json({ error: 'No Claude API key on file — add yours in Settings → API Keys to scan chapters with AI.' });
+      return;
+    }
+    const body = parseBody<{ text?: string }>(req);
+    const text = typeof body.text === 'string' ? body.text : '';
+    if (!text.trim()) { res.status(400).json({ error: 'Missing manuscript text.' }); return; }
+    try {
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: ATTRIBUTION_MODEL,
+          max_tokens: ATTRIBUTION_MAX_TOKENS,
+          system: CHAPTERS_SYSTEM,
+          messages: [{ role: 'user', content: `Manuscript:\n\n${text}` }],
+        }),
+      });
+      if (!r.ok) {
+        const detail = await r.text();
+        const msg = r.status === 401 ? 'Your Claude key was rejected — check it in Settings → API Keys.' : `Claude request failed (${r.status}).`;
+        res.status(r.status === 401 ? 400 : 502).json({ error: msg, detail: detail.slice(0, 500) });
+        return;
+      }
+      const data = (await r.json()) as { content?: Array<{ type: string; text?: string }> };
+      const out = (data.content ?? []).filter(b => b.type === 'text').map(b => b.text ?? '').join('').trim();
+      res.status(200).json({ chapters: coerceChapterMarkers(out) });
     } catch (e) {
       res.status(502).json({ error: (e as Error)?.message ?? 'Could not reach Claude.' });
     }

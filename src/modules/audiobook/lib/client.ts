@@ -91,6 +91,13 @@ export async function attributeChunk(text: string, mode: NarrationMode): Promise
   return Array.isArray(data.segments) ? data.segments : [];
 }
 
+// ---- AI chapter scan ----
+
+export async function scanChaptersWithAI(text: string): Promise<{ title: string; first_line: string }[]> {
+  const data = await postJson<{ chapters?: { title: string; first_line: string }[] }>('chapters', { text });
+  return Array.isArray(data.chapters) ? data.chapters : [];
+}
+
 // ---- Render ----
 
 export async function renderSegment(

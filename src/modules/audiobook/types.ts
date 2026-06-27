@@ -11,6 +11,7 @@ export interface AudiobookProject {
   user_id: string;
   book_id: string | null;
   title: string;
+  manuscript: string;
   narration_mode: NarrationMode;
   narrator_role: 'male' | 'female'; // which voice narrates in duet mode
   narrator_voice_id: string | null;
@@ -35,9 +36,29 @@ export type AudiobookProjectInsert = {
 
 export type AudiobookProjectUpdate = Partial<Omit<AudiobookProject, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;
 
+export interface AudiobookChapter {
+  id: string;
+  project_id: string;
+  user_id: string;
+  idx: number;
+  title: string;
+  source_text: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// A scanned-but-not-yet-saved chapter (the breakdown the user reviews/edits
+// before accepting).
+export interface ChapterDraft {
+  title: string;
+  source_text: string;
+}
+
 export interface AudiobookSegment {
   id: string;
   project_id: string;
+  chapter_id: string | null;
   user_id: string;
   idx: number;
   speaker: Speaker;

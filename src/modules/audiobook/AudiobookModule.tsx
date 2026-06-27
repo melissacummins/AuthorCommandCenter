@@ -1,29 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, FileText, Users, ListChecks, AudioLines } from 'lucide-react';
+import { ArrowLeft, BookOpenText, Users, ListChecks, AudioLines } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import ElevenLabsKeyGate from './components/ElevenLabsKeyGate';
 import ProjectList from './components/ProjectList';
-import ManuscriptStep from './components/ManuscriptStep';
+import ChaptersStep from './components/ChaptersStep';
 import CastStep from './components/CastStep';
-import ReviewStep from './components/ReviewStep';
+import ScriptStep from './components/ScriptStep';
 import RenderStep from './components/RenderStep';
 import {
   listProjects, createProject, getProject, updateProject, deleteProject,
-  listSegments, replaceSegments, updateSegment, deleteSegment,
+  listChapters, saveChapters, listSegments, replaceChapterSegments, updateSegment, deleteSegment,
   uploadSegmentAudio, signedAudioUrl,
 } from './api';
 import { renderSegment } from './lib/client';
 import { attributeManuscript, type AttributeProgress } from './lib/attribution';
 import { castComplete, voiceForSpeaker } from './types';
-import type { AudiobookProject, AudiobookProjectUpdate, AudiobookSegment } from './types';
+import type { AudiobookChapter, AudiobookProject, AudiobookProjectUpdate, AudiobookSegment, ChapterDraft } from './types';
 import { listBooks } from '../catalog/api';
 
-type Step = 'manuscript' | 'cast' | 'review' | 'render';
+type Step = 'chapters' | 'cast' | 'script' | 'render';
 
-const STEPS: { id: Step; label: string; Icon: typeof FileText }[] = [
-  { id: 'manuscript', label: 'Manuscript', Icon: FileText },
+const STEPS: { id: Step; label: string; Icon: typeof BookOpenText }[] = [
+  { id: 'chapters', label: 'Chapters', Icon: BookOpenText },
   { id: 'cast', label: 'Cast', Icon: Users },
-  { id: 'review', label: 'Review', Icon: ListChecks },
+  { id: 'script', label: 'Script', Icon: ListChecks },
   { id: 'render', label: 'Render', Icon: AudioLines },
 ];
 
@@ -41,8 +41,9 @@ function AudiobookInner({ userId }: { userId: string }) {
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
   const [project, setProject] = useState<AudiobookProject | null>(null);
+  const [chapters, setChapters] = useState<AudiobookChapter[]>([]);
   const [segments, setSegments] = useState<AudiobookSegment[]>([]);
-  const [step, setStep] = useState<Step>('manuscript');
+  const [step, setStep] = useState<Step>('chapters');
   const [books, setBooks] = useState<{ id: string; title: string }[]>([]);
 
   useEffect(() => {
@@ -58,12 +59,12 @@ function AudiobookInner({ userId }: { userId: string }) {
   }, [userId]);
 
   async function open(id: string) {
-    const [p, segs] = await Promise.all([getProject(id), listSegments(id)]);
-    setProject(p); setSegments(segs); setOpenId(id); setStep('manuscript');
+    const [p, chs, segs] = await Promise.all([getProject(id), listChapters(id), listSegments(id)]);
+    setProject(p); setChapters(chs); setSegments(segs); setOpenId(id); setStep('chapters');
   }
 
   function backToList() {
-    setOpenId(null); setProject(null); setSegments([]);
+    setOpenId(null); setProject(null); setChapters([]); setSegments([]);
     listProjects(userId).then(setProjects);
   }
 
@@ -78,19 +79,26 @@ function AudiobookInner({ userId }: { userId: string }) {
     setProjects(prev => prev.filter(p => p.id !== id));
   }
 
-  async function patch(patch: AudiobookProjectUpdate) {
+  async function patch(p: AudiobookProjectUpdate) {
     if (!project) return;
-    setProject(prev => (prev ? { ...prev, ...patch } : prev));
-    try { const updated = await updateProject(project.id, patch); setProject(updated); }
-    catch { /* keep optimistic state; surfaced elsewhere if it matters */ }
+    setProject(prev => (prev ? { ...prev, ...p } : prev));
+    try { const updated = await updateProject(project.id, p); setProject(updated); }
+    catch { /* keep optimistic state */ }
   }
 
-  async function analyze(manuscript: string, onProgress: (p: AttributeProgress) => void): Promise<number> {
+  async function acceptChapters(drafts: ChapterDraft[]) {
+    if (!project) return;
+    const rows = await saveChapters(project.id, userId, drafts);
+    setChapters(rows);
+    setSegments([]); // saveChapters clears all prior segments + audio
+    await patch({ status: 'cast' });
+  }
+
+  async function analyzeChapter(chapter: AudiobookChapter, onProgress: (p: AttributeProgress) => void): Promise<number> {
     if (!project) return 0;
-    const attributed = await attributeManuscript(manuscript, project.narration_mode, onProgress);
-    const rows = await replaceSegments(project.id, userId, attributed);
-    setSegments(rows);
-    await patch({ status: 'review' });
+    const attributed = await attributeManuscript(chapter.source_text, project.narration_mode, onProgress);
+    const rows = await replaceChapterSegments(chapter.id, project.id, userId, attributed);
+    setSegments(prev => [...prev.filter(s => s.chapter_id !== chapter.id), ...rows]);
     return rows.length;
   }
 
@@ -107,10 +115,7 @@ function AudiobookInner({ userId }: { userId: string }) {
   async function renderOne(seg: AudiobookSegment) {
     if (!project) return;
     const voice = voiceForSpeaker(project, seg.speaker);
-    if (!voice.id) {
-      await editSegment(seg.id, { status: 'error', error: `No voice assigned for ${seg.speaker}.` });
-      return;
-    }
+    if (!voice.id) { await editSegment(seg.id, { status: 'error', error: `No voice assigned for ${seg.speaker}.` }); return; }
     try {
       const { audioBase64, contentType } = await renderSegment(voice.id, seg.text, project.model_id);
       const path = await uploadSegmentAudio(userId, project.id, seg.id, audioBase64, contentType);
@@ -121,24 +126,44 @@ function AudiobookInner({ userId }: { userId: string }) {
     }
   }
 
-  async function downloadAll() {
-    if (!project) return;
-    const rendered = [...segments].sort((a, b) => a.idx - b.idx).filter(s => s.status === 'rendered' && s.audio_path);
+  // Concatenate a set of rendered clips (in order) into one MP3 and download it.
+  // End-to-end MP3 concatenation plays back as one continuous file in common
+  // players — fine for a draft master without re-encoding.
+  async function concatAndDownload(segs: AudiobookSegment[], filename: string) {
+    const ordered = segs.filter(s => s.status === 'rendered' && s.audio_path);
+    if (!ordered.length) return;
     const blobs: Blob[] = [];
-    for (const s of rendered) {
+    for (const s of ordered) {
       const url = await signedAudioUrl(s.audio_path!);
-      const resp = await fetch(url);
-      blobs.push(await resp.blob());
+      blobs.push(await (await fetch(url)).blob());
     }
-    // Concatenating MP3 clips end-to-end plays back as one continuous file in
-    // every common player; good enough for a draft master without a re-encode.
-    const full = new Blob(blobs, { type: 'audio/mpeg' });
-    const href = URL.createObjectURL(full);
+    const href = URL.createObjectURL(new Blob(blobs, { type: 'audio/mpeg' }));
     const a = document.createElement('a');
-    a.href = href;
-    a.download = `${project.title.replace(/[^\w\-]+/g, '_') || 'audiobook'}.mp3`;
+    a.href = href; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(href);
+  }
+
+  function safeName(s: string): string { return s.replace(/[^\w\-]+/g, '_') || 'audiobook'; }
+
+  const segmentsByChapter = useMemo(() => {
+    const map: Record<string, AudiobookSegment[]> = {};
+    for (const c of chapters) {
+      map[c.id] = segments.filter(s => s.chapter_id === c.id).sort((a, b) => a.idx - b.idx);
+    }
+    return map;
+  }, [chapters, segments]);
+
+  async function downloadChapter(chapterId: string) {
+    if (!project) return;
+    const ch = chapters.find(c => c.id === chapterId);
+    await concatAndDownload(segmentsByChapter[chapterId] ?? [], `${safeName(project.title)}-${safeName(ch?.title ?? 'chapter')}.mp3`);
+  }
+
+  async function downloadAll() {
+    if (!project) return;
+    const ordered = [...chapters].sort((a, b) => a.idx - b.idx).flatMap(c => segmentsByChapter[c.id] ?? []);
+    await concatAndDownload(ordered, `${safeName(project.title)}.mp3`);
   }
 
   const castReady = useMemo(() => (project ? castComplete(project) : false), [project]);
@@ -172,20 +197,21 @@ function AudiobookInner({ userId }: { userId: string }) {
       </div>
 
       <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
-        {step === 'manuscript' && (
-          <ManuscriptStep project={project} onChange={patch} segmentCount={segments.length}
-            onAnalyze={analyze} books={books} onAttachBook={id => patch({ book_id: id })} />
+        {step === 'chapters' && (
+          <ChaptersStep project={project} chapters={chapters} onChange={patch} onAccept={acceptChapters}
+            books={books} onAttachBook={id => patch({ book_id: id })} />
         )}
         {step === 'cast' && <CastStep project={project} onChange={patch} />}
-        {step === 'review' && <ReviewStep segments={segments} onUpdate={editSegment} onDelete={removeSegment} />}
+        {step === 'script' && (
+          <ScriptStep chapters={chapters} segmentsByChapter={segmentsByChapter}
+            onAnalyzeChapter={analyzeChapter} onUpdateSegment={editSegment} onDeleteSegment={removeSegment} />
+        )}
         {step === 'render' && (
           <RenderStep
-            segments={segments}
-            castReady={castReady}
+            chapters={chapters} segmentsByChapter={segmentsByChapter} castReady={castReady}
             voiceMissingFor={s => !voiceForSpeaker(project, s.speaker).id}
-            renderOne={renderOne}
-            getAudioUrl={signedAudioUrl}
-            onDownloadAll={downloadAll}
+            renderOne={renderOne} getAudioUrl={signedAudioUrl}
+            onDownloadChapter={downloadChapter} onDownloadAll={downloadAll}
           />
         )}
       </div>
