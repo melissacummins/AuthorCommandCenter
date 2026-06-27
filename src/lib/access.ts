@@ -47,7 +47,6 @@ export const GATED_MODULES: { key: string; path: string; label: string }[] = [
   { key: 'kdp-optimizer', path: '/kdp-optimizer', label: 'KDP Optimizer' },
   { key: 'links', path: '/links', label: 'Links' },
   { key: 'arcs', path: '/arcs', label: 'ARCs' },
-  { key: 'bookfunnel', path: '/bookfunnel', label: 'BookFunnel' },
   { key: 'media', path: '/media', label: 'Media' },
   { key: 'social-media', path: '/social-media', label: 'Social Media' },
 ];
