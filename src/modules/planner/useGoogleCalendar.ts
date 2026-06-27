@@ -1,29 +1,28 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  connect as gConnect, disconnect as gDisconnect, isCalendarConfigured, wasConnected, prepare as gPrepare,
-  GCalNeedsReconnect,
+  connect as gConnect, disconnect as gDisconnect, isCalendarConfigured, wasConnected,
+  getStatus, GCalNeedsReconnect,
   listCalendars, listEvents, createEvent, updateEvent, deleteEvent,
   type GCalCalendar, type GCalEvent,
 } from './google';
 
 const SELECTED_KEY = 'planner-gcal-calendar';
 
-// Thin React wrapper around the browser-only Google Calendar layer: tracks
-// connection + the chosen calendar, and re-exposes the event CRUD helpers.
+// Thin React wrapper around the backend-OAuth Google Calendar layer:
+// tracks connection + the chosen calendar, and re-exposes the event CRUD
+// helpers. Access tokens are minted server-side from a stored refresh
+// token, so we never prompt on mount and never silently unlink.
 export function useGoogleCalendar() {
   const configured = isCalendarConfigured();
-  // Stay "connected" if we connected before — even after the ~1h token lapses —
-  // so the integration doesn't unlink the moment the token expires. The first
-  // calendar call then silently resumes the token; only if that resume actually
-  // needs the user (and fails) do we drop back to the Connect button.
+  // Optimistically render connected if we connected before; getStatus()
+  // on mount confirms (and flips us off cleanly if the grant was revoked).
   const [connected, setConnected] = useState(() => configured && wasConnected());
   const [calendars, setCalendars] = useState<GCalCalendar[]>([]);
   const [calendarId, setCalendarId] = useState<string>(() => localStorage.getItem(SELECTED_KEY) ?? '');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Load the calendar list once we believe we're connected (validates the
-  // session too — a failure means we need to re-consent).
+  // Load the calendar list once we believe we're connected.
   const loadCalendars = useCallback(async () => {
     try {
       const cals = await listCalendars();
@@ -38,19 +37,26 @@ export function useGoogleCalendar() {
       });
     } catch (e) {
       setConnected(false);
-      setError((e as Error).message);
+      if (!(e instanceof GCalNeedsReconnect)) setError((e as Error).message);
     }
   }, []);
 
-  // On mount, warm up GIS so a later Connect click can open the popup within the
-  // user-gesture window, and — if we were connected — load calendars. That goes
-  // through the guarded silent resume in google.ts: it refreshes the token
-  // silently when it can, and only needs the user once per genuine lapse (after
-  // which it won't retry, so the consent popup can't reopen on every refresh).
+  // On mount, ask the backend whether we're connected (mints + caches an
+  // access token if so), then load calendars. No popup, no GIS.
   useEffect(() => {
     if (!configured) return;
-    gPrepare();
-    if (wasConnected()) loadCalendars();
+    let cancelled = false;
+    (async () => {
+      try {
+        const { connected: isConnected } = await getStatus();
+        if (cancelled) return;
+        setConnected(isConnected);
+        if (isConnected) await loadCalendars();
+      } catch {
+        if (!cancelled) setConnected(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [configured, loadCalendars]);
 
   const connect = useCallback(async () => {
@@ -66,8 +72,8 @@ export function useGoogleCalendar() {
     }
   }, [loadCalendars]);
 
-  const disconnect = useCallback(() => {
-    gDisconnect();
+  const disconnect = useCallback(async () => {
+    await gDisconnect();
     setConnected(false);
     setCalendars([]);
   }, []);
@@ -83,7 +89,7 @@ export function useGoogleCalendar() {
       try {
         return await listEvents(calendarId, timeMin, timeMax);
       } catch (e) {
-        // Token lapsed mid-session — drop to the Connect button instead of
+        // Grant lapsed mid-session — drop to the Connect button instead of
         // surfacing a raw error or forcing a popup.
         if (e instanceof GCalNeedsReconnect) setConnected(false);
         else setError((e as Error).message);
