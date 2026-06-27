@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType } from 'react';
-import { KeyRound, ImagePlus, Mail, Sparkles, Info, Loader2, Trash2, Check } from 'lucide-react';
+import { KeyRound, ImagePlus, Mail, Sparkles, Info, Loader2, Trash2, Check, AudioLines } from 'lucide-react';
 import {
   getFalKeyStatus, setFalKey, removeFalKey,
   getOpenaiKeyStatus, setOpenaiKey, removeOpenaiKey,
@@ -7,6 +7,7 @@ import {
 } from '../media/lib/client';
 import { getKlaviyoKeyStatus, setKlaviyoKey, removeKlaviyoKey } from '../../lib/klaviyo';
 import { getAnthropicKeyStatus, setAnthropicKey, removeAnthropicKey, plannerComplete } from '../planner/ai';
+import { getElevenlabsKeyStatus, setElevenlabsKey, removeElevenlabsKey } from '../audiobook/lib/client';
 
 // Shared status shape across every BYOK provider.
 interface KeyStatus { has_key: boolean; hint: string | null; updated_at: string | null }
@@ -66,6 +67,13 @@ const PROVIDERS: Provider[] = [
     description: 'Powers the planner’s AI assists (Suggest my day, Triage, Orbit picks). Billed to your own Anthropic account.',
     getStatus: getAnthropicKeyStatus, saveKey: setAnthropicKey, removeKey: removeAnthropicKey,
     onTest: async () => { await plannerComplete({ prompt: 'Reply with the single word: ok', maxTokens: 16 }); },
+  },
+  {
+    id: 'elevenlabs', name: 'ElevenLabs', Icon: AudioLines, iconColor: 'text-fuchsia-600',
+    placeholder: 'ElevenLabs API key', minLength: 20,
+    helpUrl: 'https://elevenlabs.io/app/settings/api-keys', helpLabel: 'Get an ElevenLabs key',
+    description: 'Powers the Audiobook module — voice creation, cloning, and multi-voice narration. Billed to your own ElevenLabs account.',
+    getStatus: getElevenlabsKeyStatus, saveKey: setElevenlabsKey, removeKey: removeElevenlabsKey,
   },
 ];
 

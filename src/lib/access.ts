@@ -49,6 +49,7 @@ export const GATED_MODULES: { key: string; path: string; label: string }[] = [
   { key: 'arcs', path: '/arcs', label: 'ARCs' },
   { key: 'media', path: '/media', label: 'Media' },
   { key: 'social-media', path: '/social-media', label: 'Social Media' },
+  { key: 'audiobook', path: '/audiobook', label: 'Audiobook' },
 ];
 
 const PATH_TO_KEY = new Map(GATED_MODULES.map(m => [m.path, m.key]));
