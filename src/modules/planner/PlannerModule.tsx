@@ -892,6 +892,7 @@ export default function PlannerModule() {
             notesById={notesById}
             today={today}
             onOpenDay={openDay}
+            onOpenList={id => choose({ kind: 'note', id })}
             onPatch={patchTask}
           />
         ) : selection.kind === 'stats' ? (
