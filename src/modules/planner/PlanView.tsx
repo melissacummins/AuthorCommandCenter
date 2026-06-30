@@ -99,7 +99,7 @@ export default function PlanView({
     : new Date(anchor + 'T00:00:00').toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-5">
         <CalendarRange className="w-6 h-6 text-sky-500" />
         <h2 className="text-2xl font-bold text-slate-800">Planning</h2>
@@ -124,7 +124,9 @@ export default function PlanView({
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         {range === 'week' ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-7 gap-2">
+          // Two roomy rows (4 + 3) instead of a tight single row of 7, so each
+          // day card is wide enough to actually read its to-dos.
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 auto-rows-fr">
             {weekDays.map(day => (
               <DayPlanCard
                 key={day}
@@ -186,7 +188,7 @@ function DayPlanCard({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-2xl border bg-white p-2.5 min-h-[8rem] flex flex-col transition-colors ${
+      className={`rounded-2xl border bg-white p-3 min-h-[12rem] flex flex-col transition-colors ${
         isOver ? 'border-teal-400 ring-2 ring-teal-100' : isToday ? 'border-teal-300' : 'border-slate-200'
       }`}
     >
