@@ -364,8 +364,15 @@ export default function PlannerModule() {
     if (task && task.timer_started_at && (patch.timer_started_at === null || patch.done === true)) logStop(task);
     if (startingTimer) others.forEach(logStop);
 
+    // Stamp done_at locally in lockstep with done (the server does the same) so
+    // the Logbook and Stats — which group by done_at — reflect a just-completed
+    // (or just-uncompleted) to-do immediately, without waiting for a reload.
+    const doneStamp: Partial<PlannerTask> = effective.done === undefined
+      ? {}
+      : { done_at: effective.done ? new Date().toISOString() : null };
+
     setTasks(prev => prev.map(t => {
-      if (t.id === id) return { ...t, ...effective };
+      if (t.id === id) return { ...t, ...effective, ...doneStamp };
       if (startingTimer && t.timer_started_at) {
         return { ...t, actual_minutes: (t.actual_minutes ?? 0) + elapsedMinutes(t.timer_started_at), timer_started_at: null };
       }
