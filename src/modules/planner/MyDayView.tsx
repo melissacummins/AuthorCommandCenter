@@ -6,7 +6,7 @@ import {
 import {
   CalendarDays, ChevronLeft, ChevronRight, Plus, Clock, Trash2, Check, Circle,
   GripVertical, ExternalLink, CalendarPlus, Link2Off, X, Sun, Inbox, AlertCircle, Search,
-  CornerDownLeft, Sparkles, Info,
+  CornerDownLeft, Sparkles, Info, History,
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
@@ -31,6 +31,10 @@ export interface MyDayHandlers {
   onSaveDayNote: (day: string, body: string) => void;
   onUpdateCapacity: (minutes: number) => void;
   onToggleCarryOver: (on: boolean) => void;
+  // Retroactively record time worked on a to-do, on a given day.
+  onLogTime: (taskId: string, minutes: number, day: string) => void;
+  // Record a time block's planned time as actually worked (its to-dos).
+  onLogBlockWorked: (block: PlannerTimeBlock, tasks: PlannerTask[]) => void;
 }
 
 export default function MyDayView({
@@ -390,6 +394,7 @@ export default function MyDayView({
                       orbitEnabled={orbitEnabled}
                       onPatch={handlers.onPatchTask}
                       onDelete={handlers.onDeleteTask}
+                      onLogTime={handlers.onLogTime}
                       draggable={false}
                       onMoveToToday={() => handlers.onPatchTask(t.id, { due_date: today, block_id: null })}
                     />
@@ -419,6 +424,7 @@ export default function MyDayView({
               hasBlocks={dayBlocks.length > 0}
               onPatch={handlers.onPatchTask}
               onDelete={handlers.onDeleteTask}
+              onLogTime={handlers.onLogTime}
             />
 
             <div className="flex items-center gap-2">
@@ -609,6 +615,15 @@ function BlockCard({
           className="flex-1 text-sm font-semibold text-slate-800 bg-transparent outline-none placeholder:text-slate-300"
         />
         {minutes > 0 && <span className="text-xs font-medium text-slate-400">{formatMinutes(minutes)}</span>}
+        {tasks.length > 0 && (
+          <button
+            onClick={() => handlers.onLogBlockWorked(block, tasks)}
+            className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-teal-600 shrink-0"
+            title="Log this block’s time as actually worked — adds it to your Logbook & Stats without a timer"
+          >
+            <History className="w-3.5 h-3.5" /> Log as worked
+          </button>
+        )}
         {block.gcal_event_id ? (
           <button onClick={() => handlers.onUnsyncBlock(block)} className="inline-flex items-center gap-0.5 text-xs font-medium text-sky-600 hover:text-rose-500" title="Remove from Google Calendar">
             synced <Link2Off className="w-3.5 h-3.5" />
@@ -642,8 +657,8 @@ function BlockCard({
       </div>
 
       <ul className="ml-6 space-y-0.5">
-        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} />)}
-        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} />)}
+        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} onLogTime={handlers.onLogTime} />)}
+        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} onLogTime={handlers.onLogTime} />)}
       </ul>
       {tasks.length === 0 && <p className="ml-6 text-xs text-slate-400">Drop a to-do here, or add one below.</p>}
 
@@ -670,7 +685,7 @@ function BlockCard({
 // ---------------------------------------------------------------------------
 
 function LooseZone({
-  tasks, today, lists, orbitEnabled, hasBlocks, onPatch, onDelete,
+  tasks, today, lists, orbitEnabled, hasBlocks, onPatch, onDelete, onLogTime,
 }: {
   tasks: PlannerTask[];
   today: string;
@@ -679,6 +694,7 @@ function LooseZone({
   hasBlocks: boolean;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  onLogTime?: (taskId: string, minutes: number, day: string) => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: 'loose' });
   const open = tasks.filter(t => !t.done);
@@ -696,8 +712,8 @@ function LooseZone({
     <div ref={setNodeRef} className={`rounded-2xl border bg-white p-4 transition-colors ${isOver ? 'border-teal-400 ring-2 ring-teal-100' : 'border-slate-200'}`}>
       <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">{hasBlocks ? 'Not in a block' : 'Scheduled today'}</p>
       <ul className="space-y-0.5">
-        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} />)}
-        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} />)}
+        {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} onLogTime={onLogTime} />)}
+        {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} onLogTime={onLogTime} />)}
       </ul>
       {open.length === 0 && done.length === 0 && <p className="text-xs text-slate-400">Drag a to-do here to pull it out of its block.</p>}
     </div>
@@ -712,7 +728,7 @@ function LooseZone({
 // it can be dragged between time blocks and the loose zone. The drag handle is
 // passed into TaskRow; everything else (chips, ⋯ menu, expand card) is shared.
 function DraggableTaskRow({
-  task, today, onPatch, onDelete, draggable = true, onMoveToToday, lists = [], orbitEnabled = false,
+  task, today, onPatch, onDelete, draggable = true, onMoveToToday, lists = [], orbitEnabled = false, onLogTime,
 }: {
   task: PlannerTask;
   today: string;
@@ -722,6 +738,7 @@ function DraggableTaskRow({
   onMoveToToday?: () => void;
   lists?: PlannerNote[];
   orbitEnabled?: boolean;
+  onLogTime?: (taskId: string, minutes: number, day: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, disabled: !draggable });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
@@ -762,6 +779,7 @@ function DraggableTaskRow({
         enableRecurrence
         enableChecklist
         onMoveToToday={onMoveToToday}
+        onLogTime={onLogTime ? (m, d) => onLogTime(task.id, m, d) : undefined}
       />
     </li>
   );

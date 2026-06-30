@@ -39,7 +39,7 @@ import { listPenNames, type PenName } from '../../lib/penNames';
 import { penNameClasses } from '../../components/PenNameChip';
 import {
   bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
-  elapsedMinutes, DEFAULT_DAILY_CAPACITY,
+  elapsedMinutes, localDay, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
 } from './types';
@@ -351,13 +351,14 @@ export default function PlannerModule() {
   }
 
   // Manually log time worked on a to-do (e.g. you forgot to start the timer):
-  // bumps its running total and records a session ending now, so it lands on
-  // today in Stats and "worked today".
-  async function logManualMinutes(taskId: string, minutes: number) {
+  // bumps its running total and records a session, so it lands in the Logbook &
+  // Stats. Pass a day to log it retroactively on that date (anchored to noon);
+  // omit it to log "now" (today).
+  async function logManualMinutes(taskId: string, minutes: number, day?: string) {
     if (!user || minutes <= 0) return;
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    const end = new Date();
+    const end = day && day !== today ? new Date(`${day}T12:00:00`) : new Date();
     const start = new Date(end.getTime() - minutes * 60_000);
     setTasks(prev => prev.map(t => (t.id === taskId ? { ...t, actual_minutes: (t.actual_minutes ?? 0) + minutes } : t)));
     try {
@@ -365,6 +366,52 @@ export default function PlannerModule() {
       const created = await createTimeSessions(user.id, [{ task_id: taskId, started_at: start.toISOString(), ended_at: end.toISOString(), minutes }]);
       setSessions(prev => [...prev, ...created]);
     } catch (e) { setError((e as Error)?.message ?? 'Could not log time.'); }
+  }
+
+  // Record a time block's planned time as actually worked — the "I scheduled
+  // this block and did it" shortcut, so it lands in the Logbook & Stats without
+  // a timer. A timed block's range is split across its to-dos as back-to-back
+  // sessions; an untimed block logs each to-do's estimate. To-dos already
+  // tracked that day are skipped so re-tapping can't double-count.
+  async function logBlockWorked(block: PlannerTimeBlock, blockTasks: PlannerTask[]) {
+    if (!user) return;
+    const already = new Set(sessions.filter(s => localDay(s.started_at) === block.day).map(s => s.task_id));
+    const targets = blockTasks.filter(t => t.kind === 'task' && !already.has(t.id));
+    if (!targets.length) return;
+    const base = new Date(`${block.day}T00:00:00`);
+    const rows: { task_id: string; started_at: string; ended_at: string; minutes: number }[] = [];
+    const bump: Record<string, number> = {};
+    if (block.start_minute != null && block.end_minute != null && block.end_minute > block.start_minute) {
+      const per = Math.floor((block.end_minute - block.start_minute) / targets.length);
+      let cursor = block.start_minute;
+      targets.forEach((t, i) => {
+        const mins = i === targets.length - 1 ? block.end_minute! - cursor : per;
+        if (mins <= 0) return;
+        const s = new Date(base); s.setMinutes(cursor);
+        const e = new Date(base); e.setMinutes(cursor + mins);
+        rows.push({ task_id: t.id, started_at: s.toISOString(), ended_at: e.toISOString(), minutes: mins });
+        bump[t.id] = mins; cursor += mins;
+      });
+    } else {
+      targets.forEach(t => {
+        const mins = t.estimate_minutes ?? 0;
+        if (mins <= 0) return;
+        const e = new Date(base); e.setHours(12, 0, 0, 0);
+        const s = new Date(e.getTime() - mins * 60_000);
+        rows.push({ task_id: t.id, started_at: s.toISOString(), ended_at: e.toISOString(), minutes: mins });
+        bump[t.id] = mins;
+      });
+    }
+    if (!rows.length) return;
+    setTasks(prev => prev.map(t => (bump[t.id] ? { ...t, actual_minutes: (t.actual_minutes ?? 0) + bump[t.id] } : t)));
+    try {
+      await Promise.all(Object.entries(bump).map(([id, m]) => {
+        const t = tasks.find(x => x.id === id);
+        return t ? updateTask(id, { actual_minutes: (t.actual_minutes ?? 0) + m }) : Promise.resolve();
+      }));
+      const created = await createTimeSessions(user.id, rows);
+      setSessions(prev => [...prev, ...created]);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not log the block.'); }
   }
 
   async function reorder(updates: { id: string; sort_order: number }[]) {
@@ -493,6 +540,8 @@ export default function PlannerModule() {
     onSaveDayNote: saveDayNote,
     onUpdateCapacity: updateCapacity,
     onToggleCarryOver: updateCarryOver,
+    onLogTime: logManualMinutes,
+    onLogBlockWorked: logBlockWorked,
   };
 
   // Pick a view and dismiss the mobile rail in one go.
@@ -759,6 +808,7 @@ export default function PlannerModule() {
             onAdd={addTask}
             onPatch={patchTask}
             onDelete={removeTask}
+            onLogTime={logManualMinutes}
             onOpenNote={id => setSelection({ kind: 'note', id })}
             cal={cal}
           />
@@ -825,7 +875,7 @@ export default function PlannerModule() {
 // ---------------------------------------------------------------------------
 
 function ViewPane({
-  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onOpenNote, cal,
+  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onLogTime, onOpenNote, cal,
 }: {
   bucket?: Bucket;
   inbox?: boolean;
@@ -839,6 +889,7 @@ function ViewPane({
   onAdd: (i: { title: string; due_date?: string | null; someday?: boolean; in_orbit?: boolean }) => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  onLogTime: (taskId: string, minutes: number, day: string) => void;
   onOpenNote: (id: string) => void;
   cal: CalendarBridge;
 }) {
@@ -910,6 +961,7 @@ function ViewPane({
         listName={noteNameFor(t)}
         onOpenList={t.note_id ? () => onOpenNote(t.note_id!) : undefined}
         onPatch={onPatch} onDelete={onDelete}
+        onLogTime={(m, d) => onLogTime(t.id, m, d)}
         showTimer canFlag canSomeday orbitEnabled={orbitEnabled}
         enableRecurrence enableChecklist
         calConnected={gc.connected}
