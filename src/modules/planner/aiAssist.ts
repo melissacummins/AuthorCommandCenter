@@ -202,20 +202,16 @@ const RESET_SYSTEM =
   'You transcribe photos of a handwritten WEEKLY RESET planning page into JSON. '
   + 'Respond with ONLY a JSON object — no prose, no markdown fences — matching exactly: '
   + '{"wins": string, "not_done": string, "drained": string, "feel_more": string, '
-  + '"brain_dump": [{"text": string, "uncertain": boolean}], '
-  + '"priorities": [{"text": string, "estimate_minutes": number|null, "uncertain": boolean}], '
-  + '"feel_good": [{"text": string, "uncertain": boolean}], '
-  + '"quick": [{"text": string, "estimate_minutes": number|null, "uncertain": boolean}], '
-  + '"meetings": [{"text": string, "date": string|null, "uncertain": boolean}]}. '
-  + 'Match the page\'s sections by MEANING, not exact wording. Reflective sections (wins from last week; what I '
+  + '"items": [{"text": string, "priority": boolean, "quick": boolean, "feel_good": boolean, "estimate_minutes": number|null, "uncertain": boolean}]}. '
+  + 'Match the page\'s sections by MEANING, not exact wording. The reflective sections (wins from last week; what I '
   + 'did not do; what drained my time; what I want to feel more of) are prose strings — preserve line breaks with \\n. '
-  + 'Actionable sections are item lists: brain dump, priorities, quick tasks, and "what would make me feel good" '
-  + '(fold any "things weighing on me" into feel_good). Meetings get a "date" as YYYY-MM-DD only if one is written '
-  + '(use the current year if the year is omitted), else null. Put a duration in estimate_minutes only if written. '
-  + 'Set "uncertain": true for any item or word you had to guess from unclear handwriting. Omit sections that are '
-  + 'absent (empty string or empty array). Transcribe faithfully; do not invent items. '
-  + 'If an item appears in the brain dump AND is also called out under priorities, quick tasks, or feel_good, put it '
-  + 'ONLY in that more specific section — never list the same item in two sections.';
+  + 'EVERYTHING actionable — brain dump, priorities, quick tasks, "what would make me feel good", things weighing on '
+  + 'you, meetings — goes into the single "items" list, each item listed EXACTLY ONCE (never duplicate an item). '
+  + 'Tag each item instead of repeating it: set "priority": true if it is starred or under a priorities/important '
+  + 'heading; "quick": true if under quick tasks (then also set estimate_minutes to 15); "feel_good": true if it is a '
+  + '"would feel good" or "weighing on me" item. An item can have more than one tag. Default all tags to false. Put a '
+  + 'duration in estimate_minutes only if one is written (or 15 for quick tasks), else null. Set "uncertain": true for '
+  + 'any item or word you had to guess from unclear handwriting. Transcribe faithfully; do not invent items.';
 
 function asStr(v: unknown): string { return typeof v === 'string' ? v : ''; }
 
@@ -228,10 +224,15 @@ function asItems(v: unknown): ResetDraftItem[] {
     const o = it as Record<string, unknown>;
     const text = asStr(o.text).trim();
     if (!text) continue;
+    const quick = !!o.quick;
     out.push({
       text,
-      estimate_minutes: typeof o.estimate_minutes === 'number' && o.estimate_minutes > 0 ? Math.round(o.estimate_minutes) : null,
-      date: typeof o.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date) ? o.date : null,
+      priority: !!o.priority,
+      quick,
+      feel_good: !!o.feel_good,
+      estimate_minutes: typeof o.estimate_minutes === 'number' && o.estimate_minutes > 0
+        ? Math.round(o.estimate_minutes)
+        : (quick ? 15 : null),
       uncertain: !!o.uncertain,
     });
   }
@@ -251,7 +252,6 @@ export async function transcribeWeeklyReset(images: PlannerImage[]): Promise<Res
   catch { throw new Error('Couldn’t read that photo — try a clearer, flatter, well-lit picture.'); }
   return {
     wins: asStr(data.wins), not_done: asStr(data.not_done), drained: asStr(data.drained), feel_more: asStr(data.feel_more),
-    brain_dump: asItems(data.brain_dump), priorities: asItems(data.priorities),
-    feel_good: asItems(data.feel_good), quick: asItems(data.quick), meetings: asItems(data.meetings),
+    items: asItems(data.items),
   };
 }

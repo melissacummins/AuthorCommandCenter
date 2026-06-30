@@ -173,53 +173,55 @@ export const RESET_SECTIONS: { key: ResetSection; label: string; hint: string }[
   { key: 'meetings', label: 'Meetings', hint: 'Become dated to-dos' },
 ];
 
-// One draft item from transcription (before it's approved into a to-do).
+// One draft item (a single brain-dump to-do) before it's approved. Categories
+// are per-item TAGS you tap in-app — so an item exists exactly once and can be a
+// priority and/or quick and/or feel-good, with no chance of duplication.
 // `uncertain` marks a guess for the human to confirm.
 export interface ResetDraftItem {
   text: string;
   estimate_minutes?: number | null;
-  date?: string | null; // YYYY-MM-DD (meetings)
+  priority?: boolean;  // ★ Important
+  quick?: boolean;     // ⚡ auto 15-min
+  feel_good?: boolean; // ♥ would feel good / weighing on me
   uncertain?: boolean;
 }
 
-// The full structured transcription of a reset photo (or a manually built draft).
+// The full structured transcription of a reset photo (or a manually built draft):
+// reflective prose plus ONE flat brain-dump of items you then tag.
 export interface ResetTranscription {
   wins: string;
   not_done: string;
   drained: string;
   feel_more: string;
-  brain_dump: ResetDraftItem[];
-  priorities: ResetDraftItem[];
-  feel_good: ResetDraftItem[];
-  quick: ResetDraftItem[];
-  meetings: ResetDraftItem[];
+  items: ResetDraftItem[];
 }
 
-// Collapse the same item appearing in more than one section down to a single
-// copy in its most specific section, so "pulling" a brain-dump item into
-// Priorities/Quick/Feel-good doesn't create duplicate to-dos. Blank rows (a
-// manual input not yet typed) are always kept. Precedence, most specific first:
-// meetings → priorities → quick → feel_good → brain_dump.
+// The default 15-minute estimate a "Quick" tag applies.
+export const QUICK_TASK_MINUTES = 15;
+
+// The section a tagged item lands in (most specific wins) — drives the home
+// list's headings and the Planning tray's groups.
+export function resetSectionFor(it: ResetDraftItem): ResetSection {
+  if (it.priority) return 'priorities';
+  if (it.quick) return 'quick';
+  if (it.feel_good) return 'feel_good';
+  return 'brain_dump';
+}
+
+// Drop exact-duplicate items (same title) — e.g. when two photos overlap. Blank
+// rows (a manual input not yet typed) are always kept.
 export function dedupeResetDraft(t: ResetTranscription): ResetTranscription {
   const seen = new Set<string>();
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').replace(/[.,;:!?]+$/, '').trim();
-  const take = (items: ResetDraftItem[]): ResetDraftItem[] => {
-    const out: ResetDraftItem[] = [];
-    for (const it of items) {
-      const key = norm(it.text);
-      if (!key) { out.push(it); continue; } // keep empty manual rows
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(it);
-    }
-    return out;
-  };
-  const meetings = take(t.meetings);
-  const priorities = take(t.priorities);
-  const quick = take(t.quick);
-  const feel_good = take(t.feel_good);
-  const brain_dump = take(t.brain_dump);
-  return { ...t, meetings, priorities, quick, feel_good, brain_dump };
+  const items: ResetDraftItem[] = [];
+  for (const it of t.items) {
+    const key = norm(it.text);
+    if (!key) { items.push(it); continue; }
+    if (seen.has(key)) continue;
+    seen.add(key);
+    items.push(it);
+  }
+  return { ...t, items };
 }
 
 // The Monday (local) of the week containing the given YYYY-MM-DD.

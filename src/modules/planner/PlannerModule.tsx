@@ -44,7 +44,7 @@ import {
   elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
-  dedupeResetDraft, RESET_SECTIONS,
+  dedupeResetDraft, resetSectionFor, QUICK_TASK_MINUTES,
   type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
 
@@ -467,18 +467,24 @@ export default function PlannerModule() {
     catch (e) { setError((e as Error)?.message ?? 'Could not save your weekly reset.'); }
   }
 
-  // Turn approved reset drafts into to-dos, tagged with the week + section so
-  // Planning can surface them. Priorities are flagged Important; meetings keep
-  // their date; brain dump / feel-good / quick land in Anytime. Returns the count.
+  // Turn the approved brain dump into to-dos. Each item's in-app tags decide
+  // its section + attributes: Priority → flagged Important; Quick → 15-min
+  // estimate; Feel-good → its own group; otherwise plain brain dump. Items are
+  // grouped under section headings in a per-week home list. Returns the count.
   async function createResetTasks(rawDraft: ResetTranscription): Promise<number> {
     if (!user) return 0;
-    // De-dupe across sections so a "pulled out" brain-dump item becomes one
-    // to-do in its most specific section, not a duplicate.
-    const draft = dedupeResetDraft(rawDraft);
-    const groups = RESET_SECTIONS
-      .map(s => ({ section: s.key, label: s.label, items: draft[s.key].filter(i => i.text.trim()) }))
-      .filter(g => g.items.length);
-    if (!groups.length) return 0;
+    const items = dedupeResetDraft(rawDraft).items.filter(i => i.text.trim());
+    if (!items.length) return 0;
+
+    const SECTION_ORDER: { key: ResetSection; label: string }[] = [
+      { key: 'priorities', label: 'Priorities' },
+      { key: 'quick', label: 'Quick tasks' },
+      { key: 'feel_good', label: 'What would feel good' },
+      { key: 'brain_dump', label: 'Brain dump' },
+    ];
+    const bySection: Record<string, ResetDraftItem[]> = {};
+    for (const it of items) (bySection[resetSectionFor(it)] ??= []).push(it);
+    const groups = SECTION_ORDER.filter(s => bySection[s.key]?.length);
 
     // Give the week its own home list ("Weekly Reset · Jun 30"), reusing it if it
     // already exists so a second approval appends rather than making a new one.
@@ -493,21 +499,17 @@ export default function PlannerModule() {
     let sort = inList.reduce((m, t) => Math.max(m, t.sort_order), -1) + 1;
     const headings = new Set(inList.filter(t => t.kind === 'heading').map(t => t.title.trim()));
 
-    const extraFor = (section: ResetSection, it: ResetDraftItem): object =>
-      section === 'priorities' ? { flagged: true, estimate_minutes: it.estimate_minutes ?? null }
-        : section === 'quick' || section === 'brain_dump' ? { estimate_minutes: it.estimate_minutes ?? null }
-          : section === 'meetings' ? { due_date: it.date ?? null }
-            : {};
-
     const created: PlannerTask[] = [];
     for (const g of groups) {
       if (!headings.has(g.label)) {
         created.push(await createTask(user.id, { title: g.label, note_id: listId, kind: 'heading', sort_order: sort++ }));
       }
-      for (const it of g.items) {
+      for (const it of bySection[g.key]) {
         created.push(await createTask(user.id, {
           title: it.text.trim(), note_id: listId, kind: 'task', sort_order: sort++,
-          due_date: null, reset_week: resetWeek, reset_section: g.section, ...extraFor(g.section, it),
+          due_date: null, reset_week: resetWeek, reset_section: g.key,
+          flagged: !!it.priority,
+          estimate_minutes: it.quick ? QUICK_TASK_MINUTES : (it.estimate_minutes ?? null),
         }));
       }
     }
