@@ -364,8 +364,71 @@ export async function applyOrdersToInventory(updates: InventoryUpdate[]): Promis
       notes: `${delta} new sold (${u.quantitySold} total from Shopify)`,
     });
 
+    // Cascade bundle sales to each component product so the live bundle
+    // math (min component inventory) reflects what's actually consumable.
+    // Without this, every bundle sale leaves the components untouched and
+    // the bundle would still show as available even after all its parts
+    // were given away in earlier sales.
+    if (u.isBundle && delta > 0) {
+      await cascadeBundleSaleToComponents(userId, u.productId, delta);
+    }
+
     updated++;
   }
 
   return updated;
+}
+
+async function cascadeBundleSaleToComponents(userId: string, bundleProductId: string, delta: number): Promise<void> {
+  const { data: bundle, error: bundleErr } = await supabase
+    .from('products')
+    .select('name, books_in_bundle')
+    .eq('id', bundleProductId)
+    .single();
+  if (bundleErr || !bundle?.books_in_bundle) return;
+
+  const componentNames = bundle.books_in_bundle
+    .split(',')
+    .map((s: string) => s.trim())
+    .filter(Boolean);
+
+  for (const name of componentNames) {
+    // Prefer non-bundle products with an exact (case-insensitive) name match.
+    // ilike with no wildcards = case-insensitive equality.
+    const { data: comp, error: compErr } = await supabase
+      .from('products')
+      .select('id, name, purchased_via_bundles, book_inventory, category')
+      .eq('user_id', userId)
+      .ilike('name', name)
+      .not('category', 'in', '("Bundle","Book Box")')
+      .maybeSingle();
+    if (compErr || !comp) continue;
+
+    const prevPvb = comp.purchased_via_bundles || 0;
+    const prevInv = comp.book_inventory || 0;
+    const newPvb = prevPvb + delta;
+    const newInv = prevInv - delta;
+
+    const { error: updErr } = await supabase
+      .from('products')
+      .update({
+        purchased_via_bundles: newPvb,
+        book_inventory: newInv,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', comp.id);
+    if (updErr) continue;
+
+    await supabase.from('inventory_orders').insert({
+      user_id: userId,
+      product_id: comp.id,
+      type: 'subtract',
+      inventory_type: 'book',
+      quantity: delta,
+      previous_value: prevInv,
+      new_value: newInv,
+      source: 'Bundle Cascade',
+      notes: `${delta} consumed via "${bundle.name}" sale`,
+    });
+  }
 }
