@@ -305,13 +305,12 @@ export default function MyDayView({
       <TaskSearch tasks={tasks} taskDay={taskDay} onJump={goToDay} />
 
       {/* Marvin-style day navigator: a big day number with Previous · 📅 · Next.
-          The calendar button swaps the number for the full month so you can
-          land on any day — with dots on the days you actually worked. */}
+          Tapping the date (or the calendar button) drops a compact month picker
+          right below it — dots mark the days you actually worked — and it closes
+          the moment you choose a day, so it never takes over the page. */}
       <div className="mb-4">
-        {showMonth ? (
-          <MonthGrid selected={selected} today={today} activeDays={activeDays} onSelect={goToDay} />
-        ) : (
-          <button onClick={() => setShowMonth(true)} className="block w-full text-center group" title="Open the month">
+        <div className="relative">
+          <button onClick={() => setShowMonth(s => !s)} className="block w-full text-center group" title="Pick a day">
             <div className="text-base font-medium text-slate-500">{sel.toLocaleDateString(undefined, { weekday: 'long' })}</div>
             <div className="text-6xl font-bold text-slate-800 leading-none my-1 group-hover:text-teal-600 transition-colors">{sel.getDate()}</div>
             <div className="text-sm text-slate-400">
@@ -319,7 +318,16 @@ export default function MyDayView({
               {selected === today && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-teal-600">Today</span>}
             </div>
           </button>
-        )}
+          {showMonth && (
+            <>
+              {/* Click-anywhere-else backdrop closes the picker. */}
+              <div className="fixed inset-0 z-40" onClick={() => setShowMonth(false)} />
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-72 rounded-2xl shadow-xl">
+                <MonthGrid selected={selected} today={today} activeDays={activeDays} onSelect={goToDay} />
+              </div>
+            </>
+          )}
+        </div>
 
         <div className="flex items-center justify-center gap-6 mt-3">
           <button onClick={() => shiftDay(-1)} className="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-teal-600">

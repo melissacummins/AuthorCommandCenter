@@ -453,6 +453,81 @@ export function productivitySeries(tasks: PlannerTask[], today: string, days: nu
     .map(day => by[day] ?? { day, done: 0, estMinutes: 0, trackedMinutes: 0 });
 }
 
+// ---- Daily review ("what did I actually do") ------------------------------
+// One timer run within a day, kept on its entry so the Logbook can show the
+// start–end ranges like a timesheet.
+export interface ReviewEntrySession { started_at: string; ended_at: string; minutes: number }
+
+// A single to-do's activity on one day: the time worked that day (sum of that
+// day's sessions) and whether it was also completed that day.
+export interface ReviewEntry {
+  task: PlannerTask;
+  minutes: number;
+  completedToday: boolean;
+  sessions: ReviewEntrySession[];
+}
+
+// Everything that happened on one day, plus its rolled-up totals.
+export interface ReviewDay {
+  day: string; // YYYY-MM-DD
+  entries: ReviewEntry[];
+  totalMinutes: number;
+  completedCount: number;
+}
+
+// Per-day "what I actually did": every to-do you completed OR logged time on,
+// grouped by the day it happened (newest day first). Completions are placed by
+// done_at; tracked time by each session's started_at — the SAME fields Stats
+// uses — so a day's totals here reconcile exactly with the Stats bars. A to-do
+// can appear on two days (worked one day, finished another); a to-do with no
+// session and never completed leaves no trace, by design (nothing was recorded).
+export function reviewDays(tasks: PlannerTask[], sessions: PlannerTimeSession[]): ReviewDay[] {
+  const byId: Record<string, PlannerTask> = {};
+  for (const t of tasks) byId[t.id] = t;
+
+  // day -> task id -> the sessions worked on it that day
+  const work: Record<string, Record<string, ReviewEntrySession[]>> = {};
+  for (const s of sessions) {
+    if (!byId[s.task_id]) continue; // task since deleted
+    const day = localDay(s.started_at);
+    ((work[day] ??= {})[s.task_id] ??= []).push({ started_at: s.started_at, ended_at: s.ended_at, minutes: s.minutes });
+  }
+
+  // day -> ids of to-dos completed that day
+  const completed: Record<string, Set<string>> = {};
+  for (const t of tasks) {
+    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
+    (completed[localDay(t.done_at)] ??= new Set()).add(t.id);
+  }
+
+  const out: ReviewDay[] = [];
+  for (const day of new Set([...Object.keys(work), ...Object.keys(completed)])) {
+    const ids = new Set([...Object.keys(work[day] ?? {}), ...(completed[day] ?? new Set<string>())]);
+    const entries: ReviewEntry[] = [];
+    for (const id of ids) {
+      const task = byId[id];
+      if (!task) continue;
+      const sess = (work[day]?.[id] ?? []).slice().sort((a, b) => a.started_at.localeCompare(b.started_at));
+      entries.push({
+        task,
+        minutes: sess.reduce((m, s) => m + s.minutes, 0),
+        completedToday: completed[day]?.has(id) ?? false,
+        sessions: sess,
+      });
+    }
+    // Chronological within the day: earliest session start, else completion time.
+    const repr = (e: ReviewEntry) => e.sessions[0]?.started_at ?? e.task.done_at ?? '';
+    entries.sort((a, b) => repr(a).localeCompare(repr(b)));
+    out.push({
+      day,
+      entries,
+      totalMinutes: entries.reduce((m, e) => m + e.minutes, 0),
+      completedCount: entries.filter(e => e.completedToday).length,
+    });
+  }
+  return out.sort((a, b) => b.day.localeCompare(a.day));
+}
+
 // Short weekday + day-of-month for the date strip, e.g. { dow: 'Mon', dom: 2 }.
 export function stripLabel(iso: string): { dow: string; dom: number } {
   const d = new Date(iso + 'T00:00:00');

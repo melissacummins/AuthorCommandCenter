@@ -93,6 +93,8 @@ export default function PlannerModule() {
   // A nudge to open a specific day in My Day (e.g. from the Plan view). The
   // bumping counter lets the same day be re-opened.
   const [dayJump, setDayJump] = useState<{ iso: string; n: number }>(() => ({ iso: todayISO(), n: 0 }));
+  // A nudge to open a specific day in the Logbook (e.g. tapping a Stats bar).
+  const [reviewJump, setReviewJump] = useState<{ iso: string; n: number }>(() => ({ iso: '', n: 0 }));
   const today = todayISO();
   const gc = useGoogleCalendar(isAdmin);
   // Bumped whenever a time block is added/removed so the views re-fetch events.
@@ -497,6 +499,8 @@ export default function PlannerModule() {
   function choose(sel: Selection) { setSelection(sel); setRailOpen(false); }
   // Open a specific day in My Day (from the Plan grid).
   function openDay(iso: string) { setDayJump(d => ({ iso, n: d.n + 1 })); choose({ kind: 'myday' }); }
+  // Open a specific day in the Logbook (from a Stats bar), scrolled to that day.
+  function openReview(iso: string) { setReviewJump(d => ({ iso, n: d.n + 1 })); choose({ kind: 'logbook' }); }
 
   const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
 
@@ -722,9 +726,19 @@ export default function PlannerModule() {
             onPatch={patchTask}
           />
         ) : selection.kind === 'stats' ? (
-          <StatsView tasks={scopedTasks} sessions={sessions} today={today} />
+          <StatsView tasks={scopedTasks} sessions={sessions} today={today} onOpenDay={openReview} />
         ) : selection.kind === 'logbook' ? (
-          <LogbookView tasks={scopedTasks} notesById={notesById} today={today} onPatch={patchTask} onDelete={removeTask} />
+          <LogbookView
+            tasks={scopedTasks}
+            sessions={sessions}
+            notesById={notesById}
+            today={today}
+            focus={reviewJump}
+            onPatch={patchTask}
+            onDelete={removeTask}
+            onOpenList={id => choose({ kind: 'note', id })}
+            onOpenDay={openDay}
+          />
         ) : selection.kind === 'settings' ? (
           <SettingsView
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}

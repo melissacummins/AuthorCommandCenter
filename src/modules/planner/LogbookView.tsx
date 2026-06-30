@@ -1,37 +1,64 @@
-import { useMemo, useState } from 'react';
-import { BookCheck, Search, RotateCcw, Trash2, Clock } from 'lucide-react';
-import { formatMinutes, localDay, type PlannerNote, type PlannerTask } from './types';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
+import { BookCheck, Search, RotateCcw, Trash2, Clock, Check } from 'lucide-react';
+import {
+  formatMinutes, reviewDays,
+  type PlannerNote, type PlannerTask, type PlannerTimeSession,
+  type ReviewDay, type ReviewEntry, type ReviewEntrySession,
+} from './types';
 
-// A full, searchable history of finished to-dos, grouped by the day they were
-// completed (newest first). This is where completed to-dos live once they leave
-// the smart views — including "loose" ones that were never in a list.
+// The daily review — one place to see "what did I actually do." For each day it
+// lists every to-do you COMPLETED or LOGGED TIME on, with the hours worked, the
+// timer ranges (timesheet-style), and whether it was finished that day. A day's
+// totals here come from the same fields Stats uses (completions by done_at,
+// time by the session log), so the two always agree. Click any to-do to open it.
 export default function LogbookView({
-  tasks, notesById, today, onPatch, onDelete,
+  tasks, sessions, notesById, today, focus, onPatch, onDelete, onOpenList, onOpenDay,
 }: {
   tasks: PlannerTask[];
+  sessions: PlannerTimeSession[];
   notesById: Record<string, PlannerNote>;
   today: string;
+  // A nudge (from Stats) to scroll to and highlight a specific day.
+  focus?: { iso: string; n: number };
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  onOpenList: (noteId: string) => void;
+  onOpenDay: (iso: string) => void;
 }) {
   const [query, setQuery] = useState('');
 
-  const done = useMemo(() => {
+  const allDays = useMemo(() => reviewDays(tasks, sessions), [tasks, sessions]);
+
+  // Search filters to days that still have a matching to-do.
+  const days = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return tasks
-      .filter(t => t.kind === 'task' && t.done && t.done_at)
-      .filter(t => !q || t.title.toLowerCase().includes(q))
-      .sort((a, b) => (b.done_at ?? '').localeCompare(a.done_at ?? ''));
-  }, [tasks, query]);
+    if (!q) return allDays;
+    return allDays
+      .map(d => ({ ...d, entries: d.entries.filter(e => e.task.title.toLowerCase().includes(q)) }))
+      .filter(d => d.entries.length > 0);
+  }, [allDays, query]);
 
-  // Group into [day, items] pairs, newest day first.
-  const groups = useMemo(() => {
-    const by: Record<string, PlannerTask[]> = {};
-    for (const t of done) (by[localDay(t.done_at!)] ??= []).push(t);
-    return Object.entries(by).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [done]);
+  const totals = useMemo(() => {
+    let completed = 0, minutes = 0;
+    for (const d of allDays) { completed += d.completedCount; minutes += d.totalMinutes; }
+    return { completed, minutes };
+  }, [allDays]);
 
-  const totalTracked = useMemo(() => done.reduce((s, t) => s + (t.actual_minutes ?? 0), 0), [done]);
+  // Scroll to (and briefly ring) a day when Stats sends us here.
+  const dayRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [flash, setFlash] = useState<string | null>(null);
+  const [missing, setMissing] = useState<string | null>(null);
+  useEffect(() => {
+    if (!focus || !focus.n) return;
+    const has = allDays.some(d => d.day === focus.iso);
+    setMissing(has ? null : focus.iso);
+    setFlash(has ? focus.iso : null);
+    if (has) {
+      dayRefs.current[focus.iso]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const t = setTimeout(() => setFlash(null), 1600);
+      return () => clearTimeout(t);
+    }
+  }, [focus, allDays]);
 
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
@@ -40,8 +67,9 @@ export default function LogbookView({
         <h2 className="text-2xl font-bold text-slate-800">Logbook</h2>
       </div>
       <p className="text-sm text-slate-400 mb-5">
-        {done.length} completed {done.length === 1 ? 'to-do' : 'to-dos'}
-        {totalTracked > 0 && <> · {formatMinutes(totalTracked)} tracked</>}
+        What you’ve completed or tracked, by day
+        {totals.completed > 0 && <> · {totals.completed} done</>}
+        {totals.minutes > 0 && <> · {formatMinutes(totals.minutes)} tracked</>}
       </p>
 
       <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 mb-6">
@@ -49,63 +77,154 @@ export default function LogbookView({
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search completed to-dos…"
+          placeholder="Search what you worked on…"
           className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
         />
       </div>
 
-      {groups.length === 0 ? (
+      {missing && (
+        <div className="mb-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          Nothing was completed or tracked on <span className="font-medium text-slate-700">{dayLabel(missing, today)}</span>.
+          Only work you check off or run a timer on shows up here.
+        </div>
+      )}
+
+      {days.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 p-10 text-center text-sm text-slate-400">
-          {query ? 'Nothing matches that search.' : 'Nothing completed yet. Check a to-do off and it’ll land here.'}
+          {query ? 'Nothing matches that search.' : 'Nothing yet. Check a to-do off — or track time on one — and it’ll land here.'}
         </div>
       ) : (
         <div className="space-y-6">
-          {groups.map(([day, items]) => (
-            <div key={day}>
-              <div className="flex items-baseline gap-2 mb-2">
-                <h3 className="text-sm font-semibold text-slate-700">{dayLabel(day, today)}</h3>
-                <span className="text-xs text-slate-400">{items.length} done</span>
-              </div>
-              <ul className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
-                {items.map(t => {
-                  const list = t.note_id ? notesById[t.note_id] : undefined;
-                  return (
-                    <li key={t.id} className="flex items-center gap-2 px-4 py-2 group">
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0">
-                        <svg viewBox="0 0 12 12" className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth="2"><path d="M2.5 6.5l2.5 2.5 4.5-5" /></svg>
-                      </span>
-                      <span className="flex-1 text-sm text-slate-600 truncate">{t.title || 'Untitled'}</span>
-                      {list && <span className="text-xs text-slate-400 truncate max-w-[10rem] shrink-0">{list.title.trim() || 'Untitled list'}</span>}
-                      {t.actual_minutes > 0 && (
-                        <span className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 shrink-0" title="Time tracked">
-                          <Clock className="w-3 h-3" />{formatMinutes(t.actual_minutes)}
-                        </span>
-                      )}
-                      {t.estimate_minutes ? <span className="text-xs text-slate-300 shrink-0" title="Estimate">~{formatMinutes(t.estimate_minutes)}</span> : null}
-                      <span className="text-xs text-slate-400 w-16 text-right shrink-0">{timeLabel(t.done_at!)}</span>
-                      <button
-                        onClick={() => onPatch(t.id, { done: false })}
-                        className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        title="Mark not done (move back to your lists)"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => onDelete(t.id)}
-                        className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                        title="Delete permanently"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+          {days.map(day => (
+            <DayCard
+              key={day.day}
+              ref={el => { dayRefs.current[day.day] = el; }}
+              day={day}
+              today={today}
+              flash={flash === day.day}
+              notesById={notesById}
+              onPatch={onPatch}
+              onDelete={onDelete}
+              onOpenList={onOpenList}
+              onOpenDay={onOpenDay}
+            />
           ))}
         </div>
       )}
     </div>
+  );
+}
+
+const DayCard = forwardRef<HTMLDivElement, {
+  day: ReviewDay;
+  today: string;
+  flash: boolean;
+  notesById: Record<string, PlannerNote>;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+  onOpenList: (noteId: string) => void;
+  onOpenDay: (iso: string) => void;
+}>(function DayCard({ day, today, flash, notesById, onPatch, onDelete, onOpenList, onOpenDay }, ref) {
+  return (
+    <div ref={ref} className={`scroll-mt-4 rounded-2xl transition-shadow ${flash ? 'ring-2 ring-teal-400 ring-offset-2' : ''}`}>
+      <div className="flex items-baseline gap-2 mb-2">
+        <h3 className="text-sm font-semibold text-slate-700">{dayLabel(day.day, today)}</h3>
+        {day.completedCount > 0 && <span className="text-xs text-slate-400">{day.completedCount} done</span>}
+        {day.totalMinutes > 0 && (
+          <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-500" title="Time tracked this day">
+            <Clock className="w-3.5 h-3.5" /> {formatMinutes(day.totalMinutes)}
+          </span>
+        )}
+      </div>
+      <ul className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+        {day.entries.map(e => (
+          <EntryRow
+            key={e.task.id}
+            entry={e}
+            day={day.day}
+            listName={e.task.note_id ? (notesById[e.task.note_id]?.title.trim() || 'Untitled list') : undefined}
+            onOpen={() => (e.task.note_id ? onOpenList(e.task.note_id) : onOpenDay(day.day))}
+            onPatch={onPatch}
+            onDelete={onDelete}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+});
+
+function EntryRow({
+  entry, day, listName, onOpen, onPatch, onDelete,
+}: {
+  entry: ReviewEntry;
+  day: string;
+  listName?: string;
+  onOpen: () => void;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { task, minutes, completedToday, sessions } = entry;
+  return (
+    <li className="flex items-center gap-2 px-4 py-2 group">
+      {/* Completed that day → green check; worked but not finished → hollow clock. */}
+      {completedToday ? (
+        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0" title="Completed this day">
+          <Check className="w-2.5 h-2.5" strokeWidth={3} />
+        </span>
+      ) : (
+        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-amber-400 text-amber-500 shrink-0" title="Worked on, not finished">
+          <Clock className="w-2.5 h-2.5" />
+        </span>
+      )}
+
+      <button
+        onClick={onOpen}
+        className="flex-1 min-w-0 text-left text-sm text-slate-600 truncate hover:text-teal-600 transition-colors"
+        title="Open this to-do"
+      >
+        {task.title || 'Untitled'}
+      </button>
+
+      {listName && <span className="text-xs text-slate-400 truncate max-w-[9rem] shrink-0">{listName}</span>}
+
+      {/* Timesheet detail: the timer ranges worked this day. */}
+      {sessions.length > 0 && (
+        <span className="hidden sm:inline text-xs text-slate-400 shrink-0" title="When you worked on it">
+          {sessions.length === 1 ? rangeLabel(sessions[0]) : `${sessions.length} sessions`}
+        </span>
+      )}
+
+      {minutes > 0 && (
+        <span className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 shrink-0" title="Time tracked this day">
+          <Clock className="w-3 h-3" />{formatMinutes(minutes)}
+        </span>
+      )}
+      {!minutes && task.estimate_minutes ? (
+        <span className="text-xs text-slate-300 shrink-0" title="Estimate (no time tracked)">~{formatMinutes(task.estimate_minutes)}</span>
+      ) : null}
+
+      {/* Uncomplete / delete only make sense for to-dos finished this day. */}
+      {completedToday ? (
+        <>
+          <button
+            onClick={() => onPatch(task.id, { done: false })}
+            className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+            title="Mark not done (move back to your lists)"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onDelete(task.id)}
+            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+            title="Delete permanently"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </>
+      ) : (
+        <span className="text-[10px] uppercase tracking-wide text-amber-500/80 shrink-0" title={`Tracked on ${day}, not completed`}>worked</span>
+      )}
+    </li>
   );
 }
 
@@ -117,6 +236,8 @@ function dayLabel(day: string, today: string): string {
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
-function timeLabel(ts: string): string {
-  return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+// "2:22–4:16 AM" — the timer run's start–end, like a timesheet entry.
+function rangeLabel(s: ReviewEntrySession): string {
+  const f = (ts: string) => new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return `${f(s.started_at)}–${f(s.ended_at)}`;
 }
