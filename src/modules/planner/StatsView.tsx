@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, ChevronLeft, ChevronRight } from 'lucide-react';
 import { BarChart, Bar, ResponsiveContainer, Tooltip, XAxis, Cell } from 'recharts';
 import {
   productivitySeries, trackedMinutesByDay, localDay,
-  addDaysISO, formatMinutes, type PlannerTask, type PlannerTimeSession,
+  addDaysISO, weekStartISO, dayRange, formatMinutes,
+  type PlannerNote, type PlannerTask, type PlannerTimeSession,
 } from './types';
 
 const RANGES = [14, 30, 90] as const;
@@ -13,21 +14,60 @@ function fmtHours(min: number): string {
   return `${(min / 60).toFixed(min >= 60 * 10 ? 0 : 1)}h`;
 }
 
+// "Jun 1 – Jun 7" for a Monday week start.
+function weekLabel(monday: string): string {
+  const a = new Date(monday + 'T00:00:00');
+  const b = new Date(a); b.setDate(a.getDate() + 6);
+  const o: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  return `${a.toLocaleDateString(undefined, o)} – ${b.toLocaleDateString(undefined, o)}`;
+}
+
 // A "how am I doing" dashboard: completions and hours worked over time, plus
 // throughput vs backlog. Hours come from the timer session log, so they reflect
 // the day work actually happened — completed or not.
 export default function StatsView({
-  tasks, sessions, today, onOpenDay,
+  tasks, sessions, today, notesById = {}, onOpenDay,
 }: {
   tasks: PlannerTask[];
   sessions: PlannerTimeSession[];
   today: string;
+  notesById?: Record<string, PlannerNote>;
   // Open a given day in the Logbook so a bar's number has its tasks behind it.
   onOpenDay?: (day: string) => void;
 }) {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   const [metric, setMetric] = useState<'todos' | 'hours'>('todos');
   const from = useMemo(() => addDaysISO(today, -(days - 1)), [today, days]);
+
+  const tasksById = useMemo(() => {
+    const m: Record<string, PlannerTask> = {};
+    for (const t of tasks) m[t.id] = t;
+    return m;
+  }, [tasks]);
+
+  // ---- Weekly timesheet: tracked time per to-do across one week (Mon–Sun),
+  // with per-day and per-to-do totals — a ClickUp-style grid.
+  const [tsWeek, setTsWeek] = useState<string>(() => weekStartISO(today));
+  const tsDays = useMemo(() => dayRange(tsWeek, 7), [tsWeek]);
+  const timesheet = useMemo(() => {
+    const daySet = new Set(tsDays);
+    const byTask: Record<string, { perDay: Record<string, number>; total: number }> = {};
+    const dayTotals: Record<string, number> = {};
+    for (const s of sessions) {
+      const day = localDay(s.started_at);
+      if (!daySet.has(day)) continue;
+      const row = (byTask[s.task_id] ??= { perDay: {}, total: 0 });
+      row.perDay[day] = (row.perDay[day] ?? 0) + s.minutes;
+      row.total += s.minutes;
+      dayTotals[day] = (dayTotals[day] ?? 0) + s.minutes;
+    }
+    const rows = Object.entries(byTask).map(([id, v]) => {
+      const task = tasksById[id];
+      const listName = task?.note_id ? (notesById[task.note_id]?.title.trim() || 'Untitled list') : undefined;
+      return { id, title: task?.title?.trim() || '(deleted to-do)', listName, perDay: v.perDay, total: v.total };
+    }).sort((a, b) => b.total - a.total);
+    return { rows, dayTotals, grand: rows.reduce((m, r) => m + r.total, 0) };
+  }, [sessions, tsDays, tasksById, notesById]);
 
   // Completions (and their estimates) by completion day, then overlay real
   // tracked minutes by the day they were worked.
@@ -170,6 +210,67 @@ export default function StatsView({
           <Mini label="Overdue" value={totals.overdue} tone={totals.overdue > 0 ? 'rose' : 'slate'} />
           <Mini label="Avg size" value={formatMinutes(Math.round(totals.avgSize)) || '—'} hint="est. per to-do" />
         </div>
+      </div>
+
+      {/* Weekly timesheet — tracked time per to-do across one week. */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 mt-4">
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Weekly timesheet</p>
+          <div className="ml-auto flex items-center gap-1.5">
+            <button onClick={() => setTsWeek(w => addDaysISO(w, -7))} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100" title="Previous week"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-xs font-medium text-slate-600 w-28 text-center">{weekLabel(tsWeek)}</span>
+            <button onClick={() => setTsWeek(w => addDaysISO(w, 7))} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100" title="Next week"><ChevronRight className="w-4 h-4" /></button>
+            {tsWeek !== weekStartISO(today) && (
+              <button onClick={() => setTsWeek(weekStartISO(today))} className="text-xs font-medium text-teal-600 hover:text-teal-700 ml-1">This week</button>
+            )}
+          </div>
+        </div>
+        {timesheet.rows.length === 0 ? (
+          <p className="text-sm text-slate-400">No time tracked this week. Run a timer (or log time) on a to-do and it’ll show here.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="text-slate-400">
+                  <th className="text-left font-medium px-2 py-1.5 sticky left-0 bg-white">Task</th>
+                  {tsDays.map(d => {
+                    const dt = new Date(d + 'T00:00:00');
+                    return (
+                      <th key={d} className={`px-2 py-1.5 text-right font-medium whitespace-nowrap ${d === today ? 'text-teal-600' : ''}`}>
+                        <div>{dt.toLocaleDateString(undefined, { weekday: 'short' })} {dt.getDate()}</div>
+                        <div className="text-[10px] font-normal">{timesheet.dayTotals[d] ? formatMinutes(timesheet.dayTotals[d]) : ''}</div>
+                      </th>
+                    );
+                  })}
+                  <th className="px-2 py-1.5 text-right font-semibold text-slate-500">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {timesheet.rows.map(r => (
+                  <tr key={r.id} className="border-t border-slate-100">
+                    <td className="px-2 py-1.5 sticky left-0 bg-white">
+                      <div className="text-slate-700 truncate max-w-[12rem]">{r.title}</div>
+                      {r.listName && <div className="text-[10px] text-slate-300 truncate max-w-[12rem]">{r.listName}</div>}
+                    </td>
+                    {tsDays.map(d => (
+                      <td key={d} className={`px-2 py-1.5 text-right tabular-nums ${r.perDay[d] ? 'text-slate-600' : 'text-slate-300'}`}>
+                        {r.perDay[d] ? formatMinutes(r.perDay[d]) : '—'}
+                      </td>
+                    ))}
+                    <td className="px-2 py-1.5 text-right font-semibold text-slate-700 tabular-nums">{formatMinutes(r.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-slate-200 font-semibold text-slate-700">
+                  <td className="px-2 py-1.5 sticky left-0 bg-white">Total</td>
+                  {tsDays.map(d => <td key={d} className="px-2 py-1.5 text-right tabular-nums">{timesheet.dayTotals[d] ? formatMinutes(timesheet.dayTotals[d]) : '—'}</td>)}
+                  <td className="px-2 py-1.5 text-right tabular-nums">{formatMinutes(timesheet.grand)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );
