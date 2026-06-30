@@ -213,7 +213,9 @@ const RESET_SYSTEM =
   + '(fold any "things weighing on me" into feel_good). Meetings get a "date" as YYYY-MM-DD only if one is written '
   + '(use the current year if the year is omitted), else null. Put a duration in estimate_minutes only if written. '
   + 'Set "uncertain": true for any item or word you had to guess from unclear handwriting. Omit sections that are '
-  + 'absent (empty string or empty array). Transcribe faithfully; do not invent items.';
+  + 'absent (empty string or empty array). Transcribe faithfully; do not invent items. '
+  + 'If an item appears in the brain dump AND is also called out under priorities, quick tasks, or feel_good, put it '
+  + 'ONLY in that more specific section — never list the same item in two sections.';
 
 function asStr(v: unknown): string { return typeof v === 'string' ? v : ''; }
 

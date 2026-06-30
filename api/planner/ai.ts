@@ -20,6 +20,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 
+// Vision transcription (handwriting OCR) can take longer than a text completion,
+// so allow more wall-clock than the platform default. 60s is the Hobby cap.
+export const maxDuration = 60;
+
 type VercelRequest = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;

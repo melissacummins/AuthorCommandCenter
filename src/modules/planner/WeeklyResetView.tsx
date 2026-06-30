@@ -6,7 +6,8 @@ import {
 import { transcribeWeeklyReset } from './aiAssist';
 import type { PlannerImage } from './ai';
 import {
-  RESET_SECTIONS, type ResetSection, type ResetDraftItem, type ResetTranscription, type WeeklyReset,
+  RESET_SECTIONS, dedupeResetDraft,
+  type ResetSection, type ResetDraftItem, type ResetTranscription, type WeeklyReset,
 } from './types';
 
 // The Weekly Reset: a once-a-week reflection + capture. Reflective sections are
@@ -48,6 +49,7 @@ export default function WeeklyResetView({
   // Actionable drafts awaiting approval (from transcription or manual entry).
   const [draft, setDraft] = useState<ResetTranscription>(EMPTY_DRAFT);
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ i: number; n: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -61,14 +63,38 @@ export default function WeeklyResetView({
 
   async function onPickPhotos(files: FileList | null) {
     if (!files || !files.length) return;
-    setBusy(true); setError(null); setSaved(null);
+    setBusy(true); setError(null); setSaved(null); setProgress(null);
     try {
       const images: PlannerImage[] = [];
       for (const f of Array.from(files).slice(0, 8)) {
         if (f.type.startsWith('image/')) images.push(await fileToScaledImage(f));
       }
       if (!images.length) throw new Error('Those didn’t look like photos — try JPG or PNG images.');
-      const t = await transcribeWeeklyReset(images);
+
+      // Transcribe ONE page at a time and merge. Sending several full photos in
+      // a single request can exceed the serverless size/time limits (which is
+      // why multiple-at-once failed); per-page keeps each request small and
+      // fast, and pages of one reset combine cleanly. A blurry page that fails
+      // doesn't sink the others.
+      const results: ResetTranscription[] = [];
+      let failures = 0;
+      for (let i = 0; i < images.length; i++) {
+        setProgress({ i: i + 1, n: images.length });
+        try { results.push(await transcribeWeeklyReset([images[i]])); }
+        catch { failures += 1; }
+      }
+      if (!results.length) throw new Error('Couldn’t read those photos — try clearer, flatter, well-lit pictures.');
+
+      const t = results.reduce<ResetTranscription>((acc, r) => ({
+        wins: joinText(acc.wins, r.wins), not_done: joinText(acc.not_done, r.not_done),
+        drained: joinText(acc.drained, r.drained), feel_more: joinText(acc.feel_more, r.feel_more),
+        brain_dump: [...acc.brain_dump, ...r.brain_dump],
+        priorities: [...acc.priorities, ...r.priorities],
+        feel_good: [...acc.feel_good, ...r.feel_good],
+        quick: [...acc.quick, ...r.quick],
+        meetings: [...acc.meetings, ...r.meetings],
+      }), EMPTY_DRAFT);
+
       // Reflective text → append into the fields (and persist), so a second
       // photo or manual edits add to what's there rather than replacing it.
       const merged = {
@@ -77,8 +103,9 @@ export default function WeeklyResetView({
       };
       setRefl(merged);
       onSaveReflective(merged);
-      // Actionable items → append to the draft for review.
-      setDraft(d => ({
+      // Actionable items → append to the draft, then de-dupe so an item that
+      // appears in the brain dump AND a more specific section shows up once.
+      setDraft(d => dedupeResetDraft({
         ...d,
         brain_dump: [...d.brain_dump, ...t.brain_dump],
         priorities: [...d.priorities, ...t.priorities],
@@ -86,10 +113,12 @@ export default function WeeklyResetView({
         quick: [...d.quick, ...t.quick],
         meetings: [...d.meetings, ...t.meetings],
       }));
+      if (failures) setError(`Read ${results.length} of ${results.length + failures} photos — the rest were too blurry to transcribe. Try a clearer shot of those.`);
     } catch (e) {
       setError((e as Error)?.message ?? 'Couldn’t transcribe that photo.');
     } finally {
       setBusy(false);
+      setProgress(null);
       if (fileRef.current) fileRef.current.value = '';
     }
   }
@@ -151,7 +180,7 @@ export default function WeeklyResetView({
             className="inline-flex items-center gap-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-lg px-3 py-2"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
-            {busy ? 'Reading your reset…' : 'Add from photo'}
+            {busy ? (progress && progress.n > 1 ? `Reading page ${progress.i} of ${progress.n}…` : 'Reading your reset…') : 'Add from photo'}
           </button>
           <p className="text-xs text-slate-500 flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-violet-400" /> Transcribes with your own AI key. Photos aren’t stored.
@@ -199,7 +228,7 @@ export default function WeeklyResetView({
       {saved != null && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           <Check className="w-4 h-4 shrink-0" />
-          Created {saved} to-do{saved === 1 ? '' : 's'} — find them in your planner, and drag them onto days in Planning.
+          Created {saved} to-do{saved === 1 ? '' : 's'} in this week’s <span className="font-medium">Weekly Reset</span> list (under Lists). Schedule them onto days in Planning — drag on desktop, or use a to-do’s Schedule menu on your phone.
         </div>
       )}
 

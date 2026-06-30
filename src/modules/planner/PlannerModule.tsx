@@ -44,6 +44,7 @@ import {
   elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
+  dedupeResetDraft, RESET_SECTIONS,
   type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
 
@@ -453,24 +454,50 @@ export default function PlannerModule() {
   // Turn approved reset drafts into to-dos, tagged with the week + section so
   // Planning can surface them. Priorities are flagged Important; meetings keep
   // their date; brain dump / feel-good / quick land in Anytime. Returns the count.
-  async function createResetTasks(draft: ResetTranscription): Promise<number> {
+  async function createResetTasks(rawDraft: ResetTranscription): Promise<number> {
     if (!user) return 0;
-    const inputs: Parameters<typeof createTask>[1][] = [];
-    const add = (section: ResetSection, items: ResetDraftItem[], extra: (it: ResetDraftItem) => object) => {
-      for (const it of items) {
-        const title = it.text.trim();
-        if (title) inputs.push({ title, due_date: null, reset_week: resetWeek, reset_section: section, ...extra(it) });
+    // De-dupe across sections so a "pulled out" brain-dump item becomes one
+    // to-do in its most specific section, not a duplicate.
+    const draft = dedupeResetDraft(rawDraft);
+    const groups = RESET_SECTIONS
+      .map(s => ({ section: s.key, label: s.label, items: draft[s.key].filter(i => i.text.trim()) }))
+      .filter(g => g.items.length);
+    if (!groups.length) return 0;
+
+    // Give the week its own home list ("Weekly Reset · Jun 30"), reusing it if it
+    // already exists so a second approval appends rather than making a new one.
+    const listTitle = `Weekly Reset · ${new Date(resetWeek + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+    let list = notes.find(n => !n.archived && n.title.trim() === listTitle);
+    let createdNote: PlannerNote | null = null;
+    if (!list) { list = await createNote(user.id, listTitle); createdNote = list; }
+    const listId = list.id;
+
+    // Append after anything already in the list; don't repeat a section heading.
+    const inList = tasks.filter(t => t.note_id === listId);
+    let sort = inList.reduce((m, t) => Math.max(m, t.sort_order), -1) + 1;
+    const headings = new Set(inList.filter(t => t.kind === 'heading').map(t => t.title.trim()));
+
+    const extraFor = (section: ResetSection, it: ResetDraftItem): object =>
+      section === 'priorities' ? { flagged: true, estimate_minutes: it.estimate_minutes ?? null }
+        : section === 'quick' || section === 'brain_dump' ? { estimate_minutes: it.estimate_minutes ?? null }
+          : section === 'meetings' ? { due_date: it.date ?? null }
+            : {};
+
+    const created: PlannerTask[] = [];
+    for (const g of groups) {
+      if (!headings.has(g.label)) {
+        created.push(await createTask(user.id, { title: g.label, note_id: listId, kind: 'heading', sort_order: sort++ }));
       }
-    };
-    add('brain_dump', draft.brain_dump, it => ({ estimate_minutes: it.estimate_minutes ?? null }));
-    add('priorities', draft.priorities, it => ({ flagged: true, estimate_minutes: it.estimate_minutes ?? null }));
-    add('feel_good', draft.feel_good, () => ({}));
-    add('quick', draft.quick, it => ({ estimate_minutes: it.estimate_minutes ?? null }));
-    add('meetings', draft.meetings, it => ({ due_date: it.date ?? null }));
-    if (!inputs.length) return 0;
-    const created = await Promise.all(inputs.map(i => createTask(user.id, i)));
+      for (const it of g.items) {
+        created.push(await createTask(user.id, {
+          title: it.text.trim(), note_id: listId, kind: 'task', sort_order: sort++,
+          due_date: null, reset_week: resetWeek, reset_section: g.section, ...extraFor(g.section, it),
+        }));
+      }
+    }
+    if (createdNote) setNotes(prev => [createdNote as PlannerNote, ...prev]);
     setTasks(prev => [...prev, ...created]);
-    return created.length;
+    return created.filter(t => t.kind === 'task').length;
   }
 
   async function reorder(updates: { id: string; sort_order: number }[]) {
