@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { CalendarRange, ChevronLeft, ChevronRight, Star, Clock, RotateCcw } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, ChevronDown, Star, Clock, RotateCcw } from 'lucide-react';
 import {
   DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   addDaysISO, blockMinutes, dayRange, formatMinutes,
-  type PlannerNote, type PlannerSettings, type PlannerTask, type PlannerTimeBlock,
+  type PlannerNote, type PlannerSettings, type PlannerTask, type PlannerTimeBlock, type ResetSection,
 } from './types';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -45,6 +45,10 @@ export default function PlanView({
   const [range, setRange] = useState<'week' | 'month'>('week');
   const [anchor, setAnchor] = useState(today);
   const target = settings.daily_capacity_minutes;
+  // Reset tray: whole-panel + per-section collapse (it can hold dozens of items,
+  // so it's grouped and tidy rather than one big wall of chips).
+  const [trayOpen, setTrayOpen] = useState(true);
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>(['Priorities']));
 
   // Open, scheduled to-dos grouped by their due day.
   const byDay = useMemo(() => {
@@ -57,13 +61,33 @@ export default function PlanView({
   }, [tasks]);
 
   // To-dos captured from a Weekly Reset that aren't on a day yet — shown in a
-  // tray you drag onto a day (flagged priorities float to the front).
+  // tray you drag onto a day.
   const resetTray = useMemo(
-    () => tasks
-      .filter(t => t.kind === 'task' && !t.done && !t.someday && !t.due_date && !!t.reset_week)
-      .sort((a, b) => Number(b.flagged) - Number(a.flagged)),
+    () => tasks.filter(t => t.kind === 'task' && !t.done && !t.someday && !t.due_date && !!t.reset_week),
     [tasks],
   );
+  // Grouped by section for a readable, collapsible tray — priorities first.
+  const traySections = useMemo(() => {
+    const defs: { key: ResetSection; label: string; star?: boolean }[] = [
+      { key: 'priorities', label: 'Priorities', star: true },
+      { key: 'meetings', label: 'Meetings' },
+      { key: 'quick', label: 'Quick tasks' },
+      { key: 'feel_good', label: 'What would feel good' },
+      { key: 'brain_dump', label: 'Brain dump' },
+    ];
+    const known = new Set(defs.map(d => d.key));
+    const groups = defs
+      .map(d => ({ ...d, items: resetTray.filter(t => t.reset_section === d.key) }))
+      .filter(g => g.items.length);
+    // Anything tagged from a reset but without a known section → "Other".
+    const other = resetTray.filter(t => !t.reset_section || !known.has(t.reset_section as ResetSection));
+    if (other.length) groups.push({ key: 'brain_dump' as ResetSection, label: 'Other', items: other });
+    return groups;
+  }, [resetTray]);
+
+  function toggleSection(label: string) {
+    setOpenSections(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n; });
+  }
 
   // Planned minutes for a day (time blocks + loose estimates), for the capacity hint.
   function plannedOn(day: string): number {
@@ -171,18 +195,36 @@ export default function PlanView({
           </div>
         )}
 
-        {/* Unscheduled items from a Weekly Reset — drag one onto a day above. */}
+        {/* Unscheduled items from a Weekly Reset — grouped & collapsible so a big
+            reset doesn't become a wall of chips. Drag a row onto a day above. */}
         {resetTray.length > 0 && (
           <div className="mt-6 pt-4 border-t border-slate-200">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+            <button
+              onClick={() => setTrayOpen(o => !o)}
+              className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-700"
+            >
+              {trayOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               <RotateCcw className="w-3.5 h-3.5 text-violet-500" /> From your weekly reset
-              <span className="normal-case font-normal tracking-normal text-slate-300">— drag onto a day (or use a to-do’s Schedule menu on mobile)</span>
-            </p>
-            <ul className="flex flex-wrap gap-2">
-              {resetTray.map(t => (
-                <TaskChip key={t.id} task={t} notesById={notesById} today={today} onOpenDay={onOpenDay} />
-              ))}
-            </ul>
+              <span className="text-slate-400 font-medium normal-case tracking-normal">({resetTray.length})</span>
+            </button>
+            {trayOpen && (
+              <>
+                <p className="text-xs text-slate-400 mt-1 mb-2 ml-5">Open a group and drag a to-do onto a day — or use a to-do’s Schedule menu on mobile.</p>
+                <div className="space-y-1.5">
+                  {traySections.map(g => (
+                    <TraySection
+                      key={g.label}
+                      label={g.label}
+                      star={g.star}
+                      items={g.items}
+                      open={openSections.has(g.label)}
+                      onToggle={() => toggleSection(g.label)}
+                      notesById={notesById}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
       </DndContext>
@@ -318,6 +360,59 @@ function TaskChip({
       )}
       {task.estimate_minutes ? <span className="text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
       {list && <span className="text-slate-300 truncate max-w-[5rem] shrink-0">{list.title.trim() || 'list'}</span>}
+    </li>
+  );
+}
+
+// A collapsible group in the weekly-reset tray: a header with a count, and when
+// open, its draggable to-dos as a readable one-per-line list.
+function TraySection({
+  label, star, items, open, onToggle, notesById,
+}: {
+  label: string;
+  star?: boolean;
+  items: PlannerTask[];
+  open: boolean;
+  onToggle: () => void;
+  notesById: Record<string, PlannerNote>;
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white">
+      <button onClick={onToggle} className="w-full flex items-center gap-2 px-3 py-2 text-left">
+        {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+        {star && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />}
+        <span className="flex-1 text-sm font-semibold text-slate-700">{label}</span>
+        <span className="text-xs text-slate-400">{items.length}</span>
+      </button>
+      {open && (
+        <ul className="px-2 pb-2 space-y-0.5 border-t border-slate-100 pt-1">
+          {items.map(t => <TrayRow key={t.id} task={t} notesById={notesById} />)}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// A full-width draggable row for the reset tray. The title wraps (rather than
+// truncating) so long brain-dump items stay readable.
+function TrayRow({ task, notesById }: { task: PlannerTask; notesById: Record<string, PlannerNote> }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
+  const list = task.note_id ? notesById[task.note_id] : undefined;
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className={`flex items-start gap-2 text-sm rounded-lg px-2 py-1.5 cursor-grab active:cursor-grabbing hover:bg-slate-50 ${isDragging ? 'opacity-60 shadow-lg bg-white ring-1 ring-slate-200' : ''}`}
+    >
+      {task.flagged
+        ? <Star className="w-3 h-3 mt-1 text-amber-400 shrink-0" fill="currentColor" />
+        : <span className="w-1.5 h-1.5 mt-1.5 rounded-full bg-teal-400 shrink-0" />}
+      <span className="flex-1 min-w-0 text-slate-700 break-words">{task.title || 'Untitled'}</span>
+      {task.estimate_minutes ? <span className="mt-0.5 text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
+      {list && <span className="mt-0.5 text-slate-300 truncate max-w-[7rem] shrink-0">{list.title.trim() || 'list'}</span>}
     </li>
   );
 }

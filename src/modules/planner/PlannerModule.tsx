@@ -139,9 +139,25 @@ export default function PlannerModule() {
     const stale = tasks.filter(t => t.kind === 'task' && !t.done && !t.someday && !!t.due_date && t.due_date < today);
     if (!stale.length) return;
     const ids = new Set(stale.map(t => t.id));
-    setTasks(prev => prev.map(t => (ids.has(t.id) ? { ...t, due_date: today } : t)));
-    Promise.all(stale.map(t => updateTask(t.id, { due_date: today }))).catch(() => { /* best effort */ });
+    // Clear block_id too: the to-do's old time block lives on a past day, so
+    // keeping the link would hide it on today (it'd be neither in a visible
+    // block nor in the loose list).
+    setTasks(prev => prev.map(t => (ids.has(t.id) ? { ...t, due_date: today, block_id: null } : t)));
+    Promise.all(stale.map(t => updateTask(t.id, { due_date: today, block_id: null }))).catch(() => { /* best effort */ });
   }, [user, loading, settings?.auto_rollover, tasks]);
+
+  // Heal stale block links: a to-do whose block is on a different day than its
+  // due date (e.g. rolled forward in an earlier build) is freed back to loose so
+  // it shows on its day instead of silently vanishing while still being counted.
+  useEffect(() => {
+    if (!user || loading) return;
+    const blockDay = new Map(blocks.map(b => [b.id, b.day]));
+    const orphans = tasks.filter(t => t.block_id && blockDay.get(t.block_id) !== t.due_date);
+    if (!orphans.length) return;
+    const ids = new Set(orphans.map(t => t.id));
+    setTasks(prev => prev.map(t => (ids.has(t.id) ? { ...t, block_id: null } : t)));
+    Promise.all(orphans.map(t => updateTask(t.id, { block_id: null }))).catch(() => { /* best effort */ });
+  }, [user, loading, tasks, blocks]);
 
   // Load the viewed week's reset when the Weekly Reset view is open (and on
   // week change). Clear first so the per-week remount never shows stale text.
