@@ -17,11 +17,13 @@ function fmtHours(min: number): string {
 // throughput vs backlog. Hours come from the timer session log, so they reflect
 // the day work actually happened — completed or not.
 export default function StatsView({
-  tasks, sessions, today,
+  tasks, sessions, today, onOpenDay,
 }: {
   tasks: PlannerTask[];
   sessions: PlannerTimeSession[];
   today: string;
+  // Open a given day in the Logbook so a bar's number has its tasks behind it.
+  onOpenDay?: (day: string) => void;
 }) {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   const [metric, setMetric] = useState<'todos' | 'hours'>('todos');
@@ -90,6 +92,7 @@ export default function StatsView({
         <div className="flex items-center justify-between mb-3">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             {metric === 'todos' ? 'To-dos completed' : 'Hours worked'} · last {days} days
+            {onOpenDay && <span className="ml-2 normal-case font-normal tracking-normal text-slate-300">— tap a bar to see that day</span>}
           </p>
           <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden text-xs">
             {(['todos', 'hours'] as const).map(m => (
@@ -124,11 +127,21 @@ export default function StatsView({
                   : [`${(v / 60).toFixed(1)}h tracked`, '']}
               />
               {metric === 'todos' ? (
-                <Bar dataKey="done" radius={[3, 3, 0, 0]}>
+                <Bar
+                  dataKey="done"
+                  radius={[3, 3, 0, 0]}
+                  style={{ cursor: onOpenDay ? 'pointer' : 'default' }}
+                  onClick={(_, index) => { const day = series[index]?.day; if (day) onOpenDay?.(day); }}
+                >
                   {series.map(d => <Cell key={d.day} fill={d.day === today ? '#0d9488' : '#5eead4'} />)}
                 </Bar>
               ) : (
-                <Bar dataKey="trackedMinutes" radius={[3, 3, 0, 0]}>
+                <Bar
+                  dataKey="trackedMinutes"
+                  radius={[3, 3, 0, 0]}
+                  style={{ cursor: onOpenDay ? 'pointer' : 'default' }}
+                  onClick={(_, index) => { const day = series[index]?.day; if (day) onOpenDay?.(day); }}
+                >
                   {series.map(d => <Cell key={d.day} fill={d.day === today ? '#4f46e5' : '#a5b4fc'} />)}
                 </Bar>
               )}
