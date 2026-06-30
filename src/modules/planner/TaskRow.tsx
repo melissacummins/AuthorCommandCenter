@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Check, Circle, Trash2, Repeat, Clock, CalendarClock, CalendarPlus, Link2Off,
   Star, Moon, Orbit as OrbitIcon, MoreHorizontal, Plus, ChevronRight, ChevronLeft, ChevronDown,
-  Pencil, ListPlus, Inbox,
+  Pencil, ListPlus, Inbox, History,
 } from 'lucide-react';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
@@ -49,6 +49,9 @@ export interface TaskRowProps {
   calConnected?: boolean;
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
+  // Retroactively record time worked on this to-do (minutes, on a given day) —
+  // enables the "Log time…" menu item. Omit to hide it.
+  onLogTime?: (minutes: number, day: string) => void;
   // Overdue rows: a small "→ Today" affordance.
   onMoveToToday?: () => void;
   // Keyboard add flow (list views).
@@ -62,7 +65,7 @@ export function TaskRow(props: TaskRowProps) {
     task, today, onPatch, onDelete, lists, listName, onOpenList, dragHandle,
     showTimer = false, canFlag = false, orbitEnabled = false, canSomeday = false,
     enableRecurrence = false, enableChecklist = false, calConnected = false,
-    onTimeBlock, onUnblock, onMoveToToday, focusId, onFocused, onEnter,
+    onTimeBlock, onUnblock, onLogTime, onMoveToToday, focusId, onFocused, onEnter,
   } = props;
 
   const [expanded, setExpanded] = useState(false);
@@ -215,6 +218,7 @@ export function TaskRow(props: TaskRowProps) {
             calConnected={calConnected}
             onTimeBlock={onTimeBlock}
             onUnblock={onUnblock}
+            onLogTime={onLogTime}
           />
         )}
 
@@ -268,12 +272,12 @@ export function TaskRow(props: TaskRowProps) {
 // inside the same popover via the shared option-list helpers below.
 // ---------------------------------------------------------------------------
 
-type SubView = 'root' | 'schedule' | 'estimate' | 'repeat' | 'list';
+type SubView = 'root' | 'schedule' | 'estimate' | 'repeat' | 'list' | 'logtime';
 
 export function TaskActionsMenu({
   task, today, onPatch, onDelete, onEditDetails, lists,
   canFlag = false, orbitEnabled = false, canSomeday = false, enableRecurrence = false,
-  calConnected = false, onTimeBlock, onUnblock,
+  calConnected = false, onTimeBlock, onUnblock, onLogTime,
 }: {
   task: PlannerTask;
   today: string;
@@ -288,6 +292,7 @@ export function TaskActionsMenu({
   calConnected?: boolean;
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
+  onLogTime?: (minutes: number, day: string) => void;
 }) {
   return (
     <Popover
@@ -310,6 +315,7 @@ export function TaskActionsMenu({
           calConnected={calConnected}
           onTimeBlock={onTimeBlock}
           onUnblock={onUnblock}
+          onLogTime={onLogTime}
           close={close}
         />
       )}
@@ -319,7 +325,7 @@ export function TaskActionsMenu({
 
 function MenuBody({
   task, today, onPatch, onDelete, onEditDetails, lists,
-  canFlag, orbitEnabled, canSomeday, enableRecurrence, calConnected, onTimeBlock, onUnblock, close,
+  canFlag, orbitEnabled, canSomeday, enableRecurrence, calConnected, onTimeBlock, onUnblock, onLogTime, close,
 }: {
   task: PlannerTask;
   today: string;
@@ -334,6 +340,7 @@ function MenuBody({
   calConnected?: boolean;
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
+  onLogTime?: (minutes: number, day: string) => void;
   close: () => void;
 }) {
   const [view, setView] = useState<SubView>('root');
@@ -346,6 +353,11 @@ function MenuBody({
   if (view === 'estimate') {
     return <SubPanel title="Estimate" onBack={() => setView('root')}>
       <EstimateOptions task={task} onPatch={onPatch} onDone={close} />
+    </SubPanel>;
+  }
+  if (view === 'logtime' && onLogTime) {
+    return <SubPanel title="Log time worked" onBack={() => setView('root')}>
+      <LogTimeOptions task={task} today={today} onLogTime={onLogTime} onDone={close} />
     </SubPanel>;
   }
   if (view === 'repeat') {
@@ -364,6 +376,9 @@ function MenuBody({
       <MenuItem icon={<Pencil className="w-4 h-4" />} label="Edit details" onClick={() => { onEditDetails(); close(); }} />
       <MenuItem icon={<CalendarClock className="w-4 h-4" />} label="Schedule…" onClick={() => setView('schedule')} chevron />
       <MenuItem icon={<Clock className="w-4 h-4" />} label="Estimate…" onClick={() => setView('estimate')} chevron />
+      {onLogTime && (
+        <MenuItem icon={<History className="w-4 h-4" />} label="Log time…" onClick={() => setView('logtime')} chevron />
+      )}
       {enableRecurrence && (
         <MenuItem icon={<Repeat className="w-4 h-4" />} label="Repeat…" onClick={() => setView('repeat')} chevron />
       )}
@@ -515,6 +530,62 @@ export function EstimateOptions({
       >
         No estimate
       </button>
+    </div>
+  );
+}
+
+// Retroactively log time actually worked: pick the day (defaults to the to-do's
+// own day) and a duration. Lands in the Logbook + Stats like a timer run would.
+function LogTimeOptions({
+  task, today, onLogTime, onDone,
+}: {
+  task: PlannerTask;
+  today: string;
+  onLogTime: (minutes: number, day: string) => void;
+  onDone: () => void;
+}) {
+  const [day, setDay] = useState(task.due_date ?? today);
+  const [custom, setCustom] = useState('');
+  const log = (m: number) => { if (m > 0) { onLogTime(m, day); onDone(); } };
+  return (
+    <div className="p-2 min-w-[12rem]">
+      <label className="block text-[11px] font-medium text-slate-400 mb-1">Day worked</label>
+      <input
+        type="date"
+        value={day}
+        max={today}
+        onChange={e => setDay(e.target.value || today)}
+        className="text-sm border border-slate-200 rounded px-2 py-1 w-full mb-2"
+      />
+      <div className="grid grid-cols-3 gap-1 mb-2">
+        {ESTIMATE_PRESETS.map(p => (
+          <button
+            key={p}
+            onClick={() => log(p)}
+            className="text-xs px-2 py-1 rounded border border-slate-200 text-slate-700 hover:bg-slate-100"
+          >
+            {formatMinutes(p)}
+          </button>
+        ))}
+      </div>
+      <div className="flex items-center gap-1.5">
+        <input
+          type="number"
+          inputMode="numeric"
+          min={1}
+          value={custom}
+          onChange={e => setCustom(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') log(parseInt(custom, 10) || 0); }}
+          placeholder="min"
+          className="w-16 text-sm border border-slate-200 rounded px-2 py-1"
+        />
+        <button
+          onClick={() => log(parseInt(custom, 10) || 0)}
+          className="flex-1 text-xs font-medium text-white bg-teal-600 hover:bg-teal-700 rounded px-2 py-1.5"
+        >
+          Log time
+        </button>
+      </div>
     </div>
   );
 }
