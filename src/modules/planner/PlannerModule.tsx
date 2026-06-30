@@ -16,7 +16,7 @@ import {
   CalendarClock, Layers, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
-  CopyPlus, Check, Users as UsersIcon, RotateCcw,
+  CopyPlus, Check, Users as UsersIcon, RotateCcw, Search,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -44,7 +44,7 @@ import {
   elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
-  dedupeResetDraft, RESET_SECTIONS,
+  dedupeResetDraft, resetSectionFor, QUICK_TASK_MINUTES,
   type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
 
@@ -467,18 +467,24 @@ export default function PlannerModule() {
     catch (e) { setError((e as Error)?.message ?? 'Could not save your weekly reset.'); }
   }
 
-  // Turn approved reset drafts into to-dos, tagged with the week + section so
-  // Planning can surface them. Priorities are flagged Important; meetings keep
-  // their date; brain dump / feel-good / quick land in Anytime. Returns the count.
+  // Turn the approved brain dump into to-dos. Each item's in-app tags decide
+  // its section + attributes: Priority → flagged Important; Quick → 15-min
+  // estimate; Feel-good → its own group; otherwise plain brain dump. Items are
+  // grouped under section headings in a per-week home list. Returns the count.
   async function createResetTasks(rawDraft: ResetTranscription): Promise<number> {
     if (!user) return 0;
-    // De-dupe across sections so a "pulled out" brain-dump item becomes one
-    // to-do in its most specific section, not a duplicate.
-    const draft = dedupeResetDraft(rawDraft);
-    const groups = RESET_SECTIONS
-      .map(s => ({ section: s.key, label: s.label, items: draft[s.key].filter(i => i.text.trim()) }))
-      .filter(g => g.items.length);
-    if (!groups.length) return 0;
+    const items = dedupeResetDraft(rawDraft).items.filter(i => i.text.trim());
+    if (!items.length) return 0;
+
+    const SECTION_ORDER: { key: ResetSection; label: string }[] = [
+      { key: 'priorities', label: 'Priorities' },
+      { key: 'quick', label: 'Quick tasks' },
+      { key: 'feel_good', label: 'What would feel good' },
+      { key: 'brain_dump', label: 'Brain dump' },
+    ];
+    const bySection: Record<string, ResetDraftItem[]> = {};
+    for (const it of items) (bySection[resetSectionFor(it)] ??= []).push(it);
+    const groups = SECTION_ORDER.filter(s => bySection[s.key]?.length);
 
     // Give the week its own home list ("Weekly Reset · Jun 30"), reusing it if it
     // already exists so a second approval appends rather than making a new one.
@@ -493,21 +499,17 @@ export default function PlannerModule() {
     let sort = inList.reduce((m, t) => Math.max(m, t.sort_order), -1) + 1;
     const headings = new Set(inList.filter(t => t.kind === 'heading').map(t => t.title.trim()));
 
-    const extraFor = (section: ResetSection, it: ResetDraftItem): object =>
-      section === 'priorities' ? { flagged: true, estimate_minutes: it.estimate_minutes ?? null }
-        : section === 'quick' || section === 'brain_dump' ? { estimate_minutes: it.estimate_minutes ?? null }
-          : section === 'meetings' ? { due_date: it.date ?? null }
-            : {};
-
     const created: PlannerTask[] = [];
     for (const g of groups) {
       if (!headings.has(g.label)) {
         created.push(await createTask(user.id, { title: g.label, note_id: listId, kind: 'heading', sort_order: sort++ }));
       }
-      for (const it of g.items) {
+      for (const it of bySection[g.key]) {
         created.push(await createTask(user.id, {
           title: it.text.trim(), note_id: listId, kind: 'task', sort_order: sort++,
-          due_date: null, reset_week: resetWeek, reset_section: g.section, ...extraFor(g.section, it),
+          due_date: null, reset_week: resetWeek, reset_section: g.key,
+          flagged: !!it.priority,
+          estimate_minutes: it.quick ? QUICK_TASK_MINUTES : (it.estimate_minutes ?? null),
         }));
       }
     }
@@ -1027,6 +1029,7 @@ function ViewPane({
       : VIEWS.find(v => v.bucket === bucket)!;
   const Icon = meta.icon;
   const [draft, setDraft] = useState('');
+  const [search, setSearch] = useState('');
   const { gc, calVersion, onTimeBlock, onUnblock } = cal;
   const [eventsByDay, setEventsByDay] = useState<Record<string, GCalEvent[]>>({});
 
@@ -1040,7 +1043,14 @@ function ViewPane({
     : inbox
       ? tasks
           .filter(t => t.kind === 'task' && !t.done && !t.note_id)
-          .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'))
+          // Scheduled to-dos first (soonest date first); everything undated
+          // after, in alphabetical order.
+          .sort((a, b) => {
+            if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+            if (a.due_date) return -1;
+            if (b.due_date) return 1;
+            return (a.title || '').localeCompare(b.title || '', undefined, { sensitivity: 'base' });
+          })
       : tasks
           .filter(t => t.kind === 'task' && !t.done && bucketForTask(t, today) === bucket)
           .sort((a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999'));
@@ -1131,6 +1141,10 @@ function ViewPane({
     }
   }
 
+  // Live title filter for the current view.
+  const q = search.trim().toLowerCase();
+  const visible = q ? items.filter(t => (t.title || '').toLowerCase().includes(q)) : items;
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -1176,14 +1190,27 @@ function ViewPane({
         onSubmit={() => { onAdd({ title: draft, ...addDefaults }); setDraft(''); }}
       />
 
+      {items.length > 0 && (
+        <div className="mt-3 flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
+          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={`Search ${meta.label}…`}
+            className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+          />
+          {search && <button onClick={() => setSearch('')} className="text-slate-300 hover:text-slate-500" title="Clear"><X className="w-4 h-4" /></button>}
+        </div>
+      )}
+
       {bucket === 'today' && <DayEventsStrip events={eventsByDay[today]} />}
 
-      {items.length === 0 ? (
-        <p className="text-sm text-slate-400 mt-4">Nothing here right now.</p>
+      {visible.length === 0 ? (
+        <p className="text-sm text-slate-400 mt-4">{search ? 'Nothing matches that search.' : 'Nothing here right now.'}</p>
       ) : bucket === 'upcoming' ? (
         // Group by day, like the Things "Upcoming" list.
         <div className="mt-4 space-y-5">
-          {groupByDay(items).map(group => (
+          {groupByDay(visible).map(group => (
             <div key={group.date}>
               <DayHeader date={group.date} today={today} totalMinutes={sumEstimate(group.items)} />
               <DayEventsStrip events={eventsByDay[group.date]} />
@@ -1195,7 +1222,7 @@ function ViewPane({
         </div>
       ) : (
         <ul className="mt-2 divide-y divide-slate-100">
-          {items.map(renderRow)}
+          {visible.map(renderRow)}
         </ul>
       )}
     </div>
@@ -1298,6 +1325,7 @@ function NotePane({
   const [body, setBody] = useState(note.body);
   const [draft, setDraft] = useState('');
   const [filter, setFilter] = useState<'all' | 'important'>('all');
+  const [search, setSearch] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   // The to-do id that should open for editing next render (keyboard entry).
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -1330,6 +1358,12 @@ function NotePane({
     }
   }
   const visibleMain = mainAll.filter(t => !hidden.has(t.id));
+  // When searching, show a flat list of matching to-dos (open + done) instead of
+  // the headings/drag structure.
+  const noteQuery = search.trim().toLowerCase();
+  const searchResults = noteQuery
+    ? ordered.filter(t => t.kind === 'task' && (t.title || '').toLowerCase().includes(noteQuery))
+    : null;
 
   function toggleCollapse(id: string) {
     setCollapsed(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
@@ -1444,21 +1478,33 @@ function NotePane({
         </div>
       )}
 
-      {/* All / Important filter (Things-3-style) */}
-      <div className="flex items-center gap-1 mb-2">
-        {(['all', 'important'] as const).map(f => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
-              filter === f ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'
-            }`}
-          >
-            {f === 'important' && <Star className="w-3 h-3" fill={filter === f ? 'currentColor' : 'none'} />}
-            {f === 'all' ? 'All' : 'Important'}
-            {f === 'important' && flaggedOpen.length > 0 && <span className={filter === f ? 'text-amber-300' : 'text-amber-500'}>{flaggedOpen.length}</span>}
-          </button>
-        ))}
+      {/* All / Important filter (Things-3-style) + search */}
+      <div className="flex items-center gap-2 mb-2">
+        <div className="flex items-center gap-1">
+          {(['all', 'important'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+                filter === f ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              {f === 'important' && <Star className="w-3 h-3" fill={filter === f ? 'currentColor' : 'none'} />}
+              {f === 'all' ? 'All' : 'Important'}
+              {f === 'important' && flaggedOpen.length > 0 && <span className={filter === f ? 'text-amber-300' : 'text-amber-500'}>{flaggedOpen.length}</span>}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 w-48">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Search this list…"
+            className="flex-1 min-w-0 text-xs bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+          />
+          {search && <button onClick={() => setSearch('')} className="text-slate-300 hover:text-slate-500 shrink-0" title="Clear"><X className="w-3.5 h-3.5" /></button>}
+        </div>
       </div>
 
       <div className="flex items-center gap-2 mb-1">
@@ -1479,6 +1525,31 @@ function NotePane({
         </button>
       </div>
 
+      {searchResults ? (
+        searchResults.length === 0 ? (
+          <p className="text-sm text-slate-400 mt-3">Nothing in this list matches that search.</p>
+        ) : (
+          <ul className="mt-2 divide-y divide-slate-100">
+            {searchResults.map(t => (
+              <TaskRow
+                key={t.id}
+                task={t}
+                today={today}
+                lists={lists}
+                showTimer
+                canFlag
+                canSomeday
+                enableRecurrence
+                enableChecklist
+                orbitEnabled={orbitEnabled}
+                onPatch={onPatch}
+                onDelete={onDelete}
+              />
+            ))}
+          </ul>
+        )
+      ) : (
+        <>
       {filter === 'important' ? (
         flaggedOpen.length === 0 ? (
           <p className="text-sm text-slate-400 mt-3">Nothing flagged. Star a to-do to mark it Important.</p>
@@ -1545,6 +1616,8 @@ function NotePane({
             ))}
           </ul>
         </div>
+      )}
+        </>
       )}
     </div>
   );
