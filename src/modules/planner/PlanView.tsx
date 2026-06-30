@@ -32,7 +32,7 @@ function isoWeek(iso: string): number {
 // Plan ahead by deciding what you'll work on in each week or month. Drag a
 // to-do between weeks (or onto a day in month view) to reschedule it.
 export default function PlanView({
-  tasks, blocks, settings, notesById, today, onOpenDay, onPatch,
+  tasks, blocks, settings, notesById, today, onOpenDay, onOpenList, onPatch,
 }: {
   tasks: PlannerTask[];
   blocks: PlannerTimeBlock[];
@@ -40,6 +40,8 @@ export default function PlanView({
   notesById: Record<string, PlannerNote>;
   today: string;
   onOpenDay: (iso: string) => void;
+  // Open the list a to-do lives in (used to click into reset-tray items).
+  onOpenList?: (noteId: string) => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
 }) {
   const [range, setRange] = useState<'week' | 'month'>('week');
@@ -220,6 +222,7 @@ export default function PlanView({
                       open={openSections.has(g.label)}
                       onToggle={() => toggleSection(g.label)}
                       notesById={notesById}
+                      onOpenList={onOpenList}
                     />
                   ))}
                 </div>
@@ -367,7 +370,7 @@ function TaskChip({
 // A collapsible group in the weekly-reset tray: a header with a count, and when
 // open, its draggable to-dos as a readable one-per-line list.
 function TraySection({
-  label, star, items, open, onToggle, notesById,
+  label, star, items, open, onToggle, notesById, onOpenList,
 }: {
   label: string;
   star?: boolean;
@@ -375,6 +378,7 @@ function TraySection({
   open: boolean;
   onToggle: () => void;
   notesById: Record<string, PlannerNote>;
+  onOpenList?: (noteId: string) => void;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
@@ -386,7 +390,7 @@ function TraySection({
       </button>
       {open && (
         <ul className="px-2 pb-2 space-y-0.5 border-t border-slate-100 pt-1">
-          {items.map(t => <TrayRow key={t.id} task={t} notesById={notesById} />)}
+          {items.map(t => <TrayRow key={t.id} task={t} notesById={notesById} onOpenList={onOpenList} />)}
         </ul>
       )}
     </div>
@@ -394,11 +398,13 @@ function TraySection({
 }
 
 // A full-width draggable row for the reset tray. The title wraps (rather than
-// truncating) so long brain-dump items stay readable.
-function TrayRow({ task, notesById }: { task: PlannerTask; notesById: Record<string, PlannerNote> }) {
+// truncating) so long brain-dump items stay readable. Drag it onto a day to
+// schedule; click the title to open its list and edit it.
+function TrayRow({ task, notesById, onOpenList }: { task: PlannerTask; notesById: Record<string, PlannerNote>; onOpenList?: (noteId: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
   const list = task.note_id ? notesById[task.note_id] : undefined;
+  const canOpen = !!(task.note_id && onOpenList);
   return (
     <li
       ref={setNodeRef}
@@ -410,7 +416,17 @@ function TrayRow({ task, notesById }: { task: PlannerTask; notesById: Record<str
       {task.flagged
         ? <Star className="w-3 h-3 mt-1 text-amber-400 shrink-0" fill="currentColor" />
         : <span className="w-1.5 h-1.5 mt-1.5 rounded-full bg-teal-400 shrink-0" />}
-      <span className="flex-1 min-w-0 text-slate-700 break-words">{task.title || 'Untitled'}</span>
+      {/* The title is the click target (drag still works via the surrounding
+          row); a plain drag won't fire the click thanks to the 6px threshold. */}
+      <button
+        type="button"
+        onClick={() => { if (task.note_id && onOpenList) onOpenList(task.note_id); }}
+        disabled={!canOpen}
+        title={canOpen ? 'Open in its list to edit' : undefined}
+        className={`flex-1 min-w-0 text-left break-words ${canOpen ? 'text-slate-700 hover:text-teal-600 cursor-pointer' : 'text-slate-700'}`}
+      >
+        {task.title || 'Untitled'}
+      </button>
       {task.estimate_minutes ? <span className="mt-0.5 text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
       {list && <span className="mt-0.5 text-slate-300 truncate max-w-[7rem] shrink-0">{list.title.trim() || 'list'}</span>}
     </li>
