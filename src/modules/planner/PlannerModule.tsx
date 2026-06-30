@@ -896,7 +896,7 @@ export default function PlannerModule() {
             onPatch={patchTask}
           />
         ) : selection.kind === 'stats' ? (
-          <StatsView tasks={scopedTasks} sessions={sessions} today={today} onOpenDay={openReview} />
+          <StatsView tasks={scopedTasks} sessions={sessions} today={today} notesById={notesById} onOpenDay={openReview} />
         ) : selection.kind === 'logbook' ? (
           <LogbookView
             tasks={scopedTasks}
