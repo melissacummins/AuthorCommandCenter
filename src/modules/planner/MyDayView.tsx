@@ -101,14 +101,19 @@ export default function MyDayView({
     () => tasks.filter(t => t.kind === 'task' && t.due_date === selected),
     [tasks, selected],
   );
+  // Blocks that actually live on this day — a to-do is only "in a block" if its
+  // block is one of these. (A to-do rolled forward can still point at a block on
+  // its old day; that link is stale here, so it falls back to loose below.)
+  const dayBlockIds = useMemo(() => new Set(dayBlocks.map(b => b.id)), [dayBlocks]);
   const tasksByBlock = useMemo(() => {
     const m: Record<string, PlannerTask[]> = {};
-    for (const t of dayTasks) if (t.block_id) (m[t.block_id] ??= []).push(t);
+    for (const t of dayTasks) if (t.block_id && dayBlockIds.has(t.block_id)) (m[t.block_id] ??= []).push(t);
     return m;
-  }, [dayTasks]);
-  // Loose = scheduled for the day but not dropped into a block. De-duped: a
-  // to-do in a block shows only inside that block, never also here.
-  const looseTasks = dayTasks.filter(t => !t.block_id);
+  }, [dayTasks, dayBlockIds]);
+  // Loose = scheduled for the day but not in one of today's blocks (so a to-do
+  // with a stale block link still shows here instead of vanishing). De-duped: a
+  // to-do in a real block shows only inside that block, never also here.
+  const looseTasks = dayTasks.filter(t => !t.block_id || !dayBlockIds.has(t.block_id));
 
   // The local YYYY-MM-DD a to-do "belongs" to for navigation/recall: its due
   // day, else the day it was completed.
