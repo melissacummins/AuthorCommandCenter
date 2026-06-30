@@ -142,11 +142,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const body = parseBody<{ prompt?: string; system?: string; model?: string; max_tokens?: number }>(req);
+  const body = parseBody<{
+    prompt?: string; system?: string; model?: string; max_tokens?: number;
+    images?: Array<{ data?: unknown; media_type?: unknown }>;
+  }>(req);
   const prompt = typeof body.prompt === 'string' ? body.prompt.trim() : '';
-  if (!prompt) { res.status(400).json({ error: 'Missing prompt.' }); return; }
+  // Optional vision input: photos to transcribe (e.g. a handwritten weekly
+  // reset). Capped so the request body stays within serverless limits.
+  const images = (Array.isArray(body.images) ? body.images : [])
+    .filter(i => i && typeof i.data === 'string')
+    .slice(0, 8)
+    .map(i => ({ data: i.data as string, media_type: typeof i.media_type === 'string' ? i.media_type : 'image/jpeg' }));
+  if (!prompt && images.length === 0) { res.status(400).json({ error: 'Missing prompt.' }); return; }
   const model = body.model && ALLOWED_MODELS.has(body.model) ? body.model : DEFAULT_MODEL;
   const maxTokens = Math.min(Math.max(Number(body.max_tokens) || 1024, 64), MAX_OUTPUT_TOKENS);
+
+  // Text-only stays a plain string; with images we send a content-block array
+  // (images first, then the instruction) per Anthropic's vision format.
+  const content = images.length === 0
+    ? prompt
+    : [
+        ...images.map(img => ({ type: 'image', source: { type: 'base64', media_type: img.media_type, data: img.data } })),
+        { type: 'text', text: prompt || 'Transcribe this image.' },
+      ];
 
   try {
     const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -156,7 +174,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         model,
         max_tokens: maxTokens,
         ...(body.system ? { system: body.system } : {}),
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content }],
       }),
     });
     if (!r.ok) {

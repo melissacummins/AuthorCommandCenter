@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  ChecklistItem, PlannerDayNote, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, PlannerTimeSession, TaskKind,
+  ChecklistItem, PlannerDayNote, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
 } from './types';
 import { DEFAULT_DAILY_CAPACITY } from './types';
 
@@ -142,6 +142,9 @@ export async function createTask(
     block_id?: string | null;
     estimate_minutes?: number | null;
     in_orbit?: boolean;
+    flagged?: boolean;
+    reset_week?: string | null;
+    reset_section?: string | null;
   },
 ): Promise<PlannerTask> {
   const { data, error } = await supabase
@@ -157,11 +160,41 @@ export async function createTask(
       block_id: input.block_id ?? null,
       estimate_minutes: input.estimate_minutes ?? null,
       in_orbit: input.in_orbit ?? false,
+      ...(input.flagged != null ? { flagged: input.flagged } : {}),
+      ...(input.reset_week !== undefined ? { reset_week: input.reset_week } : {}),
+      ...(input.reset_section !== undefined ? { reset_section: input.reset_section } : {}),
     })
     .select('*')
     .single();
   if (error) throw error;
   return data as PlannerTask;
+}
+
+// ---- Weekly Reset ---------------------------------------------------------
+
+export async function getWeeklyReset(userId: string, weekStart: string): Promise<WeeklyReset | null> {
+  const { data, error } = await supabase
+    .from('weekly_resets')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('week_start', weekStart)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as WeeklyReset) ?? null;
+}
+
+export async function upsertWeeklyReset(
+  userId: string,
+  weekStart: string,
+  patch: Partial<Pick<WeeklyReset, 'wins' | 'not_done' | 'drained' | 'feel_more'>>,
+): Promise<WeeklyReset> {
+  const { data, error } = await supabase
+    .from('weekly_resets')
+    .upsert({ user_id: userId, week_start: weekStart, ...patch, updated_at: new Date().toISOString() }, { onConflict: 'user_id,week_start' })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as WeeklyReset;
 }
 
 export async function updateTask(

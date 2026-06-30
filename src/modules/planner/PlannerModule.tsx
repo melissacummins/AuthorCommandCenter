@@ -16,7 +16,7 @@ import {
   CalendarClock, Layers, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
-  CopyPlus, Check, Users as UsersIcon,
+  CopyPlus, Check, Users as UsersIcon, RotateCcw,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -25,6 +25,7 @@ import StatsView from './StatsView';
 import LogbookView from './LogbookView';
 import SettingsView from './SettingsView';
 import PlanView from './PlanView';
+import WeeklyResetView from './WeeklyResetView';
 import { useGoogleCalendar, type UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
 import CatalogBookPicker from '../../components/CatalogBookPicker';
@@ -34,14 +35,16 @@ import {
   getSettings, updateSettings, listDayNotes, saveDayNote as apiSaveDayNote,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
   listTimeSessions, createTimeSessions, reorderNotes,
+  getWeeklyReset, upsertWeeklyReset,
 } from './api';
 import { listPenNames, type PenName } from '../../lib/penNames';
 import { penNameClasses } from '../../components/PenNameChip';
 import {
   bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
-  elapsedMinutes, localDay, DEFAULT_DAILY_CAPACITY,
+  elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
+  type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
 
 type Selection =
@@ -53,6 +56,7 @@ type Selection =
   | { kind: 'orbit' }
   | { kind: 'stats' }
   | { kind: 'logbook' }
+  | { kind: 'reset' }
   | { kind: 'settings' };
 
 // Everything a list/calendar view needs to show Google events and turn to-dos
@@ -95,6 +99,10 @@ export default function PlannerModule() {
   const [dayJump, setDayJump] = useState<{ iso: string; n: number }>(() => ({ iso: todayISO(), n: 0 }));
   // A nudge to open a specific day in the Logbook (e.g. tapping a Stats bar).
   const [reviewJump, setReviewJump] = useState<{ iso: string; n: number }>(() => ({ iso: '', n: 0 }));
+  // Weekly Reset: the Monday being viewed + its loaded row.
+  const [resetWeek, setResetWeek] = useState<string>(() => weekStartISO(todayISO()));
+  const [weeklyReset, setWeeklyReset] = useState<WeeklyReset | null>(null);
+  const [resetLoading, setResetLoading] = useState(false);
   const today = todayISO();
   const gc = useGoogleCalendar(isAdmin);
   // Bumped whenever a time block is added/removed so the views re-fetch events.
@@ -133,6 +141,20 @@ export default function PlannerModule() {
     setTasks(prev => prev.map(t => (ids.has(t.id) ? { ...t, due_date: today } : t)));
     Promise.all(stale.map(t => updateTask(t.id, { due_date: today }))).catch(() => { /* best effort */ });
   }, [user, loading, settings?.auto_rollover, tasks]);
+
+  // Load the viewed week's reset when the Weekly Reset view is open (and on
+  // week change). Clear first so the per-week remount never shows stale text.
+  useEffect(() => {
+    if (!user || selection.kind !== 'reset') return;
+    let active = true;
+    setResetLoading(true);
+    setWeeklyReset(null);
+    getWeeklyReset(user.id, resetWeek)
+      .then(r => { if (active) setWeeklyReset(r); })
+      .catch(e => { if (active) setError((e as Error)?.message ?? 'Could not load your weekly reset.'); })
+      .finally(() => { if (active) setResetLoading(false); });
+    return () => { active = false; };
+  }, [user, resetWeek, selection.kind]);
 
   const notesById = useMemo(() => Object.fromEntries(notes.map(n => [n.id, n])), [notes]);
   // The rail shows non-archived lists, pinned ones floated to the top. Archived
@@ -414,6 +436,43 @@ export default function PlannerModule() {
     } catch (e) { setError((e as Error)?.message ?? 'Could not log the block.'); }
   }
 
+  // ---- Weekly Reset ----
+
+  // Persist a reflective field (optimistic), keyed to the viewed week.
+  async function saveReflective(patch: Partial<Pick<WeeklyReset, 'wins' | 'not_done' | 'drained' | 'feel_more'>>) {
+    if (!user) return;
+    const week = resetWeek;
+    setWeeklyReset(prev => ({
+      user_id: user.id, week_start: week, wins: '', not_done: '', drained: '', feel_more: '',
+      created_at: prev?.created_at ?? '', ...(prev ?? {}), ...patch, updated_at: new Date().toISOString(),
+    }));
+    try { const r = await upsertWeeklyReset(user.id, week, patch); setWeeklyReset(cur => (cur && cur.week_start === week ? r : cur)); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not save your weekly reset.'); }
+  }
+
+  // Turn approved reset drafts into to-dos, tagged with the week + section so
+  // Planning can surface them. Priorities are flagged Important; meetings keep
+  // their date; brain dump / feel-good / quick land in Anytime. Returns the count.
+  async function createResetTasks(draft: ResetTranscription): Promise<number> {
+    if (!user) return 0;
+    const inputs: Parameters<typeof createTask>[1][] = [];
+    const add = (section: ResetSection, items: ResetDraftItem[], extra: (it: ResetDraftItem) => object) => {
+      for (const it of items) {
+        const title = it.text.trim();
+        if (title) inputs.push({ title, due_date: null, reset_week: resetWeek, reset_section: section, ...extra(it) });
+      }
+    };
+    add('brain_dump', draft.brain_dump, it => ({ estimate_minutes: it.estimate_minutes ?? null }));
+    add('priorities', draft.priorities, it => ({ flagged: true, estimate_minutes: it.estimate_minutes ?? null }));
+    add('feel_good', draft.feel_good, () => ({}));
+    add('quick', draft.quick, it => ({ estimate_minutes: it.estimate_minutes ?? null }));
+    add('meetings', draft.meetings, it => ({ due_date: it.date ?? null }));
+    if (!inputs.length) return 0;
+    const created = await Promise.all(inputs.map(i => createTask(user.id, i)));
+    setTasks(prev => [...prev, ...created]);
+    return created.length;
+  }
+
   async function reorder(updates: { id: string; sort_order: number }[]) {
     setTasks(prev => {
       const byId = new Map(updates.map(u => [u.id, u.sort_order]));
@@ -631,6 +690,15 @@ export default function PlannerModule() {
             <span className="flex-1 text-left">Planning</span>
           </button>
           <button
+            onClick={() => choose({ kind: 'reset' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+              selection.kind === 'reset' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            }`}
+          >
+            <RotateCcw className="w-4 h-4 text-violet-500" />
+            <span className="flex-1 text-left">Weekly Reset</span>
+          </button>
+          <button
             onClick={() => choose({ kind: 'logbook' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
               selection.kind === 'logbook' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
@@ -788,6 +856,22 @@ export default function PlannerModule() {
             onOpenList={id => choose({ kind: 'note', id })}
             onOpenDay={openDay}
           />
+        ) : selection.kind === 'reset' ? (
+          resetLoading ? (
+            <div className="p-8 text-slate-400">Loading your weekly reset…</div>
+          ) : (
+            <WeeklyResetView
+              key={resetWeek}
+              weekStart={resetWeek}
+              today={today}
+              reset={weeklyReset}
+              onPrevWeek={() => setResetWeek(w => addDaysISO(w, -7))}
+              onNextWeek={() => setResetWeek(w => addDaysISO(w, 7))}
+              onThisWeek={() => setResetWeek(weekStartISO(today))}
+              onSaveReflective={saveReflective}
+              onCreateTasks={createResetTasks}
+            />
+          )
         ) : selection.kind === 'settings' ? (
           <SettingsView
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}

@@ -2,10 +2,11 @@
 // user's to-dos, asks Claude (via plannerComplete) for a realistic, gentle
 // plan as STRICT JSON, and parses it defensively back into AiResult. The host
 // components own the loading/error/result state and apply the picks.
-import { plannerComplete } from './ai';
+import { plannerComplete, type PlannerImage } from './ai';
 import {
   addDaysISO, formatMinutes, phaseInfo,
   type PlannerNote, type PlannerSettings, type PlannerTask,
+  type ResetTranscription, type ResetDraftItem,
 } from './types';
 
 // One suggested move: a task id, a short human reason, and (for day/triage) the
@@ -191,4 +192,64 @@ export async function suggestOrbitPicks(
     candidates.map(t => serializeTask(t, notesById)).join('\n') || '(none)',
   ].join('\n');
   return ask(prompt, candidates);
+}
+
+// 4. Weekly Reset transcription — read photo(s) of a handwritten weekly reset
+// and return its sections as structured JSON. Reflective sections come back as
+// prose; actionable sections as item lists. Anything guessed is flagged
+// `uncertain` so the user can confirm it before it becomes a to-do.
+const RESET_SYSTEM =
+  'You transcribe photos of a handwritten WEEKLY RESET planning page into JSON. '
+  + 'Respond with ONLY a JSON object — no prose, no markdown fences — matching exactly: '
+  + '{"wins": string, "not_done": string, "drained": string, "feel_more": string, '
+  + '"brain_dump": [{"text": string, "uncertain": boolean}], '
+  + '"priorities": [{"text": string, "estimate_minutes": number|null, "uncertain": boolean}], '
+  + '"feel_good": [{"text": string, "uncertain": boolean}], '
+  + '"quick": [{"text": string, "estimate_minutes": number|null, "uncertain": boolean}], '
+  + '"meetings": [{"text": string, "date": string|null, "uncertain": boolean}]}. '
+  + 'Match the page\'s sections by MEANING, not exact wording. Reflective sections (wins from last week; what I '
+  + 'did not do; what drained my time; what I want to feel more of) are prose strings — preserve line breaks with \\n. '
+  + 'Actionable sections are item lists: brain dump, priorities, quick tasks, and "what would make me feel good" '
+  + '(fold any "things weighing on me" into feel_good). Meetings get a "date" as YYYY-MM-DD only if one is written '
+  + '(use the current year if the year is omitted), else null. Put a duration in estimate_minutes only if written. '
+  + 'Set "uncertain": true for any item or word you had to guess from unclear handwriting. Omit sections that are '
+  + 'absent (empty string or empty array). Transcribe faithfully; do not invent items.';
+
+function asStr(v: unknown): string { return typeof v === 'string' ? v : ''; }
+
+function asItems(v: unknown): ResetDraftItem[] {
+  if (!Array.isArray(v)) return [];
+  const out: ResetDraftItem[] = [];
+  for (const it of v) {
+    if (typeof it === 'string') { if (it.trim()) out.push({ text: it.trim() }); continue; }
+    if (!it || typeof it !== 'object') continue;
+    const o = it as Record<string, unknown>;
+    const text = asStr(o.text).trim();
+    if (!text) continue;
+    out.push({
+      text,
+      estimate_minutes: typeof o.estimate_minutes === 'number' && o.estimate_minutes > 0 ? Math.round(o.estimate_minutes) : null,
+      date: typeof o.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date) ? o.date : null,
+      uncertain: !!o.uncertain,
+    });
+  }
+  return out;
+}
+
+export async function transcribeWeeklyReset(images: PlannerImage[]): Promise<ResetTranscription> {
+  const prompt = 'Transcribe this handwritten weekly reset into the required JSON. '
+    + 'If multiple photos are attached, they are pages of the same reset — merge them.';
+  const text = await plannerComplete({ prompt, system: RESET_SYSTEM, images, maxTokens: 4096 });
+  const stripped = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const first = stripped.indexOf('{');
+  const last = stripped.lastIndexOf('}');
+  if (first === -1 || last <= first) throw new Error('Couldn’t read that photo — try a clearer, flatter, well-lit picture.');
+  let data: Record<string, unknown>;
+  try { data = JSON.parse(stripped.slice(first, last + 1)) as Record<string, unknown>; }
+  catch { throw new Error('Couldn’t read that photo — try a clearer, flatter, well-lit picture.'); }
+  return {
+    wins: asStr(data.wins), not_done: asStr(data.not_done), drained: asStr(data.drained), feel_more: asStr(data.feel_more),
+    brain_dump: asItems(data.brain_dump), priorities: asItems(data.priorities),
+    feel_good: asItems(data.feel_good), quick: asItems(data.quick), meetings: asItems(data.meetings),
+  };
 }

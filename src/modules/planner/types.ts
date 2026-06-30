@@ -74,6 +74,10 @@ export interface PlannerTask {
   // timer is going (null when stopped). Only one to-do runs at a time.
   actual_minutes: number;
   timer_started_at: string | null;
+  // When this to-do was captured from a Weekly Reset: the Monday of that reset's
+  // week and which section it came from. null for ordinary to-dos.
+  reset_week?: string | null;
+  reset_section?: ResetSection | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -140,6 +144,63 @@ export interface PlannerTimeSession {
   ended_at: string;
   minutes: number;
   created_at: string;
+}
+
+// ---- Weekly Reset ---------------------------------------------------------
+// A once-a-week reflection + capture, keyed to the Monday of its week. The
+// reflective prose lives in this row; the actionable items it produces become
+// tagged planner_tasks (see reset_week / reset_section on PlannerTask).
+export interface WeeklyReset {
+  user_id: string;
+  week_start: string; // YYYY-MM-DD (Monday)
+  wins: string;
+  not_done: string;
+  drained: string;
+  feel_more: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// The actionable sections — each becomes to-dos when the reset is approved.
+// 'priorities' also flag the to-do Important; 'meetings' may carry a date.
+export type ResetSection = 'brain_dump' | 'priorities' | 'feel_good' | 'quick' | 'meetings';
+
+export const RESET_SECTIONS: { key: ResetSection; label: string; hint: string }[] = [
+  { key: 'brain_dump', label: 'Brain dump', hint: 'Everything on your mind → to-dos' },
+  { key: 'priorities', label: 'Priorities', hint: 'Become Important-flagged to-dos' },
+  { key: 'feel_good', label: 'What would make me feel good', hint: 'Including things weighing on you' },
+  { key: 'quick', label: 'Quick tasks', hint: 'Small things to slot into gaps' },
+  { key: 'meetings', label: 'Meetings', hint: 'Become dated to-dos' },
+];
+
+// One draft item from transcription (before it's approved into a to-do).
+// `uncertain` marks a guess for the human to confirm.
+export interface ResetDraftItem {
+  text: string;
+  estimate_minutes?: number | null;
+  date?: string | null; // YYYY-MM-DD (meetings)
+  uncertain?: boolean;
+}
+
+// The full structured transcription of a reset photo (or a manually built draft).
+export interface ResetTranscription {
+  wins: string;
+  not_done: string;
+  drained: string;
+  feel_more: string;
+  brain_dump: ResetDraftItem[];
+  priorities: ResetDraftItem[];
+  feel_good: ResetDraftItem[];
+  quick: ResetDraftItem[];
+  meetings: ResetDraftItem[];
+}
+
+// The Monday (local) of the week containing the given YYYY-MM-DD.
+export function weekStartISO(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  const dow = (d.getDay() + 6) % 7; // 0 = Monday
+  d.setDate(d.getDate() - dow);
+  return toISO(d);
 }
 
 // Tracked minutes per day over the window, from the session log (by started_at).

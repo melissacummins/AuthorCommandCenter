@@ -45,11 +45,15 @@ export async function removeAnthropicKey(): Promise<void> {
   }
 }
 
+// A photo to transcribe: base64 (no data: prefix) + its media type.
+export interface PlannerImage { data: string; media_type: string }
+
 export interface PlannerCompleteInput {
   prompt: string;
   system?: string;
   model?: string;
   maxTokens?: number;
+  images?: PlannerImage[];
 }
 
 export async function plannerComplete(input: PlannerCompleteInput): Promise<string> {
@@ -62,6 +66,7 @@ export async function plannerComplete(input: PlannerCompleteInput): Promise<stri
       system: input.system,
       model: input.model,
       max_tokens: input.maxTokens,
+      images: input.images,
     }),
   });
   const json = await res.json().catch(() => ({})) as { text?: string; error?: string };
