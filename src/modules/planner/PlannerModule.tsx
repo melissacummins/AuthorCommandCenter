@@ -44,6 +44,7 @@ import {
   elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
+  dedupeResetDraft,
   type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
 
@@ -453,8 +454,11 @@ export default function PlannerModule() {
   // Turn approved reset drafts into to-dos, tagged with the week + section so
   // Planning can surface them. Priorities are flagged Important; meetings keep
   // their date; brain dump / feel-good / quick land in Anytime. Returns the count.
-  async function createResetTasks(draft: ResetTranscription): Promise<number> {
+  async function createResetTasks(rawDraft: ResetTranscription): Promise<number> {
     if (!user) return 0;
+    // De-dupe across sections so a "pulled out" brain-dump item becomes one
+    // to-do in its most specific section, not a duplicate.
+    const draft = dedupeResetDraft(rawDraft);
     const inputs: Parameters<typeof createTask>[1][] = [];
     const add = (section: ResetSection, items: ResetDraftItem[], extra: (it: ResetDraftItem) => object) => {
       for (const it of items) {

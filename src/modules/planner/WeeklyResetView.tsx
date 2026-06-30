@@ -6,7 +6,8 @@ import {
 import { transcribeWeeklyReset } from './aiAssist';
 import type { PlannerImage } from './ai';
 import {
-  RESET_SECTIONS, type ResetSection, type ResetDraftItem, type ResetTranscription, type WeeklyReset,
+  RESET_SECTIONS, dedupeResetDraft,
+  type ResetSection, type ResetDraftItem, type ResetTranscription, type WeeklyReset,
 } from './types';
 
 // The Weekly Reset: a once-a-week reflection + capture. Reflective sections are
@@ -102,8 +103,9 @@ export default function WeeklyResetView({
       };
       setRefl(merged);
       onSaveReflective(merged);
-      // Actionable items → append to the draft for review.
-      setDraft(d => ({
+      // Actionable items → append to the draft, then de-dupe so an item that
+      // appears in the brain dump AND a more specific section shows up once.
+      setDraft(d => dedupeResetDraft({
         ...d,
         brain_dump: [...d.brain_dump, ...t.brain_dump],
         priorities: [...d.priorities, ...t.priorities],
@@ -226,7 +228,7 @@ export default function WeeklyResetView({
       {saved != null && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           <Check className="w-4 h-4 shrink-0" />
-          Created {saved} to-do{saved === 1 ? '' : 's'} — find them in your planner, and drag them onto days in Planning.
+          Created {saved} to-do{saved === 1 ? '' : 's'} — find them in your planner. Open any to-do and use Schedule to put it on a day.
         </div>
       )}
 

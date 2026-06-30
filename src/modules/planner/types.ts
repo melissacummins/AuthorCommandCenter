@@ -195,6 +195,33 @@ export interface ResetTranscription {
   meetings: ResetDraftItem[];
 }
 
+// Collapse the same item appearing in more than one section down to a single
+// copy in its most specific section, so "pulling" a brain-dump item into
+// Priorities/Quick/Feel-good doesn't create duplicate to-dos. Blank rows (a
+// manual input not yet typed) are always kept. Precedence, most specific first:
+// meetings → priorities → quick → feel_good → brain_dump.
+export function dedupeResetDraft(t: ResetTranscription): ResetTranscription {
+  const seen = new Set<string>();
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').replace(/[.,;:!?]+$/, '').trim();
+  const take = (items: ResetDraftItem[]): ResetDraftItem[] => {
+    const out: ResetDraftItem[] = [];
+    for (const it of items) {
+      const key = norm(it.text);
+      if (!key) { out.push(it); continue; } // keep empty manual rows
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(it);
+    }
+    return out;
+  };
+  const meetings = take(t.meetings);
+  const priorities = take(t.priorities);
+  const quick = take(t.quick);
+  const feel_good = take(t.feel_good);
+  const brain_dump = take(t.brain_dump);
+  return { ...t, meetings, priorities, quick, feel_good, brain_dump };
+}
+
 // The Monday (local) of the week containing the given YYYY-MM-DD.
 export function weekStartISO(iso: string): string {
   const d = new Date(iso + 'T00:00:00');
