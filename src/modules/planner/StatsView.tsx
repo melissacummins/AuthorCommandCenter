@@ -49,7 +49,8 @@ export default function StatsView({
         if (!t.someday && t.due_date && t.due_date < today) overdue += 1;
       }
       if (localDay(t.created_at) >= from) created += 1;
-      if (t.done && t.done_at && localDay(t.done_at) >= from) {
+      const doneTs = t.done ? (t.done_at ?? t.updated_at ?? t.created_at) : null;
+      if (doneTs && localDay(doneTs) >= from) {
         done += 1;
         est += t.estimate_minutes ?? 0;
         if (t.estimate_minutes) sized += 1;

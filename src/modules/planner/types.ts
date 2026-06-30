@@ -532,8 +532,10 @@ export interface DayStat { day: string; done: number; estMinutes: number; tracke
 export function productivitySeries(tasks: PlannerTask[], today: string, days: number): DayStat[] {
   const by: Record<string, DayStat> = {};
   for (const t of tasks) {
-    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
-    const day = localDay(t.done_at);
+    if (t.kind !== 'task' || !t.done) continue;
+    const ts = t.done_at ?? t.updated_at ?? t.created_at;
+    if (!ts) continue;
+    const day = localDay(ts);
     const row = (by[day] ??= { day, done: 0, estMinutes: 0, trackedMinutes: 0 });
     row.done += 1;
     row.estMinutes += t.estimate_minutes ?? 0;
@@ -583,11 +585,15 @@ export function reviewDays(tasks: PlannerTask[], sessions: PlannerTimeSession[])
     ((work[day] ??= {})[s.task_id] ??= []).push({ started_at: s.started_at, ended_at: s.ended_at, minutes: s.minutes });
   }
 
-  // day -> ids of to-dos completed that day
+  // day -> ids of to-dos completed that day. A completed to-do should ALWAYS be
+  // findable here, so if done_at is somehow missing we fall back to updated_at /
+  // created_at rather than dropping it — "if it's done, it's recorded."
   const completed: Record<string, Set<string>> = {};
   for (const t of tasks) {
-    if (t.kind !== 'task' || !t.done || !t.done_at) continue;
-    (completed[localDay(t.done_at)] ??= new Set()).add(t.id);
+    if (t.kind !== 'task' || !t.done) continue;
+    const ts = t.done_at ?? t.updated_at ?? t.created_at;
+    if (!ts) continue;
+    (completed[localDay(ts)] ??= new Set()).add(t.id);
   }
 
   const out: ReviewDay[] = [];
