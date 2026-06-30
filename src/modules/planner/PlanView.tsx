@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CalendarRange, ChevronLeft, ChevronRight, Star, Clock } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, Star, Clock, RotateCcw } from 'lucide-react';
 import {
   DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -55,6 +55,15 @@ export default function PlanView({
     }
     return m;
   }, [tasks]);
+
+  // To-dos captured from a Weekly Reset that aren't on a day yet — shown in a
+  // tray you drag onto a day (flagged priorities float to the front).
+  const resetTray = useMemo(
+    () => tasks
+      .filter(t => t.kind === 'task' && !t.done && !t.someday && !t.due_date && !!t.reset_week)
+      .sort((a, b) => Number(b.flagged) - Number(a.flagged)),
+    [tasks],
+  );
 
   // Planned minutes for a day (time blocks + loose estimates), for the capacity hint.
   function plannedOn(day: string): number {
@@ -159,6 +168,21 @@ export default function PlanView({
                 />
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Unscheduled items from a Weekly Reset — drag one onto a day above. */}
+        {resetTray.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-slate-200">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <RotateCcw className="w-3.5 h-3.5 text-violet-500" /> From your weekly reset
+              <span className="normal-case font-normal tracking-normal text-slate-300">— drag onto a day (or use a to-do’s Schedule menu on mobile)</span>
+            </p>
+            <ul className="flex flex-wrap gap-2">
+              {resetTray.map(t => (
+                <TaskChip key={t.id} task={t} notesById={notesById} today={today} onOpenDay={onOpenDay} />
+              ))}
+            </ul>
           </div>
         )}
       </DndContext>

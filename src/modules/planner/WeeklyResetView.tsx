@@ -228,7 +228,7 @@ export default function WeeklyResetView({
       {saved != null && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           <Check className="w-4 h-4 shrink-0" />
-          Created {saved} to-do{saved === 1 ? '' : 's'} — find them in your planner. Open any to-do and use Schedule to put it on a day.
+          Created {saved} to-do{saved === 1 ? '' : 's'} in this week’s <span className="font-medium">Weekly Reset</span> list (under Lists). Schedule them onto days in Planning — drag on desktop, or use a to-do’s Schedule menu on your phone.
         </div>
       )}
 
