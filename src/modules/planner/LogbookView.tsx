@@ -143,7 +143,10 @@ const DayCard = forwardRef<HTMLDivElement, {
             entry={e}
             day={day.day}
             listName={e.task.note_id ? (notesById[e.task.note_id]?.title.trim() || 'Untitled list') : undefined}
-            onOpen={() => (e.task.note_id ? onOpenList(e.task.note_id) : onOpenDay(day.day))}
+            // Open where the to-do actually lives: its list, else the day it's
+            // scheduled on (not the day it happened to be worked, which may be
+            // different and would land on an empty My Day).
+            onOpen={() => (e.task.note_id ? onOpenList(e.task.note_id) : onOpenDay(e.task.due_date ?? day.day))}
             onPatch={onPatch}
             onDelete={onDelete}
           />
