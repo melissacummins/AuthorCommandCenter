@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CalendarRange, ChevronLeft, ChevronRight, ChevronDown, Star, Clock, RotateCcw } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, ChevronDown, Star, Clock, RotateCcw, Check } from 'lucide-react';
 import {
   DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -52,12 +52,16 @@ export default function PlanView({
   const [trayOpen, setTrayOpen] = useState(true);
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set<string>(['Priorities']));
 
-  // Open, scheduled to-dos grouped by their due day.
+  // Scheduled to-dos grouped by their due day — including completed ones, so a
+  // day shows what you PLANNED and what you DID. Open to-dos sort before done.
   const byDay = useMemo(() => {
     const m: Record<string, PlannerTask[]> = {};
     for (const t of tasks) {
-      if (t.kind !== 'task' || t.done || t.someday || !t.due_date) continue;
+      if (t.kind !== 'task' || t.someday || !t.due_date) continue;
       (m[t.due_date] ??= []).push(t);
+    }
+    for (const day of Object.keys(m)) {
+      m[day].sort((a, b) => (Number(a.done) - Number(b.done)) || (a.sort_order - b.sort_order));
     }
     return m;
   }, [tasks]);
@@ -91,9 +95,10 @@ export default function PlanView({
     setOpenSections(prev => { const n = new Set(prev); n.has(label) ? n.delete(label) : n.add(label); return n; });
   }
 
-  // Planned minutes for a day (time blocks + loose estimates), for the capacity hint.
+  // Planned minutes for a day (time blocks + loose estimates), for the capacity
+  // hint. Completed to-dos don't count as planned load.
   function plannedOn(day: string): number {
-    const dayTasks = byDay[day] ?? [];
+    const dayTasks = (byDay[day] ?? []).filter(t => !t.done);
     let planned = 0;
     for (const b of blocks.filter(b => b.day === day)) planned += blockMinutes(b, dayTasks.filter(t => t.block_id === b.id));
     for (const t of dayTasks) if (!t.block_id) planned += t.estimate_minutes ?? 0;
@@ -352,10 +357,12 @@ function TaskChip({
       onClick={() => task.due_date && onOpenDay(task.due_date)}
       className={`group flex items-center gap-1.5 text-xs rounded-lg border border-slate-200 bg-white px-2 py-1 cursor-grab active:cursor-grabbing hover:border-slate-300 ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
     >
-      {task.flagged
-        ? <Star className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor" />
-        : <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />}
-      <span className="flex-1 truncate text-slate-700">{task.title || 'Untitled'}</span>
+      {task.done
+        ? <Check className="w-3 h-3 text-teal-500 shrink-0" />
+        : task.flagged
+          ? <Star className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor" />
+          : <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />}
+      <span className={`flex-1 truncate ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title || 'Untitled'}</span>
       {showDay && task.due_date && (
         <span className={`shrink-0 ${overdue ? 'text-rose-500' : 'text-slate-400'}`}>
           {new Date(task.due_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' })}
