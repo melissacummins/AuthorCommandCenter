@@ -113,7 +113,10 @@ export default function WeeklyResetView({
     if (itemCount === 0) return;
     setBusy(true); setError(null);
     try {
-      const n = await onCreateTasks(draft);
+      // Carry the (edited) journal answers along so they can be snapshotted onto
+      // the generated list — the draft's own reflective fields aren't kept in
+      // sync with the textareas.
+      const n = await onCreateTasks({ ...draft, wins: refl.wins, not_done: refl.not_done, drained: refl.drained, feel_more: refl.feel_more });
       setDraft(EMPTY_DRAFT);
       setSaved(n);
     } catch (e) {

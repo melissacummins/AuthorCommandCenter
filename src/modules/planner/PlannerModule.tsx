@@ -522,6 +522,24 @@ export default function PlannerModule() {
     }
     if (createdNote) setNotes(prev => [createdNote as PlannerNote, ...prev]);
     setTasks(prev => [...prev, ...created]);
+
+    // Put the journal answers on the list itself (its notes), so the list is a
+    // complete record: reflections at the top, tasks underneath. Snapshotted at
+    // approval; refreshed if you approve again.
+    const journal = ([
+      ['Wins from last week', rawDraft.wins],
+      ['What I didn’t do last week', rawDraft.not_done],
+      ['What drained my time', rawDraft.drained],
+      ['What I want to feel more of', rawDraft.feel_more],
+    ] as [string, string][])
+      .filter(([, v]) => (v ?? '').trim())
+      .map(([label, v]) => `${label}:\n${v.trim()}`)
+      .join('\n\n');
+    if (journal) {
+      setNotes(prev => prev.map(n => (n.id === listId ? { ...n, body: journal } : n)));
+      updateNote(listId, { body: journal }).catch(() => { /* best effort */ });
+    }
+
     return created.filter(t => t.kind === 'task').length;
   }
 
