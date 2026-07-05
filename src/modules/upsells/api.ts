@@ -75,7 +75,7 @@ export async function getOffers(): Promise<UpsellOffer[]> {
 // The widget payload is keyed strictly by variant id + handle — never by
 // image or price — so editing a product in Shopify can't break the offer.
 export function buildMetafieldValue(
-  offer: Pick<UpsellOfferDraft, 'heading' | 'enabled' | 'addons' | 'discount_enabled' | 'discount_type' | 'discount_value' | 'discount_text'>,
+  offer: Pick<UpsellOfferDraft, 'heading' | 'enabled' | 'addons' | 'discount_enabled' | 'discount_type' | 'discount_value' | 'discount_text' | 'discount_includes_trigger'>,
   discountCode: string | null,
 ): string {
   const live = offer.enabled;
@@ -90,6 +90,9 @@ export function buildMetafieldValue(
           // pct drives the strikethrough price math in Liquid; fixed-value
           // discounts show the text only (the exact split is checkout's job)
           pct: offer.discount_type === 'percentage' ? offer.discount_value : null,
+          // bundle-style: the trigger product is discounted too, so the
+          // widget prices it (and pre-checks add-ons) accordingly
+          trigger: offer.discount_includes_trigger,
         }
       : null,
     addons: live
@@ -125,12 +128,16 @@ async function deleteDiscount(gid: string): Promise<void> {
 }
 
 async function createDiscount(draft: UpsellOfferDraft, code: string): Promise<string> {
+  const entitled = draft.addons.map(a => String(a.product_id));
+  if (draft.discount_includes_trigger) {
+    entitled.push(draft.shopify_product_id);
+  }
   const data = await callShopifyProxy('create_discount', {
     code,
     title: `Add-on discount: ${draft.product_title}`,
     value_type: draft.discount_type,
     value: String(draft.discount_value),
-    product_ids: draft.addons.map(a => String(a.product_id)),
+    product_ids: entitled,
     combines_product: draft.discount_combines_product,
     combines_order: draft.discount_combines_order,
     combines_shipping: draft.discount_combines_shipping,
@@ -206,6 +213,7 @@ export async function saveOffer(draft: UpsellOfferDraft): Promise<UpsellOffer> {
       discount_type: draft.discount_type,
       discount_value: draft.discount_value,
       discount_text: draft.discount_text,
+      discount_includes_trigger: draft.discount_includes_trigger,
       discount_combines_product: draft.discount_combines_product,
       discount_combines_order: draft.discount_combines_order,
       discount_combines_shipping: draft.discount_combines_shipping,

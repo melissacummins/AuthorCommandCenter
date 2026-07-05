@@ -42,6 +42,9 @@ export interface UpsellDiscount {
   discount_type: DiscountType;
   discount_value: number;
   discount_text: string;
+  // Bundle-style: the code also covers the trigger product itself
+  // (frequently-bought-together semantics), not just the add-ons.
+  discount_includes_trigger: boolean;
   discount_combines_product: boolean;
   discount_combines_order: boolean;
   discount_combines_shipping: boolean;

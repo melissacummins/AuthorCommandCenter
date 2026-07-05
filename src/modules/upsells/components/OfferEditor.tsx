@@ -28,6 +28,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
   const [discountType, setDiscountType] = useState<DiscountType>(existing?.discount_type ?? 'percentage');
   const [discountValue, setDiscountValue] = useState(existing?.discount_value ? String(existing.discount_value) : '');
   const [discountText, setDiscountText] = useState(existing?.discount_text ?? '');
+  const [includesTrigger, setIncludesTrigger] = useState(existing?.discount_includes_trigger ?? false);
   const [combinesProduct, setCombinesProduct] = useState(existing?.discount_combines_product ?? false);
   const [combinesOrder, setCombinesOrder] = useState(existing?.discount_combines_order ?? false);
   const [combinesShipping, setCombinesShipping] = useState(existing?.discount_combines_shipping ?? false);
@@ -121,6 +122,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
         discount_type: discountType,
         discount_value: parsedDiscount,
         discount_text: discountText.trim(),
+        discount_includes_trigger: includesTrigger,
         discount_combines_product: combinesProduct,
         discount_combines_order: combinesOrder,
         discount_combines_shipping: combinesShipping,
@@ -335,6 +337,22 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
+
+              <label className="flex items-start gap-2 text-sm text-slate-600 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includesTrigger}
+                  onChange={e => setIncludesTrigger(e.target.checked)}
+                  className="w-4 h-4 accent-sky-600 mt-0.5"
+                />
+                <span>
+                  Bundle-style: discount also applies to the main product
+                  <span className="block text-xs text-slate-400">
+                    Like a "frequently bought together" deal — everything in the cart from this offer
+                    gets the discount, add-ons are pre-checked, and the widget's total reflects it.
+                  </span>
+                </span>
+              </label>
 
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1.5">Can combine with</label>
