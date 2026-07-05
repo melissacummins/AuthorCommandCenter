@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { LayoutDashboard, List, Plus, ShoppingCart, Settings, Truck, BookOpen, FileSpreadsheet } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { LayoutDashboard, List, Plus, ShoppingCart, Settings, Store, Truck, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { useProducts } from './hooks/useProducts';
 import { useShopifySettings } from '../orders/hooks/useShopifyOrders';
 import Dashboard from './components/Dashboard';
@@ -10,7 +11,6 @@ import PurchaseOrders from './components/PurchaseOrders';
 import BookSpecsTab from './components/BookSpecsTab';
 import PrinterQuotesTab from './components/PrinterQuotesTab';
 import OrdersDashboard from '../orders/components/OrdersDashboard';
-import ShopifySetup from '../orders/components/ShopifySetup';
 import Modal from '../../components/Modal';
 import { getPendingByProduct } from './api/purchaseOrders';
 import type { Product } from '../../lib/types';
@@ -34,7 +34,6 @@ export default function InventoryModule() {
     setShowAddProduct(false);
     setDuplicateFrom(null);
   }
-  const [showShopifySettings, setShowShopifySettings] = useState(false);
   const [pendingStock, setPendingStock] = useState<Map<string, number>>(new Map());
 
   const fetchPending = useCallback(async () => {
@@ -109,12 +108,12 @@ export default function InventoryModule() {
 
         <div className="flex gap-2">
           {tab === 'orders' && shopifySettings?.access_token && (
-            <button
-              onClick={() => setShowShopifySettings(true)}
+            <Link
+              to="/settings"
               className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
             >
               <Settings className="w-4 h-4" /> Shopify Settings
-            </button>
+            </Link>
           )}
           {(tab === 'dashboard' || tab === 'products') && (
             <button
@@ -173,10 +172,6 @@ export default function InventoryModule() {
         )}
       </Modal>
 
-      {/* Shopify Settings Modal */}
-      <Modal open={showShopifySettings} onClose={() => setShowShopifySettings(false)} title="Shopify Settings" maxWidth="max-w-lg">
-        <ShopifySetup settings={shopifySettings} onSaved={() => { refetchShopify(); setShowShopifySettings(false); }} />
-      </Modal>
     </div>
   );
 }
@@ -195,38 +190,23 @@ function OrdersTab({ shopifySettings, shopifyLoading, refetchShopify, refetchPro
     );
   }
 
-  // Not connected — show setup
+  // Not connected — the connection now lives in Settings so every
+  // Shopify-powered module manages it from one place.
   if (!shopifySettings || !shopifySettings.access_token) {
     return (
       <div className="max-w-3xl">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6">
           <h3 className="font-semibold text-slate-800 mb-1">Connect Your Shopify Store</h3>
           <p className="text-sm text-slate-500 mb-6">
-            Pull orders directly from Shopify by fulfillment location and automatically update your inventory.
+            Pull orders directly from Shopify by fulfillment location and automatically update your
+            inventory. The Shopify connection is managed in Settings and shared by all modules.
           </p>
-          <ShopifySetup settings={shopifySettings} onSaved={refetchShopify} />
-        </div>
-
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6">
-          <h3 className="font-semibold text-indigo-800 mb-3">How to get your API credentials</h3>
-          <ol className="space-y-2 text-sm text-indigo-700">
-            <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">1.</span>
-              Go to your <strong>Shopify Dev Dashboard</strong> and create or select an app
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">2.</span>
-              Under <strong>Versions</strong>, create a new version with these scopes: <code className="bg-indigo-100 px-1 rounded">read_orders</code>, <code className="bg-indigo-100 px-1 rounded">read_products</code>, <code className="bg-indigo-100 px-1 rounded">write_products</code>, <code className="bg-indigo-100 px-1 rounded">write_discounts</code>, <code className="bg-indigo-100 px-1 rounded">read_locations</code>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">3.</span>
-              Set the redirect URL to: <code className="bg-indigo-100 px-1 rounded text-xs">{window.location.origin}/shopify/callback</code>
-            </li>
-            <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">4.</span>
-              Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Settings &rarr; Credentials
-            </li>
-          </ol>
+          <Link
+            to="/settings"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+          >
+            <Store className="w-4 h-4" /> Connect Shopify in Settings
+          </Link>
         </div>
       </div>
     );

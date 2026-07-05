@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Gift, Plus, Pencil, Trash2, Loader2, AlertCircle, ExternalLink, Code2, RefreshCw,
-  Eye, MousePointerClick, ShoppingCart, BadgePercent,
+  Eye, MousePointerClick, ShoppingCart, BadgePercent, Store,
 } from 'lucide-react';
 import { getShopifySettings, getShopifyOAuthUrl } from '../orders/api';
-import ShopifySetup from '../orders/components/ShopifySetup';
 import { fetchProductCatalog, getOffers, getOfferStats, setOfferEnabled, deleteOffer } from './api';
 import OfferEditor from './components/OfferEditor';
 import ThemeSetupTab from './components/ThemeSetupTab';
@@ -100,7 +100,8 @@ export default function UpsellsModule() {
     );
   }
 
-  // Not connected yet — reuse the shared Shopify connection card.
+  // Not connected yet — the connection lives in Settings, shared by all
+  // Shopify-powered modules.
   if (!settings?.access_token) {
     return (
       <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
@@ -114,7 +115,12 @@ export default function UpsellsModule() {
               <p className="text-sm text-slate-500">Connect Shopify to manage add-on offers on your product pages.</p>
             </div>
           </div>
-          <ShopifySetup settings={settings} onSaved={loadAll} />
+          <Link
+            to="/settings"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-700"
+          >
+            <Store className="w-4 h-4" /> Connect Shopify in Settings
+          </Link>
         </div>
       </div>
     );

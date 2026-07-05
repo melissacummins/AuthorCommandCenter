@@ -23,11 +23,11 @@ export default function ShopifyCallback() {
         const result = await exchangeOAuthCode(code!);
         if (result.success) {
           setStatus('success');
-          setMessage('Shopify connected successfully! Redirecting to Orders...');
-          setTimeout(() => navigate('/orders'), 2000);
+          setMessage('Shopify connected successfully! Redirecting to Settings...');
+          setTimeout(() => navigate('/settings'), 2000);
         } else {
           setStatus('error');
-          setMessage('Failed to connect. Please try again from the Orders page.');
+          setMessage('Failed to connect. Please try again from Settings → Shopify Connection.');
         }
       } catch (err: unknown) {
         setStatus('error');
@@ -61,10 +61,10 @@ export default function ShopifyCallback() {
             <h2 className="text-lg font-semibold text-slate-800 mb-2">Connection Failed</h2>
             <p className="text-sm text-red-600 mb-4">{message}</p>
             <button
-              onClick={() => navigate('/orders')}
+              onClick={() => navigate('/settings')}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
             >
-              Back to Orders
+              Back to Settings
             </button>
           </>
         )}
