@@ -143,7 +143,7 @@ export function buildThemeSnippet(): string {
   .acc-addons__deal { margin: 0 0 14px; opacity: .75; }
   .acc-addons__card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid rgba(0,0,0,.14); border-radius: 12px; }
   .acc-addons__check { flex: none; width: 18px; height: 18px; }
-  .acc-addons__img { width: 88px; height: 88px; object-fit: contain; border-radius: 8px; flex: none; background: #fff; cursor: pointer; }
+  .acc-addons__img { width: 88px; height: 88px; object-fit: contain; border-radius: 8px; flex: none; cursor: pointer; }
   .acc-addons__card--self .acc-addons__img { cursor: default; }
   .acc-addons__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .acc-addons__title { font-weight: 500; text-align: left; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -263,9 +263,25 @@ export function buildThemeSnippet(): string {
     }
   });
 
+  // The real buy-buttons form. Themes also render a hidden payment-terms
+  // form posting to /cart/add with its own [name="id"] — matching that one
+  // would break both variant detection and the submit interception below.
+  var form = box.closest('form[action*="/cart/add"]');
+  if (!form) {
+    var candidates = document.querySelectorAll('form[action*="/cart/add"]');
+    for (var i = 0; i < candidates.length; i++) {
+      if (candidates[i].querySelector('button[name="add"], button[type="submit"], input[type="submit"]')) { form = candidates[i]; break; }
+    }
+    if (!form) {
+      for (var j = 0; j < candidates.length; j++) {
+        if (candidates[j].querySelector('[name="id"]')) { form = candidates[j]; break; }
+      }
+    }
+  }
+
   function triggerVariantId() {
-    var form = document.querySelector('form[action*="/cart/add"] [name="id"]');
-    return parseInt((form && form.value) || box.getAttribute('data-acc-tvid'), 10);
+    var input = form && form.querySelector('[name="id"]');
+    return parseInt((input && input.value) || box.getAttribute('data-acc-tvid'), 10);
   }
   function addonLines() {
     return checkedItems().map(function (el) {
@@ -300,13 +316,6 @@ export function buildThemeSnippet(): string {
   }
 
   // ---- Theme Add to cart still works: sneak checked add-ons in first ----
-  var form = box.closest('form[action*="/cart/add"]');
-  if (!form) {
-    var forms = document.querySelectorAll('form[action*="/cart/add"]');
-    for (var i = 0; i < forms.length; i++) {
-      if (forms[i].querySelector('[name="id"]')) { form = forms[i]; break; }
-    }
-  }
   if (form) {
     form.addEventListener('submit', function (e) {
       if (form.getAttribute('data-acc-done')) { form.removeAttribute('data-acc-done'); return; }
