@@ -50,7 +50,7 @@ export default function OrdersModule() {
             </li>
             <li className="flex gap-2">
               <span className="font-bold text-indigo-500 shrink-0">3.</span>
-              Under <strong>Configuration</strong>, enable these Admin API scopes: <code className="bg-indigo-100 px-1 rounded">read_orders</code>, <code className="bg-indigo-100 px-1 rounded">read_products</code>, <code className="bg-indigo-100 px-1 rounded">read_locations</code>
+              Under <strong>Configuration</strong>, enable these Admin API scopes: <code className="bg-indigo-100 px-1 rounded">read_orders</code>, <code className="bg-indigo-100 px-1 rounded">read_products</code>, <code className="bg-indigo-100 px-1 rounded">write_products</code>, <code className="bg-indigo-100 px-1 rounded">read_locations</code>
             </li>
             <li className="flex gap-2">
               <span className="font-bold text-indigo-500 shrink-0">4.</span>

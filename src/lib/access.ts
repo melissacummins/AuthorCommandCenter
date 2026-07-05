@@ -42,6 +42,7 @@ export const GATED_MODULES: { key: string; path: string; label: string }[] = [
   { key: 'finstream', path: '/finstream', label: 'Transactions' },
   { key: 'inventory', path: '/inventory', label: 'Inventory' },
   { key: 'cross-sell', path: '/cross-sell', label: 'Cross-Sell Analyzer' },
+  { key: 'upsells', path: '/upsells', label: 'Upsells' },
   { key: 'ad-alchemy', path: '/ad-alchemy', label: 'Ad Alchemy' },
   { key: 'marketing', path: '/marketing', label: 'Marketing' },
   { key: 'kdp-optimizer', path: '/kdp-optimizer', label: 'KDP Optimizer' },
