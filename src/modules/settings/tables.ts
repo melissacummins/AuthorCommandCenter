@@ -21,6 +21,9 @@ export const BACKUP_TABLES: BackupTable[] = [
   // Cross-sell
   { name: 'cross_sell_reports', label: 'Cross-sell reports', module: 'Cross-Sell' },
 
+  // Upsells
+  { name: 'upsell_offers', label: 'Upsell offers', module: 'Upsells' },
+
   // Book Tracker (tracked_books first — quarterly_updates references it)
   { name: 'tracked_books', label: 'Tracked books', module: 'Book Tracker' },
   { name: 'quarterly_updates', label: 'Quarterly updates', module: 'Book Tracker' },

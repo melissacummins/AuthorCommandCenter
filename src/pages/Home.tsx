@@ -6,7 +6,7 @@ import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
-  ChevronDown, ChevronRight, AudioLines,
+  ChevronDown, ChevronRight, AudioLines, Gift,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -74,6 +74,14 @@ const moduleByPath: Record<string, ModuleCard> = {
     icon: BarChart3,
     gradient: 'from-emerald-500 to-emerald-600',
     shadow: 'shadow-emerald-500/25',
+  },
+  '/upsells': {
+    name: 'Upsells',
+    description: 'Your own SellEasy: bundle and add-on offers on your Shopify product pages, immune to image changes.',
+    path: '/upsells',
+    icon: Gift,
+    gradient: 'from-sky-500 to-sky-600',
+    shadow: 'shadow-sky-500/25',
   },
   '/ad-alchemy': {
     name: 'Ad Alchemy',
@@ -144,7 +152,7 @@ const moduleByPath: Record<string, ModuleCard> = {
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
-  { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
+  { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
   { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 

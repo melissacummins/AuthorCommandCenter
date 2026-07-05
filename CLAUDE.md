@@ -15,7 +15,7 @@ and the same order on `src/pages/Home.tsx`:
 
 1. **Catalog** — Catalog
 2. **Finances** — Book Tracker, Profit, Financials
-3. **Operations** — Inventory, Cross-Sell Analyzer
+3. **Operations** — Inventory, Cross-Sell Analyzer, Upsells
 4. **Marketing** — Ad Alchemy, Marketing, Media, Social Media, KDP Optimizer, Links, ARCs
 
 Settings sits below the groups. Keep new modules placed inside one of

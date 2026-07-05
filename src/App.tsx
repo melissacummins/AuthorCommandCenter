@@ -13,6 +13,7 @@ import Home from './pages/Home';
 // Home) and pulls each module's code only when its route is first visited.
 const InventoryModule = lazy(() => import('./modules/inventory/InventoryModule'));
 const CrossSellModule = lazy(() => import('./modules/cross-sell/CrossSellModule'));
+const UpsellsModule = lazy(() => import('./modules/upsells/UpsellsModule'));
 const BookTrackerModule = lazy(() => import('./modules/book-tracker/BookTrackerModule'));
 const CatalogModule = lazy(() => import('./modules/catalog/CatalogModule'));
 const ProfitTrackModule = lazy(() => import('./modules/profit-track/ProfitTrackModule'));
@@ -39,6 +40,7 @@ const GATED_ELEMENTS: Record<string, ReactElement> = {
   'finstream': <FinStreamModule />,
   'inventory': <InventoryModule />,
   'cross-sell': <CrossSellModule />,
+  'upsells': <UpsellsModule />,
   'ad-alchemy': <AdAlchemyModule />,
   'marketing': <MarketingModule />,
   'kdp-optimizer': <KDPOptimizerModule />,

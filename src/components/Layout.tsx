@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen, AudioLines
+  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen, AudioLines, Gift
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -17,6 +17,7 @@ const modules = [
   { name: 'Transactions', path: '/finstream', icon: Wallet, color: 'text-cyan-400' },
   { name: 'Inventory', path: '/inventory', icon: Package, color: 'text-blue-400' },
   { name: 'Cross-Sell Analyzer', path: '/cross-sell', icon: BarChart3, color: 'text-emerald-400' },
+  { name: 'Upsells', path: '/upsells', icon: Gift, color: 'text-sky-400' },
   { name: 'Ad Alchemy', path: '/ad-alchemy', icon: Sparkles, color: 'text-orange-400' },
   { name: 'Marketing', path: '/marketing', icon: Megaphone, color: 'text-pink-400' },
   { name: 'KDP Optimizer', path: '/kdp-optimizer', icon: Search, color: 'text-rose-400' },
@@ -33,7 +34,7 @@ const modules = [
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
-  { label: 'Operations', paths: ['/inventory', '/cross-sell'] },
+  { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
   { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
