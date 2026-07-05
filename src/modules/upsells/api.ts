@@ -1,9 +1,12 @@
 import { supabase } from '../../lib/supabase';
-import type { CatalogProduct, UpsellOffer, UpsellOfferDraft } from './types';
+import type { CatalogProduct, OfferStats, UpsellOffer, UpsellOfferDraft } from './types';
 
 // The metafield the storefront widget reads. Keep in sync with snippet.ts.
 export const METAFIELD_NAMESPACE = 'author_cc';
 export const METAFIELD_KEY = 'upsells';
+// Hidden line-item property the widget stamps on add-ons it puts in the
+// cart; order sync then attributes conversions to the trigger product.
+export const ATTRIBUTION_PROPERTY = '_acc_upsell';
 
 async function getUserId() {
   const { data: { user } } = await supabase.auth.getUser();
@@ -23,6 +26,19 @@ async function callShopifyProxy(action: string, params?: Record<string, unknown>
     throw new Error(`${data.error}${details}`);
   }
   return data;
+}
+
+// GraphQL errors come back inside a 200 response; surface missing-scope
+// failures with a hint about which permission to re-authorize for.
+function throwGraphQLErrors(data: Record<string, unknown> | null | undefined, scopeHint: string) {
+  const topErrors = (data as { errors?: { message: string }[] } | null)?.errors;
+  if (topErrors?.length) {
+    const msg = topErrors.map(e => e.message).join('; ');
+    if (/access|scope|permission/i.test(msg)) {
+      throw new Error(`Shopify rejected the write — the connection is missing the ${scopeHint} permission. Use "Re-authorize with Shopify" below, then save again.`);
+    }
+    throw new Error(msg);
+  }
 }
 
 // ---- Product catalog (for the pickers) ----
@@ -58,11 +74,25 @@ export async function getOffers(): Promise<UpsellOffer[]> {
 
 // The widget payload is keyed strictly by variant id + handle — never by
 // image or price — so editing a product in Shopify can't break the offer.
-export function buildMetafieldValue(offer: Pick<UpsellOfferDraft, 'heading' | 'enabled' | 'addons'>): string {
+export function buildMetafieldValue(
+  offer: Pick<UpsellOfferDraft, 'heading' | 'enabled' | 'addons' | 'discount_enabled' | 'discount_type' | 'discount_value' | 'discount_text'>,
+  discountCode: string | null,
+): string {
+  const live = offer.enabled;
+  const hasDiscount = live && offer.discount_enabled && !!discountCode;
   return JSON.stringify({
-    version: 1,
+    version: 2,
     heading: offer.heading,
-    addons: offer.enabled
+    discount: hasDiscount
+      ? {
+          code: discountCode,
+          text: offer.discount_text,
+          // pct drives the strikethrough price math in Liquid; fixed-value
+          // discounts show the text only (the exact split is checkout's job)
+          pct: offer.discount_type === 'percentage' ? offer.discount_value : null,
+        }
+      : null,
+    addons: live
       ? offer.addons.map(a => ({ variant_id: a.variant_id, handle: a.handle, label: a.label }))
       : [],
   });
@@ -75,30 +105,89 @@ async function pushMetafield(shopifyProductId: string, value: string): Promise<v
     key: METAFIELD_KEY,
     value,
   });
-
-  // GraphQL errors come back inside a 200 response
-  const topErrors: { message: string }[] | undefined = data?.errors;
-  if (topErrors?.length) {
-    const msg = topErrors.map(e => e.message).join('; ');
-    if (/access|scope|permission/i.test(msg)) {
-      throw new Error('Shopify rejected the write — the connection is missing the write_products permission. Use "Re-authorize with Shopify" below, then save again.');
-    }
-    throw new Error(msg);
-  }
+  throwGraphQLErrors(data, 'write_products');
   const userErrors: { message: string }[] | undefined = data?.data?.metafieldsSet?.userErrors;
   if (userErrors?.length) {
     throw new Error(userErrors.map(e => e.message).join('; '));
   }
 }
 
+// ---- Discount code lifecycle ----
+
+async function deleteDiscount(gid: string): Promise<void> {
+  try {
+    const data = await callShopifyProxy('delete_discount', { gid });
+    throwGraphQLErrors(data, 'write_discounts');
+  } catch {
+    // The code may already be gone (deleted in Shopify admin) — that's the
+    // state we wanted anyway.
+  }
+}
+
+async function createDiscount(draft: UpsellOfferDraft, code: string): Promise<string> {
+  const data = await callShopifyProxy('create_discount', {
+    code,
+    title: `Add-on discount: ${draft.product_title}`,
+    value_type: draft.discount_type,
+    value: String(draft.discount_value),
+    product_ids: draft.addons.map(a => String(a.product_id)),
+    combines_product: draft.discount_combines_product,
+    combines_order: draft.discount_combines_order,
+    combines_shipping: draft.discount_combines_shipping,
+  });
+  throwGraphQLErrors(data, 'write_discounts');
+  const result = data?.data?.discountCodeBasicCreate;
+  const userErrors: { message: string }[] | undefined = result?.userErrors;
+  if (userErrors?.length) {
+    throw new Error(userErrors.map(e => e.message).join('; '));
+  }
+  const gid: string | undefined = result?.codeDiscountNode?.id;
+  if (!gid) throw new Error('Shopify did not return a discount id');
+  return gid;
+}
+
+// Readable at checkout, unique per offer (product id suffix).
+function discountCodeFor(draft: UpsellOfferDraft): string {
+  const suffix = draft.shopify_product_id.slice(-6);
+  return `ADDON-${suffix}`;
+}
+
+// Recreate-on-save keeps the Shopify code exactly in sync with the offer
+// (value, add-on list, combines-with) without diffing entitlements.
+async function reconcileDiscount(draft: UpsellOfferDraft): Promise<{ code: string | null; gid: string | null }> {
+  if (draft.discount_gid) {
+    await deleteDiscount(draft.discount_gid);
+  }
+
+  const wantsDiscount = draft.enabled && draft.discount_enabled && draft.discount_value > 0 && draft.addons.length > 0;
+  if (!wantsDiscount) return { code: null, gid: null };
+
+  let code = discountCodeFor(draft);
+  try {
+    const gid = await createDiscount(draft, code);
+    return { code, gid };
+  } catch (err: unknown) {
+    // A foreign discount may already own this code — retry once with a
+    // distinct suffix before giving up.
+    if (err instanceof Error && /in use|already|taken/i.test(err.message)) {
+      code = `${code}-${Date.now() % 1000}`;
+      const gid = await createDiscount(draft, code);
+      return { code, gid };
+    }
+    throw err;
+  }
+}
+
 export async function pushOfferToShopify(offer: UpsellOfferDraft): Promise<void> {
-  await pushMetafield(offer.shopify_product_id, buildMetafieldValue(offer));
+  await pushMetafield(offer.shopify_product_id, buildMetafieldValue(offer, offer.discount_code ?? null));
 }
 
 export async function saveOffer(draft: UpsellOfferDraft): Promise<UpsellOffer> {
-  // Push to Shopify first: if the store rejects the write (e.g. missing
-  // scope), nothing is saved locally and the error surfaces in the editor.
-  await pushOfferToShopify(draft);
+  // Order matters: discount first (so the metafield can carry the final
+  // code), metafield second, local row last — if Shopify rejects a write
+  // (e.g. missing scope), nothing half-saves locally.
+  const { code, gid } = await reconcileDiscount(draft);
+  await pushMetafield(draft.shopify_product_id, buildMetafieldValue(draft, code));
 
   const userId = await getUserId();
   const now = new Date().toISOString();
@@ -113,6 +202,15 @@ export async function saveOffer(draft: UpsellOfferDraft): Promise<UpsellOffer> {
       heading: draft.heading,
       enabled: draft.enabled,
       addons: draft.addons,
+      discount_enabled: draft.discount_enabled,
+      discount_type: draft.discount_type,
+      discount_value: draft.discount_value,
+      discount_text: draft.discount_text,
+      discount_combines_product: draft.discount_combines_product,
+      discount_combines_order: draft.discount_combines_order,
+      discount_combines_shipping: draft.discount_combines_shipping,
+      discount_code: code,
+      discount_gid: gid,
       synced_at: now,
       updated_at: now,
     }, { onConflict: 'user_id,shopify_product_id' })
@@ -127,13 +225,66 @@ export async function setOfferEnabled(offer: UpsellOffer, enabled: boolean): Pro
 }
 
 export async function deleteOffer(offer: UpsellOffer): Promise<void> {
+  if (offer.discount_gid) {
+    await deleteDiscount(offer.discount_gid);
+  }
+
   // Clear the metafield so the widget disappears from the product page,
   // then drop the local row.
-  await pushMetafield(offer.shopify_product_id, buildMetafieldValue({ heading: offer.heading, enabled: false, addons: [] }));
+  await pushMetafield(
+    offer.shopify_product_id,
+    buildMetafieldValue({ ...offer, enabled: false, addons: [] }, null),
+  );
 
   const { error } = await supabase
     .from('upsell_offers')
     .delete()
     .eq('id', offer.id);
   if (error) throw error;
+}
+
+// ---- Stats ----
+
+interface RawLineItem {
+  price?: string;
+  quantity?: number;
+  properties?: { name: string; value: string }[];
+}
+
+// Views/clicks from the widget's aggregate counters; conversions and value
+// from synced Shopify orders (Inventory → Shopify Sync), attributed via the
+// hidden line-item property the widget adds.
+export async function getOfferStats(): Promise<Record<string, OfferStats>> {
+  const stats: Record<string, OfferStats> = {};
+  const ensure = (pid: string) => (stats[pid] ??= { views: 0, clicks: 0, conversions: 0, value: 0 });
+
+  const [eventsRes, ordersRes] = await Promise.all([
+    supabase.from('upsell_events').select('shopify_product_id, event_type, count'),
+    supabase.from('shopify_orders').select('line_items'),
+  ]);
+  if (eventsRes.error) throw eventsRes.error;
+  if (ordersRes.error) throw ordersRes.error;
+
+  for (const e of eventsRes.data || []) {
+    const s = ensure(e.shopify_product_id);
+    if (e.event_type === 'view') s.views += e.count;
+    else if (e.event_type === 'click') s.clicks += e.count;
+  }
+
+  for (const order of ordersRes.data || []) {
+    const lines: RawLineItem[] = Array.isArray(order.line_items)
+      ? order.line_items
+      : (typeof order.line_items === 'string' ? JSON.parse(order.line_items) : []);
+    const triggersInOrder = new Set<string>();
+    for (const line of lines) {
+      const prop = line.properties?.find(p => p.name === ATTRIBUTION_PROPERTY);
+      if (!prop?.value) continue;
+      const s = ensure(prop.value);
+      s.value += (parseFloat(line.price || '0') || 0) * (line.quantity || 1);
+      triggersInOrder.add(prop.value);
+    }
+    for (const pid of triggersInOrder) ensure(pid).conversions += 1;
+  }
+
+  return stats;
 }

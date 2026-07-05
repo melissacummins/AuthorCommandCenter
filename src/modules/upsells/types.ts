@@ -32,7 +32,22 @@ export interface UpsellAddon {
   image: string | null;
 }
 
-export interface UpsellOffer {
+export type DiscountType = 'percentage' | 'fixed';
+
+// Discount settings for an offer. When enabled, a real Shopify discount
+// code (scoped to the add-on products) is created on save; the widget
+// applies it automatically when a shopper checks an add-on.
+export interface UpsellDiscount {
+  discount_enabled: boolean;
+  discount_type: DiscountType;
+  discount_value: number;
+  discount_text: string;
+  discount_combines_product: boolean;
+  discount_combines_order: boolean;
+  discount_combines_shipping: boolean;
+}
+
+export interface UpsellOffer extends UpsellDiscount {
   id: string;
   user_id: string;
   shopify_product_id: string;
@@ -42,13 +57,15 @@ export interface UpsellOffer {
   heading: string;
   enabled: boolean;
   addons: UpsellAddon[];
+  discount_code: string | null;
+  discount_gid: string | null;
   synced_at: string | null;
   created_at: string;
   updated_at: string;
 }
 
 // Editable subset used by the editor before a row exists.
-export interface UpsellOfferDraft {
+export interface UpsellOfferDraft extends UpsellDiscount {
   shopify_product_id: string;
   product_title: string;
   product_handle: string;
@@ -56,4 +73,16 @@ export interface UpsellOfferDraft {
   heading: string;
   enabled: boolean;
   addons: UpsellAddon[];
+  discount_code?: string | null;
+  discount_gid?: string | null;
+}
+
+// Per-offer performance numbers. Views/clicks come from the widget's
+// counter pings; conversions and value are computed from synced Shopify
+// orders whose cart lines carry the widget's attribution property.
+export interface OfferStats {
+  views: number;
+  clicks: number;
+  conversions: number;
+  value: number;
 }

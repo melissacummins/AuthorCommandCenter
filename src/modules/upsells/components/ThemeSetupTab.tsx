@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Copy, Check, ShieldCheck } from 'lucide-react';
-import { THEME_SNIPPET, INSTALL_STEPS } from '../snippet';
+import { buildThemeSnippet, INSTALL_STEPS } from '../snippet';
 
 // One-time theme install: the snippet goes in once, then every offer is
 // managed from the Offers tab — no more theme edits ever.
 export default function ThemeSetupTab() {
   const [copied, setCopied] = useState(false);
+  const snippet = useMemo(buildThemeSnippet, []);
 
   async function copySnippet() {
-    await navigator.clipboard.writeText(THEME_SNIPPET);
+    await navigator.clipboard.writeText(snippet);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -39,7 +40,7 @@ export default function ThemeSetupTab() {
           {copied ? 'Copied!' : 'Copy snippet'}
         </button>
         <pre className="bg-slate-900 text-slate-200 text-xs rounded-2xl p-5 overflow-x-auto max-h-[28rem] nice-scrollbar">
-          <code>{THEME_SNIPPET}</code>
+          <code>{snippet}</code>
         </pre>
       </div>
 

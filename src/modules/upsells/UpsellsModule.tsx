@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   Gift, Plus, Pencil, Trash2, Loader2, AlertCircle, ExternalLink, Code2, RefreshCw,
+  Eye, MousePointerClick, ShoppingCart, BadgePercent,
 } from 'lucide-react';
 import { getShopifySettings, getShopifyOAuthUrl } from '../orders/api';
 import ShopifySetup from '../orders/components/ShopifySetup';
-import { fetchProductCatalog, getOffers, setOfferEnabled, deleteOffer } from './api';
+import { fetchProductCatalog, getOffers, getOfferStats, setOfferEnabled, deleteOffer } from './api';
 import OfferEditor from './components/OfferEditor';
 import ThemeSetupTab from './components/ThemeSetupTab';
 import type { ShopifySettings } from '../../lib/types';
-import type { CatalogProduct, UpsellOffer } from './types';
+import type { CatalogProduct, OfferStats, UpsellOffer } from './types';
 
 type Tab = 'offers' | 'setup';
 
@@ -24,6 +25,7 @@ export default function UpsellsModule() {
   const [editing, setEditing] = useState<UpsellOffer | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [busyOffer, setBusyOffer] = useState<string | null>(null);
+  const [stats, setStats] = useState<Record<string, OfferStats>>({});
 
   const loadAll = useCallback(async () => {
     try {
@@ -32,6 +34,8 @@ export default function UpsellsModule() {
       if (s?.access_token) {
         const [offerRows] = await Promise.all([getOffers()]);
         setOffers(offerRows);
+        // Stats are non-critical decoration — never block the list on them.
+        getOfferStats().then(setStats).catch(() => {});
         // Catalog loads in the background — the list renders without it.
         setCatalogLoading(true);
         fetchProductCatalog()
@@ -51,6 +55,7 @@ export default function UpsellsModule() {
   async function refreshOffers() {
     try {
       setOffers(await getOffers());
+      getOfferStats().then(setStats).catch(() => {});
     } catch { /* list refresh is best-effort; the save itself already succeeded */ }
   }
 
@@ -116,7 +121,7 @@ export default function UpsellsModule() {
   }
 
   const takenProductIds = new Set(offers.filter(o => o.shopify_product_id !== editing?.shopify_product_id).map(o => o.shopify_product_id));
-  const needsReauth = /write_products/i.test(error);
+  const needsReauth = /write_products|write_discounts/i.test(error);
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
@@ -205,6 +210,7 @@ export default function UpsellsModule() {
             <div className="space-y-3">
               {offers.map(offer => {
                 const busy = busyOffer === offer.id;
+                const s = stats[offer.shopify_product_id];
                 return (
                   <div key={offer.id} className={`bg-white rounded-2xl border border-slate-200 p-4 ${offer.enabled ? '' : 'opacity-60'}`}>
                     <div className="flex items-center gap-4">
@@ -219,7 +225,21 @@ export default function UpsellsModule() {
                               {a.label || a.title}
                             </span>
                           ))}
+                          {offer.discount_enabled && (
+                            <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs">
+                              <BadgePercent className="w-3 h-3" />
+                              {offer.discount_type === 'percentage' ? `${offer.discount_value}% off` : `$${offer.discount_value} off`}
+                            </span>
+                          )}
                         </div>
+                      </div>
+
+                      {/* Stats */}
+                      <div className="hidden sm:flex items-center gap-4 shrink-0 text-xs text-slate-500">
+                        <span className="flex items-center gap-1" title="Widget views"><Eye className="w-3.5 h-3.5 text-slate-400" /> {s?.views ?? 0}</span>
+                        <span className="flex items-center gap-1" title="Add-on clicks"><MousePointerClick className="w-3.5 h-3.5 text-slate-400" /> {s?.clicks ?? 0}</span>
+                        <span className="flex items-center gap-1" title="Orders with an add-on"><ShoppingCart className="w-3.5 h-3.5 text-slate-400" /> {s?.conversions ?? 0}</span>
+                        <span className="font-semibold text-emerald-600" title="Add-on revenue">${(s?.value ?? 0).toFixed(2)}</span>
                       </div>
 
                       {/* Enabled toggle */}
@@ -274,6 +294,11 @@ export default function UpsellsModule() {
                   </div>
                 );
               })}
+              <p className="text-xs text-slate-400 px-1">
+                Views and clicks are reported by the widget on your store. Conversions and revenue
+                are counted from your synced Shopify orders (Inventory &rarr; Shopify sync), so run
+                a sync to see the latest.
+              </p>
             </div>
           )}
         </>
