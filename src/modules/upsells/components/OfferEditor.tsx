@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { Search, Trash2, ChevronUp, ChevronDown, Loader2, AlertCircle, Plus } from 'lucide-react';
+import { Search, Trash2, ChevronUp, ChevronDown, Loader2, AlertCircle, Plus, BadgePercent } from 'lucide-react';
 import Modal from '../../../components/Modal';
 import { saveOffer } from '../api';
-import type { CatalogProduct, CatalogVariant, UpsellAddon, UpsellOffer } from '../types';
+import type { CatalogProduct, CatalogVariant, DiscountType, UpsellAddon, UpsellOffer } from '../types';
 
 interface Props {
   open: boolean;
@@ -24,6 +24,13 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
   const [trigger, setTrigger] = useState<CatalogProduct | null>(null);
   const [heading, setHeading] = useState(existing?.heading ?? 'Add to your order');
   const [addons, setAddons] = useState<UpsellAddon[]>(existing?.addons ?? []);
+  const [discountEnabled, setDiscountEnabled] = useState(existing?.discount_enabled ?? false);
+  const [discountType, setDiscountType] = useState<DiscountType>(existing?.discount_type ?? 'percentage');
+  const [discountValue, setDiscountValue] = useState(existing?.discount_value ? String(existing.discount_value) : '');
+  const [discountText, setDiscountText] = useState(existing?.discount_text ?? '');
+  const [combinesProduct, setCombinesProduct] = useState(existing?.discount_combines_product ?? false);
+  const [combinesOrder, setCombinesOrder] = useState(existing?.discount_combines_order ?? false);
+  const [combinesShipping, setCombinesShipping] = useState(existing?.discount_combines_shipping ?? false);
   const [triggerQuery, setTriggerQuery] = useState('');
   const [addonQuery, setAddonQuery] = useState('');
   const [expandedProduct, setExpandedProduct] = useState<number | null>(null);
@@ -92,6 +99,9 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
   async function handleSave() {
     if (!triggerProductId) { setError('Pick the product this offer appears on.'); return; }
     if (addons.length === 0) { setError('Add at least one add-on.'); return; }
+    const parsedDiscount = parseFloat(discountValue) || 0;
+    if (discountEnabled && parsedDiscount <= 0) { setError('Enter a discount value greater than zero.'); return; }
+    if (discountEnabled && discountType === 'percentage' && parsedDiscount > 100) { setError('Percentage discount can\'t exceed 100.'); return; }
     setError('');
     setSaving(true);
     try {
@@ -107,6 +117,14 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
         heading: heading.trim() || 'Add to your order',
         enabled: existing?.enabled ?? true,
         addons,
+        discount_enabled: discountEnabled,
+        discount_type: discountType,
+        discount_value: parsedDiscount,
+        discount_text: discountText.trim(),
+        discount_combines_product: combinesProduct,
+        discount_combines_order: combinesOrder,
+        discount_combines_shipping: combinesShipping,
+        discount_gid: existing?.discount_gid ?? null,
       });
       onSaved();
       onClose();
@@ -260,6 +278,92 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
               </div>
             )}
           </div>
+        </div>
+
+        {/* Discount */}
+        <div className="border border-slate-200 rounded-xl p-4">
+          <label className="flex items-center gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={discountEnabled}
+              onChange={e => setDiscountEnabled(e.target.checked)}
+              className="w-4 h-4 accent-sky-600"
+            />
+            <BadgePercent className="w-4 h-4 text-sky-600" />
+            <span className="text-sm font-medium text-slate-700">Discount on add-ons</span>
+          </label>
+          <p className="text-xs text-slate-400 mt-1 ml-6">
+            A discount code scoped to just these add-ons is created in Shopify and applied
+            automatically when a reader checks one — they never have to type it.
+          </p>
+
+          {discountEnabled && (
+            <div className="mt-4 space-y-4 ml-6">
+              <div className="flex flex-wrap gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                  <select
+                    value={discountType}
+                    onChange={e => setDiscountType(e.target.value as DiscountType)}
+                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed value ($)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Value</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step={discountType === 'percentage' ? '1' : '0.01'}
+                    value={discountValue}
+                    onChange={e => setDiscountValue(e.target.value)}
+                    placeholder={discountType === 'percentage' ? '15' : '5.00'}
+                    className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Discount text (shown in the widget)</label>
+                <input
+                  type="text"
+                  value={discountText}
+                  onChange={e => setDiscountText(e.target.value)}
+                  placeholder="Save when you bundle"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1.5">Can combine with</label>
+                <div className="flex flex-wrap gap-4">
+                  {([
+                    ['Other product discounts', combinesProduct, setCombinesProduct],
+                    ['Order discounts', combinesOrder, setCombinesOrder],
+                    ['Shipping discounts', combinesShipping, setCombinesShipping],
+                  ] as const).map(([label, value, setter]) => (
+                    <label key={label} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={value}
+                        onChange={e => setter(e.target.checked)}
+                        className="w-4 h-4 accent-sky-600"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {existing?.discount_code && (
+                <p className="text-xs text-slate-400">
+                  Current code: <code className="bg-slate-100 px-1.5 py-0.5 rounded">{existing.discount_code}</code> — recreated automatically on every save.
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {error && (
