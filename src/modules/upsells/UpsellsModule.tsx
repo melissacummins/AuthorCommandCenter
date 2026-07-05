@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Gift, Plus, Pencil, Trash2, Loader2, AlertCircle, ExternalLink, Code2, RefreshCw,
-  Eye, MousePointerClick, ShoppingCart, BadgePercent, Store,
+  Eye, MousePointerClick, ShoppingCart, BadgePercent, Store, Search,
 } from 'lucide-react';
 import { getShopifySettings, getShopifyOAuthUrl } from '../orders/api';
 import { fetchProductCatalog, getOffers, getOfferStats, setOfferEnabled, deleteOffer } from './api';
@@ -12,6 +12,8 @@ import type { ShopifySettings } from '../../lib/types';
 import type { CatalogProduct, OfferStats, UpsellOffer } from './types';
 
 type Tab = 'offers' | 'setup';
+type SortBy = 'az' | 'za' | 'updated' | 'revenue';
+type Filter = 'all' | 'live' | 'paused' | 'discount' | 'bundle';
 
 export default function UpsellsModule() {
   const [settings, setSettings] = useState<ShopifySettings | null>(null);
@@ -26,6 +28,9 @@ export default function UpsellsModule() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [busyOffer, setBusyOffer] = useState<string | null>(null);
   const [stats, setStats] = useState<Record<string, OfferStats>>({});
+  const [query, setQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortBy>('az');
+  const [filter, setFilter] = useState<Filter>('all');
 
   const loadAll = useCallback(async () => {
     try {
@@ -129,6 +134,26 @@ export default function UpsellsModule() {
   const takenProductIds = new Set(offers.filter(o => o.shopify_product_id !== editing?.shopify_product_id).map(o => o.shopify_product_id));
   const needsReauth = /write_products|write_discounts/i.test(error);
 
+  const q = query.trim().toLowerCase();
+  const visibleOffers = useMemo(() => {
+    const list = offers.filter(o => {
+      if (filter === 'live' && !o.enabled) return false;
+      if (filter === 'paused' && o.enabled) return false;
+      if (filter === 'discount' && !o.discount_enabled) return false;
+      if (filter === 'bundle' && !o.discount_includes_trigger) return false;
+      if (!q) return true;
+      return o.product_title.toLowerCase().includes(q)
+        || o.addons.some(a => (a.label || a.title).toLowerCase().includes(q));
+    });
+    const revenue = (o: UpsellOffer) => stats[o.shopify_product_id]?.value ?? 0;
+    return list.sort((a, b) => {
+      if (sortBy === 'az') return a.product_title.localeCompare(b.product_title);
+      if (sortBy === 'za') return b.product_title.localeCompare(a.product_title);
+      if (sortBy === 'revenue') return revenue(b) - revenue(a);
+      return +new Date(b.updated_at) - +new Date(a.updated_at);
+    });
+  }, [offers, q, filter, sortBy, stats]);
+
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       {/* Header */}
@@ -214,7 +239,53 @@ export default function UpsellsModule() {
             </div>
           ) : (
             <div className="space-y-3">
-              {offers.map(offer => {
+              {/* Search / sort / filter toolbar */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    type="search"
+                    value={query}
+                    onChange={e => setQuery(e.target.value)}
+                    placeholder="Search offers by product or add-on…"
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400"
+                  />
+                </div>
+                <select
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as SortBy)}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  title="Sort offers"
+                >
+                  <option value="az">Title A–Z</option>
+                  <option value="za">Title Z–A</option>
+                  <option value="updated">Recently updated</option>
+                  <option value="revenue">Top revenue</option>
+                </select>
+                <select
+                  value={filter}
+                  onChange={e => setFilter(e.target.value as Filter)}
+                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  title="Filter offers"
+                >
+                  <option value="all">All offers</option>
+                  <option value="live">Live</option>
+                  <option value="paused">Paused</option>
+                  <option value="discount">With discount</option>
+                  <option value="bundle">Bundle-style</option>
+                </select>
+              </div>
+              {(q || filter !== 'all') && (
+                <p className="text-xs text-slate-400 px-1">
+                  Showing {visibleOffers.length} of {offers.length} offers
+                </p>
+              )}
+              {visibleOffers.length === 0 && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                  No offers match{q ? <> &ldquo;{query.trim()}&rdquo;</> : ' this filter'}.
+                </div>
+              )}
+              {visibleOffers.map(offer => {
                 const busy = busyOffer === offer.id;
                 const s = stats[offer.shopify_product_id];
                 return (
@@ -235,6 +306,7 @@ export default function UpsellsModule() {
                             <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-full text-xs">
                               <BadgePercent className="w-3 h-3" />
                               {offer.discount_type === 'percentage' ? `${offer.discount_value}% off` : `$${offer.discount_value} off`}
+                              {offer.discount_includes_trigger && ' · bundle'}
                             </span>
                           )}
                         </div>
