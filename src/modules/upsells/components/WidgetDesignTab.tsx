@@ -291,7 +291,8 @@ export default function WidgetDesignTab({ offers }: Props) {
                 <strong>{money(previewModal.price)}</strong>
               </p>
               <p className="text-sm text-slate-500">
-                On your store this shows the product&rsquo;s full description.
+                On your store this shows the product&rsquo;s full description, and shoppers can
+                flip through all of its photos.
               </p>
             </div>
           </div>
