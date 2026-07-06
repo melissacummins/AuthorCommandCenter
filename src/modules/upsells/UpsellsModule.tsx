@@ -98,6 +98,28 @@ export default function UpsellsModule() {
     }
   }
 
+  // Hooks must run on every render, so this stays above the early returns
+  // (loading / not-connected) — a conditional hook crashes React (#310).
+  const q = query.trim().toLowerCase();
+  const visibleOffers = useMemo(() => {
+    const list = offers.filter(o => {
+      if (filter === 'live' && !o.enabled) return false;
+      if (filter === 'paused' && o.enabled) return false;
+      if (filter === 'discount' && !o.discount_enabled) return false;
+      if (filter === 'bundle' && !o.discount_includes_trigger) return false;
+      if (!q) return true;
+      return o.product_title.toLowerCase().includes(q)
+        || o.addons.some(a => (a.label || a.title).toLowerCase().includes(q));
+    });
+    const revenue = (o: UpsellOffer) => stats[o.shopify_product_id]?.value ?? 0;
+    return list.sort((a, b) => {
+      if (sortBy === 'az') return a.product_title.localeCompare(b.product_title);
+      if (sortBy === 'za') return b.product_title.localeCompare(a.product_title);
+      if (sortBy === 'revenue') return revenue(b) - revenue(a);
+      return +new Date(b.updated_at) - +new Date(a.updated_at);
+    });
+  }, [offers, q, filter, sortBy, stats]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -134,26 +156,6 @@ export default function UpsellsModule() {
 
   const takenProductIds = new Set(offers.filter(o => o.shopify_product_id !== editing?.shopify_product_id).map(o => o.shopify_product_id));
   const needsReauth = /write_products|write_discounts/i.test(error);
-
-  const q = query.trim().toLowerCase();
-  const visibleOffers = useMemo(() => {
-    const list = offers.filter(o => {
-      if (filter === 'live' && !o.enabled) return false;
-      if (filter === 'paused' && o.enabled) return false;
-      if (filter === 'discount' && !o.discount_enabled) return false;
-      if (filter === 'bundle' && !o.discount_includes_trigger) return false;
-      if (!q) return true;
-      return o.product_title.toLowerCase().includes(q)
-        || o.addons.some(a => (a.label || a.title).toLowerCase().includes(q));
-    });
-    const revenue = (o: UpsellOffer) => stats[o.shopify_product_id]?.value ?? 0;
-    return list.sort((a, b) => {
-      if (sortBy === 'az') return a.product_title.localeCompare(b.product_title);
-      if (sortBy === 'za') return b.product_title.localeCompare(a.product_title);
-      if (sortBy === 'revenue') return revenue(b) - revenue(a);
-      return +new Date(b.updated_at) - +new Date(a.updated_at);
-    });
-  }, [offers, q, filter, sortBy, stats]);
 
   return (
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
