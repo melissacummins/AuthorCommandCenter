@@ -67,9 +67,10 @@ export async function exchangeOAuthCode(code: string): Promise<{ success: boolea
 
 export function getShopifyOAuthUrl(storeUrl: string, clientId: string, redirectUri: string): string {
   // write_products covers the upsell metafields the storefront widget reads,
-  // write_discounts covers the per-offer discount codes (Upsells module);
-  // everything else is read-only.
-  const scopes = 'read_orders,read_products,write_products,write_discounts,read_locations';
+  // write_discounts covers the per-offer discount codes (Upsells module),
+  // write_themes lets the app publish the widget as a theme snippet so
+  // updates never need a manual re-paste; everything else is read-only.
+  const scopes = 'read_orders,read_products,write_products,write_discounts,read_locations,read_themes,write_themes';
   return `https://${storeUrl}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}`;
 }
 

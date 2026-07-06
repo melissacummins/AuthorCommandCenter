@@ -252,6 +252,25 @@ export async function deleteOffer(offer: UpsellOffer): Promise<void> {
   if (error) throw error;
 }
 
+// ---- Theme snippet publish (one-click widget updates) ----
+
+// The theme's Custom Liquid blocks contain only {% render 'acc-addons' %};
+// the widget's actual code lives in snippets/acc-addons.liquid, which this
+// pushes to the LIVE theme — so widget updates never need a manual re-paste.
+export async function publishSnippetToTheme(snippet: string): Promise<string> {
+  const themesData = await callShopifyProxy('get_themes');
+  const themes: { id: number; name: string; role: string }[] = themesData.themes || [];
+  const main = themes.find(t => t.role === 'main');
+  if (!main) throw new Error('Could not find your live theme');
+
+  const data = await callShopifyProxy('set_theme_asset', {
+    theme_id: String(main.id),
+    value: snippet,
+  });
+  if (!data?.asset?.key) throw new Error('Shopify did not confirm the snippet write');
+  return main.name;
+}
+
 // ---- Widget design settings ----
 
 export async function getWidgetSettings(): Promise<WidgetSettings> {
