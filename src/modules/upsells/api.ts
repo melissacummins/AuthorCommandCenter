@@ -143,30 +143,34 @@ function extractDiscountGid(
   return gid;
 }
 
-// The discount only applies while the main product stays in the cart:
-// - Bundle offers discount the main product too, so it can't be a "Buy X"
-//   qualifier — instead the code covers the whole bundle but requires 2+ of
-//   its items, so a lone leftover add-on doesn't keep the discount.
-// - Add-on offers use "Buy X, Get Y": buy the main product, get the add-ons
-//   discounted. Remove the main product and the discount disappears.
+// Every offer is "Buy X, Get Y" — buy the main product, get the add-ons
+// discounted — so the discount always drops when the main product leaves the
+// cart, and the main product always shows at full price (SellEasy-style).
+// - Add-on offers: the add-ons simply take the offer's percentage/amount.
+// - Bundle offers (discount_includes_trigger): the add-ons absorb the main
+//   product's share too, so the Total equals the whole-bundle discount while
+//   the main product stays full price. That boost depends on live prices, so
+//   upsell_create_bundle_discount computes it server-side at save time.
 async function createDiscount(draft: UpsellOfferDraft, code: string): Promise<string> {
   const title = `Add-on discount: ${draft.product_title}`;
   const addonIds = draft.addons.map(a => String(a.product_id));
 
   if (draft.discount_includes_trigger) {
-    const data = await callShopifyProxy('create_discount', {
-      code,
-      title,
-      value_type: draft.discount_type,
-      value: String(draft.discount_value),
-      product_ids: [draft.shopify_product_id, ...addonIds],
-      min_quantity: 2,
-      combines_product: draft.discount_combines_product,
-      combines_order: draft.discount_combines_order,
-      combines_shipping: draft.discount_combines_shipping,
+    const { data, error } = await supabase.rpc('upsell_create_bundle_discount', {
+      p_code: code,
+      p_title: title,
+      p_buy_product_id: draft.shopify_product_id,
+      p_get_product_ids: addonIds,
+      p_pct: draft.discount_type === 'percentage' ? draft.discount_value : null,
+      p_fixed: draft.discount_type === 'fixed' ? draft.discount_value : null,
+      p_combines_product: draft.discount_combines_product,
+      p_combines_order: draft.discount_combines_order,
+      p_combines_shipping: draft.discount_combines_shipping,
     });
+    if (error) throw new Error(error.message || 'Bundle discount call failed');
+    if (data?.error) throw new Error(`${data.error}${data.details ? ` — ${data.details}` : ''}`);
     throwGraphQLErrors(data, 'write_discounts');
-    return extractDiscountGid(data, 'discountCodeBasicCreate');
+    return extractDiscountGid(data, 'discountCodeBxgyCreate');
   }
 
   const data = await callShopifyProxy('create_bxgy_discount', {

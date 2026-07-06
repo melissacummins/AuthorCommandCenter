@@ -23,7 +23,7 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v8)
+  Author Command Center — Add-ons widget (v9)
   Managed from the Upsells module. Reads product.metafields.author_cc.upsells
   (the offer) and shop.metafields.author_cc.widget (design settings saved
   from the app's Design tab — changes there apply live, no re-paste needed).
@@ -36,14 +36,15 @@ export function buildThemeSnippet(): string {
 {%- assign acc_plus = true -%}{%- if acc_cfg.show_plus == false -%}{%- assign acc_plus = false -%}{%- endif -%}
 {%- assign acc_pct = acc_offer.discount.pct | default: 0 -%}
 {%- assign acc_keep = 100 | minus: acc_pct -%}
+{%- comment -%} Bundle offers keep the main product at full price and discount
+  the whole bundle in the Total (SellEasy-style); add-on offers discount the
+  add-on lines directly. So the main product is always shown at full price. {%- endcomment -%}
+{%- assign acc_bundle = false -%}
+{%- if acc_offer.discount.trigger and acc_pct > 0 -%}{%- assign acc_bundle = true -%}{%- endif -%}
 {%- assign acc_tv = product.selected_or_first_available_variant -%}
 {%- assign acc_tprice = acc_tv.price -%}
 {%- assign acc_tcompare = acc_tv.compare_at_price | default: acc_tv.price -%}
-{%- if acc_offer.discount.trigger and acc_pct > 0 -%}
-  {%- assign acc_teff = acc_tprice | times: acc_keep | divided_by: 100.0 | round -%}
-{%- else -%}
-  {%- assign acc_teff = acc_tprice -%}
-{%- endif -%}
+{%- assign acc_teff = acc_tprice -%}
 <div class="acc-addons" data-acc-addons
   style="--acc-radius: {{ acc_cfg.radius | default: 12 }}px;{% if acc_cfg.button_bg != blank %} --acc-btn-bg: {{ acc_cfg.button_bg }};{% endif %}{% if acc_cfg.button_text != blank %} --acc-btn-text: {{ acc_cfg.button_text }};{% endif %}"
   data-acc-shop="{{ shop.permanent_domain }}"
@@ -55,6 +56,7 @@ export function buildThemeSnippet(): string {
   data-acc-cur="{{ cart.currency.iso_code }}"
   data-acc-locale="{{ request.locale.iso_code }}"
   data-acc-tvid="{{ acc_tv.id }}"
+  data-acc-bundlekeep="{% if acc_bundle %}{{ acc_keep }}{% endif %}"
   data-acc-tprice="{{ acc_teff }}"
   data-acc-twas="{{ acc_tcompare }}">
   <h3 class="acc-addons__heading">{{ acc_offer.heading | default: 'Add to your order' }}</h3>
@@ -88,7 +90,7 @@ export function buildThemeSnippet(): string {
       {%- endfor -%}
       {%- unless av -%}{%- assign av = ap.selected_or_first_available_variant -%}{%- endunless -%}
       {%- if av and av.available -%}
-      {%- if acc_pct > 0 -%}
+      {%- if acc_pct > 0 and acc_bundle == false -%}
         {%- assign acc_dprice = av.price | times: acc_keep | divided_by: 100.0 | round -%}
       {%- else -%}
         {%- assign acc_dprice = av.price -%}
@@ -263,15 +265,20 @@ export function buildThemeSnippet(): string {
   }
 
   // ---- Live total ----
+  // Bundle offers keep every line at full price and take the discount off the
+  // whole subtotal (bundlekeep = the % kept, e.g. 85 for 15% off); add-on
+  // offers already carry the discount on their own line prices.
   var totalEl = box.querySelector('[data-acc-total]');
   var wasEl = box.querySelector('[data-acc-total-was]');
+  var bundleKeep = parseInt(box.getAttribute('data-acc-bundlekeep'), 10) || 0;
   function recalc() {
-    var total = parseInt(box.getAttribute('data-acc-tprice'), 10) || 0;
+    var sub = parseInt(box.getAttribute('data-acc-tprice'), 10) || 0;
     var was = parseInt(box.getAttribute('data-acc-twas'), 10) || 0;
     checkedItems().forEach(function (el) {
-      total += parseInt(el.getAttribute('data-acc-price'), 10) || 0;
+      sub += parseInt(el.getAttribute('data-acc-price'), 10) || 0;
       was += parseInt(el.getAttribute('data-acc-was'), 10) || 0;
     });
+    var total = bundleKeep > 0 ? Math.round(sub * bundleKeep / 100) : sub;
     if (totalEl) totalEl.textContent = fmtMoney(total);
     if (wasEl) {
       if (was > total) { wasEl.textContent = fmtMoney(was); wasEl.hidden = false; }
