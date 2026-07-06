@@ -23,7 +23,7 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v4)
+  Author Command Center — Add-ons widget (v5)
   Managed from the Upsells module. Reads product.metafields.author_cc.upsells
   (the offer) and shop.metafields.author_cc.widget (design settings saved
   from the app's Design tab — changes there apply live, no re-paste needed).
@@ -122,7 +122,17 @@ export function buildThemeSnippet(): string {
         <div class="acc-modal__box" role="dialog" aria-modal="true" aria-label="{{ ap.title | escape }}">
           <button type="button" class="acc-modal__close" data-acc-close aria-label="Close">&times;</button>
           {%- if aimg -%}
-          <img class="acc-modal__img" src="{{ aimg | image_url: width: 600 }}" alt="{{ ap.title | escape }}" loading="lazy">
+          {%- assign acc_gstart = 0 -%}
+          {%- for gim in ap.images -%}{%- if gim.id == aimg.id -%}{%- assign acc_gstart = forloop.index0 -%}{%- endif -%}{%- endfor -%}
+          <div class="acc-modal__gallery" data-acc-gallery data-acc-gstart="{{ acc_gstart }}"
+            data-acc-gsrcs="{% for gim in ap.images %}{{ gim | image_url: width: 600 }}{% unless forloop.last %}|{% endunless %}{% endfor %}">
+            <img class="acc-modal__img" src="{{ aimg | image_url: width: 600 }}" alt="{{ ap.title | escape }}" loading="lazy" data-acc-gimg>
+            {%- if ap.images.size > 1 -%}
+            <button type="button" class="acc-modal__gbtn acc-modal__gbtn--prev" data-acc-gprev aria-label="Previous image">&#8249;</button>
+            <button type="button" class="acc-modal__gbtn acc-modal__gbtn--next" data-acc-gnext aria-label="Next image">&#8250;</button>
+            <span class="acc-modal__gcount" data-acc-gcount>{{ acc_gstart | plus: 1 }}/{{ ap.images.size }}</span>
+            {%- endif -%}
+          </div>
           {%- endif -%}
           <h4 class="acc-modal__title">{{ ap.title }}</h4>
           <p class="acc-modal__price">
@@ -170,11 +180,17 @@ export function buildThemeSnippet(): string {
   /* The display:flex above would otherwise defeat the hidden attribute,
      leaving an invisible full-screen layer that swallows every click. */
   .acc-modal[hidden] { display: none !important; }
-  .acc-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+  .acc-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
   .acc-modal__box { position: relative; background: #fff; color: #222; border-radius: 14px; max-width: 480px; width: calc(100% - 32px);
     max-height: 84vh; overflow-y: auto; padding: 28px 24px 24px; }
   .acc-modal__close { position: absolute; top: 8px; right: 12px; background: none; border: 0; font-size: 28px; line-height: 1; cursor: pointer; color: #444; }
+  .acc-modal__gallery { position: relative; }
   .acc-modal__img { display: block; max-width: 280px; width: 100%; margin: 0 auto 14px; }
+  .acc-modal__gbtn { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%;
+    border: 1px solid rgba(0,0,0,.15); background: rgba(255,255,255,.92); color: #222; font-size: 22px; line-height: 1; cursor: pointer; }
+  .acc-modal__gbtn--prev { left: 2px; }
+  .acc-modal__gbtn--next { right: 2px; }
+  .acc-modal__gcount { position: absolute; bottom: 20px; right: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 10px; }
   .acc-modal__title { margin: 0 0 6px; font-size: 1.15em; }
   .acc-modal__price { margin: 0 0 12px; }
   .acc-modal__price s { opacity: .55; margin-right: 6px; }
@@ -256,23 +272,67 @@ export function buildThemeSnippet(): string {
   });
 
   // ---- Pop-up product preview ----
-  box.addEventListener('click', function (e) {
-    var opener = e.target.closest ? e.target.closest('[data-acc-pop]') : null;
-    if (opener) {
-      var m = box.querySelector('[data-acc-modal="' + opener.getAttribute('data-acc-pop') + '"]');
-      if (m) m.hidden = false;
-      return;
-    }
-    var closer = e.target.closest ? e.target.closest('[data-acc-close]') : null;
-    if (closer) {
-      var open = closer.closest('.acc-modal');
-      if (open) open.hidden = true;
-    }
+  // Theme sections often carry CSS transforms (scroll animations), and
+  // position:fixed inside a transformed ancestor pins to that ancestor,
+  // not the screen — the modal would land in-flow near the description.
+  // Moving the modals to <body> restores true centered-on-screen behavior.
+  Array.prototype.slice.call(document.body.children).forEach(function (el) {
+    if (el.classList && el.classList.contains('acc-modal')) el.parentNode.removeChild(el);
+  });
+  var modals = {};
+  Array.prototype.slice.call(box.querySelectorAll('.acc-modal')).forEach(function (m) {
+    modals[m.getAttribute('data-acc-modal')] = m;
+    document.body.appendChild(m);
+  });
+  var lastOpener = null;
+  function openedModal() {
+    var open = null;
+    Object.keys(modals).forEach(function (k) { if (!modals[k].hidden) open = modals[k]; });
+    return open;
+  }
+  function openModal(key, opener) {
+    var m = modals[key];
+    if (!m) return;
+    lastOpener = opener || null;
+    m.hidden = false;
+    document.body.style.overflow = 'hidden';
+    var closeBtn = m.querySelector('.acc-modal__close');
+    if (closeBtn) closeBtn.focus();
+  }
+  function closeModals() {
+    if (!openedModal()) return;
+    Object.keys(modals).forEach(function (k) { modals[k].hidden = true; });
+    document.body.style.overflow = '';
+    if (lastOpener && lastOpener.focus) lastOpener.focus();
+    lastOpener = null;
+  }
+  function cycleGallery(gal, dir) {
+    if (!gal) return;
+    var srcs = (gal.getAttribute('data-acc-gsrcs') || '').split('|').filter(Boolean);
+    if (srcs.length < 2) return;
+    var i = parseInt(gal.getAttribute('data-acc-gi') || gal.getAttribute('data-acc-gstart') || '0', 10);
+    i = (i + dir + srcs.length) % srcs.length;
+    gal.setAttribute('data-acc-gi', String(i));
+    var img = gal.querySelector('[data-acc-gimg]');
+    if (img) img.src = srcs[i];
+    var count = gal.querySelector('[data-acc-gcount]');
+    if (count) count.textContent = (i + 1) + '/' + srcs.length;
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest) return;
+    var opener = e.target.closest('[data-acc-pop]');
+    if (opener && box.contains(opener)) { openModal(opener.getAttribute('data-acc-pop'), opener); return; }
+    var nav = e.target.closest('[data-acc-gprev], [data-acc-gnext]');
+    if (nav) { cycleGallery(nav.closest('[data-acc-gallery]'), nav.hasAttribute('data-acc-gnext') ? 1 : -1); return; }
+    var closer = e.target.closest('[data-acc-close]');
+    if (closer) closeModals();
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape') {
-      box.querySelectorAll('.acc-modal:not([hidden])').forEach(function (m) { m.hidden = true; });
-    }
+    var open = openedModal();
+    if (!open) return;
+    if (e.key === 'Escape') { closeModals(); }
+    else if (e.key === 'ArrowRight') { cycleGallery(open.querySelector('[data-acc-gallery]'), 1); }
+    else if (e.key === 'ArrowLeft') { cycleGallery(open.querySelector('[data-acc-gallery]'), -1); }
   });
 
   // The real buy-buttons form. Themes also render a hidden payment-terms
