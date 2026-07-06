@@ -2,16 +2,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Gift, Plus, Pencil, Trash2, Loader2, AlertCircle, ExternalLink, Code2, RefreshCw,
-  Eye, MousePointerClick, ShoppingCart, BadgePercent, Store, Search,
+  Eye, MousePointerClick, ShoppingCart, BadgePercent, Store, Search, Paintbrush,
 } from 'lucide-react';
 import { getShopifySettings, getShopifyOAuthUrl } from '../orders/api';
 import { fetchProductCatalog, getOffers, getOfferStats, setOfferEnabled, deleteOffer } from './api';
 import OfferEditor from './components/OfferEditor';
 import ThemeSetupTab from './components/ThemeSetupTab';
+import WidgetDesignTab from './components/WidgetDesignTab';
 import type { ShopifySettings } from '../../lib/types';
 import type { CatalogProduct, OfferStats, UpsellOffer } from './types';
 
-type Tab = 'offers' | 'setup';
+type Tab = 'offers' | 'design' | 'setup';
 type SortBy = 'az' | 'za' | 'updated' | 'revenue';
 type Filter = 'all' | 'live' | 'paused' | 'discount' | 'bundle';
 
@@ -176,7 +177,7 @@ export default function UpsellsModule() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-slate-200/70 rounded-xl p-1 w-fit">
-        {([['offers', 'Offers', Gift], ['setup', 'Theme Setup', Code2]] as const).map(([key, label, Icon]) => (
+        {([['offers', 'Offers', Gift], ['design', 'Design', Paintbrush], ['setup', 'Theme Setup', Code2]] as const).map(([key, label, Icon]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
@@ -208,6 +209,8 @@ export default function UpsellsModule() {
       )}
 
       {tab === 'setup' && <ThemeSetupTab />}
+
+      {tab === 'design' && <WidgetDesignTab offers={offers} />}
 
       {tab === 'offers' && (
         <>

@@ -80,6 +80,31 @@ export interface UpsellOfferDraft extends UpsellDiscount {
   discount_gid?: string | null;
 }
 
+// Widget design settings, saved from the Design tab. Stored in
+// upsell_widget_settings and mirrored to the shop metafield
+// author_cc.widget that the theme snippet reads — so saving here restyles
+// the live widget instantly, no theme re-paste needed. Empty color strings
+// mean "use the theme's own button colors".
+export interface WidgetSettings {
+  button_bg: string;
+  button_text: string;
+  button_label: string;
+  total_label: string;
+  radius: number;
+  show_plus: boolean;
+  popup: boolean;
+}
+
+export const DEFAULT_WIDGET_SETTINGS: WidgetSettings = {
+  button_bg: '',
+  button_text: '',
+  button_label: 'Add to cart',
+  total_label: 'Total price',
+  radius: 12,
+  show_plus: true,
+  popup: true,
+};
+
 // Per-offer performance numbers. Views/clicks come from the widget's
 // counter pings; conversions and value are computed from synced Shopify
 // orders whose cart lines carry the widget's attribution property.

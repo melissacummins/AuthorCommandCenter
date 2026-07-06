@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase';
-import type { CatalogProduct, OfferStats, UpsellOffer, UpsellOfferDraft } from './types';
+import type { CatalogProduct, OfferStats, UpsellOffer, UpsellOfferDraft, WidgetSettings } from './types';
+import { DEFAULT_WIDGET_SETTINGS } from './types';
 
 // The metafield the storefront widget reads. Keep in sync with snippet.ts.
 export const METAFIELD_NAMESPACE = 'author_cc';
@@ -248,6 +249,38 @@ export async function deleteOffer(offer: UpsellOffer): Promise<void> {
     .from('upsell_offers')
     .delete()
     .eq('id', offer.id);
+  if (error) throw error;
+}
+
+// ---- Widget design settings ----
+
+export async function getWidgetSettings(): Promise<WidgetSettings> {
+  const { data, error } = await supabase
+    .from('upsell_widget_settings')
+    .select('settings')
+    .maybeSingle();
+  if (error) throw error;
+  return { ...DEFAULT_WIDGET_SETTINGS, ...(data?.settings || {}) };
+}
+
+// Shop metafield first (that's what restyles the live store), local row
+// second — a failed Shopify write leaves nothing half-saved.
+export async function saveWidgetSettings(settings: WidgetSettings): Promise<void> {
+  const data = await callShopifyProxy('set_shop_metafield', {
+    namespace: METAFIELD_NAMESPACE,
+    key: 'widget',
+    value: JSON.stringify(settings),
+  });
+  throwGraphQLErrors(data, 'write_products');
+  const userErrors: { message: string }[] | undefined = data?.data?.metafieldsSet?.userErrors;
+  if (userErrors?.length) {
+    throw new Error(userErrors.map(e => e.message).join('; '));
+  }
+
+  const userId = await getUserId();
+  const { error } = await supabase
+    .from('upsell_widget_settings')
+    .upsert({ user_id: userId, settings, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
   if (error) throw error;
 }
 

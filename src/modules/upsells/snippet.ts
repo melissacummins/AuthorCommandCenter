@@ -23,12 +23,17 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v3)
-  Managed from the Upsells module. Reads product.metafields.author_cc.upsells.
+  Author Command Center — Add-ons widget (v4)
+  Managed from the Upsells module. Reads product.metafields.author_cc.upsells
+  (the offer) and shop.metafields.author_cc.widget (design settings saved
+  from the app's Design tab — changes there apply live, no re-paste needed).
   Paste once as a "Custom Liquid" block on the product template.
 {% endcomment %}
 {%- assign acc_offer = product.metafields.author_cc.upsells.value -%}
 {%- if acc_offer.addons.size > 0 -%}
+{%- assign acc_cfg = shop.metafields.author_cc.widget.value -%}
+{%- assign acc_popup = true -%}{%- if acc_cfg.popup == false -%}{%- assign acc_popup = false -%}{%- endif -%}
+{%- assign acc_plus = true -%}{%- if acc_cfg.show_plus == false -%}{%- assign acc_plus = false -%}{%- endif -%}
 {%- assign acc_pct = acc_offer.discount.pct | default: 0 -%}
 {%- assign acc_keep = 100 | minus: acc_pct -%}
 {%- assign acc_tv = product.selected_or_first_available_variant -%}
@@ -40,6 +45,7 @@ export function buildThemeSnippet(): string {
   {%- assign acc_teff = acc_tprice -%}
 {%- endif -%}
 <div class="acc-addons" data-acc-addons
+  style="--acc-radius: {{ acc_cfg.radius | default: 12 }}px;{% if acc_cfg.button_bg != blank %} --acc-btn-bg: {{ acc_cfg.button_bg }};{% endif %}{% if acc_cfg.button_text != blank %} --acc-btn-text: {{ acc_cfg.button_text }};{% endif %}"
   data-acc-shop="{{ shop.permanent_domain }}"
   data-acc-product="{{ product.id }}"
   data-acc-code="{{ acc_offer.discount.code }}"
@@ -86,7 +92,7 @@ export function buildThemeSnippet(): string {
         {%- assign acc_dprice = av.price -%}
       {%- endif -%}
       {%- assign acc_awas = av.compare_at_price | default: av.price -%}
-      {%- if acc_shown > 0 -%}
+      {%- if acc_shown > 0 and acc_plus -%}
       <div class="acc-addons__plus" aria-hidden="true">+</div>
       {%- endif -%}
       {%- assign acc_shown = acc_shown | plus: 1 -%}
@@ -97,10 +103,10 @@ export function buildThemeSnippet(): string {
         <input type="checkbox" class="acc-addons__check" value="{{ av.id }}"{% if acc_offer.discount.trigger %} checked{% endif %} aria-label="Add {{ ap.title | escape }}">
         {%- assign aimg = av.featured_image | default: ap.featured_image -%}
         {%- if aimg -%}
-        <img class="acc-addons__img" src="{{ aimg | image_url: width: 200 }}" alt="{{ ap.title | escape }}" loading="lazy" width="88" height="88" data-acc-pop="{{ forloop.index }}">
+        <img class="acc-addons__img" src="{{ aimg | image_url: width: 200 }}" alt="{{ ap.title | escape }}" loading="lazy" width="88" height="88"{% if acc_popup %} data-acc-pop="{{ forloop.index }}"{% endif %}>
         {%- endif -%}
         <div class="acc-addons__info">
-          <button type="button" class="acc-addons__title acc-addons__title--link" data-acc-pop="{{ forloop.index }}">
+          <button type="button" class="acc-addons__title acc-addons__title--link"{% if acc_popup %} data-acc-pop="{{ forloop.index }}"{% endif %}>
             {%- if item.label != blank -%}{{ item.label }}{%- else -%}{{ ap.title }}{%- endif -%}
           </button>
           <span class="acc-addons__prices">
@@ -110,6 +116,7 @@ export function buildThemeSnippet(): string {
           </span>
         </div>
       </div>
+      {%- if acc_popup -%}
       <div class="acc-modal" data-acc-modal="{{ forloop.index }}" hidden>
         <div class="acc-modal__backdrop" data-acc-close></div>
         <div class="acc-modal__box" role="dialog" aria-modal="true" aria-label="{{ ap.title | escape }}">
@@ -127,21 +134,22 @@ export function buildThemeSnippet(): string {
         </div>
       </div>
       {%- endif -%}
+      {%- endif -%}
     {%- endif -%}
   {%- endfor -%}
 
   <div class="acc-addons__total">
-    <span>Total price</span>
+    <span>{{ acc_cfg.total_label | default: 'Total price' }}</span>
     <strong data-acc-total></strong>
     <s data-acc-total-was hidden></s>
   </div>
-  <button type="button" class="acc-addons__atc" data-acc-atc>Add to cart</button>
+  <button type="button" class="acc-addons__atc" data-acc-atc>{{ acc_cfg.button_label | default: 'Add to cart' }}</button>
 </div>
 <style>
   .acc-addons { margin: 20px 0; }
   .acc-addons__heading { margin: 0 0 2px; font-size: 1.15em; }
   .acc-addons__deal { margin: 0 0 14px; opacity: .75; }
-  .acc-addons__card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid rgba(0,0,0,.14); border-radius: 12px; }
+  .acc-addons__card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid rgba(0,0,0,.14); border-radius: var(--acc-radius, 12px); }
   .acc-addons__check { flex: none; width: 18px; height: 18px; }
   .acc-addons__img { width: 88px; height: 88px; object-fit: contain; border-radius: 8px; flex: none; cursor: pointer; }
   .acc-addons__card--self .acc-addons__img { cursor: default; }
@@ -153,11 +161,15 @@ export function buildThemeSnippet(): string {
   .acc-addons__plus { text-align: center; padding: 4px 0; opacity: .6; }
   .acc-addons__total { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 10px; font-size: 1.1em; }
   .acc-addons__total s { opacity: .55; }
-  .acc-addons__atc { width: 100%; padding: 14px 20px; border: 0; border-radius: 8px; font-size: 1em; cursor: pointer;
-    background: rgb(var(--color-button, 65 65 65)); color: rgb(var(--color-button-text, 255 255 255)); }
+  .acc-addons__atc { width: 100%; padding: 14px 20px; border: 0; border-radius: var(--acc-radius, 12px); font-size: 1em; cursor: pointer;
+    font-family: inherit; letter-spacing: inherit;
+    background: var(--acc-btn-bg, rgb(var(--color-button, 65 65 65))); color: var(--acc-btn-text, rgb(var(--color-button-text, 255 255 255))); }
   .acc-addons__atc:hover { opacity: .9; }
   .acc-addons__atc[disabled] { opacity: .6; cursor: wait; }
   .acc-modal { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; }
+  /* The display:flex above would otherwise defeat the hidden attribute,
+     leaving an invisible full-screen layer that swallows every click. */
+  .acc-modal[hidden] { display: none !important; }
   .acc-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
   .acc-modal__box { position: relative; background: #fff; color: #222; border-radius: 14px; max-width: 480px; width: calc(100% - 32px);
     max-height: 84vh; overflow-y: auto; padding: 28px 24px 24px; }

@@ -24,6 +24,7 @@ export const BACKUP_TABLES: BackupTable[] = [
   // Upsells
   { name: 'upsell_offers', label: 'Upsell offers', module: 'Upsells' },
   { name: 'upsell_events', label: 'Upsell view/click counters', module: 'Upsells' },
+  { name: 'upsell_widget_settings', label: 'Upsell widget design', module: 'Upsells' },
 
   // Book Tracker (tracked_books first — quarterly_updates references it)
   { name: 'tracked_books', label: 'Tracked books', module: 'Book Tracker' },
