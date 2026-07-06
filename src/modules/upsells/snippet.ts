@@ -23,7 +23,7 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v9)
+  Author Command Center — Add-ons widget (v10)
   Managed from the Upsells module. Reads product.metafields.author_cc.upsells
   (the offer) and shop.metafields.author_cc.widget (design settings saved
   from the app's Design tab — changes there apply live, no re-paste needed).
@@ -387,9 +387,16 @@ export function buildThemeSnippet(): string {
       };
     });
   }
-  function applyCodeIfNeeded(hasAddons) {
-    if (code && hasAddons) { return fetch('/discount/' + encodeURIComponent(code)).catch(function () {}); }
-    return Promise.resolve();
+  // Applying a discount code with fetch('/discount/CODE') does NOT reliably
+  // attach the code to the cart — it gets lost before checkout. Navigating to
+  // /discount/CODE?redirect=/cart is Shopify's supported way and survives to
+  // checkout. With no code or no add-on, just go to the cart.
+  function goToCartWithDiscount(hasAddons) {
+    if (code && hasAddons) {
+      window.location.href = '/discount/' + encodeURIComponent(code) + '?redirect=/cart';
+    } else {
+      window.location.href = '/cart';
+    }
   }
 
   // ---- Widget Add to cart: main product + checked add-ons, then cart ----
@@ -403,30 +410,27 @@ export function buildThemeSnippet(): string {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: lines })
       }).catch(function () {}).then(function () {
-        return applyCodeIfNeeded(lines.length > 1);
-      }).then(function () {
-        window.location.href = '/cart';
+        goToCartWithDiscount(lines.length > 1);
       });
     });
   }
 
-  // ---- Theme Add to cart still works: sneak checked add-ons in first ----
+  // ---- Theme Add to cart: add the main product + checked add-ons ourselves,
+  // then navigate so the discount code sticks. Only intervene when at least
+  // one add-on is checked; otherwise let the theme add just the main product.
   if (form) {
     form.addEventListener('submit', function (e) {
-      if (form.getAttribute('data-acc-done')) { form.removeAttribute('data-acc-done'); return; }
-      var lines = addonLines();
-      if (!lines.length) return;
+      var addons = addonLines();
+      if (!addons.length) return;
       e.preventDefault();
       e.stopImmediatePropagation();
+      var lines = [{ id: triggerVariantId(), quantity: 1 }].concat(addons);
       fetch('/cart/add.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: lines })
       }).catch(function () {}).then(function () {
-        return applyCodeIfNeeded(true);
-      }).then(function () {
-        form.setAttribute('data-acc-done', '1');
-        if (form.requestSubmit) { form.requestSubmit(); } else { form.submit(); }
+        goToCartWithDiscount(true);
       });
     }, true);
   }
