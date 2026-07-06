@@ -23,7 +23,7 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v7)
+  Author Command Center — Add-ons widget (v8)
   Managed from the Upsells module. Reads product.metafields.author_cc.upsells
   (the offer) and shop.metafields.author_cc.widget (design settings saved
   from the app's Design tab — changes there apply live, no re-paste needed).
@@ -73,7 +73,7 @@ export function buildThemeSnippet(): string {
     <div class="acc-addons__info">
       <span class="acc-addons__title">{{ product.title }}</span>
       <span class="acc-addons__prices">
-        {%- if acc_teff < acc_tcompare -%}<s>{{ acc_tcompare | money }}</s> {% endif %}<strong>{{ acc_teff | money }}</strong>
+        <strong>{{ acc_teff | money }}</strong>{%- if acc_teff < acc_tcompare %} <s>{{ acc_tcompare | money }}</s>{% endif -%}
       </span>
     </div>
   </div>
@@ -112,8 +112,8 @@ export function buildThemeSnippet(): string {
             {%- if item.label != blank -%}{{ item.label }}{%- else -%}{{ ap.title }}{%- endif -%}
           </button>
           <span class="acc-addons__prices">
-            {%- if acc_dprice < av.price -%}<s>{{ av.price | money }}</s> <strong>{{ acc_dprice | money }}</strong>
-            {%- elsif acc_awas > av.price -%}<s>{{ acc_awas | money }}</s> <strong>{{ av.price | money }}</strong>
+            {%- if acc_dprice < av.price -%}<strong>{{ acc_dprice | money }}</strong> <s>{{ av.price | money }}</s>
+            {%- elsif acc_awas > av.price -%}<strong>{{ av.price | money }}</strong> <s>{{ acc_awas | money }}</s>
             {%- else -%}<strong>{{ av.price | money }}</strong>{%- endif -%}
           </span>
         </div>
@@ -138,8 +138,8 @@ export function buildThemeSnippet(): string {
           {%- endif -%}
           <h4 class="acc-modal__title">{{ ap.title }}</h4>
           <p class="acc-modal__price">
-            {%- if acc_dprice < av.price -%}<s>{{ av.price | money }}</s> <strong>{{ acc_dprice | money }}</strong>
-            {%- elsif acc_awas > av.price -%}<s>{{ acc_awas | money }}</s> <strong>{{ av.price | money }}</strong>
+            {%- if acc_dprice < av.price -%}<strong>{{ acc_dprice | money }}</strong> <s>{{ av.price | money }}</s>
+            {%- elsif acc_awas > av.price -%}<strong>{{ av.price | money }}</strong> <s>{{ acc_awas | money }}</s>
             {%- else -%}<strong>{{ av.price | money }}</strong>{%- endif -%}
           </p>
           <div class="acc-modal__desc">{{ ap.description }}</div>
@@ -169,7 +169,7 @@ export function buildThemeSnippet(): string {
   .acc-addons__title { font-weight: 500; text-align: left; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .acc-addons__title--link { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
   .acc-addons__title--link:hover { text-decoration: underline; }
-  .acc-addons__prices s { opacity: .55; margin-right: 6px; }
+  .acc-addons__prices s { opacity: .55; margin-left: 6px; }
   .acc-addons__plus { text-align: center; padding: 0; line-height: 1.1; opacity: .6; }
   .acc-addons__total { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 8px; font-size: 1.1em; }
   .acc-addons__total s { opacity: .55; }
@@ -198,7 +198,7 @@ export function buildThemeSnippet(): string {
   .acc-modal__gcount { position: absolute; bottom: 20px; right: 8px; background: rgba(0,0,0,.55); color: #fff; font-size: 12px; padding: 2px 8px; border-radius: 10px; }
   .acc-modal__title { margin: 0 0 6px; font-size: 1.15em; }
   .acc-modal__price { margin: 0 0 12px; }
-  .acc-modal__price s { opacity: .55; margin-right: 6px; }
+  .acc-modal__price s { opacity: .55; margin-left: 6px; }
   .acc-modal__desc { font-size: .92em; line-height: 1.55; }
   .acc-modal__desc img { max-width: 100%; height: auto; }
 </style>

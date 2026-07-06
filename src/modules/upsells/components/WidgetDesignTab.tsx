@@ -249,8 +249,8 @@ export default function WidgetDesignTab({ offers }: Props) {
                     <span className="block font-medium text-slate-800 leading-snug">{item.title}</span>
                   )}
                   <span className="text-sm text-slate-700">
-                    {item.wasPrice && <s className="opacity-55 mr-1.5">{money(item.wasPrice)}</s>}
                     <strong>{money(item.price)}</strong>
+                    {item.wasPrice && <s className="opacity-55 ml-1.5">{money(item.wasPrice)}</s>}
                   </span>
                 </div>
               </div>
@@ -287,8 +287,8 @@ export default function WidgetDesignTab({ offers }: Props) {
                 : <div className="max-w-[280px] w-full h-48 mx-auto mb-3.5 bg-slate-100 rounded" />}
               <h4 className="text-lg font-semibold mb-1">{previewModal.title}</h4>
               <p className="mb-3">
-                {previewModal.wasPrice && <s className="opacity-55 mr-1.5">{money(previewModal.wasPrice)}</s>}
                 <strong>{money(previewModal.price)}</strong>
+                {previewModal.wasPrice && <s className="opacity-55 ml-1.5">{money(previewModal.wasPrice)}</s>}
               </p>
               <p className="text-sm text-slate-500">
                 On your store this shows the product&rsquo;s full description, and shoppers can
