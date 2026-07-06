@@ -23,7 +23,7 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v6)
+  Author Command Center — Add-ons widget (v7)
   Managed from the Upsells module. Reads product.metafields.author_cc.upsells
   (the offer) and shop.metafields.author_cc.widget (design settings saved
   from the app's Design tab — changes there apply live, no re-paste needed).
@@ -68,7 +68,7 @@ export function buildThemeSnippet(): string {
   <div class="acc-addons__card acc-addons__card--self">
     <input type="checkbox" class="acc-addons__check" checked disabled>
     {%- if product.featured_image -%}
-    <img class="acc-addons__img" src="{{ product.featured_image | image_url: width: 200 }}" alt="{{ product.title | escape }}" loading="lazy" width="88" height="88">
+    <img class="acc-addons__img" src="{{ product.featured_image | image_url: width: 200 }}" alt="{{ product.title | escape }}" loading="lazy" width="64" height="64">
     {%- endif -%}
     <div class="acc-addons__info">
       <span class="acc-addons__title">{{ product.title }}</span>
@@ -105,7 +105,7 @@ export function buildThemeSnippet(): string {
         <input type="checkbox" class="acc-addons__check" value="{{ av.id }}"{% if acc_offer.discount.trigger %} checked{% endif %} aria-label="Add {{ ap.title | escape }}">
         {%- assign aimg = av.featured_image | default: ap.featured_image -%}
         {%- if aimg -%}
-        <img class="acc-addons__img" src="{{ aimg | image_url: width: 200 }}" alt="{{ ap.title | escape }}" loading="lazy" width="88" height="88"{% if acc_popup %} data-acc-pop="{{ forloop.index }}"{% endif %}>
+        <img class="acc-addons__img" src="{{ aimg | image_url: width: 200 }}" alt="{{ ap.title | escape }}" loading="lazy" width="64" height="64"{% if acc_popup %} data-acc-pop="{{ forloop.index }}"{% endif %}>
         {%- endif -%}
         <div class="acc-addons__info">
           <button type="button" class="acc-addons__title acc-addons__title--link"{% if acc_popup %} data-acc-pop="{{ forloop.index }}"{% endif %}>
@@ -161,17 +161,17 @@ export function buildThemeSnippet(): string {
   .acc-addons { margin: 20px 0; }
   .acc-addons__heading { margin: 0 0 2px; font-size: 1.15em; }
   .acc-addons__deal { margin: 0 0 14px; opacity: .75; }
-  .acc-addons__card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid rgba(0,0,0,.14); border-radius: var(--acc-radius, 12px); }
+  .acc-addons__card { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid rgba(0,0,0,.14); border-radius: var(--acc-radius, 12px); }
   .acc-addons__check { flex: none; width: 18px; height: 18px; }
-  .acc-addons__img { width: 88px; height: 88px; object-fit: contain; border-radius: 8px; flex: none; cursor: pointer; }
+  .acc-addons__img { width: 64px; height: 64px; object-fit: contain; border-radius: 8px; flex: none; cursor: pointer; }
   .acc-addons__card--self .acc-addons__img { cursor: default; }
   .acc-addons__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .acc-addons__title { font-weight: 500; text-align: left; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .acc-addons__title--link { background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
   .acc-addons__title--link:hover { text-decoration: underline; }
   .acc-addons__prices s { opacity: .55; margin-right: 6px; }
-  .acc-addons__plus { text-align: center; padding: 4px 0; opacity: .6; }
-  .acc-addons__total { display: flex; align-items: baseline; gap: 10px; margin: 16px 0 10px; font-size: 1.1em; }
+  .acc-addons__plus { text-align: center; padding: 0; line-height: 1.1; opacity: .6; }
+  .acc-addons__total { display: flex; align-items: baseline; gap: 10px; margin: 12px 0 8px; font-size: 1.1em; }
   .acc-addons__total s { opacity: .55; }
   .acc-addons__atc { width: 100%; padding: 14px 20px; border: 0; border-radius: var(--acc-radius, 12px); font-size: 1em; cursor: pointer;
     font-family: inherit; letter-spacing: inherit;

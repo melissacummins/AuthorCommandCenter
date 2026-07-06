@@ -227,16 +227,16 @@ export default function WidgetDesignTab({ offers }: Props) {
           {preview.items.map((item, i) => (
             <div key={i}>
               {i > 0 && settings.show_plus && (
-                <div className="text-center py-1 text-slate-400">+</div>
+                <div className="text-center leading-tight text-slate-400">+</div>
               )}
               <div
-                className="flex items-center gap-3 p-3 border border-slate-300/70"
+                className="flex items-center gap-2.5 px-2.5 py-2 border border-slate-300/70"
                 style={{ borderRadius: settings.radius }}
               >
                 <input type="checkbox" checked={item.checked} disabled={item.locked} readOnly className="w-[18px] h-[18px] shrink-0" />
                 {item.image
-                  ? <img src={item.image} alt="" className="w-[72px] h-[72px] object-contain shrink-0" />
-                  : <div className="w-[72px] h-[72px] bg-slate-100 rounded shrink-0" />}
+                  ? <img src={item.image} alt="" className="w-[56px] h-[56px] object-contain shrink-0" />
+                  : <div className="w-[56px] h-[56px] bg-slate-100 rounded shrink-0" />}
                 <div className="flex-1 min-w-0">
                   {settings.popup && !item.locked ? (
                     <button
