@@ -128,30 +128,60 @@ async function deleteDiscount(gid: string): Promise<void> {
   }
 }
 
-async function createDiscount(draft: UpsellOfferDraft, code: string): Promise<string> {
-  const entitled = draft.addons.map(a => String(a.product_id));
-  if (draft.discount_includes_trigger) {
-    entitled.push(draft.shopify_product_id);
+// Pull the new discount's id out of a create response, surfacing userErrors.
+function extractDiscountGid(
+  data: Record<string, unknown> | null | undefined,
+  createField: 'discountCodeBasicCreate' | 'discountCodeBxgyCreate',
+): string {
+  const result = (data as { data?: Record<string, { userErrors?: { message: string }[]; codeDiscountNode?: { id?: string } }> } | null)?.data?.[createField];
+  const userErrors = result?.userErrors;
+  if (userErrors?.length) {
+    throw new Error(userErrors.map(e => e.message).join('; '));
   }
-  const data = await callShopifyProxy('create_discount', {
+  const gid = result?.codeDiscountNode?.id;
+  if (!gid) throw new Error('Shopify did not return a discount id');
+  return gid;
+}
+
+// The discount only applies while the main product stays in the cart:
+// - Bundle offers discount the main product too, so it can't be a "Buy X"
+//   qualifier — instead the code covers the whole bundle but requires 2+ of
+//   its items, so a lone leftover add-on doesn't keep the discount.
+// - Add-on offers use "Buy X, Get Y": buy the main product, get the add-ons
+//   discounted. Remove the main product and the discount disappears.
+async function createDiscount(draft: UpsellOfferDraft, code: string): Promise<string> {
+  const title = `Add-on discount: ${draft.product_title}`;
+  const addonIds = draft.addons.map(a => String(a.product_id));
+
+  if (draft.discount_includes_trigger) {
+    const data = await callShopifyProxy('create_discount', {
+      code,
+      title,
+      value_type: draft.discount_type,
+      value: String(draft.discount_value),
+      product_ids: [draft.shopify_product_id, ...addonIds],
+      min_quantity: 2,
+      combines_product: draft.discount_combines_product,
+      combines_order: draft.discount_combines_order,
+      combines_shipping: draft.discount_combines_shipping,
+    });
+    throwGraphQLErrors(data, 'write_discounts');
+    return extractDiscountGid(data, 'discountCodeBasicCreate');
+  }
+
+  const data = await callShopifyProxy('create_bxgy_discount', {
     code,
-    title: `Add-on discount: ${draft.product_title}`,
+    title,
+    buy_product_id: draft.shopify_product_id,
+    get_product_ids: addonIds,
     value_type: draft.discount_type,
     value: String(draft.discount_value),
-    product_ids: entitled,
     combines_product: draft.discount_combines_product,
     combines_order: draft.discount_combines_order,
     combines_shipping: draft.discount_combines_shipping,
   });
   throwGraphQLErrors(data, 'write_discounts');
-  const result = data?.data?.discountCodeBasicCreate;
-  const userErrors: { message: string }[] | undefined = result?.userErrors;
-  if (userErrors?.length) {
-    throw new Error(userErrors.map(e => e.message).join('; '));
-  }
-  const gid: string | undefined = result?.codeDiscountNode?.id;
-  if (!gid) throw new Error('Shopify did not return a discount id');
-  return gid;
+  return extractDiscountGid(data, 'discountCodeBxgyCreate');
 }
 
 // Readable at checkout, unique per offer (product id suffix).
