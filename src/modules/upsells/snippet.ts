@@ -429,6 +429,11 @@ export function buildThemeSnippet(): string {
 `;
 }
 
+// The one-line Custom Liquid block content used with the published-snippet
+// install: it renders snippets/acc-addons.liquid (pushed by the app via
+// set_theme_asset) and never changes across widget updates.
+export const RENDER_LINE = "{% render 'acc-addons' %}";
+
 export const INSTALL_STEPS: { title: string; detail: string }[] = [
   {
     title: 'Open the theme editor',
