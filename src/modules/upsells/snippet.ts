@@ -23,7 +23,7 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v5)
+  Author Command Center — Add-ons widget (v6)
   Managed from the Upsells module. Reads product.metafields.author_cc.upsells
   (the offer) and shop.metafields.author_cc.widget (design settings saved
   from the app's Design tab — changes there apply live, no re-paste needed).
@@ -52,6 +52,8 @@ export function buildThemeSnippet(): string {
   data-acc-track="${trackUrl}"
   data-acc-key="${SUPABASE_ANON_KEY}"
   data-acc-money="{{ shop.money_format | strip_html | escape }}"
+  data-acc-cur="{{ cart.currency.iso_code }}"
+  data-acc-locale="{{ request.locale.iso_code }}"
   data-acc-tvid="{{ acc_tv.id }}"
   data-acc-tprice="{{ acc_teff }}"
   data-acc-twas="{{ acc_tcompare }}">
@@ -176,11 +178,14 @@ export function buildThemeSnippet(): string {
     background: var(--acc-btn-bg, rgb(var(--color-button, 65 65 65))); color: var(--acc-btn-text, rgb(var(--color-button-text, 255 255 255))); }
   .acc-addons__atc:hover { opacity: .9; }
   .acc-addons__atc[disabled] { opacity: .6; cursor: wait; }
-  .acc-modal { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center; }
+  /* Dim + blur live on the container, not just the backdrop child — a
+     plain dark overlay is nearly invisible on dark themes. */
+  .acc-modal { position: fixed; inset: 0; z-index: 999; display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.65); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); }
   /* The display:flex above would otherwise defeat the hidden attribute,
      leaving an invisible full-screen layer that swallows every click. */
   .acc-modal[hidden] { display: none !important; }
-  .acc-modal__backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .acc-modal__backdrop { position: absolute; inset: 0; }
   .acc-modal__box { position: relative; background: #fff; color: #222; border-radius: 14px; max-width: 480px; width: calc(100% - 32px);
     max-height: 84vh; overflow-y: auto; padding: 28px 24px 24px; }
   .acc-modal__close { position: absolute; top: 8px; right: 12px; background: none; border: 0; font-size: 28px; line-height: 1; cursor: pointer; color: #444; }
@@ -206,9 +211,20 @@ export function buildThemeSnippet(): string {
   var productId = box.getAttribute('data-acc-product');
   var code = box.getAttribute('data-acc-code');
   var moneyFormat = box.getAttribute('data-acc-money') || '$' + '{{amount}}';
+  // Prices in Liquid render in the shopper's active (market) currency, but
+  // shop.money_format is the store's BASE currency — formatting the JS
+  // total with it showed EGP to a shopper browsing in USD. Format with the
+  // active cart currency instead; the old format string is the fallback.
+  var currency = box.getAttribute('data-acc-cur') || '';
+  var locale = box.getAttribute('data-acc-locale') || undefined;
   var clickSent = false;
 
   function fmtMoney(cents) {
+    if (currency) {
+      try {
+        return new Intl.NumberFormat(locale, { style: 'currency', currency: currency }).format(cents / 100);
+      } catch (e) { /* fall through to money_format */ }
+    }
     var noDecimals = moneyFormat.indexOf('no_decimals') !== -1;
     var comma = moneyFormat.indexOf('comma_separator') !== -1;
     var n = noDecimals ? Math.round(cents / 100).toString() : (cents / 100).toFixed(2);
