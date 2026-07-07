@@ -873,7 +873,8 @@ export default function PlannerModule() {
       </aside>
 
       {/* Detail */}
-      <section className="flex-1 min-w-0 overflow-y-auto nice-scrollbar">
+      {/* pb-24 keeps the last row clear of the floating Focus button / timer bar. */}
+      <section className="flex-1 min-w-0 overflow-y-auto nice-scrollbar pb-24">
         {/* Mobile-only bar to reopen the planner rail */}
         <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 bg-white/85 backdrop-blur border-b border-slate-100 px-3 py-2">
           <button onClick={() => setRailOpen(true)} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-teal-600">
