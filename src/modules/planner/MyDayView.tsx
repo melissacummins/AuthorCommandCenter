@@ -378,9 +378,11 @@ export default function MyDayView({
       </div>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="grid lg:grid-cols-[1.5fr_1fr] gap-6">
+        {/* minmax(0,…) lets the columns shrink so long to-do titles truncate
+            instead of forcing the whole page wider than the window. */}
+        <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6">
           {/* Schedule column */}
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             {phase && (
               <PhaseBanner phase={phase} target={phaseTarget!} planned={plannedMinutes} daysIn={daysInPhase} />
             )}
@@ -445,7 +447,7 @@ export default function MyDayView({
           </div>
 
           {/* Side column: calendar, day note, stats */}
-          <div className="space-y-4">
+          <div className="space-y-4 min-w-0">
             {gc.connected && <GoogleEventsCard events={events} />}
             <DayNoteCard
               key={selected}
