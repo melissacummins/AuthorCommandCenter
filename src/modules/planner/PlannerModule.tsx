@@ -1349,6 +1349,7 @@ function NotePane({
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
+  const [notesOpen, setNotesOpen] = useState(true);
   const [draft, setDraft] = useState('');
   const [filter, setFilter] = useState<'all' | 'important'>('all');
   const [search, setSearch] = useState('');
@@ -1465,14 +1466,30 @@ function NotePane({
         </div>
       </div>
 
-      <textarea
-        value={body}
-        onChange={e => setBody(e.target.value)}
-        onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
-        placeholder="Notes, links, anything you want to remember…"
-        rows={2}
-        className="w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400 mb-2"
-      />
+      {/* Collapsible notes — holds the Weekly Reset journal on reset lists, or
+          any freeform notes on others. Open by default; collapse for task room. */}
+      <div className="mb-2">
+        <button
+          onClick={() => setNotesOpen(o => !o)}
+          className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+        >
+          {notesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+          {note.title.trim().startsWith('Weekly Reset') ? 'Journal' : 'Notes'}
+          {!notesOpen && body.trim() && (
+            <span className="normal-case font-normal tracking-normal text-slate-300 truncate max-w-[18rem]">{body.trim().replace(/\s+/g, ' ')}</span>
+          )}
+        </button>
+        {notesOpen && (
+          <textarea
+            value={body}
+            onChange={e => setBody(e.target.value)}
+            onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
+            placeholder="Notes, links, anything you want to remember…"
+            rows={2}
+            className="mt-1 w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400"
+          />
+        )}
+      </div>
 
       {/* Link this list to a Catalog book so its tracked time rolls up into
           that book's "hours worked". */}
