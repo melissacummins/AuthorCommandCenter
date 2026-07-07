@@ -1027,6 +1027,96 @@ export default function PlannerModule() {
 }
 
 // ---------------------------------------------------------------------------
+// Bulk select — a shared hook + a selectable row + an action bar, used by the
+// smart views and the list editor to move / schedule / flag / complete /
+// delete (and, in a list, group under a new heading) many to-dos at once.
+// ---------------------------------------------------------------------------
+
+function useSelection() {
+  const [selectMode, setSelectMode] = useState(false);
+  const [sel, setSel] = useState<Set<string>>(() => new Set());
+  const toggle = (id: string) => setSel(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const clear = () => setSel(new Set());
+  const exit = () => { setSel(new Set()); setSelectMode(false); };
+  const selectAll = (ids: string[]) => setSel(prev => (prev.size >= ids.length && ids.every(i => prev.has(i)) ? new Set() : new Set(ids)));
+  return { selectMode, setSelectMode, sel, toggle, clear, exit, selectAll };
+}
+
+function SelectableRow({ task, selected, onToggle, listName }: {
+  task: PlannerTask; selected: boolean; onToggle: () => void; listName?: string;
+}) {
+  return (
+    <li>
+      <button
+        onClick={onToggle}
+        className={`w-full flex items-start gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${selected ? 'bg-teal-50' : 'hover:bg-slate-50'}`}
+      >
+        <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selected ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 bg-white'}`}>
+          {selected && <Check className="w-3 h-3" />}
+        </span>
+        <span className={`flex-1 min-w-0 text-sm break-words ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title || 'Untitled'}</span>
+        {task.flagged && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" fill="currentColor" />}
+        {listName && <span className="text-[11px] text-slate-300 shrink-0 mt-0.5 truncate max-w-[8rem]">{listName}</span>}
+      </button>
+    </li>
+  );
+}
+
+function BulkBar({
+  count, allSelected, today, lists, currentListId, onSelectAll, onExit,
+  onMove, onSchedule, onFlag, onDone, onDelete, onNewHeading,
+}: {
+  count: number;
+  allSelected: boolean;
+  today: string;
+  lists: PlannerNote[];
+  currentListId?: string;
+  onSelectAll: () => void;
+  onExit: () => void;
+  onMove: (noteId: string | null) => void;
+  onSchedule: (patch: Partial<PlannerTask>) => void;
+  onFlag: (flagged: boolean) => void;
+  onDone: () => void;
+  onDelete: () => void;
+  onNewHeading?: () => void;
+}) {
+  const none = count === 0;
+  const btn = 'text-xs font-medium border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 hover:text-teal-700 disabled:opacity-40';
+  return (
+    <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50/95 backdrop-blur px-3 py-2">
+      <span className="text-sm font-semibold text-slate-700">{count} selected</span>
+      <button onClick={onSelectAll} className="text-xs font-medium text-teal-700 hover:underline">{allSelected ? 'Clear' : 'Select all'}</button>
+      <span className="w-px h-5 bg-teal-200 mx-1" />
+      <select
+        value=""
+        disabled={none}
+        onChange={e => { const v = e.target.value; if (v) onMove(v === '__inbox' ? null : v); e.currentTarget.value = ''; }}
+        className={btn}
+        title="Move to a list"
+      >
+        <option value="">Move to…</option>
+        <option value="__inbox">Inbox (no list)</option>
+        {lists.filter(l => l.id !== currentListId).map(l => <option key={l.id} value={l.id}>{l.title.trim() || 'Untitled list'}</option>)}
+      </select>
+      {onNewHeading && <button onClick={onNewHeading} disabled={none} className={btn}>Under new heading</button>}
+      <button onClick={() => onSchedule({ due_date: today, someday: false })} disabled={none} className={btn}>Today</button>
+      <input
+        type="date"
+        disabled={none}
+        onChange={e => { if (e.target.value) onSchedule({ due_date: e.target.value, someday: false }); }}
+        className={`${btn} px-1.5`}
+        title="Schedule on a date"
+      />
+      <button onClick={() => onSchedule({ due_date: null, someday: false })} disabled={none} className={btn}>Anytime</button>
+      <button onClick={() => onFlag(true)} disabled={none} className={btn}>Flag</button>
+      <button onClick={onDone} disabled={none} className={btn}>Mark done</button>
+      <button onClick={onDelete} disabled={none} className="text-xs font-medium border border-rose-200 rounded-lg px-2 py-1 bg-white text-rose-600 hover:bg-rose-50 disabled:opacity-40">Delete</button>
+      <button onClick={onExit} className="ml-auto text-xs font-medium text-slate-500 hover:text-slate-700">Done</button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Smart views
 // ---------------------------------------------------------------------------
 
@@ -1057,6 +1147,7 @@ function ViewPane({
   const Icon = meta.icon;
   const [draft, setDraft] = useState('');
   const [search, setSearch] = useState('');
+  const { selectMode, setSelectMode, sel, toggle, clear, exit, selectAll } = useSelection();
   const { gc, calVersion, onTimeBlock, onUnblock } = cal;
   const [eventsByDay, setEventsByDay] = useState<Record<string, GCalEvent[]>>({});
 
@@ -1172,6 +1263,22 @@ function ViewPane({
   const q = search.trim().toLowerCase();
   const visible = q ? items.filter(t => (t.title || '').toLowerCase().includes(q)) : items;
 
+  // ---- Bulk actions over the selected to-dos ----
+  const bulkEach = (fn: (id: string) => void) => { sel.forEach(fn); };
+  const bulkMove = (noteId: string | null) => { bulkEach(id => onPatch(id, { note_id: noteId })); clear(); };
+  const bulkSchedule = (patch: Partial<PlannerTask>) => { bulkEach(id => onPatch(id, patch)); clear(); };
+  const bulkFlag = (f: boolean) => { bulkEach(id => onPatch(id, { flagged: f })); clear(); };
+  const bulkDone = () => { bulkEach(id => onPatch(id, { done: true })); clear(); };
+  const bulkDelete = () => {
+    if (!confirm(`Delete ${sel.size} to-do${sel.size === 1 ? '' : 's'}? This can’t be undone.`)) return;
+    bulkEach(id => onDelete(id)); clear();
+  };
+  function row(t: PlannerTask) {
+    return selectMode
+      ? <SelectableRow key={t.id} task={t} selected={sel.has(t.id)} onToggle={() => toggle(t.id)} listName={noteNameFor(t)} />
+      : renderRow(t);
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
@@ -1186,11 +1293,16 @@ function ViewPane({
             <Sparkles className="w-3.5 h-3.5" /> Suggest picks
           </button>
         )}
-        {(orbit || inbox || bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
-          <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-slate-500">
-            <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
-          </span>
-        )}
+        <div className="ml-auto flex items-center gap-2">
+          {(orbit || inbox || bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
+            <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-500">
+              <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
+            </span>
+          )}
+          {items.length > 0 && !selectMode && (
+            <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-1.5">Select</button>
+          )}
+        </div>
       </div>
       {orbit && orbitEnabled && (
         <AiSuggestPanel
@@ -1230,6 +1342,24 @@ function ViewPane({
         </div>
       )}
 
+      {selectMode && (
+        <div className="mt-3">
+          <BulkBar
+            count={sel.size}
+            allSelected={visible.length > 0 && visible.every(t => sel.has(t.id))}
+            today={today}
+            lists={lists}
+            onSelectAll={() => selectAll(visible.map(t => t.id))}
+            onExit={exit}
+            onMove={bulkMove}
+            onSchedule={bulkSchedule}
+            onFlag={bulkFlag}
+            onDone={bulkDone}
+            onDelete={bulkDelete}
+          />
+        </div>
+      )}
+
       {bucket === 'today' && <DayEventsStrip events={eventsByDay[today]} />}
 
       {visible.length === 0 ? (
@@ -1241,15 +1371,15 @@ function ViewPane({
             <div key={group.date}>
               <DayHeader date={group.date} today={today} totalMinutes={sumEstimate(group.items)} />
               <DayEventsStrip events={eventsByDay[group.date]} />
-              <ul className="divide-y divide-slate-100">
-                {group.items.map(renderRow)}
+              <ul className={selectMode ? 'space-y-0.5' : 'divide-y divide-slate-100'}>
+                {group.items.map(row)}
               </ul>
             </div>
           ))}
         </div>
       ) : (
-        <ul className="mt-2 divide-y divide-slate-100">
-          {visible.map(renderRow)}
+        <ul className={selectMode ? 'mt-2 space-y-0.5' : 'mt-2 divide-y divide-slate-100'}>
+          {visible.map(row)}
         </ul>
       )}
     </div>
@@ -1371,7 +1501,7 @@ function NotePane({
   onDeleteNote: (id: string) => void;
   onDuplicateNote: (note: PlannerNote) => void;
   onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
-  onCreate: (i: { title?: string; note_id: string; kind?: 'task' | 'heading' }) => Promise<PlannerTask | undefined>;
+  onCreate: (i: { title?: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => Promise<PlannerTask | undefined>;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
   onReorder: (updates: { id: string; sort_order: number }[]) => void;
@@ -1399,6 +1529,7 @@ function NotePane({
   const [draft, setDraft] = useState('');
   const [filter, setFilter] = useState<'all' | 'important'>('all');
   const [search, setSearch] = useState('');
+  const { selectMode, setSelectMode, sel, toggle, clear, exit, selectAll } = useSelection();
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   // The to-do id that should open for editing next render (keyboard entry).
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -1415,6 +1546,27 @@ function NotePane({
   const doneItems = ordered.filter(t => t.kind === 'task' && t.done);
   const flaggedOpen = ordered.filter(t => t.kind === 'task' && !t.done && t.flagged);
   const nextOrder = (ordered.at(-1)?.sort_order ?? 0) + 1;
+
+  // ---- Bulk actions (select mode shows a flat, checkable list of to-dos) ----
+  const selectable = ordered.filter(t => t.kind === 'task');
+  const bulkEach = (fn: (id: string) => void) => { sel.forEach(fn); };
+  const bulkMove = (noteId: string | null) => { bulkEach(id => onPatch(id, { note_id: noteId })); clear(); };
+  const bulkSchedule = (patch: Partial<PlannerTask>) => { bulkEach(id => onPatch(id, patch)); clear(); };
+  const bulkFlag = (f: boolean) => { bulkEach(id => onPatch(id, { flagged: f })); clear(); };
+  const bulkDone = () => { bulkEach(id => onPatch(id, { done: true })); clear(); };
+  const bulkDelete = () => {
+    if (!confirm(`Delete ${sel.size} to-do${sel.size === 1 ? '' : 's'}? This can’t be undone.`)) return;
+    bulkEach(id => onDelete(id)); clear();
+  };
+  // Append a new heading at the bottom and move the selected to-dos under it.
+  async function bulkNewHeading() {
+    const ids = [...sel];
+    if (!ids.length) return;
+    await onCreate({ note_id: note.id, kind: 'heading', title: 'New section', sort_order: nextOrder });
+    onReorder(ids.map((id, i) => ({ id, sort_order: nextOrder + 1 + i })));
+    clear();
+  }
+
   // List rollups: estimate of what's left, and total time tracked on this list.
   const listEst = sumEstimate(ordered);
   const listTracked = ordered.reduce((s, t) => s + (t.kind === 'task' ? (t.actual_minutes ?? 0) : 0), 0);
@@ -1643,9 +1795,47 @@ function NotePane({
         >
           <HeadingIcon className="w-3.5 h-3.5" /> Heading
         </button>
+        {selectable.length > 0 && !selectMode && (
+          <button
+            onClick={() => setSelectMode(true)}
+            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2"
+            title="Select multiple to-dos for bulk actions"
+          >
+            <Check className="w-3.5 h-3.5" /> Select
+          </button>
+        )}
       </div>
 
-      {searchResults ? (
+      {selectMode ? (
+        <>
+          <div className="mt-3">
+            <BulkBar
+              count={sel.size}
+              allSelected={selectable.length > 0 && selectable.every(t => sel.has(t.id))}
+              today={today}
+              lists={lists}
+              currentListId={note.id}
+              onSelectAll={() => selectAll(selectable.map(t => t.id))}
+              onExit={exit}
+              onMove={bulkMove}
+              onSchedule={bulkSchedule}
+              onFlag={bulkFlag}
+              onDone={bulkDone}
+              onDelete={bulkDelete}
+              onNewHeading={bulkNewHeading}
+            />
+          </div>
+          {selectable.length === 0 ? (
+            <p className="text-sm text-slate-400 mt-3">No to-dos to select yet.</p>
+          ) : (
+            <ul className="mt-1 space-y-0.5">
+              {selectable.map(t => (
+                <SelectableRow key={t.id} task={t} selected={sel.has(t.id)} onToggle={() => toggle(t.id)} />
+              ))}
+            </ul>
+          )}
+        </>
+      ) : searchResults ? (
         searchResults.length === 0 ? (
           <p className="text-sm text-slate-400 mt-3">Nothing in this list matches that search.</p>
         ) : (
