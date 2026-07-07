@@ -377,84 +377,85 @@ export default function MyDayView({
         </div>
       </div>
 
+      {/* Top row: the working-phase banner (left) sits beside the Day Note and
+          calendar (right). The schedule below then gets the FULL width. */}
+      <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 mb-4 items-start">
+        <div className="min-w-0">
+          {phase && (
+            <PhaseBanner phase={phase} target={phaseTarget!} planned={plannedMinutes} daysIn={daysInPhase} />
+          )}
+        </div>
+        <div className="min-w-0 space-y-4">
+          <DayNoteCard
+            key={selected}
+            day={selected}
+            value={dayNotes[selected] ?? ''}
+            onSave={handlers.onSaveDayNote}
+          />
+          {gc.connected && <GoogleEventsCard events={events} />}
+        </div>
+      </div>
+
+      {/* Full-width schedule so the day's to-dos have the whole width. */}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        {/* minmax(0,…) lets the columns shrink so long to-do titles truncate
-            instead of forcing the whole page wider than the window. */}
-        <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6">
-          {/* Schedule column */}
-          <div className="space-y-4 min-w-0">
-            {phase && (
-              <PhaseBanner phase={phase} target={phaseTarget!} planned={plannedMinutes} daysIn={daysInPhase} />
-            )}
-            {overdue.length > 0 && (
-              <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 mb-1 flex items-center gap-1">
-                  <AlertCircle className="w-3.5 h-3.5" /> Overdue
-                </p>
-                <ul className="space-y-0.5">
-                  {overdue.map(t => (
-                    <DraggableTaskRow
-                      key={t.id}
-                      task={t}
-                      today={today}
-                      lists={lists}
-                      orbitEnabled={orbitEnabled}
-                      onPatch={handlers.onPatchTask}
-                      onDelete={handlers.onDeleteTask}
-                      onLogTime={handlers.onLogTime}
-                      draggable={false}
-                      onMoveToToday={() => handlers.onPatchTask(t.id, { due_date: today, block_id: null })}
-                    />
-                  ))}
-                </ul>
-              </div>
-            )}
+        <div className="space-y-4 min-w-0">
+          {overdue.length > 0 && (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 mb-1 flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5" /> Overdue
+              </p>
+              <ul className="space-y-0.5">
+                {overdue.map(t => (
+                  <DraggableTaskRow
+                    key={t.id}
+                    task={t}
+                    today={today}
+                    lists={lists}
+                    orbitEnabled={orbitEnabled}
+                    onPatch={handlers.onPatchTask}
+                    onDelete={handlers.onDeleteTask}
+                    onLogTime={handlers.onLogTime}
+                    draggable={false}
+                    onMoveToToday={() => handlers.onPatchTask(t.id, { due_date: today, block_id: null })}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
 
-            {dayBlocks.map(b => (
-              <BlockCard
-                key={b.id}
-                block={b}
-                tasks={tasksByBlock[b.id] ?? []}
-                today={today}
-                lists={lists}
-                orbitEnabled={orbitEnabled}
-                gcConnected={gc.connected}
-                handlers={handlers}
-              />
-            ))}
-
-            <LooseZone
-              tasks={looseTasks}
+          {dayBlocks.map(b => (
+            <BlockCard
+              key={b.id}
+              block={b}
+              tasks={tasksByBlock[b.id] ?? []}
               today={today}
               lists={lists}
               orbitEnabled={orbitEnabled}
-              hasBlocks={dayBlocks.length > 0}
-              onPatch={handlers.onPatchTask}
-              onDelete={handlers.onDeleteTask}
-              onLogTime={handlers.onLogTime}
+              gcConnected={gc.connected}
+              handlers={handlers}
             />
+          ))}
 
-            <div className="flex items-center gap-2">
-              <QuickAddTask onAdd={title => handlers.onAddTask({ title, due_date: selected })} />
-              <button
-                onClick={() => handlers.onCreateBlock(selected)}
-                className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2 shrink-0"
-                title="Add a named time block"
-              >
-                <Plus className="w-3.5 h-3.5" /> Block
-              </button>
-            </div>
-          </div>
+          <LooseZone
+            tasks={looseTasks}
+            today={today}
+            lists={lists}
+            orbitEnabled={orbitEnabled}
+            hasBlocks={dayBlocks.length > 0}
+            onPatch={handlers.onPatchTask}
+            onDelete={handlers.onDeleteTask}
+            onLogTime={handlers.onLogTime}
+          />
 
-          {/* Side column: calendar, day note, stats */}
-          <div className="space-y-4 min-w-0">
-            {gc.connected && <GoogleEventsCard events={events} />}
-            <DayNoteCard
-              key={selected}
-              day={selected}
-              value={dayNotes[selected] ?? ''}
-              onSave={handlers.onSaveDayNote}
-            />
+          <div className="flex items-center gap-2">
+            <QuickAddTask onAdd={title => handlers.onAddTask({ title, due_date: selected })} />
+            <button
+              onClick={() => handlers.onCreateBlock(selected)}
+              className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2 shrink-0"
+              title="Add a named time block"
+            >
+              <Plus className="w-3.5 h-3.5" /> Block
+            </button>
           </div>
         </div>
       </DndContext>

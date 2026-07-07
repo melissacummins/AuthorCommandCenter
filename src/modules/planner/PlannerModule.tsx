@@ -1329,6 +1329,35 @@ function DayHeader({ date, today, totalMinutes }: { date: string; today: string;
 // Note editor (headings + drag-to-reorder + checklists)
 // ---------------------------------------------------------------------------
 
+// The weekly-reset journal questions, in the order createResetTasks writes them
+// into a reset list's notes. Used to split that text back into collapsible rows.
+const JOURNAL_QUESTIONS: { key: string; label: string }[] = [
+  { key: 'wins', label: 'Wins from last week' },
+  { key: 'not_done', label: 'What I didn’t do last week' },
+  { key: 'drained', label: 'What drained my time' },
+  { key: 'feel_more', label: 'What I want to feel more of' },
+];
+interface JournalSection { key: string; label: string; text: string }
+
+// Split a reset list's notes ("Wins from last week:\n…\n\nWhat I…") back into
+// its per-question sections. Returns null if it doesn't look like a journal.
+function parseJournal(body: string): JournalSection[] | null {
+  const marks = JOURNAL_QUESTIONS
+    .map(q => ({ ...q, at: body.indexOf(`${q.label}:`) }))
+    .filter(m => m.at !== -1)
+    .sort((a, b) => a.at - b.at);
+  if (!marks.length) return null;
+  return marks.map((m, i) => {
+    const start = m.at + m.label.length + 1;
+    const end = i + 1 < marks.length ? marks[i + 1].at : body.length;
+    return { key: m.key, label: m.label, text: body.slice(start, end).trim() };
+  });
+}
+
+function serializeJournal(sections: JournalSection[]): string {
+  return sections.filter(s => s.text.trim()).map(s => `${s.label}:\n${s.text.trim()}`).join('\n\n');
+}
+
 function NotePane({
   note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
 }: {
@@ -1350,6 +1379,22 @@ function NotePane({
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
   const [notesOpen, setNotesOpen] = useState(true);
+  // On a Weekly Reset list, the journal is stored in the notes as labeled
+  // questions; split it into collapsible per-question rows (editable).
+  const [journal, setJournal] = useState<JournalSection[] | null>(() =>
+    note.title.trim().startsWith('Weekly Reset') ? parseJournal(note.body) : null);
+  const [openJournal, setOpenJournal] = useState<Set<string>>(() => new Set());
+  function toggleJournal(key: string) {
+    setOpenJournal(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
+  function updateJournal(i: number, text: string) {
+    setJournal(prev => (prev ? prev.map((s, idx) => (idx === i ? { ...s, text } : s)) : prev));
+  }
+  function saveJournal() {
+    if (!journal) return;
+    const serialized = serializeJournal(journal);
+    if (serialized !== note.body) onSaveNote(note.id, { body: serialized });
+  }
   const [draft, setDraft] = useState('');
   const [filter, setFilter] = useState<'all' | 'important'>('all');
   const [search, setSearch] = useState('');
@@ -1466,30 +1511,61 @@ function NotePane({
         </div>
       </div>
 
-      {/* Collapsible notes — holds the Weekly Reset journal on reset lists, or
-          any freeform notes on others. Open by default; collapse for task room. */}
-      <div className="mb-2">
-        <button
-          onClick={() => setNotesOpen(o => !o)}
-          className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
-        >
-          {notesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          {note.title.trim().startsWith('Weekly Reset') ? 'Journal' : 'Notes'}
-          {!notesOpen && body.trim() && (
-            <span className="normal-case font-normal tracking-normal text-slate-300 truncate max-w-[18rem]">{body.trim().replace(/\s+/g, ' ')}</span>
+      {journal ? (
+        // Weekly-reset journal: one collapsible row per question.
+        <div className="mb-3 space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-0.5">Journal</p>
+          {journal.map((s, i) => {
+            const open = openJournal.has(s.key);
+            return (
+              <div key={s.key} className="rounded-xl border border-slate-200 bg-white">
+                <button onClick={() => toggleJournal(s.key)} className="w-full flex items-center gap-2 px-3 py-2 text-left">
+                  {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+                  <span className="flex-1 text-sm font-semibold text-slate-700">{s.label}</span>
+                  {!open && s.text.trim() && (
+                    <span className="text-xs text-slate-300 truncate max-w-[45%]">{s.text.replace(/\s+/g, ' ')}</span>
+                  )}
+                </button>
+                {open && (
+                  <div className="px-3 pb-2 border-t border-slate-100 pt-2">
+                    <textarea
+                      value={s.text}
+                      onChange={e => updateJournal(i, e.target.value)}
+                      onBlur={saveJournal}
+                      rows={3}
+                      className="w-full text-sm rounded-lg border border-slate-200 bg-white px-2 py-1.5 outline-none focus:border-violet-300 text-slate-600 resize-y"
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        // Any other list: a single collapsible notes field. Open by default.
+        <div className="mb-2">
+          <button
+            onClick={() => setNotesOpen(o => !o)}
+            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+          >
+            {notesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            Notes
+            {!notesOpen && body.trim() && (
+              <span className="normal-case font-normal tracking-normal text-slate-300 truncate max-w-[18rem]">{body.trim().replace(/\s+/g, ' ')}</span>
+            )}
+          </button>
+          {notesOpen && (
+            <textarea
+              value={body}
+              onChange={e => setBody(e.target.value)}
+              onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
+              placeholder="Notes, links, anything you want to remember…"
+              rows={2}
+              className="mt-1 w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400"
+            />
           )}
-        </button>
-        {notesOpen && (
-          <textarea
-            value={body}
-            onChange={e => setBody(e.target.value)}
-            onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
-            placeholder="Notes, links, anything you want to remember…"
-            rows={2}
-            className="mt-1 w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400"
-          />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Link this list to a Catalog book so its tracked time rolls up into
           that book's "hours worked". */}
