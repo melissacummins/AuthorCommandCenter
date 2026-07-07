@@ -101,7 +101,7 @@ export function TaskRow(props: TaskRowProps) {
 
   return (
     <div className="py-1.5 group">
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         {dragHandle}
         <button
           onClick={() => onPatch(task.id, { done: !task.done })}
@@ -129,7 +129,7 @@ export function TaskRow(props: TaskRowProps) {
         ) : (
           <button
             onClick={() => { if (!task.done) { setDraft(task.title); setEditing(true); } }}
-            className={`flex-1 min-w-0 text-left text-sm truncate ${task.done ? 'text-slate-400 line-through cursor-default' : 'text-slate-700 cursor-text'}`}
+            className={`flex-1 min-w-0 text-left text-sm break-words ${task.done ? 'text-slate-400 line-through cursor-default' : 'text-slate-700 cursor-text'}`}
             title={task.done ? undefined : 'Click to rename · chevron or ⋯ for details'}
           >
             {task.title || 'Untitled'}
