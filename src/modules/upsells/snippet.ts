@@ -23,7 +23,7 @@ export function buildThemeSnippet(): string {
   const trackUrl = SUPABASE_URL ? `${SUPABASE_URL.replace(/\/$/, '')}/rest/v1/rpc/track_upsell_event` : '';
 
   return `{% comment %}
-  Author Command Center — Add-ons widget (v10)
+  Author Command Center — Add-ons widget (v11)
   Managed from the Upsells module. Reads product.metafields.author_cc.upsells
   (the offer) and shop.metafields.author_cc.widget (design settings saved
   from the app's Design tab — changes there apply live, no re-paste needed).
@@ -36,11 +36,10 @@ export function buildThemeSnippet(): string {
 {%- assign acc_plus = true -%}{%- if acc_cfg.show_plus == false -%}{%- assign acc_plus = false -%}{%- endif -%}
 {%- assign acc_pct = acc_offer.discount.pct | default: 0 -%}
 {%- assign acc_keep = 100 | minus: acc_pct -%}
-{%- comment -%} Bundle offers keep the main product at full price and discount
-  the whole bundle in the Total (SellEasy-style); add-on offers discount the
-  add-on lines directly. So the main product is always shown at full price. {%- endcomment -%}
-{%- assign acc_bundle = false -%}
-{%- if acc_offer.discount.trigger and acc_pct > 0 -%}{%- assign acc_bundle = true -%}{%- endif -%}
+{%- comment -%} Every offer keeps the main product at full price and discounts
+  each add-on line directly. The Shopify "Buy X, Get Y" discount takes the same
+  percentage off each add-on the shopper picks (get-quantity 1), so the widget
+  Total always matches what the cart and checkout charge. {%- endcomment -%}
 {%- assign acc_tv = product.selected_or_first_available_variant -%}
 {%- assign acc_tprice = acc_tv.price -%}
 {%- assign acc_tcompare = acc_tv.compare_at_price | default: acc_tv.price -%}
@@ -56,7 +55,6 @@ export function buildThemeSnippet(): string {
   data-acc-cur="{{ cart.currency.iso_code }}"
   data-acc-locale="{{ request.locale.iso_code }}"
   data-acc-tvid="{{ acc_tv.id }}"
-  data-acc-bundlekeep="{% if acc_bundle %}{{ acc_keep }}{% endif %}"
   data-acc-tprice="{{ acc_teff }}"
   data-acc-twas="{{ acc_tcompare }}">
   <h3 class="acc-addons__heading">{{ acc_offer.heading | default: 'Add to your order' }}</h3>
@@ -90,7 +88,7 @@ export function buildThemeSnippet(): string {
       {%- endfor -%}
       {%- unless av -%}{%- assign av = ap.selected_or_first_available_variant -%}{%- endunless -%}
       {%- if av and av.available -%}
-      {%- if acc_pct > 0 and acc_bundle == false -%}
+      {%- if acc_pct > 0 -%}
         {%- assign acc_dprice = av.price | times: acc_keep | divided_by: 100.0 | round -%}
       {%- else -%}
         {%- assign acc_dprice = av.price -%}
@@ -265,20 +263,18 @@ export function buildThemeSnippet(): string {
   }
 
   // ---- Live total ----
-  // Bundle offers keep every line at full price and take the discount off the
-  // whole subtotal (bundlekeep = the % kept, e.g. 85 for 15% off); add-on
-  // offers already carry the discount on their own line prices.
+  // The main product stays at full price and each add-on line already carries
+  // its discounted price, so the Total is just the sum of the checked lines —
+  // matching the "Buy X, Get Y" discount the cart applies at checkout.
   var totalEl = box.querySelector('[data-acc-total]');
   var wasEl = box.querySelector('[data-acc-total-was]');
-  var bundleKeep = parseInt(box.getAttribute('data-acc-bundlekeep'), 10) || 0;
   function recalc() {
-    var sub = parseInt(box.getAttribute('data-acc-tprice'), 10) || 0;
+    var total = parseInt(box.getAttribute('data-acc-tprice'), 10) || 0;
     var was = parseInt(box.getAttribute('data-acc-twas'), 10) || 0;
     checkedItems().forEach(function (el) {
-      sub += parseInt(el.getAttribute('data-acc-price'), 10) || 0;
+      total += parseInt(el.getAttribute('data-acc-price'), 10) || 0;
       was += parseInt(el.getAttribute('data-acc-was'), 10) || 0;
     });
-    var total = bundleKeep > 0 ? Math.round(sub * bundleKeep / 100) : sub;
     if (totalEl) totalEl.textContent = fmtMoney(total);
     if (wasEl) {
       if (was > total) { wasEl.textContent = fmtMoney(was); wasEl.hidden = false; }

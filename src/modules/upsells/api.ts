@@ -145,33 +145,13 @@ function extractDiscountGid(
 
 // Every offer is "Buy X, Get Y" — buy the main product, get the add-ons
 // discounted — so the discount always drops when the main product leaves the
-// cart, and the main product always shows at full price (SellEasy-style).
-// - Add-on offers: the add-ons simply take the offer's percentage/amount.
-// - Bundle offers (discount_includes_trigger): the add-ons absorb the main
-//   product's share too, so the Total equals the whole-bundle discount while
-//   the main product stays full price. That boost depends on live prices, so
-//   upsell_create_bundle_discount computes it server-side at save time.
+// cart, and the main product always shows at full price (SellEasy-style). Each
+// add-on the shopper picks takes the offer's percentage/amount; the "get"
+// quantity is 1, so the discount fires the moment they add any single add-on
+// rather than requiring them to add all of them.
 async function createDiscount(draft: UpsellOfferDraft, code: string): Promise<string> {
   const title = `Add-on discount: ${draft.product_title}`;
   const addonIds = draft.addons.map(a => String(a.product_id));
-
-  if (draft.discount_includes_trigger) {
-    const { data, error } = await supabase.rpc('upsell_create_bundle_discount', {
-      p_code: code,
-      p_title: title,
-      p_buy_product_id: draft.shopify_product_id,
-      p_get_product_ids: addonIds,
-      p_pct: draft.discount_type === 'percentage' ? draft.discount_value : null,
-      p_fixed: draft.discount_type === 'fixed' ? draft.discount_value : null,
-      p_combines_product: draft.discount_combines_product,
-      p_combines_order: draft.discount_combines_order,
-      p_combines_shipping: draft.discount_combines_shipping,
-    });
-    if (error) throw new Error(error.message || 'Bundle discount call failed');
-    if (data?.error) throw new Error(`${data.error}${data.details ? ` — ${data.details}` : ''}`);
-    throwGraphQLErrors(data, 'write_discounts');
-    return extractDiscountGid(data, 'discountCodeBxgyCreate');
-  }
 
   const data = await callShopifyProxy('create_bxgy_discount', {
     code,
