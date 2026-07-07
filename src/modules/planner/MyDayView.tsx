@@ -377,28 +377,16 @@ export default function MyDayView({
         </div>
       </div>
 
-      {/* Top row: the working-phase banner (left) sits beside the Day Note and
-          calendar (right). The schedule below then gets the FULL width. */}
-      <div className="grid lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 mb-4 items-start">
-        <div className="min-w-0">
-          {phase && (
-            <PhaseBanner phase={phase} target={phaseTarget!} planned={plannedMinutes} daysIn={daysInPhase} />
-          )}
+      {phase && (
+        <div className="mb-4">
+          <PhaseBanner phase={phase} target={phaseTarget!} planned={plannedMinutes} daysIn={daysInPhase} />
         </div>
-        <div className="min-w-0 space-y-4">
-          <DayNoteCard
-            key={selected}
-            day={selected}
-            value={dayNotes[selected] ?? ''}
-            onSave={handlers.onSaveDayNote}
-          />
-          {gc.connected && <GoogleEventsCard events={events} />}
-        </div>
-      </div>
+      )}
 
       {/* Full-width schedule so the day's to-dos have the whole width. */}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="space-y-4 min-w-0">
+          {gc.connected && <GoogleEventsCard events={events} />}
           {overdue.length > 0 && (
             <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 mb-1 flex items-center gap-1">
