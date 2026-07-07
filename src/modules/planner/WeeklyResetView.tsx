@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import {
-  RotateCcw, ChevronLeft, ChevronRight, ImagePlus, Loader2, Plus, Trash2, Check,
-  Sparkles, Star, Zap, Heart, Clock, AlertCircle, X,
+  RotateCcw, ChevronLeft, ChevronRight, ChevronDown, ImagePlus, Loader2, Plus, Trash2, Check,
+  Sparkles, Star, Zap, Heart, AlertCircle, X,
 } from 'lucide-react';
 import { transcribeWeeklyReset } from './aiAssist';
 import type { PlannerImage } from './ai';
@@ -45,7 +45,14 @@ export default function WeeklyResetView({
   const [progress, setProgress] = useState<{ i: number; n: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<number | null>(null);
+  // Which reflective (journal) rows are expanded — collapsed by default, like
+  // the Planning tray, so the page stays calm.
+  const [openFields, setOpenFields] = useState<Set<string>>(() => new Set());
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function toggleField(key: string) {
+    setOpenFields(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
+  }
 
   const thisWeek = weekStart === currentMonday(today);
   const itemCount = draft.items.filter(i => i.text.trim()).length;
@@ -173,21 +180,38 @@ export default function WeeklyResetView({
         )}
       </div>
 
-      {/* Reflective sections */}
-      <div className="grid sm:grid-cols-2 gap-4 mb-8">
-        {REFLECTIVE.map(f => (
-          <div key={f.key}>
-            <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">{f.label}</label>
-            <textarea
-              value={refl[f.key]}
-              onChange={e => setRefl(r => ({ ...r, [f.key]: e.target.value }))}
-              onBlur={() => saveField(f.key)}
-              placeholder={f.placeholder}
-              rows={3}
-              className="w-full text-sm rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none focus:border-violet-300 text-slate-700 placeholder:text-slate-300 resize-y"
-            />
-          </div>
-        ))}
+      {/* Reflective journal — collapsible rows so the page stays tidy. */}
+      <div className="mb-8 rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+        {REFLECTIVE.map(f => {
+          const open = openFields.has(f.key);
+          const preview = refl[f.key].trim().replace(/\s+/g, ' ');
+          return (
+            <div key={f.key}>
+              <button onClick={() => toggleField(f.key)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
+                {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+                <span className="text-sm font-medium text-slate-700 shrink-0">{f.label}</span>
+                {!open && (
+                  <span className={`ml-auto text-xs truncate ${preview ? 'text-slate-400' : 'text-slate-300'}`}>
+                    {preview || 'Tap to add…'}
+                  </span>
+                )}
+              </button>
+              {open && (
+                <div className="px-4 pb-3">
+                  <textarea
+                    autoFocus
+                    value={refl[f.key]}
+                    onChange={e => setRefl(r => ({ ...r, [f.key]: e.target.value }))}
+                    onBlur={() => saveField(f.key)}
+                    placeholder={f.placeholder}
+                    rows={3}
+                    className="w-full text-sm rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none focus:border-violet-300 text-slate-700 placeholder:text-slate-300 resize-y"
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Brain dump → tag each item */}
