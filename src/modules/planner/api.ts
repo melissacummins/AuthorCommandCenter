@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  ChecklistItem, PlannerDayNote, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
+  ChecklistItem, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
 } from './types';
 import { DEFAULT_DAILY_CAPACITY } from './types';
 
@@ -315,29 +315,6 @@ export async function updateSettings(
     .single();
   if (error) throw error;
   return data as PlannerSettings;
-}
-
-// ---- Day notes ------------------------------------------------------------
-
-export async function listDayNotes(userId: string): Promise<PlannerDayNote[]> {
-  const { data, error } = await supabase
-    .from('planner_day_notes')
-    .select('*')
-    .eq('user_id', userId);
-  if (error) throw error;
-  return (data ?? []) as PlannerDayNote[];
-}
-
-// Upsert a single day's note (one row per (user, day)); empty bodies are kept
-// so the row's timestamps survive, which is harmless.
-export async function saveDayNote(userId: string, day: string, body: string): Promise<PlannerDayNote> {
-  const { data, error } = await supabase
-    .from('planner_day_notes')
-    .upsert({ user_id: userId, day, body, updated_at: new Date().toISOString() }, { onConflict: 'user_id,day' })
-    .select('*')
-    .single();
-  if (error) throw error;
-  return data as PlannerDayNote;
 }
 
 // ---- Time blocks ----------------------------------------------------------

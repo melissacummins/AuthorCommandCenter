@@ -28,7 +28,6 @@ export interface MyDayHandlers {
   onDeleteBlock: (id: string) => void;
   onSyncBlock: (block: PlannerTimeBlock, tasksInBlock: PlannerTask[]) => void;
   onUnsyncBlock: (block: PlannerTimeBlock) => void;
-  onSaveDayNote: (day: string, body: string) => void;
   onUpdateCapacity: (minutes: number) => void;
   onToggleCarryOver: (on: boolean) => void;
   // Retroactively record time worked on a to-do, on a given day.
@@ -38,12 +37,11 @@ export interface MyDayHandlers {
 }
 
 export default function MyDayView({
-  tasks, blocks, sessions, dayNotes, settings, today, cal, handlers, jumpTo, notesById = {}, lists = [], onOpenTask,
+  tasks, blocks, sessions, settings, today, cal, handlers, jumpTo, notesById = {}, lists = [], onOpenTask,
 }: {
   tasks: PlannerTask[];
   blocks: PlannerTimeBlock[];
   sessions: PlannerTimeSession[];
-  dayNotes: Record<string, string>;
   settings: PlannerSettings;
   today: string;
   cal: { gc: UseGoogleCalendar; calVersion: number };
@@ -816,24 +814,6 @@ function GoogleEventsCard({ events }: { events: GCalEvent[] }) {
           ))}
         </ul>
       )}
-    </div>
-  );
-}
-
-function DayNoteCard({ day, value, onSave }: { day: string; value: string; onSave: (day: string, body: string) => void }) {
-  const [body, setBody] = useState(value);
-  useEffect(() => { setBody(value); }, [value]);
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Day note</p>
-      <textarea
-        value={body}
-        onChange={e => setBody(e.target.value)}
-        onBlur={() => { if (body !== value) onSave(day, body); }}
-        placeholder="How's the day going? Wins, ideas, how you're feeling…"
-        rows={4}
-        className="w-full text-sm text-slate-700 bg-transparent outline-none resize-y placeholder:text-slate-300"
-      />
     </div>
   );
 }
