@@ -170,20 +170,6 @@ export const STATUS_COLORS: Record<ArcStatus, string> = {
   not_pending_anything: 'bg-slate-100 text-slate-600',
 };
 
-export const NOTION_STATUS_MAP: Record<string, ArcStatus> = {
-  'Current ARC Member': 'current_arc_member',
-  "Didn't Review": 'didnt_review',
-  'Awaiting Review': 'awaiting_review',
-  'Special circumstances': 'special_circumstances',
-  "Didn't download": 'didnt_download',
-  'Awaiting ARC': 'awaiting_arc',
-  'Not moving forward': 'not_moving_forward',
-  'On TBR no review': 'on_tbr_no_review',
-  New: 'new',
-  'Insufficient information': 'insufficient_information',
-  'Not Pending Anything': 'not_pending_anything',
-};
-
 export const PLACES = [
   'Amazon',
   'Apple',
