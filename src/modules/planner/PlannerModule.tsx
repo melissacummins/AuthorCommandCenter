@@ -34,14 +34,14 @@ import {
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
   getSettings, updateSettings,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
-  listTimeSessions, createTimeSessions, reorderNotes,
+  listTimeSessions, createTimeSessions, deleteTimeSession, reorderNotes,
   getWeeklyReset, upsertWeeklyReset,
 } from './api';
 import { listPenNames, type PenName } from '../../lib/penNames';
 import { penNameClasses } from '../../components/PenNameChip';
 import {
   bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
-  elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
+  elapsedMinutes, localDay, weekStartISO, addDaysISO, parseCapture, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerTimeBlock, type PlannerTimeSession,
   dedupeResetDraft, resetSectionFor, QUICK_TASK_MINUTES,
@@ -458,6 +458,25 @@ export default function PlannerModule() {
     } catch (e) { setError((e as Error)?.message ?? 'Could not log the block.'); }
   }
 
+  // Undo a mistakenly-logged timer run from the Logbook: drops the session and
+  // takes its minutes back off the to-do's running total, so Stats and the to-do
+  // both reconcile as if it never happened.
+  async function deleteSession(sessionId: string) {
+    if (!user) return;
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setTasks(prev => prev.map(t =>
+      t.id === session.task_id
+        ? { ...t, actual_minutes: Math.max(0, (t.actual_minutes ?? 0) - session.minutes) }
+        : t));
+    try {
+      await deleteTimeSession(sessionId);
+      const task = tasks.find(t => t.id === session.task_id);
+      if (task) await updateTask(task.id, { actual_minutes: Math.max(0, (task.actual_minutes ?? 0) - session.minutes) });
+    } catch (e) { setError((e as Error)?.message ?? 'Could not remove that session.'); }
+  }
+
   // ---- Weekly Reset ----
 
   // Persist a reflective field (optimistic), keyed to the viewed week.
@@ -513,7 +532,7 @@ export default function PlannerModule() {
       for (const it of bySection[g.key]) {
         created.push(await createTask(user.id, {
           title: it.text.trim(), note_id: listId, kind: 'task', sort_order: sort++,
-          due_date: g.key === 'meetings' ? (it.date ?? null) : null, reset_week: resetWeek, reset_section: g.key,
+          due_date: it.date ?? null, reset_week: resetWeek, reset_section: g.key,
           flagged: !!it.priority,
           estimate_minutes: it.quick ? QUICK_TASK_MINUTES : (it.estimate_minutes ?? null),
         }));
@@ -670,6 +689,13 @@ export default function PlannerModule() {
   function openDay(iso: string) { setDayJump(d => ({ iso, n: d.n + 1 })); choose({ kind: 'myday' }); }
   // Open a specific day in the Logbook (from a Stats bar), scrolled to that day.
   function openReview(iso: string) { setReviewJump(d => ({ iso, n: d.n + 1 })); choose({ kind: 'logbook' }); }
+  // Open a to-do where it lives: its list, its day, else Inbox (open) / Logbook (done).
+  function openTask(t: PlannerTask) {
+    if (t.note_id) choose({ kind: 'note', id: t.note_id });
+    else if (t.due_date) openDay(t.due_date);
+    else if (t.done) choose({ kind: 'logbook' });
+    else choose({ kind: 'inbox' });
+  }
 
   const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
 
@@ -892,12 +918,7 @@ export default function PlannerModule() {
             jumpTo={dayJump}
             notesById={notesById}
             lists={listsForViews}
-            onOpenTask={t => {
-              if (t.note_id) choose({ kind: 'note', id: t.note_id });
-              else if (t.due_date) openDay(t.due_date);
-              else if (t.done) choose({ kind: 'logbook' });
-              else choose({ kind: 'inbox' });
-            }}
+            onOpenTask={openTask}
           />
         ) : selection.kind === 'plan' ? (
           <PlanView
@@ -911,7 +932,7 @@ export default function PlannerModule() {
             onPatch={patchTask}
           />
         ) : selection.kind === 'stats' ? (
-          <StatsView tasks={scopedTasks} sessions={sessions} today={today} notesById={notesById} onOpenDay={openReview} />
+          <StatsView tasks={scopedTasks} sessions={sessions} today={today} notesById={notesById} onOpenDay={openReview} onOpenTask={openTask} />
         ) : selection.kind === 'logbook' ? (
           <LogbookView
             tasks={scopedTasks}
@@ -921,6 +942,7 @@ export default function PlannerModule() {
             focus={reviewJump}
             onPatch={patchTask}
             onDelete={removeTask}
+            onDeleteSession={deleteSession}
             onOpenList={id => choose({ kind: 'note', id })}
             onOpenDay={openDay}
           />
@@ -1323,8 +1345,9 @@ function ViewPane({
       <QuickAdd
         value={draft}
         onChange={setDraft}
+        today={today}
         placeholder={`Add to ${meta.label}…`}
-        onSubmit={() => { onAdd({ title: draft, ...addDefaults }); setDraft(''); }}
+        onSubmit={p => { onAdd({ title: p.title, ...addDefaults, ...(p.due ? { due_date: p.due, someday: false } : {}) }); setDraft(''); }}
       />
 
       {items.length > 0 && (
@@ -1498,7 +1521,7 @@ function NotePane({
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
   onDuplicateNote: (note: PlannerNote) => void;
-  onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
+  onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number; due_date?: string }) => void;
   onCreate: (i: { title?: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => Promise<PlannerTask | undefined>;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
@@ -1790,7 +1813,8 @@ function NotePane({
             value={draft}
             onChange={setDraft}
             placeholder="Add a to-do…"
-            onSubmit={() => { onAdd({ title: draft, note_id: note.id, sort_order: nextOrder }); setDraft(''); }}
+            today={today}
+            onSubmit={p => { onAdd({ title: p.title, note_id: note.id, sort_order: nextOrder, ...(p.due ? { due_date: p.due } : {}) }); setDraft(''); }}
           />
         </div>
         <button
@@ -2256,25 +2280,41 @@ function SortableListItem({
 }
 
 function QuickAdd({
-  value, onChange, onSubmit, placeholder,
+  value, onChange, onSubmit, placeholder, today,
 }: {
   value: string;
   onChange: (v: string) => void;
-  onSubmit: () => void;
+  // Receives the parsed capture: the cleaned title and any date read from plain
+  // English ("call editor Friday" → title "call editor", due that Friday).
+  onSubmit: (parsed: { title: string; due: string | null }) => void;
   placeholder: string;
+  // When provided, dates typed into the title are recognized and previewed.
+  today?: string;
 }) {
+  const parsed = today
+    ? parseCapture(value, today)
+    : { title: value.trim(), due: null as string | null };
+  const submit = () => { if (value.trim()) onSubmit(parsed); };
   return (
     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
       <Plus className="w-4 h-4 text-slate-400 shrink-0" />
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') onSubmit(); }}
+        onKeyDown={e => { if (e.key === 'Enter') submit(); }}
         placeholder={placeholder}
-        className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+        className="flex-1 min-w-0 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
       />
+      {parsed.due && (
+        <span
+          className="shrink-0 inline-flex items-center gap-1 rounded-full bg-teal-50 text-teal-700 px-2 py-0.5 text-xs font-medium"
+          title={`Will be scheduled for ${captureDateLabel(parsed.due, today!)}`}
+        >
+          <CalendarDays className="w-3 h-3" /> {captureDateLabel(parsed.due, today!)}
+        </span>
+      )}
       <button
-        onClick={onSubmit}
+        onClick={submit}
         disabled={!value.trim()}
         title="Add (Enter)"
         className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
@@ -2285,4 +2325,12 @@ function QuickAdd({
       </button>
     </div>
   );
+}
+
+// A friendly label for the capture chip: "Today"/"Tomorrow" or a weekday +
+// date ("Fri, Jul 11") so a parsed weekday reads unambiguously.
+function captureDateLabel(due: string, today: string): string {
+  if (due === today) return 'Today';
+  if (due === addDaysISO(today, 1)) return 'Tomorrow';
+  return new Date(due + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }

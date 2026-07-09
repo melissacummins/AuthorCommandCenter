@@ -12,7 +12,7 @@ import {
 // totals here come from the same fields Stats uses (completions by done_at,
 // time by the session log), so the two always agree. Click any to-do to open it.
 export default function LogbookView({
-  tasks, sessions, notesById, today, focus, onPatch, onDelete, onOpenList, onOpenDay,
+  tasks, sessions, notesById, today, focus, onPatch, onDelete, onDeleteSession, onOpenList, onOpenDay,
 }: {
   tasks: PlannerTask[];
   sessions: PlannerTimeSession[];
@@ -22,6 +22,7 @@ export default function LogbookView({
   focus?: { iso: string; n: number };
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  onDeleteSession: (sessionId: string) => void;
   onOpenList: (noteId: string) => void;
   onOpenDay: (iso: string) => void;
 }) {
@@ -105,6 +106,7 @@ export default function LogbookView({
               notesById={notesById}
               onPatch={onPatch}
               onDelete={onDelete}
+              onDeleteSession={onDeleteSession}
               onOpenList={onOpenList}
               onOpenDay={onOpenDay}
             />
@@ -122,9 +124,10 @@ const DayCard = forwardRef<HTMLDivElement, {
   notesById: Record<string, PlannerNote>;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  onDeleteSession: (sessionId: string) => void;
   onOpenList: (noteId: string) => void;
   onOpenDay: (iso: string) => void;
-}>(function DayCard({ day, today, flash, notesById, onPatch, onDelete, onOpenList, onOpenDay }, ref) {
+}>(function DayCard({ day, today, flash, notesById, onPatch, onDelete, onDeleteSession, onOpenList, onOpenDay }, ref) {
   return (
     <div ref={ref} className={`scroll-mt-4 rounded-2xl transition-shadow ${flash ? 'ring-2 ring-teal-400 ring-offset-2' : ''}`}>
       <div className="flex items-baseline gap-2 mb-2">
@@ -149,6 +152,7 @@ const DayCard = forwardRef<HTMLDivElement, {
             onOpen={() => (e.task.note_id ? onOpenList(e.task.note_id) : onOpenDay(e.task.due_date ?? day.day))}
             onPatch={onPatch}
             onDelete={onDelete}
+            onDeleteSession={onDeleteSession}
           />
         ))}
       </ul>
@@ -157,7 +161,7 @@ const DayCard = forwardRef<HTMLDivElement, {
 });
 
 function EntryRow({
-  entry, day, listName, onOpen, onPatch, onDelete,
+  entry, day, listName, onOpen, onPatch, onDelete, onDeleteSession,
 }: {
   entry: ReviewEntry;
   day: string;
@@ -165,67 +169,102 @@ function EntryRow({
   onOpen: () => void;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
+  onDeleteSession: (sessionId: string) => void;
 }) {
   const { task, minutes, completedToday, sessions } = entry;
+  // Expand to a per-run timesheet so a mistaken "log as worked" can be undone.
+  const [open, setOpen] = useState(false);
   return (
-    <li className="flex items-center gap-2 px-4 py-2 group">
-      {/* Completed that day → green check; worked but not finished → hollow clock. */}
-      {completedToday ? (
-        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0" title="Completed this day">
-          <Check className="w-2.5 h-2.5" strokeWidth={3} />
-        </span>
-      ) : (
-        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-amber-400 text-amber-500 shrink-0" title="Worked on, not finished">
-          <Clock className="w-2.5 h-2.5" />
-        </span>
-      )}
+    <li className="px-4 py-2 group">
+      <div className="flex items-center gap-2">
+        {/* Completed that day → green check; worked but not finished → hollow clock. */}
+        {completedToday ? (
+          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white shrink-0" title="Completed this day">
+            <Check className="w-2.5 h-2.5" strokeWidth={3} />
+          </span>
+        ) : (
+          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full border border-amber-400 text-amber-500 shrink-0" title="Worked on, not finished">
+            <Clock className="w-2.5 h-2.5" />
+          </span>
+        )}
 
-      <button
-        onClick={onOpen}
-        className="flex-1 min-w-0 text-left text-sm text-slate-600 truncate hover:text-teal-600 transition-colors"
-        title="Open this to-do"
-      >
-        {task.title || 'Untitled'}
-      </button>
+        <button
+          onClick={onOpen}
+          className="flex-1 min-w-0 text-left text-sm text-slate-600 truncate hover:text-teal-600 transition-colors"
+          title="Open this to-do"
+        >
+          {task.title || 'Untitled'}
+        </button>
 
-      {listName && <span className="text-xs text-slate-400 truncate max-w-[9rem] shrink-0">{listName}</span>}
+        {listName && <span className="text-xs text-slate-400 truncate max-w-[9rem] shrink-0">{listName}</span>}
 
-      {/* Timesheet detail: the timer ranges worked this day. */}
-      {sessions.length > 0 && (
-        <span className="hidden sm:inline text-xs text-slate-400 shrink-0" title="When you worked on it">
-          {sessions.length === 1 ? rangeLabel(sessions[0]) : `${sessions.length} sessions`}
-        </span>
-      )}
-
-      {minutes > 0 && (
-        <span className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 shrink-0" title="Time tracked this day">
-          <Clock className="w-3 h-3" />{formatMinutes(minutes)}
-        </span>
-      )}
-      {!minutes && task.estimate_minutes ? (
-        <span className="text-xs text-slate-300 shrink-0" title="Estimate (no time tracked)">~{formatMinutes(task.estimate_minutes)}</span>
-      ) : null}
-
-      {/* Uncomplete / delete only make sense for to-dos finished this day. */}
-      {completedToday ? (
-        <>
+        {/* Timesheet detail: the timer ranges worked this day. Click to expand and
+            correct a mistaken run. */}
+        {sessions.length > 0 && (
           <button
-            onClick={() => onPatch(task.id, { done: false })}
-            className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
-            title="Mark not done (move back to your lists)"
+            onClick={() => setOpen(o => !o)}
+            className="text-xs text-slate-400 shrink-0 hover:text-teal-600 transition-colors"
+            title="Show the timer runs (edit or remove a mistaken one)"
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            {sessions.length === 1 ? rangeLabel(sessions[0]) : `${sessions.length} sessions`}
           </button>
-          <button
-            onClick={() => onDelete(task.id)}
-            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
-            title="Delete permanently"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </>
-      ) : (
-        <span className="text-[10px] uppercase tracking-wide text-amber-500/80 shrink-0" title={`Tracked on ${day}, not completed`}>worked</span>
+        )}
+
+        {minutes > 0 && (
+          <span className="inline-flex items-center gap-0.5 text-xs font-medium text-slate-500 shrink-0" title="Time tracked this day">
+            <Clock className="w-3 h-3" />{formatMinutes(minutes)}
+          </span>
+        )}
+        {!minutes && task.estimate_minutes ? (
+          <span className="text-xs text-slate-300 shrink-0" title="Estimate (no time tracked)">~{formatMinutes(task.estimate_minutes)}</span>
+        ) : null}
+
+        {/* Uncomplete / delete only make sense for to-dos finished this day. */}
+        {completedToday ? (
+          <>
+            <button
+              onClick={() => onPatch(task.id, { done: false })}
+              className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+              title="Mark not done (move back to your lists)"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onDelete(task.id)}
+              className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+              title="Delete permanently"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </>
+        ) : (
+          <span className="text-[10px] uppercase tracking-wide text-amber-500/80 shrink-0" title={`Tracked on ${day}, not completed`}>worked</span>
+        )}
+      </div>
+
+      {/* Expanded timesheet: one row per timer run, each removable. Undoing a run
+          takes its minutes back off the to-do so Stats reconciles. */}
+      {open && sessions.length > 0 && (
+        <ul className="mt-1.5 ml-6 space-y-1">
+          {sessions.map(s => (
+            <li key={s.id} className="flex items-center gap-2 text-xs text-slate-500">
+              <Clock className="w-3 h-3 text-slate-300 shrink-0" />
+              <span className="tabular-nums">{rangeLabel(s)}</span>
+              <span className="text-slate-400">· {formatMinutes(s.minutes)}</span>
+              <button
+                onClick={() => {
+                  if (window.confirm(`Remove this ${formatMinutes(s.minutes)} timer run? Its time will come off “${task.title || 'Untitled'}”.`)) {
+                    onDeleteSession(s.id);
+                  }
+                }}
+                className="ml-auto text-slate-300 hover:text-rose-500 transition-colors shrink-0"
+                title="Remove this timer run"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
     </li>
   );

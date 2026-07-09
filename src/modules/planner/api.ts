@@ -282,6 +282,12 @@ export async function createTimeSessions(
   return (data ?? []) as PlannerTimeSession[];
 }
 
+// Remove a mistakenly-logged timer run (e.g. a stray "log as worked").
+export async function deleteTimeSession(id: string): Promise<void> {
+  const { error } = await supabase.from('planner_time_sessions').delete().eq('id', id);
+  if (error) throw error;
+}
+
 // ---- Settings -------------------------------------------------------------
 
 // The user's planner settings, creating a default row the first time so the My
