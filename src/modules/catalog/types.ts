@@ -65,6 +65,11 @@ export interface Book {
   cover_url: string | null;
   notes: string | null;
 
+  // Show this book in the ARC applicant book picker. Defaults true.
+  // Translations start out false (see migration 094) since they don't
+  // accept applications, but Melissa can override case-by-case.
+  include_in_arcs: boolean;
+
   created_at: string;
   updated_at: string;
 }

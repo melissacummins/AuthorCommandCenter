@@ -56,6 +56,7 @@ function emptyDraft(): BookInsert {
     reviews: [],
     cover_url: null,
     notes: null,
+    include_in_arcs: true,
   };
 }
 
@@ -443,6 +444,14 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
               <strong className="text-slate-700">{parentBook.title}</strong>
             </p>
           )}
+          <label className="mt-3 flex items-center gap-2 text-xs text-slate-700">
+            <input
+              type="checkbox"
+              checked={draft.include_in_arcs !== false}
+              onChange={e => set('include_in_arcs', e.target.checked)}
+            />
+            Show this book in the ARC applicant picker
+          </label>
         </div>
 
         <div>
