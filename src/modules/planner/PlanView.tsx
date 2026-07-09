@@ -346,7 +346,6 @@ function TaskChip({
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
-  const list = task.note_id ? notesById[task.note_id] : undefined;
   const overdue = !!task.due_date && task.due_date < today;
   return (
     <li
@@ -369,7 +368,6 @@ function TaskChip({
         </span>
       )}
       {task.estimate_minutes ? <span className="text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
-      {list && <span className="text-slate-300 truncate max-w-[5rem] shrink-0">{list.title.trim() || 'list'}</span>}
     </li>
   );
 }
@@ -397,7 +395,7 @@ function TraySection({
       </button>
       {open && (
         <ul className="px-2 pb-2 space-y-0.5 border-t border-slate-100 pt-1">
-          {items.map(t => <TrayRow key={t.id} task={t} notesById={notesById} onOpenList={onOpenList} />)}
+          {items.map(t => <TrayRow key={t.id} task={t} onOpenList={onOpenList} />)}
         </ul>
       )}
     </div>
@@ -407,10 +405,9 @@ function TraySection({
 // A full-width draggable row for the reset tray. The title wraps (rather than
 // truncating) so long brain-dump items stay readable. Drag it onto a day to
 // schedule; click the title to open its list and edit it.
-function TrayRow({ task, notesById, onOpenList }: { task: PlannerTask; notesById: Record<string, PlannerNote>; onOpenList?: (noteId: string) => void }) {
+function TrayRow({ task, onOpenList }: { task: PlannerTask; onOpenList?: (noteId: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
-  const list = task.note_id ? notesById[task.note_id] : undefined;
   const canOpen = !!(task.note_id && onOpenList);
   return (
     <li
@@ -435,7 +432,6 @@ function TrayRow({ task, notesById, onOpenList }: { task: PlannerTask; notesById
         {task.title || 'Untitled'}
       </button>
       {task.estimate_minutes ? <span className="mt-0.5 text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
-      {list && <span className="mt-0.5 text-slate-300 truncate max-w-[7rem] shrink-0">{list.title.trim() || 'list'}</span>}
     </li>
   );
 }
