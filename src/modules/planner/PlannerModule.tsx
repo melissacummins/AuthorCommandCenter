@@ -41,7 +41,7 @@ import { listPenNames, type PenName } from '../../lib/penNames';
 import { penNameClasses } from '../../components/PenNameChip';
 import {
   bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
-  elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
+  elapsedMinutes, localDay, weekStartISO, addDaysISO, parseCapture, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerTimeBlock, type PlannerTimeSession,
   dedupeResetDraft, resetSectionFor, QUICK_TASK_MINUTES,
@@ -1345,8 +1345,9 @@ function ViewPane({
       <QuickAdd
         value={draft}
         onChange={setDraft}
+        today={today}
         placeholder={`Add to ${meta.label}…`}
-        onSubmit={() => { onAdd({ title: draft, ...addDefaults }); setDraft(''); }}
+        onSubmit={p => { onAdd({ title: p.title, ...addDefaults, ...(p.due ? { due_date: p.due, someday: false } : {}) }); setDraft(''); }}
       />
 
       {items.length > 0 && (
@@ -1520,7 +1521,7 @@ function NotePane({
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
   onDuplicateNote: (note: PlannerNote) => void;
-  onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => void;
+  onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number; due_date?: string }) => void;
   onCreate: (i: { title?: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => Promise<PlannerTask | undefined>;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
@@ -1812,7 +1813,8 @@ function NotePane({
             value={draft}
             onChange={setDraft}
             placeholder="Add a to-do…"
-            onSubmit={() => { onAdd({ title: draft, note_id: note.id, sort_order: nextOrder }); setDraft(''); }}
+            today={today}
+            onSubmit={p => { onAdd({ title: p.title, note_id: note.id, sort_order: nextOrder, ...(p.due ? { due_date: p.due } : {}) }); setDraft(''); }}
           />
         </div>
         <button
@@ -2278,25 +2280,41 @@ function SortableListItem({
 }
 
 function QuickAdd({
-  value, onChange, onSubmit, placeholder,
+  value, onChange, onSubmit, placeholder, today,
 }: {
   value: string;
   onChange: (v: string) => void;
-  onSubmit: () => void;
+  // Receives the parsed capture: the cleaned title and any date read from plain
+  // English ("call editor Friday" → title "call editor", due that Friday).
+  onSubmit: (parsed: { title: string; due: string | null }) => void;
   placeholder: string;
+  // When provided, dates typed into the title are recognized and previewed.
+  today?: string;
 }) {
+  const parsed = today
+    ? parseCapture(value, today)
+    : { title: value.trim(), due: null as string | null };
+  const submit = () => { if (value.trim()) onSubmit(parsed); };
   return (
     <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
       <Plus className="w-4 h-4 text-slate-400 shrink-0" />
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') onSubmit(); }}
+        onKeyDown={e => { if (e.key === 'Enter') submit(); }}
         placeholder={placeholder}
-        className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+        className="flex-1 min-w-0 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
       />
+      {parsed.due && (
+        <span
+          className="shrink-0 inline-flex items-center gap-1 rounded-full bg-teal-50 text-teal-700 px-2 py-0.5 text-xs font-medium"
+          title={`Will be scheduled for ${captureDateLabel(parsed.due, today!)}`}
+        >
+          <CalendarDays className="w-3 h-3" /> {captureDateLabel(parsed.due, today!)}
+        </span>
+      )}
       <button
-        onClick={onSubmit}
+        onClick={submit}
         disabled={!value.trim()}
         title="Add (Enter)"
         className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
@@ -2307,4 +2325,12 @@ function QuickAdd({
       </button>
     </div>
   );
+}
+
+// A friendly label for the capture chip: "Today"/"Tomorrow" or a weekday +
+// date ("Fri, Jul 11") so a parsed weekday reads unambiguously.
+function captureDateLabel(due: string, today: string): string {
+  if (due === today) return 'Today';
+  if (due === addDaysISO(today, 1)) return 'Tomorrow';
+  return new Date(due + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }

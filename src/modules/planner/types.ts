@@ -646,3 +646,61 @@ export function formatDue(due: string, today: string = todayISO()): string {
   if (diffDays < 0) return `Overdue · ${month}`;
   return month;
 }
+
+// ---- Natural-language capture --------------------------------------------
+// Pull a due date out of a to-do typed in plain English — "call editor Friday",
+// "email Sam tomorrow", "renew domain in 3 days" — and hand back the cleaned
+// title plus the date. Deliberately CONSERVATIVE: it only reads a date phrase
+// off the END of the string (optionally after on/by/due/for/next), so a to-do
+// literally named "Monday sync notes" is never silently scheduled. Tasks store
+// only a day, so a trailing clock time ("2pm") is left in the title, not lost.
+const WEEKDAY_INDEX: Record<string, number> = {
+  sunday: 0, sun: 0, monday: 1, mon: 1, tuesday: 2, tue: 2, tues: 2,
+  wednesday: 3, wed: 3, thursday: 4, thu: 4, thur: 4, thurs: 4,
+  friday: 5, fri: 5, saturday: 6, sat: 6,
+};
+
+// The soonest future date landing on `target` (0=Sun). A bare weekday that
+// equals today resolves to the coming one (a week out), never today; "next"
+// always skips to the following week.
+function weekdayOnOrAfter(today: string, target: number, forceNext: boolean): string {
+  const cur = new Date(today + 'T00:00:00').getDay();
+  let delta = (target - cur + 7) % 7;
+  if (forceNext) delta += 7;
+  else if (delta === 0) delta = 7;
+  return addDaysISO(today, delta);
+}
+
+export function parseCapture(raw: string, today: string): { title: string; due: string | null } {
+  const text = raw.trim();
+  if (!text) return { title: text, due: null };
+
+  // Peel a trailing clock time first ("2pm", "2:30pm", "14:00") so a date can
+  // sit in front of it; require am/pm or a colon so plain "chapter 3" is safe.
+  const timeRe = /\s+(?:at\s+)?(\d{1,2}:\d{2}\s*(?:am|pm)?|\d{1,2}\s*(?:am|pm))$/i;
+  const timeMatch = text.match(timeRe);
+  const timeStr = timeMatch ? timeMatch[1].replace(/\s+/g, '') : null;
+  const body = timeMatch ? text.slice(0, timeMatch.index).trimEnd() : text;
+
+  const lead = '(?:due\\s+|by\\s+|on\\s+|for\\s+)?';
+  const patterns: { re: RegExp; resolve: (m: RegExpMatchArray) => string | null }[] = [
+    { re: new RegExp(`\\s+${lead}(today|tonight)$`, 'i'), resolve: () => today },
+    { re: new RegExp(`\\s+${lead}(tomorrow|tmrw|tmr)$`, 'i'), resolve: () => addDaysISO(today, 1) },
+    { re: new RegExp(`\\s+${lead}(next\\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday|sun|mon|tues?|wed|thur?s?|fri|sat)$`, 'i'),
+      resolve: m => weekdayOnOrAfter(today, WEEKDAY_INDEX[m[2].toLowerCase()], !!m[1]) },
+    { re: /\s+in\s+(\d+)\s+days?$/i, resolve: m => addDaysISO(today, parseInt(m[1], 10)) },
+    { re: /\s+in\s+(\d+)\s+weeks?$/i, resolve: m => addDaysISO(today, parseInt(m[1], 10) * 7) },
+    { re: /\s+in\s+a\s+week$/i, resolve: () => addDaysISO(today, 7) },
+  ];
+
+  for (const p of patterns) {
+    const m = body.match(p.re);
+    if (!m) continue;
+    const due = p.resolve(m);
+    if (!due) continue;
+    let title = body.slice(0, m.index).trimEnd();
+    if (timeStr) title = `${title} ${timeStr}`.trim();
+    return { title: title || text, due };
+  }
+  return { title: text, due: null };
+}
