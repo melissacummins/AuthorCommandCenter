@@ -6,7 +6,8 @@ import {
   type ApplicantRow, type ApplySummary, type Decision, type MatchPreview,
   REASON_LABELS,
 } from '../applicant-import';
-import type { ArcReader } from '../types';
+import type { ArcReader, ArcStatus } from '../types';
+import { STATUS_LABELS, STATUS_ORDER } from '../types';
 
 type Stage = 'upload' | 'review' | 'done';
 
@@ -23,6 +24,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
 
   const [book, setBook] = useState('');
   const [customBook, setCustomBook] = useState('');
+  const [batchStatus, setBatchStatus] = useState<ArcStatus>('new');
   const [csvRows, setCsvRows] = useState<ApplicantRow[]>([]);
   const [detected, setDetected] = useState<Record<string, string>>({});
   const [previews, setPreviews] = useState<MatchPreview[]>([]);
@@ -39,6 +41,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
     setError(null);
     setBook('');
     setCustomBook('');
+    setBatchStatus('new');
     setCsvRows([]);
     setDetected({});
     setPreviews([]);
@@ -115,6 +118,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
         csvRows,
         existingReaders,
         effectiveBook,
+        batchStatus,
       );
       setSummary(result);
       setStage('done');
@@ -191,6 +195,26 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
               />
             </div>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700 mb-1">
+              Status for everyone in this CSV
+            </label>
+            <select
+              value={batchStatus}
+              onChange={e => setBatchStatus(e.target.value as ArcStatus)}
+              className="w-full md:w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
+            >
+              {STATUS_ORDER.map(s => (
+                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+            <p className="text-xs text-slate-500 mt-1">
+              Default <strong>New</strong> — auto-advances to Awaiting ARC once the book is on
+              their record. Pick <strong>Didn't download</strong>, <strong>Didn't review</strong>,
+              etc. to tag the whole batch. Existing readers already tagged with one of those
+              decisions won't get overwritten.
+            </p>
           </div>
 
           <input
