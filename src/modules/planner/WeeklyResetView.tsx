@@ -1,7 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import {
   RotateCcw, ChevronLeft, ChevronRight, ChevronDown, ImagePlus, Loader2, Plus, Trash2, Check,
-  Sparkles, Star, Zap, Heart, AlertCircle, X,
+  Sparkles, Star, Zap, Heart, CalendarClock, AlertCircle, X,
 } from 'lucide-react';
 import { transcribeWeeklyReset } from './aiAssist';
 import type { PlannerImage } from './ai';
@@ -218,7 +218,7 @@ export default function WeeklyResetView({
       <div className="flex items-center justify-between mb-1">
         <div>
           <h3 className="text-sm font-bold text-slate-700">Brain dump</h3>
-          <p className="text-xs text-slate-400">Everything on your mind. Tag each: <Star className="inline w-3 h-3 text-amber-400 -mt-0.5" /> priority · <Zap className="inline w-3 h-3 text-teal-500 -mt-0.5" /> quick (15m) · <Heart className="inline w-3 h-3 text-rose-400 -mt-0.5" /> feel-good.</p>
+          <p className="text-xs text-slate-400">Everything on your mind. Tag each: <Star className="inline w-3 h-3 text-amber-400 -mt-0.5" /> priority · <Zap className="inline w-3 h-3 text-teal-500 -mt-0.5" /> quick (15m) · <Heart className="inline w-3 h-3 text-rose-400 -mt-0.5" /> feel-good · <CalendarClock className="inline w-3 h-3 text-sky-500 -mt-0.5" /> meeting (date).</p>
         </div>
         {itemCount > 0 && (
           <button
@@ -253,9 +253,19 @@ export default function WeeklyResetView({
               className="flex-1 min-w-0 text-sm bg-transparent outline-none text-slate-700 placeholder:text-slate-300"
             />
             {it.quick && it.estimate_minutes ? <span className="hidden sm:inline text-[11px] text-slate-400 shrink-0">{it.estimate_minutes}m</span> : null}
+            {it.meeting && (
+              <input
+                type="date"
+                value={it.date ?? ''}
+                onChange={e => patchItem(i, { date: e.target.value || null })}
+                className="shrink-0 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-600"
+                title="Meeting date"
+              />
+            )}
             <TagButton active={!!it.priority} onClick={() => patchItem(i, { priority: !it.priority })} title="Priority (Important)" tone="amber"><Star className="w-3.5 h-3.5" fill={it.priority ? 'currentColor' : 'none'} /></TagButton>
             <TagButton active={!!it.quick} onClick={() => toggleQuick(i, !it.quick)} title="Quick task (15 min)" tone="teal"><Zap className="w-3.5 h-3.5" fill={it.quick ? 'currentColor' : 'none'} /></TagButton>
             <TagButton active={!!it.feel_good} onClick={() => patchItem(i, { feel_good: !it.feel_good })} title="Would feel good" tone="rose"><Heart className="w-3.5 h-3.5" fill={it.feel_good ? 'currentColor' : 'none'} /></TagButton>
+            <TagButton active={!!it.meeting} onClick={() => patchItem(i, { meeting: !it.meeting })} title="Meeting (set a date)" tone="sky"><CalendarClock className="w-3.5 h-3.5" /></TagButton>
             <button onClick={() => removeItem(i)} className="text-slate-300 hover:text-rose-500 shrink-0" title="Remove"><Trash2 className="w-3.5 h-3.5" /></button>
           </li>
         ))}
@@ -273,12 +283,13 @@ function TagButton({
   active: boolean;
   onClick: () => void;
   title: string;
-  tone: 'amber' | 'teal' | 'rose';
+  tone: 'amber' | 'teal' | 'rose' | 'sky';
   children: ReactNode;
 }) {
   const on = tone === 'amber' ? 'text-amber-500 bg-amber-50 ring-amber-200'
     : tone === 'teal' ? 'text-teal-600 bg-teal-50 ring-teal-200'
-      : 'text-rose-500 bg-rose-50 ring-rose-200';
+      : tone === 'sky' ? 'text-sky-600 bg-sky-50 ring-sky-200'
+        : 'text-rose-500 bg-rose-50 ring-rose-200';
   return (
     <button
       onClick={onClick}

@@ -183,6 +183,8 @@ export interface ResetDraftItem {
   priority?: boolean;  // ★ Important
   quick?: boolean;     // ⚡ auto 15-min
   feel_good?: boolean; // ♥ would feel good / weighing on me
+  meeting?: boolean;   // 📅 a meeting/appointment — carries a date
+  date?: string | null; // YYYY-MM-DD, for a meeting
   uncertain?: boolean;
 }
 
@@ -202,6 +204,7 @@ export const QUICK_TASK_MINUTES = 15;
 // The section a tagged item lands in (most specific wins) — drives the home
 // list's headings and the Planning tray's groups.
 export function resetSectionFor(it: ResetDraftItem): ResetSection {
+  if (it.meeting) return 'meetings';
   if (it.priority) return 'priorities';
   if (it.quick) return 'quick';
   if (it.feel_good) return 'feel_good';

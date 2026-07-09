@@ -202,16 +202,18 @@ const RESET_SYSTEM =
   'You transcribe photos of a handwritten WEEKLY RESET planning page into JSON. '
   + 'Respond with ONLY a JSON object — no prose, no markdown fences — matching exactly: '
   + '{"wins": string, "not_done": string, "drained": string, "feel_more": string, '
-  + '"items": [{"text": string, "priority": boolean, "quick": boolean, "feel_good": boolean, "estimate_minutes": number|null, "uncertain": boolean}]}. '
+  + '"items": [{"text": string, "priority": boolean, "quick": boolean, "feel_good": boolean, "meeting": boolean, "date": string|null, "estimate_minutes": number|null, "uncertain": boolean}]}. '
   + 'Match the page\'s sections by MEANING, not exact wording. The reflective sections (wins from last week; what I '
   + 'did not do; what drained my time; what I want to feel more of) are prose strings — preserve line breaks with \\n. '
   + 'EVERYTHING actionable — brain dump, priorities, quick tasks, "what would make me feel good", things weighing on '
   + 'you, meetings — goes into the single "items" list, each item listed EXACTLY ONCE (never duplicate an item). '
   + 'Tag each item instead of repeating it: set "priority": true if it is starred or under a priorities/important '
   + 'heading; "quick": true if under quick tasks (then also set estimate_minutes to 15); "feel_good": true if it is a '
-  + '"would feel good" or "weighing on me" item. An item can have more than one tag. Default all tags to false. Put a '
-  + 'duration in estimate_minutes only if one is written (or 15 for quick tasks), else null. Set "uncertain": true for '
-  + 'any item or word you had to guess from unclear handwriting. Transcribe faithfully; do not invent items.';
+  + '"would feel good" or "weighing on me" item; "meeting": true if it is a meeting/appointment/call, and set "date" '
+  + 'to its day as YYYY-MM-DD if one is written (use the current year if the year is omitted), else null. An item can '
+  + 'have more than one tag. Default all tags to false and date to null. Put a duration in estimate_minutes only if one '
+  + 'is written (or 15 for quick tasks), else null. Set "uncertain": true for any item or word you had to guess from '
+  + 'unclear handwriting. Transcribe faithfully; do not invent items.';
 
 function asStr(v: unknown): string { return typeof v === 'string' ? v : ''; }
 
@@ -230,6 +232,8 @@ function asItems(v: unknown): ResetDraftItem[] {
       priority: !!o.priority,
       quick,
       feel_good: !!o.feel_good,
+      meeting: !!o.meeting,
+      date: typeof o.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(o.date) ? o.date : null,
       estimate_minutes: typeof o.estimate_minutes === 'number' && o.estimate_minutes > 0
         ? Math.round(o.estimate_minutes)
         : (quick ? 15 : null),
