@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { CalendarRange, ChevronLeft, ChevronRight, ChevronDown, Star, Clock, RotateCcw, Check } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight, ChevronDown, Star, Clock, RotateCcw, Check, CalendarPlus } from 'lucide-react';
 import {
   DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -119,6 +119,13 @@ export default function PlanView({
     if (due !== task.due_date) onPatch(id, { due_date: due, someday: false, block_id: null });
   }
 
+  // Schedule a to-do onto a day without dragging — the mobile-friendly path used
+  // by the tray's Schedule menu (same effect as a drop onto that day).
+  function scheduleTask(id: string, day: string) {
+    const task = tasks.find(t => t.id === id);
+    if (task && day !== task.due_date) onPatch(id, { due_date: day, someday: false, block_id: null });
+  }
+
   function shift(dir: number) {
     setAnchor(a => range === 'week'
       ? addDaysISO(a, dir * 7)
@@ -216,7 +223,7 @@ export default function PlanView({
             </button>
             {trayOpen && (
               <>
-                <p className="text-xs text-slate-400 mt-1 mb-2 ml-5">Open a group and drag a to-do onto a day — or use a to-do’s Schedule menu on mobile.</p>
+                <p className="text-xs text-slate-400 mt-1 mb-2 ml-5">Open a group and drag a to-do onto a day — or tap its <CalendarPlus className="inline w-3 h-3 -mt-0.5" /> to pick a day (handy on mobile).</p>
                 <div className="space-y-1.5">
                   {traySections.map(g => (
                     <TraySection
@@ -228,6 +235,9 @@ export default function PlanView({
                       onToggle={() => toggleSection(g.label)}
                       notesById={notesById}
                       onOpenList={onOpenList}
+                      weekDays={weekDays}
+                      today={today}
+                      onSchedule={scheduleTask}
                     />
                   ))}
                 </div>
@@ -375,7 +385,7 @@ function TaskChip({
 // A collapsible group in the weekly-reset tray: a header with a count, and when
 // open, its draggable to-dos as a readable one-per-line list.
 function TraySection({
-  label, star, items, open, onToggle, notesById, onOpenList,
+  label, star, items, open, onToggle, notesById, onOpenList, weekDays, today, onSchedule,
 }: {
   label: string;
   star?: boolean;
@@ -384,6 +394,9 @@ function TraySection({
   onToggle: () => void;
   notesById: Record<string, PlannerNote>;
   onOpenList?: (noteId: string) => void;
+  weekDays: string[];
+  today: string;
+  onSchedule: (id: string, day: string) => void;
 }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white">
@@ -395,7 +408,9 @@ function TraySection({
       </button>
       {open && (
         <ul className="px-2 pb-2 space-y-0.5 border-t border-slate-100 pt-1">
-          {items.map(t => <TrayRow key={t.id} task={t} onOpenList={onOpenList} />)}
+          {items.map(t => (
+            <TrayRow key={t.id} task={t} onOpenList={onOpenList} weekDays={weekDays} today={today} onSchedule={onSchedule} />
+          ))}
         </ul>
       )}
     </div>
@@ -404,18 +419,28 @@ function TraySection({
 
 // A full-width draggable row for the reset tray. The title wraps (rather than
 // truncating) so long brain-dump items stay readable. Drag it onto a day to
-// schedule; click the title to open its list and edit it.
-function TrayRow({ task, onOpenList }: { task: PlannerTask; onOpenList?: (noteId: string) => void }) {
+// schedule (desktop) or tap the calendar to pick a day (mobile); click the title
+// to open its list and edit it.
+function TrayRow({
+  task, onOpenList, weekDays, today, onSchedule,
+}: {
+  task: PlannerTask;
+  onOpenList?: (noteId: string) => void;
+  weekDays: string[];
+  today: string;
+  onSchedule: (id: string, day: string) => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
   const canOpen = !!(task.note_id && onOpenList);
+  const [pickOpen, setPickOpen] = useState(false);
   return (
     <li
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className={`flex items-start gap-2 text-sm rounded-lg px-2 py-1.5 cursor-grab active:cursor-grabbing hover:bg-slate-50 ${isDragging ? 'opacity-60 shadow-lg bg-white ring-1 ring-slate-200' : ''}`}
+      className={`group flex items-start gap-2 text-sm rounded-lg px-2 py-1.5 cursor-grab active:cursor-grabbing hover:bg-slate-50 ${isDragging ? 'opacity-60 shadow-lg bg-white ring-1 ring-slate-200' : ''}`}
     >
       {task.flagged
         ? <Star className="w-3 h-3 mt-1 text-amber-400 shrink-0" fill="currentColor" />
@@ -432,6 +457,63 @@ function TrayRow({ task, onOpenList }: { task: PlannerTask; onOpenList?: (noteId
         {task.title || 'Untitled'}
       </button>
       {task.estimate_minutes ? <span className="mt-0.5 text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
+      {/* Tap-to-schedule — the mobile alternative to dragging. stopPropagation on
+          pointer-down keeps the drag sensor from swallowing the tap. */}
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); setPickOpen(o => !o); }}
+          title="Schedule on a day"
+          className="mt-0.5 text-slate-300 hover:text-teal-600 sm:opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity"
+        >
+          <CalendarPlus className="w-4 h-4" />
+        </button>
+        {pickOpen && (
+          <SchedulePopover
+            weekDays={weekDays}
+            today={today}
+            onPick={day => { onSchedule(task.id, day); setPickOpen(false); }}
+            onClose={() => setPickOpen(false)}
+          />
+        )}
+      </div>
     </li>
+  );
+}
+
+// A compact day picker for tap-to-schedule: the seven days of the week currently
+// shown above. Backdrop closes it on an outside tap.
+function SchedulePopover({
+  weekDays, today, onPick, onClose,
+}: {
+  weekDays: string[];
+  today: string;
+  onPick: (day: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onPointerDown={e => { e.stopPropagation(); onClose(); }} />
+      <div className="absolute right-0 top-7 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-lg p-1.5">
+        <div className="px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Schedule for…</div>
+        {weekDays.map(day => {
+          const d = new Date(day + 'T00:00:00');
+          return (
+            <button
+              key={day}
+              onPointerDown={e => e.stopPropagation()}
+              onClick={e => { e.stopPropagation(); onPick(day); }}
+              className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-sm hover:bg-teal-50 ${day === today ? 'text-teal-700 font-medium' : 'text-slate-600'}`}
+            >
+              <span>{d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
+              <span className="text-xs text-slate-400">
+                {d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{day === today ? ' · Today' : ''}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </>
   );
 }
