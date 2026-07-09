@@ -116,6 +116,73 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
     });
   }
 
+  // When the user picks a status further down the funnel than what the
+  // book buckets currently imply, offer to auto-promote any pending books
+  // into the matching bucket. Melissa typically has one ARC in flight at
+  // a time, so the modal usually shows a single "Also mark 'X' as
+  // reviewed?" row that she can accept in one click.
+  const [promotion, setPromotion] = useState<{
+    nextStatus: ArcStatus;
+    bucket: ReaderBookRelationship;
+    // book_id → default-selected. Books not already in the target bucket.
+    candidates: string[];
+    selected: Set<string>;
+  } | null>(null);
+
+  const bookTitleById = new Map(catalogBooks.map(b => [b.id, b.title]));
+
+  function candidatesToPromote(next: ArcStatus): {
+    bucket: ReaderBookRelationship;
+    ids: string[];
+  } | null {
+    if (next === 'current_arc_member') {
+      const pending = Array.from(new Set([...appliedIds, ...receivedIds]))
+        .filter(id => !reviewedIds.includes(id));
+      return { bucket: 'reviewed', ids: pending };
+    }
+    if (next === 'awaiting_review') {
+      const pending = appliedIds.filter(id => !receivedIds.includes(id));
+      return { bucket: 'received', ids: pending };
+    }
+    return null;
+  }
+
+  function handleStatusChange(next: ArcStatus) {
+    // Never open the modal when moving *out of* a funnel status into a
+    // non-funnel one (Didn't review, etc.) — nothing to promote.
+    const candidates = candidatesToPromote(next);
+    if (!candidates || candidates.ids.length === 0) {
+      setDraft(d => ({ ...d, status: next }));
+      return;
+    }
+    setPromotion({
+      nextStatus: next,
+      bucket: candidates.bucket,
+      candidates: candidates.ids,
+      selected: new Set(candidates.ids),
+    });
+  }
+
+  function confirmPromotion() {
+    if (!promotion) return;
+    const { nextStatus, bucket, selected } = promotion;
+    if (bucket === 'reviewed') {
+      const next = Array.from(new Set([...reviewedIds, ...selected]));
+      setReviewedIds(next);
+    } else if (bucket === 'received') {
+      const next = Array.from(new Set([...receivedIds, ...selected]));
+      setReceivedIds(next);
+    }
+    setDraft(d => ({ ...d, status: nextStatus }));
+    setPromotion(null);
+  }
+
+  function skipPromotion() {
+    if (!promotion) return;
+    setDraft(d => ({ ...d, status: promotion.nextStatus }));
+    setPromotion(null);
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!draft.name.trim()) return;
@@ -145,7 +212,7 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
           </div>
           <div>
             <label className={labelCls}>Status</label>
-            <select className={inputCls} value={draft.status} onChange={e => setDraft(d => ({ ...d, status: e.target.value as ArcStatus }))}>
+            <select className={inputCls} value={draft.status} onChange={e => handleStatusChange(e.target.value as ArcStatus)}>
               {STATUS_ORDER.map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
@@ -325,7 +392,86 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
           </button>
         </div>
       </div>
+
+      {promotion && (
+        <PromoteBooksModal
+          bucket={promotion.bucket}
+          candidates={promotion.candidates.map(id => ({
+            id,
+            title: bookTitleById.get(id) ?? '(unknown book)',
+          }))}
+          selected={promotion.selected}
+          onToggle={id => setPromotion(p => {
+            if (!p) return p;
+            const next = new Set(p.selected);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return { ...p, selected: next };
+          })}
+          onSkip={skipPromotion}
+          onConfirm={confirmPromotion}
+        />
+      )}
     </form>
+  );
+}
+
+function PromoteBooksModal({
+  bucket, candidates, selected, onToggle, onSkip, onConfirm,
+}: {
+  bucket: ReaderBookRelationship;
+  candidates: Array<{ id: string; title: string }>;
+  selected: Set<string>;
+  onToggle: (id: string) => void;
+  onSkip: () => void;
+  onConfirm: () => void;
+}) {
+  const verb = bucket === 'reviewed' ? 'reviewed' : 'received';
+  const single = candidates.length === 1;
+  const anySelected = Array.from(selected).length > 0;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-slate-800">
+          {single
+            ? `Also mark this book as ${verb}?`
+            : `Also mark these books as ${verb}?`}
+        </h3>
+        <p className="text-xs text-slate-500">
+          Only pending books show here — anything already {verb} is left alone.
+        </p>
+        <ul className="space-y-1.5 max-h-64 overflow-auto">
+          {candidates.map(c => (
+            <li key={c.id}>
+              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selected.has(c.id)}
+                  onChange={() => onToggle(c.id)}
+                />
+                <span>{c.title}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        <div className="flex items-center justify-end gap-2 pt-2">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+          >
+            Just change status
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={!anySelected}
+            className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+          >
+            {single ? 'Yes, mark it' : 'Yes, mark them'}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
