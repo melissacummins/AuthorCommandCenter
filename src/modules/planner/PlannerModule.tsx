@@ -902,6 +902,12 @@ export default function PlannerModule() {
             jumpTo={dayJump}
             notesById={notesById}
             lists={listsForViews}
+            onOpenTask={t => {
+              if (t.note_id) choose({ kind: 'note', id: t.note_id });
+              else if (t.due_date) openDay(t.due_date);
+              else if (t.done) choose({ kind: 'logbook' });
+              else choose({ kind: 'inbox' });
+            }}
           />
         ) : selection.kind === 'plan' ? (
           <PlanView
