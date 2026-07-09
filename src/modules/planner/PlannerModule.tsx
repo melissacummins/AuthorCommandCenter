@@ -670,6 +670,13 @@ export default function PlannerModule() {
   function openDay(iso: string) { setDayJump(d => ({ iso, n: d.n + 1 })); choose({ kind: 'myday' }); }
   // Open a specific day in the Logbook (from a Stats bar), scrolled to that day.
   function openReview(iso: string) { setReviewJump(d => ({ iso, n: d.n + 1 })); choose({ kind: 'logbook' }); }
+  // Open a to-do where it lives: its list, its day, else Inbox (open) / Logbook (done).
+  function openTask(t: PlannerTask) {
+    if (t.note_id) choose({ kind: 'note', id: t.note_id });
+    else if (t.due_date) openDay(t.due_date);
+    else if (t.done) choose({ kind: 'logbook' });
+    else choose({ kind: 'inbox' });
+  }
 
   const selectedNote = selection.kind === 'note' ? notesById[selection.id] : undefined;
 
@@ -892,12 +899,7 @@ export default function PlannerModule() {
             jumpTo={dayJump}
             notesById={notesById}
             lists={listsForViews}
-            onOpenTask={t => {
-              if (t.note_id) choose({ kind: 'note', id: t.note_id });
-              else if (t.due_date) openDay(t.due_date);
-              else if (t.done) choose({ kind: 'logbook' });
-              else choose({ kind: 'inbox' });
-            }}
+            onOpenTask={openTask}
           />
         ) : selection.kind === 'plan' ? (
           <PlanView
@@ -911,7 +913,7 @@ export default function PlannerModule() {
             onPatch={patchTask}
           />
         ) : selection.kind === 'stats' ? (
-          <StatsView tasks={scopedTasks} sessions={sessions} today={today} notesById={notesById} onOpenDay={openReview} />
+          <StatsView tasks={scopedTasks} sessions={sessions} today={today} notesById={notesById} onOpenDay={openReview} onOpenTask={openTask} />
         ) : selection.kind === 'logbook' ? (
           <LogbookView
             tasks={scopedTasks}

@@ -192,7 +192,7 @@ function EntryRow({
 
       {/* Timesheet detail: the timer ranges worked this day. */}
       {sessions.length > 0 && (
-        <span className="hidden sm:inline text-xs text-slate-400 shrink-0" title="When you worked on it">
+        <span className="text-xs text-slate-400 shrink-0" title="When you worked on it">
           {sessions.length === 1 ? rangeLabel(sessions[0]) : `${sessions.length} sessions`}
         </span>
       )}

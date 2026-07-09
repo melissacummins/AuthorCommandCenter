@@ -26,7 +26,7 @@ function weekLabel(monday: string): string {
 // throughput vs backlog. Hours come from the timer session log, so they reflect
 // the day work actually happened — completed or not.
 export default function StatsView({
-  tasks, sessions, today, notesById = {}, onOpenDay,
+  tasks, sessions, today, notesById = {}, onOpenDay, onOpenTask,
 }: {
   tasks: PlannerTask[];
   sessions: PlannerTimeSession[];
@@ -34,6 +34,8 @@ export default function StatsView({
   notesById?: Record<string, PlannerNote>;
   // Open a given day in the Logbook so a bar's number has its tasks behind it.
   onOpenDay?: (day: string) => void;
+  // Open a to-do (from a timesheet row) where it lives.
+  onOpenTask?: (task: PlannerTask) => void;
 }) {
   const [days, setDays] = useState<(typeof RANGES)[number]>(30);
   const [metric, setMetric] = useState<'todos' | 'hours'>('todos');
@@ -237,8 +239,15 @@ export default function StatsView({
                     const dt = new Date(d + 'T00:00:00');
                     return (
                       <th key={d} className={`px-2 py-1.5 text-right font-medium whitespace-nowrap ${d === today ? 'text-teal-600' : ''}`}>
-                        <div>{dt.toLocaleDateString(undefined, { weekday: 'short' })} {dt.getDate()}</div>
-                        <div className="text-[10px] font-normal">{timesheet.dayTotals[d] ? formatMinutes(timesheet.dayTotals[d]) : ''}</div>
+                        <button
+                          onClick={() => onOpenDay?.(d)}
+                          disabled={!onOpenDay}
+                          className={onOpenDay ? 'hover:text-teal-600 cursor-pointer' : ''}
+                          title={onOpenDay ? 'See this day in the Logbook' : undefined}
+                        >
+                          <div>{dt.toLocaleDateString(undefined, { weekday: 'short' })} {dt.getDate()}</div>
+                          <div className="text-[10px] font-normal">{timesheet.dayTotals[d] ? formatMinutes(timesheet.dayTotals[d]) : ''}</div>
+                        </button>
                       </th>
                     );
                   })}
@@ -249,8 +258,15 @@ export default function StatsView({
                 {timesheet.rows.map(r => (
                   <tr key={r.id} className="border-t border-slate-100">
                     <td className="px-2 py-1.5 sticky left-0 bg-white">
-                      <div className="text-slate-700 truncate max-w-[12rem]">{r.title}</div>
-                      {r.listName && <div className="text-[10px] text-slate-300 truncate max-w-[12rem]">{r.listName}</div>}
+                      <button
+                        onClick={() => { const t = tasksById[r.id]; if (t && onOpenTask) onOpenTask(t); }}
+                        disabled={!(onOpenTask && tasksById[r.id])}
+                        className={`text-left ${onOpenTask && tasksById[r.id] ? 'hover:text-teal-600 cursor-pointer' : ''}`}
+                        title={onOpenTask && tasksById[r.id] ? 'Open this to-do' : undefined}
+                      >
+                        <div className="text-slate-700 truncate max-w-[12rem]">{r.title}</div>
+                        {r.listName && <div className="text-[10px] text-slate-300 truncate max-w-[12rem]">{r.listName}</div>}
+                      </button>
                     </td>
                     {tsDays.map(d => (
                       <td key={d} className={`px-2 py-1.5 text-right tabular-nums ${r.perDay[d] ? 'text-slate-600' : 'text-slate-300'}`}>
