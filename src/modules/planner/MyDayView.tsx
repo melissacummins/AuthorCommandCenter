@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import type { UseGoogleCalendar } from './useGoogleCalendar';
 import type { GCalEvent } from './google';
-import { TaskRow } from './TaskRow';
+import { TaskRow, TaskActionsMenu } from './TaskRow';
 import { AiSuggestPanel } from './AiSuggestPanel';
 import { suggestDayPlan, suggestPhaseTriage, type AiResult } from './aiAssist';
 import {
@@ -38,7 +38,7 @@ export interface MyDayHandlers {
 }
 
 export default function MyDayView({
-  tasks, blocks, sessions, dayNotes, settings, today, cal, handlers, jumpTo, notesById = {}, lists = [],
+  tasks, blocks, sessions, dayNotes, settings, today, cal, handlers, jumpTo, notesById = {}, lists = [], onOpenTask,
 }: {
   tasks: PlannerTask[];
   blocks: PlannerTimeBlock[];
@@ -53,6 +53,8 @@ export default function MyDayView({
   notesById?: Record<string, PlannerNote>;
   // The selectable lists (non-archived notes) a to-do can be filed into.
   lists?: PlannerNote[];
+  // Open a searched to-do where it lives (its list, its day, or the Inbox).
+  onOpenTask?: (task: PlannerTask) => void;
 }) {
   const { gc, calVersion } = cal;
   const carryOver = !!settings.carry_over_capacity;
@@ -311,7 +313,15 @@ export default function MyDayView({
       {gc.available && !gc.configured && <NotConfiguredCard />}
 
       {/* Search any task and jump to the day it's on / was done */}
-      <TaskSearch tasks={tasks} taskDay={taskDay} onJump={goToDay} />
+      <TaskSearch
+        tasks={tasks}
+        taskDay={taskDay}
+        today={today}
+        lists={lists}
+        onPatch={handlers.onPatchTask}
+        onDelete={handlers.onDeleteTask}
+        onOpen={t => (onOpenTask ? onOpenTask(t) : (taskDay(t) && goToDay(taskDay(t)!)))}
+      />
 
       {/* Marvin-style day navigator: a big day number with Previous · 📅 · Next.
           Tapping the date (or the calendar button) drops a compact month picker
@@ -911,11 +921,15 @@ function MonthGrid({
 // so when you've lost track of when something happened, you can find it and
 // land on that day's schedule.
 function TaskSearch({
-  tasks, taskDay, onJump,
+  tasks, taskDay, today, lists, onPatch, onDelete, onOpen,
 }: {
   tasks: PlannerTask[];
   taskDay: (t: PlannerTask) => string | null;
-  onJump: (iso: string) => void;
+  today: string;
+  lists: PlannerNote[];
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDelete: (id: string) => void;
+  onOpen: (task: PlannerTask) => void;
 }) {
   const [q, setQ] = useState('');
   const results = useMemo(() => {
@@ -945,19 +959,35 @@ function TaskSearch({
               {results.map(t => {
                 const day = taskDay(t);
                 return (
-                  <li key={t.id}>
+                  <li key={t.id} className="group flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50">
                     <button
-                      disabled={!day}
-                      onClick={() => { if (day) { onJump(day); setQ(''); } }}
-                      className={`w-full text-left px-4 py-2 flex items-center gap-2 ${day ? 'hover:bg-slate-50' : 'opacity-60 cursor-default'}`}
-                      title={day ? 'Go to this day' : 'No date — schedule it to navigate'}
+                      onClick={() => onPatch(t.id, { done: !t.done })}
+                      className="shrink-0 transition-colors"
+                      title={t.done ? 'Mark not done' : 'Mark done'}
                     >
                       {t.done
-                        ? <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                        : <Circle className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
-                      <span className={`flex-1 text-sm truncate ${t.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{t.title || 'Untitled'}</span>
-                      {day && <span className="text-xs text-slate-400 shrink-0">{new Date(day + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                        ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-600 text-white"><Check className="w-3 h-3" /></span>
+                        : <Circle className="w-4 h-4 text-slate-300 hover:text-teal-600" />}
                     </button>
+                    <button
+                      onClick={() => { onOpen(t); setQ(''); }}
+                      className={`flex-1 min-w-0 text-left text-sm truncate ${t.done ? 'text-slate-400 line-through' : 'text-slate-700 hover:text-teal-600'}`}
+                      title="Open this to-do"
+                    >
+                      {t.title || 'Untitled'}
+                    </button>
+                    {day && <span className="text-xs text-slate-400 shrink-0">{new Date(day + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                    <TaskActionsMenu
+                      task={t}
+                      today={today}
+                      onPatch={onPatch}
+                      onDelete={onDelete}
+                      onEditDetails={() => { onOpen(t); setQ(''); }}
+                      lists={lists}
+                      canFlag
+                      canSomeday
+                      enableRecurrence
+                    />
                   </li>
                 );
               })}
