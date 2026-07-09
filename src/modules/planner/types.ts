@@ -551,7 +551,7 @@ export function productivitySeries(tasks: PlannerTask[], today: string, days: nu
 // ---- Daily review ("what did I actually do") ------------------------------
 // One timer run within a day, kept on its entry so the Logbook can show the
 // start–end ranges like a timesheet.
-export interface ReviewEntrySession { started_at: string; ended_at: string; minutes: number }
+export interface ReviewEntrySession { id: string; started_at: string; ended_at: string; minutes: number }
 
 // A single to-do's activity on one day: the time worked that day (sum of that
 // day's sessions) and whether it was also completed that day.
@@ -585,7 +585,7 @@ export function reviewDays(tasks: PlannerTask[], sessions: PlannerTimeSession[])
   for (const s of sessions) {
     if (!byId[s.task_id]) continue; // task since deleted
     const day = localDay(s.started_at);
-    ((work[day] ??= {})[s.task_id] ??= []).push({ started_at: s.started_at, ended_at: s.ended_at, minutes: s.minutes });
+    ((work[day] ??= {})[s.task_id] ??= []).push({ id: s.id, started_at: s.started_at, ended_at: s.ended_at, minutes: s.minutes });
   }
 
   // day -> ids of to-dos completed that day. A completed to-do should ALWAYS be

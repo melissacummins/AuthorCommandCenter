@@ -34,7 +34,7 @@ import {
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
   getSettings, updateSettings,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
-  listTimeSessions, createTimeSessions, reorderNotes,
+  listTimeSessions, createTimeSessions, deleteTimeSession, reorderNotes,
   getWeeklyReset, upsertWeeklyReset,
 } from './api';
 import { listPenNames, type PenName } from '../../lib/penNames';
@@ -456,6 +456,25 @@ export default function PlannerModule() {
       const created = await createTimeSessions(user.id, rows);
       setSessions(prev => [...prev, ...created]);
     } catch (e) { setError((e as Error)?.message ?? 'Could not log the block.'); }
+  }
+
+  // Undo a mistakenly-logged timer run from the Logbook: drops the session and
+  // takes its minutes back off the to-do's running total, so Stats and the to-do
+  // both reconcile as if it never happened.
+  async function deleteSession(sessionId: string) {
+    if (!user) return;
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    setSessions(prev => prev.filter(s => s.id !== sessionId));
+    setTasks(prev => prev.map(t =>
+      t.id === session.task_id
+        ? { ...t, actual_minutes: Math.max(0, (t.actual_minutes ?? 0) - session.minutes) }
+        : t));
+    try {
+      await deleteTimeSession(sessionId);
+      const task = tasks.find(t => t.id === session.task_id);
+      if (task) await updateTask(task.id, { actual_minutes: Math.max(0, (task.actual_minutes ?? 0) - session.minutes) });
+    } catch (e) { setError((e as Error)?.message ?? 'Could not remove that session.'); }
   }
 
   // ---- Weekly Reset ----
@@ -923,6 +942,7 @@ export default function PlannerModule() {
             focus={reviewJump}
             onPatch={patchTask}
             onDelete={removeTask}
+            onDeleteSession={deleteSession}
             onOpenList={id => choose({ kind: 'note', id })}
             onOpenDay={openDay}
           />
