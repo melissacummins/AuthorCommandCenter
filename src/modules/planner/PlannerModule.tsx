@@ -532,7 +532,7 @@ export default function PlannerModule() {
       for (const it of bySection[g.key]) {
         created.push(await createTask(user.id, {
           title: it.text.trim(), note_id: listId, kind: 'task', sort_order: sort++,
-          due_date: g.key === 'meetings' ? (it.date ?? null) : null, reset_week: resetWeek, reset_section: g.key,
+          due_date: it.date ?? null, reset_week: resetWeek, reset_section: g.key,
           flagged: !!it.priority,
           estimate_minutes: it.quick ? QUICK_TASK_MINUTES : (it.estimate_minutes ?? null),
         }));
