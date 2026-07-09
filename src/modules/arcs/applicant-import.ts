@@ -3,7 +3,8 @@ import {
   normalizeEmail, normalizeIgHandle, normalizeName, normalizeTtHandle,
   similarity, tokenOverlap,
 } from './match';
-import type { ArcReader } from './types';
+import type { ArcReader, ArcStatus } from './types';
+import { impliedFunnelStatus, isFunnelStatus } from './types';
 import { linkReaderBooksFromTitles } from './api';
 
 // ============================================
@@ -344,6 +345,7 @@ export async function applyApplicantDecisions(
   applicants: ApplicantRow[],
   existingReaders: ArcReader[],
   selectedBookTitle: string | null,
+  batchStatus: ArcStatus = 'new',
 ): Promise<ApplySummary> {
   const summary: ApplySummary = { created: 0, merged: 0, skipped: 0, errors: [] };
   const byRowIndex = new Map(applicants.map(a => [a.rowIndex, a]));
@@ -371,7 +373,11 @@ export async function applyApplicantDecisions(
         amazon_reviewer_url: applicant.amazon_reviewer_url,
         blog_url: applicant.blog_url,
         primary_sm: applicant.primary_sm,
-        status: 'new' as const,
+        status: (
+          isFunnelStatus(batchStatus)
+            ? impliedFunnelStatus(selectedBookTitle ? [selectedBookTitle] : [], [], [])
+            : batchStatus
+        ) as ArcStatus,
         applied_for: selectedBookTitle ? [selectedBookTitle] : [],
         received: [],
         reviewed: [],
@@ -437,6 +443,17 @@ export async function applyApplicantDecisions(
     // Notes — append rather than overwrite.
     if (applicant.notes && !((reader.notes ?? '').includes(applicant.notes))) {
       patch.notes = reader.notes ? `${reader.notes}\n\n${applicant.notes}` : applicant.notes;
+    }
+    // Status: if the batch has an explicit non-funnel status
+    // (Didn't download, Didn't review, etc.) and the reader hasn't already
+    // been given an explicit status, apply it. For funnel batches, let the
+    // per-book auto-toggle handle it via the applied_for change above.
+    if (!isFunnelStatus(batchStatus) && isFunnelStatus(reader.status) && batchStatus !== reader.status) {
+      patch.status = batchStatus;
+    } else if (isFunnelStatus(batchStatus) && isFunnelStatus(reader.status)) {
+      const nextApplied = (patch.applied_for as string[] | undefined) ?? reader.applied_for;
+      const implied = impliedFunnelStatus(nextApplied, reader.received, reader.reviewed);
+      if (implied !== reader.status) patch.status = implied;
     }
     // Always run the junction link for merges so adding a book to an
     // existing reader works even when the rest of the row didn't change.
