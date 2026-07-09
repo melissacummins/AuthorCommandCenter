@@ -32,7 +32,7 @@ import CatalogBookPicker from '../../components/CatalogBookPicker';
 import {
   listNotes, createNote, updateNote, deleteNote, duplicateList,
   listTasks, createTask, updateTask, deleteTask, reorderTasks, newChecklistItem,
-  getSettings, updateSettings, listDayNotes, saveDayNote as apiSaveDayNote,
+  getSettings, updateSettings,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
   listTimeSessions, createTimeSessions, reorderNotes,
   getWeeklyReset, upsertWeeklyReset,
@@ -43,7 +43,7 @@ import {
   bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
   elapsedMinutes, localDay, weekStartISO, addDaysISO, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
-  type PlannerSettings, type PlannerDayNote, type PlannerTimeBlock, type PlannerTimeSession,
+  type PlannerSettings, type PlannerTimeBlock, type PlannerTimeSession,
   dedupeResetDraft, resetSectionFor, QUICK_TASK_MINUTES,
   type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
@@ -82,7 +82,6 @@ export default function PlannerModule() {
   const [tasks, setTasks] = useState<PlannerTask[]>([]);
   const [blocks, setBlocks] = useState<PlannerTimeBlock[]>([]);
   const [sessions, setSessions] = useState<PlannerTimeSession[]>([]);
-  const [dayNotes, setDayNotes] = useState<Record<string, string>>({});
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [penNames, setPenNames] = useState<PenName[]>([]);
   // Whole-planner pen-name focus: null = All (show everything, today's behavior).
@@ -114,13 +113,12 @@ export default function PlannerModule() {
     let active = true;
     Promise.all([
       listNotes(user.id, true), listTasks(user.id), listTimeBlocks(user.id),
-      listDayNotes(user.id), getSettings(user.id), listTimeSessions(user.id),
+      getSettings(user.id), listTimeSessions(user.id),
       listPenNames(user.id),
     ])
-      .then(([n, t, b, dn, s, ts, pn]) => {
+      .then(([n, t, b, s, ts, pn]) => {
         if (!active) return;
         setNotes(n); setTasks(t); setBlocks(b); setSessions(ts);
-        setDayNotes(Object.fromEntries((dn as PlannerDayNote[]).map(d => [d.day, d.body])));
         setSettings(s);
         setPenNames(pn);
       })
@@ -627,13 +625,6 @@ export default function PlannerModule() {
     setCalVersion(v => v + 1);
   }
 
-  async function saveDayNote(day: string, body: string) {
-    if (!user) return;
-    setDayNotes(prev => ({ ...prev, [day]: body }));
-    try { await apiSaveDayNote(user.id, day, body); }
-    catch (e) { setError((e as Error)?.message ?? 'Could not save the day note.'); }
-  }
-
   async function updateCapacity(minutes: number) {
     if (!user) return;
     setSettings(prev => (prev ? { ...prev, daily_capacity_minutes: minutes } : prev));
@@ -666,7 +657,6 @@ export default function PlannerModule() {
     onDeleteBlock: removeBlock,
     onSyncBlock: syncBlock,
     onUnsyncBlock: unsyncBlock,
-    onSaveDayNote: saveDayNote,
     onUpdateCapacity: updateCapacity,
     onToggleCarryOver: updateCarryOver,
     onLogTime: logManualMinutes,
@@ -894,7 +884,6 @@ export default function PlannerModule() {
             tasks={scopedTasks}
             blocks={blocks}
             sessions={sessions}
-            dayNotes={dayNotes}
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
             today={today}
             cal={{ gc, calVersion }}
@@ -1082,7 +1071,7 @@ function BulkBar({
   onMove: (noteId: string | null) => void;
   onSchedule: (patch: Partial<PlannerTask>) => void;
   onFlag: (flagged: boolean) => void;
-  onDone: () => void;
+  onDone: (done: boolean) => void;
   onDelete: () => void;
   onNewHeading?: () => void;
 }) {
@@ -1115,7 +1104,9 @@ function BulkBar({
       />
       <button onClick={() => onSchedule({ due_date: null, someday: false })} disabled={none} className={btn}>Anytime</button>
       <button onClick={() => onFlag(true)} disabled={none} className={btn}>Flag</button>
-      <button onClick={onDone} disabled={none} className={btn}>Mark done</button>
+      <button onClick={() => onFlag(false)} disabled={none} className={btn}>Unflag</button>
+      <button onClick={() => onDone(true)} disabled={none} className={btn}>Mark done</button>
+      <button onClick={() => onDone(false)} disabled={none} className={btn}>Reopen</button>
       <button onClick={onDelete} disabled={none} className="text-xs font-medium border border-rose-200 rounded-lg px-2 py-1 bg-white text-rose-600 hover:bg-rose-50 disabled:opacity-40">Delete</button>
       <button onClick={onExit} className="ml-auto text-xs font-medium text-slate-500 hover:text-slate-700">Done</button>
     </div>
@@ -1274,7 +1265,7 @@ function ViewPane({
   const bulkMove = (noteId: string | null) => { bulkEach(id => onPatch(id, { note_id: noteId })); clear(); };
   const bulkSchedule = (patch: Partial<PlannerTask>) => { bulkEach(id => onPatch(id, patch)); clear(); };
   const bulkFlag = (f: boolean) => { bulkEach(id => onPatch(id, { flagged: f })); clear(); };
-  const bulkDone = () => { bulkEach(id => onPatch(id, { done: true })); clear(); };
+  const bulkDone = (done: boolean) => { bulkEach(id => onPatch(id, { done })); clear(); };
   const bulkDelete = () => {
     if (!confirm(`Delete ${sel.size} to-do${sel.size === 1 ? '' : 's'}? This can’t be undone.`)) return;
     bulkEach(id => onDelete(id)); clear();
@@ -1554,12 +1545,19 @@ function NotePane({
   const nextOrder = (ordered.at(-1)?.sort_order ?? 0) + 1;
 
   // ---- Bulk actions (select mode shows a flat, checkable list of to-dos) ----
-  const selectable = ordered.filter(t => t.kind === 'task');
+  // Respect the active search + All/Important filter so you can scope a bulk
+  // action to what you searched for.
+  const bulkQuery = search.trim().toLowerCase();
+  const selectable = ordered.filter(t =>
+    t.kind === 'task'
+    && (filter !== 'important' || t.flagged)
+    && (!bulkQuery || (t.title || '').toLowerCase().includes(bulkQuery)),
+  );
   const bulkEach = (fn: (id: string) => void) => { sel.forEach(fn); };
   const bulkMove = (noteId: string | null) => { bulkEach(id => onPatch(id, { note_id: noteId })); clear(); };
   const bulkSchedule = (patch: Partial<PlannerTask>) => { bulkEach(id => onPatch(id, patch)); clear(); };
   const bulkFlag = (f: boolean) => { bulkEach(id => onPatch(id, { flagged: f })); clear(); };
-  const bulkDone = () => { bulkEach(id => onPatch(id, { done: true })); clear(); };
+  const bulkDone = (done: boolean) => { bulkEach(id => onPatch(id, { done })); clear(); };
   const bulkDelete = () => {
     if (!confirm(`Delete ${sel.size} to-do${sel.size === 1 ? '' : 's'}? This can’t be undone.`)) return;
     bulkEach(id => onDelete(id)); clear();
@@ -1971,7 +1969,7 @@ function SortableNoteItem({
     <button
       {...attributes}
       {...listeners}
-      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
       title="Drag to reorder"
     >
       <GripVertical className="w-4 h-4" />
@@ -2061,14 +2059,14 @@ function HeadingRow({
       )}
       <button
         onClick={onAddUnder}
-        className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+        className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
         title="Add a to-do under this heading"
       >
         <Plus className="w-4 h-4" />
       </button>
       <button
         onClick={() => onDelete(task.id)}
-        className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+        className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
         title="Delete heading"
       >
         <Trash2 className="w-4 h-4" />
@@ -2236,7 +2234,7 @@ function SortableListItem({
       <button
         {...attributes}
         {...listeners}
-        className="pl-1.5 py-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity shrink-0 touch-none"
+        className="pl-1.5 py-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
         title="Drag to reorder"
       >
         <GripVertical className="w-3.5 h-3.5" />
