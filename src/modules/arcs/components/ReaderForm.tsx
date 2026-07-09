@@ -1,8 +1,8 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Trash2 } from 'lucide-react';
 import type { Book } from '../../catalog/types';
 import type { ArcReader, ArcReaderInsert, ArcStatus, ReaderBookRelationship, UnmatchedTitles } from '../types';
-import { impliedFunnelStatusFromReader, isFunnelStatus, PLACES, STATUS_LABELS, STATUS_ORDER } from '../types';
+import { isFunnelStatus, PLACES, STATUS_LABELS, STATUS_ORDER } from '../types';
 import ReaderBookSection from './ReaderBookSection';
 
 // Submit shape: basic reader fields + the desired final state of each
@@ -94,26 +94,26 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
     setDraft(d => ({ ...d, [key]: raw === '' ? null : raw }));
   }
 
-  // Auto-flip the funnel status when the form's book-history counts
-  // imply a different funnel state — same behavior the previous
-  // toggleArr had, but derived from junction-local state.
-  const impliedStatus = useMemo(() => {
-    if (!isFunnelStatus(draft.status)) return draft.status;
-    return impliedFunnelStatusFromReader({
-      ...(initial ?? ({} as ArcReader)),
-      status: draft.status,
-      reader_books: [
-        ...appliedIds.map(id => ({ id: '', reader_id: '', book_id: id, relationship: 'applied' as const, recorded_at: '', book_title: '', pen_name_id: null })),
-        ...receivedIds.map(id => ({ id: '', reader_id: '', book_id: id, relationship: 'received' as const, recorded_at: '', book_title: '', pen_name_id: null })),
-        ...reviewedIds.map(id => ({ id: '', reader_id: '', book_id: id, relationship: 'reviewed' as const, recorded_at: '', book_title: '', pen_name_id: null })),
-      ],
+  // Bump the funnel status to match the current book buckets when a book
+  // is added or removed. Only fires from the chip handlers below — never
+  // during render — so a manual pick from the Status dropdown always
+  // sticks even when the arrays don't yet imply it.
+  //
+  // Rules:
+  //  - Only funnel statuses get auto-bumped. Explicit decisions like
+  //    "Didn't review" or "Not moving forward" stay put.
+  //  - When toggling a book chip, we recompute the implied funnel state
+  //    from the *next* bucket contents and adopt it.
+  function bumpStatusFromBooks(nextApplied: string[], nextReceived: string[], nextReviewed: string[]) {
+    setDraft(d => {
+      if (!isFunnelStatus(d.status)) return d;
+      const implied: ArcStatus =
+        nextReviewed.length > 0 ? 'current_arc_member'
+        : nextReceived.length > 0 ? 'awaiting_review'
+        : nextApplied.length > 0 ? 'awaiting_arc'
+        : 'new';
+      return implied === d.status ? d : { ...d, status: implied };
     });
-  }, [draft.status, appliedIds, receivedIds, reviewedIds, initial]);
-
-  // When the implied status changes and the user hasn't manually
-  // picked a non-funnel status, surface it via the status dropdown.
-  if (isFunnelStatus(draft.status) && impliedStatus !== draft.status) {
-    setDraft(d => ({ ...d, status: impliedStatus }));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -204,8 +204,16 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
           bookIds={appliedIds}
           catalogBooks={catalogBooks}
           unmatched={unmatched.applied}
-          onAdd={id => setAppliedIds(prev => prev.includes(id) ? prev : [...prev, id])}
-          onRemove={id => setAppliedIds(prev => prev.filter(b => b !== id))}
+          onAdd={id => {
+            const next = appliedIds.includes(id) ? appliedIds : [...appliedIds, id];
+            setAppliedIds(next);
+            bumpStatusFromBooks(next, receivedIds, reviewedIds);
+          }}
+          onRemove={id => {
+            const next = appliedIds.filter(b => b !== id);
+            setAppliedIds(next);
+            bumpStatusFromBooks(next, receivedIds, reviewedIds);
+          }}
           onDismissUnmatched={onDismissUnmatched ? t => onDismissUnmatched(t, 'applied') : undefined}
         />
         <ReaderBookSection
@@ -214,8 +222,16 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
           bookIds={receivedIds}
           catalogBooks={catalogBooks}
           unmatched={unmatched.received}
-          onAdd={id => setReceivedIds(prev => prev.includes(id) ? prev : [...prev, id])}
-          onRemove={id => setReceivedIds(prev => prev.filter(b => b !== id))}
+          onAdd={id => {
+            const next = receivedIds.includes(id) ? receivedIds : [...receivedIds, id];
+            setReceivedIds(next);
+            bumpStatusFromBooks(appliedIds, next, reviewedIds);
+          }}
+          onRemove={id => {
+            const next = receivedIds.filter(b => b !== id);
+            setReceivedIds(next);
+            bumpStatusFromBooks(appliedIds, next, reviewedIds);
+          }}
           onDismissUnmatched={onDismissUnmatched ? t => onDismissUnmatched(t, 'received') : undefined}
         />
         <ReaderBookSection
@@ -224,8 +240,16 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
           bookIds={reviewedIds}
           catalogBooks={catalogBooks}
           unmatched={unmatched.reviewed}
-          onAdd={id => setReviewedIds(prev => prev.includes(id) ? prev : [...prev, id])}
-          onRemove={id => setReviewedIds(prev => prev.filter(b => b !== id))}
+          onAdd={id => {
+            const next = reviewedIds.includes(id) ? reviewedIds : [...reviewedIds, id];
+            setReviewedIds(next);
+            bumpStatusFromBooks(appliedIds, receivedIds, next);
+          }}
+          onRemove={id => {
+            const next = reviewedIds.filter(b => b !== id);
+            setReviewedIds(next);
+            bumpStatusFromBooks(appliedIds, receivedIds, next);
+          }}
           onDismissUnmatched={onDismissUnmatched ? t => onDismissUnmatched(t, 'reviewed') : undefined}
         />
       </div>
