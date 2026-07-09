@@ -60,13 +60,13 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
     setError(null);
     try {
       const text = await file.text();
-      const { rows, detectedColumns, missingNameColumn } = parseApplicantCsv(text);
-      if (missingNameColumn) {
-        setError('Could not find a name column in the CSV. Expected headers like "Name", "Full Name", or similar.');
+      const { rows, detectedColumns, missingIdentityColumn } = parseApplicantCsv(text);
+      if (missingIdentityColumn) {
+        setError('Need at least a Name or Email column. Expected headers like "Name", "Full Name", or "Email".');
         return;
       }
       if (rows.length === 0) {
-        setError('CSV had a name column but no data rows.');
+        setError('CSV parsed but no data rows found.');
         return;
       }
       setCsvRows(rows);
@@ -84,6 +84,11 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
             rowIndex: p.applicant.rowIndex,
             readerId: p.suggestedReaderId,
           });
+        } else if (!p.applicant.name.trim()) {
+          // Email-only row that didn't match — skip by default rather than
+          // silently creating a nameless reader. Melissa can override in the
+          // review table if she wants.
+          seed.set(p.applicant.rowIndex, { kind: 'skip', rowIndex: p.applicant.rowIndex });
         } else {
           seed.set(p.applicant.rowIndex, { kind: 'create', rowIndex: p.applicant.rowIndex });
         }
@@ -292,7 +297,9 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
                     return (
                       <tr key={p.applicant.rowIndex}>
                         <td className="px-3 py-2 align-top">
-                          <div className="font-medium text-slate-800">{p.applicant.name}</div>
+                          <div className="font-medium text-slate-800">
+                            {p.applicant.name || <span className="text-slate-400 italic">(no name in CSV)</span>}
+                          </div>
                           {p.applicant.email && <div className="text-xs text-slate-500">{p.applicant.email}</div>}
                         </td>
                         <td className="px-3 py-2 align-top">

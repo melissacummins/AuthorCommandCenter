@@ -123,13 +123,17 @@ function asList(v: string | undefined): string[] {
 export interface CsvParseResult {
   rows: ApplicantRow[];
   detectedColumns: Partial<Record<keyof FieldAliases, string>>;
-  missingNameColumn: boolean;
+  // True when we couldn't find *either* a name or an email column. We need
+  // at least one to identify a row — email alone is enough for match-and-tag
+  // batches (e.g. "everyone who didn't download"), where the readers already
+  // exist and we just need to look them up by email.
+  missingIdentityColumn: boolean;
 }
 
 export function parseApplicantCsv(csv: string): CsvParseResult {
   const lines = csv.replace(/^﻿/, '').split(/\r?\n/).filter(l => l.trim().length > 0);
   if (lines.length < 2) {
-    return { rows: [], detectedColumns: {}, missingNameColumn: true };
+    return { rows: [], detectedColumns: {}, missingIdentityColumn: true };
   }
 
   const headers = splitCsvLine(lines[0]);
@@ -142,8 +146,8 @@ export function parseApplicantCsv(csv: string): CsvParseResult {
       detectedColumns[key] = headers[idx];
     }
   }
-  if (cols.name === undefined) {
-    return { rows: [], detectedColumns, missingNameColumn: true };
+  if (cols.name === undefined && cols.email === undefined) {
+    return { rows: [], detectedColumns, missingIdentityColumn: true };
   }
 
   const get = (cells: string[], k: keyof FieldAliases): string | undefined => {
@@ -155,11 +159,14 @@ export function parseApplicantCsv(csv: string): CsvParseResult {
   for (let i = 1; i < lines.length; i++) {
     const cells = splitCsvLine(lines[i]);
     const name = (get(cells, 'name') ?? '').trim();
-    if (!name) continue;
+    const email = (get(cells, 'email') ?? '').trim() || null;
+    // Skip rows with nothing to match on. Blank name AND blank email means
+    // an empty row (typical CSV export tail) or a garbage row.
+    if (!name && !email) continue;
     rows.push({
       rowIndex: i,
       name,
-      email: (get(cells, 'email') ?? '').trim() || null,
+      email,
       ig_profile_url: (get(cells, 'ig') ?? '').trim() || null,
       tt_profile_url: (get(cells, 'tt') ?? '').trim() || null,
       threads_profile_url: (get(cells, 'threads') ?? '').trim() || null,
@@ -174,7 +181,7 @@ export function parseApplicantCsv(csv: string): CsvParseResult {
       place_to_review: asList(get(cells, 'places')),
     });
   }
-  return { rows, detectedColumns, missingNameColumn: false };
+  return { rows, detectedColumns, missingIdentityColumn: false };
 }
 
 // ============================================
@@ -361,6 +368,14 @@ export async function applyApplicantDecisions(
     }
 
     if (d.kind === 'create') {
+      // Refuse to create nameless readers. Happens on email-only CSV imports
+      // where the row doesn't match any existing reader — safer to surface
+      // it than to make an "(unnamed)" row show up in the ARC list.
+      if (!applicant.name.trim()) {
+        summary.errors.push(`${applicant.email ?? 'row ' + applicant.rowIndex}: no matching reader found and no name in the CSV — skipped.`);
+        summary.skipped++;
+        continue;
+      }
       const payload = {
         user_id: userId,
         name: applicant.name,
