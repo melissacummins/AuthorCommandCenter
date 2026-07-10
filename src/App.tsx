@@ -16,6 +16,7 @@ const CrossSellModule = lazy(() => import('./modules/cross-sell/CrossSellModule'
 const UpsellsModule = lazy(() => import('./modules/upsells/UpsellsModule'));
 const BookTrackerModule = lazy(() => import('./modules/book-tracker/BookTrackerModule'));
 const CatalogModule = lazy(() => import('./modules/catalog/CatalogModule'));
+const WritingModule = lazy(() => import('./modules/writing/WritingModule'));
 const ProfitTrackModule = lazy(() => import('./modules/profit-track/ProfitTrackModule'));
 const AdAlchemyModule = lazy(() => import('./modules/ad-alchemy/AdAlchemyModule'));
 const MarketingModule = lazy(() => import('./modules/marketing/MarketingModule'));
@@ -34,6 +35,7 @@ const ShopifyCallback = lazy(() => import('./modules/orders/components/ShopifyCa
 // Maps each gateable module key to its route element. Keys match GATED_MODULES.
 const GATED_ELEMENTS: Record<string, ReactElement> = {
   'catalog': <CatalogModule />,
+  'writing': <WritingModule />,
   'timeline': <TimelineModule />,
   'book-tracker': <BookTrackerModule />,
   'profit-track': <ProfitTrackModule />,
