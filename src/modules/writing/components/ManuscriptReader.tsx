@@ -481,7 +481,7 @@ export default function ManuscriptReader({
                   <ChapterEditor ref={editorRef} chapter={activeChapter} onSaved={handleChapterSaved} onSplit={handleSplit} />
                 ) : activeChapter.content_html ? (
                   <div
-                    className="max-w-[72ch] mx-auto font-serif text-[17px] leading-relaxed text-slate-700 [&_p]:mb-4"
+                    className="font-serif text-[17px] leading-relaxed text-slate-700 [&_p]:mb-4"
                     dangerouslySetInnerHTML={{ __html: activeChapter.content_html }}
                   />
                 ) : (
