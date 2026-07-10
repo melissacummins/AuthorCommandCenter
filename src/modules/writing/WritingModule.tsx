@@ -73,14 +73,15 @@ export default function WritingModule() {
   }
 
   if (view.mode === 'read') {
+    // No max-w wrapper here (directive §8.1) — the manuscript view gets the
+    // full viewport width so the draft dominates the screen; ManuscriptReader
+    // applies its own px-4 lg:px-6 and centers the text measure internally.
     return (
-      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
-        <ManuscriptReader
-          manuscriptId={view.manuscriptId}
-          onBack={() => { reload(); setView({ mode: 'list' }); }}
-          onDeleted={() => { reload(); setView({ mode: 'list' }); }}
-        />
-      </div>
+      <ManuscriptReader
+        manuscriptId={view.manuscriptId}
+        onBack={() => { reload(); setView({ mode: 'list' }); }}
+        onDeleted={() => { reload(); setView({ mode: 'list' }); }}
+      />
     );
   }
 

@@ -1,25 +1,36 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MessageSquare, X, Send, Loader2, Trash2, AlertTriangle } from 'lucide-react';
+import { MessageSquare, X, Send, Loader2, Trash2, AlertTriangle, Copy, MousePointerClick, Check } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { listManuscriptChatMessages, addManuscriptChatMessage, clearManuscriptChat, getManuscriptPlainText } from '../api';
-import { getAiSettings, writingComplete } from '../lib/ai';
-import AiModelPicker from './AiModelPicker';
+import { getAiSettings, aiSettingsToRequest, writingComplete, plainTextToHtml } from '../lib/ai';
+import AiSettingsPanel from './AiSettingsPanel';
 import type { ManuscriptChapter, ManuscriptChatMessage } from '../types';
 
 const CONTEXT_WORD_BUDGET = 30_000;
+const CHAT_DEFAULT_MAX_TOKENS = 1500;
 
 // Manuscript-aware chat: one thread per manuscript, context built from
 // whichever chapters the author checks (default: all), replicating the old
 // apps' "enabled materials" context toggle. The whole conversation is folded
 // into a single prompt string (see api/writing/ai.ts's single-turn shape —
 // every Phase 3 feature "formats a prompt and reads back text").
+//
+// Phase 3.5 (§8.4): docked to the right of the draft instead of a modal, so
+// the manuscript stays visible and editable while chatting. Every assistant
+// reply gets Copy + Insert-into-draft actions — insert is disabled (with a
+// tooltip) when the reading view is active, since there's no live editor
+// cursor to insert at then.
 export default function ManuscriptChatPanel({
   manuscriptId,
   chapters,
+  canInsert,
+  onInsert,
   onClose,
 }: {
   manuscriptId: string;
   chapters: ManuscriptChapter[];
+  canInsert: boolean;
+  onInsert: (html: string) => void;
   onClose: () => void;
 }) {
   const { user } = useAuth();
@@ -30,6 +41,7 @@ export default function ManuscriptChatPanel({
   const [error, setError] = useState<string | null>(null);
   const [selectedChapterIds, setSelectedChapterIds] = useState<Set<string>>(() => new Set(chapters.map(c => c.id)));
   const [truncated, setTruncated] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -74,11 +86,9 @@ export default function ManuscriptChatPanel({
         .join('\n\n');
       const settings = getAiSettings();
       const text = await writingComplete({
-        provider: settings.provider,
-        model: settings.model,
+        ...aiSettingsToRequest(settings, CHAT_DEFAULT_MAX_TOKENS),
         system: `You are a helpful assistant embedded in an author's manuscript workspace. Use the manuscript excerpts below to answer questions, brainstorm, and give feedback — stay grounded in what's actually written.\n\nMANUSCRIPT EXCERPTS:\n${boundedContext || '(no chapters selected for context)'}`,
         prompt: `${transcript}\n\nAssistant:`,
-        maxTokens: 1500,
       });
       const assistantMsg = await addManuscriptChatMessage(manuscriptId, user.id, 'assistant', text);
       setMessages(prev => [...prev, assistantMsg]);
@@ -99,6 +109,18 @@ export default function ManuscriptChatPanel({
     }
   }
 
+  function copyMessage(m: ManuscriptChatMessage) {
+    navigator.clipboard.writeText(m.content).then(() => {
+      setCopiedId(m.id);
+      setTimeout(() => setCopiedId(id => (id === m.id ? null : id)), 1500);
+    });
+  }
+
+  function insertMessage(m: ManuscriptChatMessage) {
+    if (!canInsert) return;
+    onInsert(plainTextToHtml(m.content));
+  }
+
   const contextLabel = useMemo(() => {
     if (selectedChapterIds.size === chapters.length) return 'All chapters';
     if (selectedChapterIds.size === 0) return 'No chapters selected';
@@ -106,87 +128,104 @@ export default function ManuscriptChatPanel({
   }, [selectedChapterIds, chapters.length]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-lime-500" /> Manuscript chat
-          </h3>
-          <div className="flex items-center gap-2">
-            <button onClick={handleClear} title="Clear chat history" className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-slate-50">
-              <Trash2 className="w-4 h-4" />
-            </button>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
-              <X className="w-5 h-5" />
-            </button>
+    <div className="w-[380px] shrink-0 h-full flex flex-col bg-white border-l border-slate-200">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0">
+        <h3 className="font-semibold text-slate-800 flex items-center gap-2 text-sm">
+          <MessageSquare className="w-4 h-4 text-lime-500" /> Manuscript chat
+        </h3>
+        <div className="flex items-center gap-1">
+          <AiSettingsPanel />
+          <button onClick={handleClear} title="Clear chat history" className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-slate-50">
+            <Trash2 className="w-4 h-4" />
+          </button>
+          <button onClick={onClose} title="Close chat" className="p-1.5 text-slate-400 hover:text-slate-600 rounded-md hover:bg-slate-50">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="px-4 py-2.5 border-b border-slate-100 shrink-0">
+        <details className="text-xs text-slate-500">
+          <summary className="cursor-pointer select-none font-medium text-slate-600">Context: {contextLabel}</summary>
+          <div className="mt-2 max-h-28 overflow-y-auto space-y-1">
+            {chapters.map(c => (
+              <label key={c.id} className="flex items-center gap-2 py-0.5">
+                <input type="checkbox" checked={selectedChapterIds.has(c.id)} onChange={() => toggleChapter(c.id)} />
+                {c.title || 'Untitled chapter'}
+              </label>
+            ))}
           </div>
-        </div>
+        </details>
+        {truncated && (
+          <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
+            <AlertTriangle className="w-3 h-3" /> Context was truncated to the first {CONTEXT_WORD_BUDGET.toLocaleString()} words.
+          </p>
+        )}
+        {!canInsert && (
+          <p className="mt-1.5 text-xs text-slate-400">Switch to Edit to insert replies into the draft.</p>
+        )}
+      </div>
 
-        <div className="px-5 py-3 border-b border-slate-100 shrink-0">
-          <details className="text-xs text-slate-500">
-            <summary className="cursor-pointer select-none font-medium text-slate-600">Context: {contextLabel}</summary>
-            <div className="mt-2 max-h-28 overflow-y-auto space-y-1">
-              {chapters.map(c => (
-                <label key={c.id} className="flex items-center gap-2 py-0.5">
-                  <input type="checkbox" checked={selectedChapterIds.has(c.id)} onChange={() => toggleChapter(c.id)} />
-                  {c.title || 'Untitled chapter'}
-                </label>
-              ))}
-            </div>
-          </details>
-          {truncated && (
-            <p className="mt-1.5 text-xs text-amber-600 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" /> Context was truncated to the first {CONTEXT_WORD_BUDGET.toLocaleString()} words.
-            </p>
-          )}
-        </div>
-
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-          {loading ? (
-            <p className="text-sm text-slate-400">Loading…</p>
-          ) : messages.length === 0 ? (
-            <p className="text-sm text-slate-400">Ask about your manuscript — plot holes, continuity, brainstorming, whatever you need.</p>
-          ) : (
-            messages.map(m => (
-              <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm whitespace-pre-wrap ${
-                  m.role === 'user' ? 'bg-lime-600 text-white' : 'bg-slate-100 text-slate-700'
-                }`}>
-                  {m.content}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+        {loading ? (
+          <p className="text-sm text-slate-400">Loading…</p>
+        ) : messages.length === 0 ? (
+          <p className="text-sm text-slate-400">Ask about your manuscript — plot holes, continuity, brainstorming, whatever you need.</p>
+        ) : (
+          messages.map(m => (
+            <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[92%] rounded-xl px-3.5 py-2.5 text-sm whitespace-pre-wrap ${
+                m.role === 'user' ? 'bg-lime-600 text-white' : 'bg-slate-100 text-slate-700'
+              }`}>
+                {m.content}
+              </div>
+              {m.role === 'assistant' && (
+                <div className="flex items-center gap-2 mt-1">
+                  <button onClick={() => copyMessage(m)} title="Copy" className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-slate-600">
+                    {copiedId === m.id ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                    {copiedId === m.id ? 'Copied' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={() => insertMessage(m)}
+                    disabled={!canInsert}
+                    title={canInsert ? 'Insert into draft' : 'Switch to Edit to insert'}
+                    className="inline-flex items-center gap-1 text-[11px] text-slate-400 hover:text-lime-600 disabled:opacity-40 disabled:hover:text-slate-400"
+                  >
+                    <MousePointerClick className="w-3 h-3" /> Insert into draft
+                  </button>
                 </div>
-              </div>
-            ))
-          )}
-          {sending && (
-            <div className="flex justify-start">
-              <div className="bg-slate-100 text-slate-500 rounded-xl px-3.5 py-2.5 text-sm inline-flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…
-              </div>
+              )}
             </div>
-          )}
-        </div>
-
-        {error && <p className="px-5 text-sm text-rose-600 mb-2">{error}</p>}
-
-        <div className="px-5 py-3 border-t border-slate-100 shrink-0 space-y-2">
-          <AiModelPicker />
-          <div className="flex items-center gap-2">
-            <input
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
-              placeholder="Ask about your manuscript…"
-              disabled={sending}
-              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:opacity-50"
-            />
-            <button
-              onClick={send}
-              disabled={sending || !input.trim()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-lg disabled:opacity-50"
-            >
-              <Send className="w-4 h-4" />
-            </button>
+          ))
+        )}
+        {sending && (
+          <div className="flex justify-start">
+            <div className="bg-slate-100 text-slate-500 rounded-xl px-3.5 py-2.5 text-sm inline-flex items-center gap-2">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Thinking…
+            </div>
           </div>
+        )}
+      </div>
+
+      {error && <p className="px-4 text-sm text-rose-600 mb-2">{error}</p>}
+
+      <div className="px-4 py-3 border-t border-slate-100 shrink-0">
+        <div className="flex items-center gap-2">
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
+            placeholder="Ask about your manuscript…"
+            disabled={sending}
+            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm disabled:opacity-50"
+          />
+          <button
+            onClick={send}
+            disabled={sending || !input.trim()}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-lg disabled:opacity-50"
+          >
+            <Send className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

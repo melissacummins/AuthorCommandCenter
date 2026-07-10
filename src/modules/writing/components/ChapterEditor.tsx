@@ -1,6 +1,6 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   Bold, Italic, Heading1, Heading2, Heading3, Quote, List, ListOrdered, Undo2, Redo2, Scissors, Camera,
   Wand2, Loader2, Check, RotateCcw, X, ArrowDownToLine, MousePointerClick,
@@ -8,10 +8,19 @@ import {
 import { useAuth } from '../../../contexts/AuthContext';
 import { updateChapter, listRevisions, createRevision } from '../api';
 import { blockIndexAtSelection, splitHtmlAtBlockIndex } from '../lib/chapterOps';
-import { getAiSettings, writingComplete, plainTextToHtml } from '../lib/ai';
+import { getAiSettings, aiSettingsToRequest, writingComplete, plainTextToHtml } from '../lib/ai';
 import { htmlToPlainText } from '../types';
-import AiModelPicker from './AiModelPicker';
+import AiSettingsPanel from './AiSettingsPanel';
 import type { ManuscriptChapter } from '../types';
+
+const EDITOR_DEFAULT_MAX_TOKENS = 1024;
+
+// Imperative handle so a sibling (the docked chat panel) can insert text at
+// the live cursor position without lifting the whole TipTap editor instance
+// up into the parent (directive §8.4 — chat's "Insert into draft" action).
+export interface ChapterEditorHandle {
+  insertContentAtCursor: (html: string) => void;
+}
 
 const SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000;
 const CONTINUE_TAIL_WORDS = 2000;
@@ -42,7 +51,7 @@ interface AiPanelState {
 // button) into manuscript_revisions, "Split chapter here" which hands the
 // two halves up to the parent rather than writing to the DB itself, and the
 // two review-before-apply AI actions (continue writing / selection rewrite).
-export default function ChapterEditor({
+function ChapterEditor({
   chapter,
   onSaved,
   onSplit,
@@ -50,7 +59,7 @@ export default function ChapterEditor({
   chapter: ManuscriptChapter;
   onSaved: (updated: ManuscriptChapter) => void;
   onSplit: (beforeHtml: string, afterHtml: string) => void;
-}) {
+}, ref: React.Ref<ChapterEditorHandle>) {
   const { user } = useAuth();
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [splitHint, setSplitHint] = useState<string | null>(null);
@@ -69,6 +78,12 @@ export default function ChapterEditor({
     onUpdate: ({ editor }) => scheduleSave(editor.getHTML()),
     onSelectionUpdate: ({ editor }) => setHasSelection(!editor.state.selection.empty),
   }, [chapter.id]);
+
+  useImperativeHandle(ref, () => ({
+    insertContentAtCursor: (html: string) => {
+      editor?.chain().focus().insertContent(html).run();
+    },
+  }), [editor]);
 
   useEffect(() => {
     let cancelled = false;
@@ -145,11 +160,9 @@ export default function ChapterEditor({
     const settings = getAiSettings();
     try {
       const text = await writingComplete({
-        provider: settings.provider,
-        model: settings.model,
+        ...aiSettingsToRequest(settings, EDITOR_DEFAULT_MAX_TOKENS),
         system: "You are a skilled fiction ghostwriter. Continue the author's manuscript in their exact voice, tense, and style. Write only prose — no headers, no commentary.",
         prompt: `Continue writing from where this excerpt leaves off:\n\n"""${tail || '(the chapter is empty — begin it)'}"""\n\nWrite the next 200-400 words. Return ONLY the continuation text, with no quotation marks and without repeating any of the text above.`,
-        maxTokens: 1200,
       });
       setAiPanel(p => (p && p.action === 'continue' ? { ...p, response: text, loading: false } : p));
     } catch (e) {
@@ -168,11 +181,9 @@ export default function ChapterEditor({
     const settings = getAiSettings();
     try {
       const text = await writingComplete({
-        provider: settings.provider,
-        model: settings.model,
+        ...aiSettingsToRequest(settings, EDITOR_DEFAULT_MAX_TOKENS),
         system: "You help an author revise their own fiction manuscript. Preserve meaning, voice, and tense unless asked otherwise.",
         prompt: `${SELECTION_INSTRUCTIONS[action]}\n\n"""${selectedText}"""\n\nReturn ONLY the replacement text, with no quotation marks and no commentary.`,
-        maxTokens: 1200,
       });
       setAiPanel(p => (p && p.action === action ? { ...p, response: text, loading: false } : p));
     } catch (e) {
@@ -277,7 +288,7 @@ export default function ChapterEditor({
         </select>
         {!hasSelection && <MousePointerClick className="w-3.5 h-3.5 text-slate-300" />}
         <div className="flex-1" />
-        <AiModelPicker />
+        <AiSettingsPanel />
       </div>
 
       {splitHint && <p className="text-xs text-amber-600 mb-3">{splitHint}</p>}
@@ -338,6 +349,8 @@ export default function ChapterEditor({
     </div>
   );
 }
+
+export default forwardRef(ChapterEditor);
 
 function ToolbarButton({
   active, onClick, label, children,

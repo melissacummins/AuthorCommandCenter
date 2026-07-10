@@ -8,6 +8,7 @@ export interface Manuscript {
   status: ManuscriptStatus;
   source_filename: string | null;
   word_count: number;
+  target_word_count: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -18,6 +19,7 @@ export type ManuscriptInsert = {
   status?: ManuscriptStatus;
   source_filename?: string | null;
   word_count?: number;
+  target_word_count?: number | null;
 };
 
 export type ManuscriptUpdate = Partial<Omit<Manuscript, 'id' | 'user_id' | 'created_at' | 'updated_at'>>;
@@ -52,6 +54,18 @@ export interface ManuscriptRevision {
   word_count: number;
   label: string | null;
   created_at: string;
+}
+
+// One row per manuscript per day — mirrors book_word_logs so Analytics works
+// even for manuscripts with no Catalog link (directive §8.2/§8.8).
+export interface ManuscriptWordLog {
+  id: string;
+  user_id: string;
+  manuscript_id: string;
+  day: string;
+  word_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // One message in a manuscript's single AI chat thread (directive: "one

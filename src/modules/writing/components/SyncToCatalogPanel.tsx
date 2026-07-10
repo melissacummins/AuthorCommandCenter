@@ -3,12 +3,13 @@ import { Library, X, Sparkles, Loader2, Check, AlertTriangle } from 'lucide-reac
 import { useAuth } from '../../../contexts/AuthContext';
 import { getManuscriptPlainText } from '../api';
 import { getBook, updateBook } from '../../catalog/api';
-import { getAiSettings, writingComplete } from '../lib/ai';
-import AiModelPicker from './AiModelPicker';
+import { getAiSettings, aiSettingsToRequest, writingComplete } from '../lib/ai';
+import AiSettingsPanel from './AiSettingsPanel';
 import type { Manuscript } from '../types';
 import type { Book } from '../../catalog/types';
 
 const CONTEXT_WORD_BUDGET = 30_000;
+const SYNC_DEFAULT_MAX_TOKENS = 1500;
 
 const SYSTEM = [
   'You are an editorial assistant analyzing a fiction manuscript for a catalog entry.',
@@ -89,11 +90,9 @@ export default function SyncToCatalogPanel({
       const bounded = wasTruncated ? words.slice(0, CONTEXT_WORD_BUDGET).join(' ') : text;
       const settings = getAiSettings();
       const raw = await writingComplete({
-        provider: settings.provider,
-        model: settings.model,
+        ...aiSettingsToRequest(settings, SYNC_DEFAULT_MAX_TOKENS),
         system: SYSTEM,
         prompt: `MANUSCRIPT EXCERPT:\n\n${bounded}`,
-        maxTokens: 1200,
       });
       const parsed = coerceAnalysis(raw);
       setAnalysis(parsed);
@@ -266,8 +265,8 @@ export default function SyncToCatalogPanel({
         </div>
 
         {book && (
-          <div className="px-5 py-3 border-t border-slate-100 shrink-0">
-            <AiModelPicker />
+          <div className="px-5 py-3 border-t border-slate-100 shrink-0 flex justify-end">
+            <AiSettingsPanel />
           </div>
         )}
       </div>

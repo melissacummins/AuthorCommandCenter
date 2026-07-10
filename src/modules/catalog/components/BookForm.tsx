@@ -10,7 +10,10 @@ import { getMetadataWords, optimizeKeywords } from '../../kdp-optimizer/utils';
 import type { Book, BookInsert, BookStatus, BookWordLog, ReviewExcerpt } from '../types';
 import { STATUS_LABELS, TRANSLATION_LANGUAGES, languageLabel, detectTranslationSuffix } from '../types';
 import { listBooks, listWordLogs, bookTrackedMinutes } from '../api';
-import { Languages, Link2, Clock } from 'lucide-react';
+import { getManuscriptForBook } from '../../writing/api';
+import { STATUS_LABELS as MANUSCRIPT_STATUS_LABELS, STATUS_COLORS as MANUSCRIPT_STATUS_COLORS } from '../../writing/types';
+import type { Manuscript } from '../../writing/types';
+import { Languages, Link2, Clock, PenTool } from 'lucide-react';
 
 interface BookFormProps {
   initial?: Book | null;
@@ -145,6 +148,19 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       .catch(() => { /* best-effort */ });
     return () => { cancelled = true; };
   }, [initial?.id]);
+
+  // Read-only linked-manuscript chip (Writing directive §8.3 — the one
+  // permitted Catalog edit outside the writing module + settings). Best-effort:
+  // Writing's own module already owns editing this link.
+  const [linkedManuscript, setLinkedManuscript] = useState<Manuscript | null>(null);
+  useEffect(() => {
+    if (!user || !initial?.id) return;
+    let cancelled = false;
+    getManuscriptForBook(user.id, initial.id)
+      .then(m => { if (!cancelled) setLinkedManuscript(m); })
+      .catch(() => { /* best-effort */ });
+    return () => { cancelled = true; };
+  }, [user, initial?.id]);
 
   // Catalog books — used to populate the 'Translation of' picker and
   // to auto-suggest a parent based on the current book's title suffix.
@@ -540,6 +556,19 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       {/* Production / progress */}
       <div className={sectionCls}>
         <h3 className={sectionTitle}>Production &amp; progress</h3>
+
+        {linkedManuscript && (
+          <div className="flex items-center gap-2 text-sm">
+            <PenTool className="w-4 h-4 text-lime-500 shrink-0" />
+            <span className="text-slate-600">Linked manuscript:</span>
+            <span className="font-medium text-slate-800">{linkedManuscript.title}</span>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${MANUSCRIPT_STATUS_COLORS[linkedManuscript.status]}`}>
+              {MANUSCRIPT_STATUS_LABELS[linkedManuscript.status]}
+            </span>
+            <span className="text-xs text-slate-400">{linkedManuscript.word_count.toLocaleString()} words</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label className={labelCls}>Page count</label>
