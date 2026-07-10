@@ -4,7 +4,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, v
 import { CSS } from '@dnd-kit/utilities';
 import {
   ArrowLeft, BookOpen, Trash2, FileText, Plus, Pencil, GripVertical, History,
-  Download, Loader2, ChevronDown, ArrowDownToLine, PenLine, Merge,
+  Download, Loader2, ChevronDown, ArrowDownToLine, PenLine, Merge, MessageSquare, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import CatalogBookPicker from '../../../components/CatalogBookPicker';
@@ -18,6 +18,8 @@ import { downloadChapter, downloadManuscript, type ExportFormat } from '../lib/e
 import ChapterEditor from './ChapterEditor';
 import RevisionsPanel from './RevisionsPanel';
 import ProgressWidget from './ProgressWidget';
+import ManuscriptChatPanel from './ManuscriptChatPanel';
+import SyncToCatalogPanel from './SyncToCatalogPanel';
 import type { Book } from '../../catalog/types';
 import type { Manuscript, ManuscriptChapter, ManuscriptStatus } from '../types';
 
@@ -55,6 +57,8 @@ export default function ManuscriptReader({
   const [revisionsFor, setRevisionsFor] = useState<ManuscriptChapter | null>(null);
   const [exportMenuOpen, setExportMenuOpen] = useState<'manuscript' | string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -308,6 +312,22 @@ export default function ManuscriptReader({
               <ExportDropdown onPick={handleExportManuscript} onClose={() => setExportMenuOpen(null)} />
             )}
           </div>
+          <button
+            onClick={() => setChatOpen(true)}
+            title="Manuscript chat"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+          >
+            <MessageSquare className="w-3.5 h-3.5" /> Chat
+          </button>
+          {manuscript.book_id && (
+            <button
+              onClick={() => setSyncOpen(true)}
+              title="Analyze manuscript for Catalog"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> Sync to Catalog
+            </button>
+          )}
           <button onClick={handleDeleteManuscript} title="Delete manuscript" className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50">
             <Trash2 className="w-4 h-4" />
           </button>
@@ -422,6 +442,18 @@ export default function ManuscriptReader({
           chapter={revisionsFor}
           onClose={() => setRevisionsFor(null)}
           onRestored={updated => { setChapters(prev => prev.map(c => (c.id === updated.id ? updated : c))); }}
+        />
+      )}
+
+      {chatOpen && (
+        <ManuscriptChatPanel manuscriptId={manuscript.id} chapters={chapters} onClose={() => setChatOpen(false)} />
+      )}
+
+      {syncOpen && (
+        <SyncToCatalogPanel
+          manuscript={manuscript}
+          onClose={() => setSyncOpen(false)}
+          onApplied={updated => setLinkedBook(updated)}
         />
       )}
     </div>
