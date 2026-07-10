@@ -6,7 +6,7 @@
 import { supabase } from '../../lib/supabase';
 import { logWordCount, updateBook } from '../catalog/api';
 import { countWords, htmlToPlainText } from './types';
-import type { Manuscript, ManuscriptInsert, ManuscriptUpdate, ManuscriptChapter, ChapterDraft } from './types';
+import type { Manuscript, ManuscriptInsert, ManuscriptUpdate, ManuscriptChapter, ChapterDraft, ManuscriptRevision } from './types';
 
 // ---- Manuscripts ----
 
@@ -112,6 +112,107 @@ export async function deleteChapter(id: string, manuscriptId: string, userId: st
   const { error } = await supabase.from('manuscript_chapters').delete().eq('id', id);
   if (error) throw error;
   await syncWordCount(manuscriptId, userId);
+}
+
+// Append a new, empty chapter after the last one.
+export async function addChapter(manuscriptId: string, userId: string, title = 'New chapter'): Promise<ManuscriptChapter> {
+  const existing = await listChapters(manuscriptId);
+  const nextIdx = existing.length ? Math.max(...existing.map(c => c.idx)) + 1 : 0;
+  const { data, error } = await supabase
+    .from('manuscript_chapters')
+    .insert({ manuscript_id: manuscriptId, user_id: userId, idx: nextIdx, title, content_html: '', word_count: 0 })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as ManuscriptChapter;
+}
+
+// Renumber a manuscript's chapters to match the given id order (drag-reorder).
+export async function reorderChapters(orderedIds: string[]): Promise<void> {
+  await Promise.all(orderedIds.map((id, i) => supabase.from('manuscript_chapters').update({ idx: i }).eq('id', id)));
+}
+
+// Combine a chapter with the one that follows it: the next chapter's content
+// is appended to this one's, then the next chapter row is deleted. Idx gaps
+// left behind are fine — ordering is always by idx ascending, not contiguity.
+export async function mergeChapterWithNext(chapter: ManuscriptChapter, next: ManuscriptChapter): Promise<ManuscriptChapter> {
+  const merged = await updateChapter(chapter.id, {
+    content_html: `${chapter.content_html}\n${next.content_html}`,
+  });
+  await deleteChapter(next.id, chapter.manuscript_id, chapter.user_id);
+  return merged;
+}
+
+// Split a chapter into two at a block boundary: this chapter keeps `beforeHtml`,
+// a new chapter is inserted right after it with `afterHtml`. Chapters after the
+// split point are shifted up by one idx first to make room (temporary idx
+// collisions during the shift are fine — there's no uniqueness constraint).
+export async function splitChapter(
+  chapter: ManuscriptChapter,
+  userId: string,
+  beforeHtml: string,
+  afterHtml: string,
+): Promise<ManuscriptChapter[]> {
+  const { data: following, error: followingErr } = await supabase
+    .from('manuscript_chapters')
+    .select('id, idx')
+    .eq('manuscript_id', chapter.manuscript_id)
+    .gt('idx', chapter.idx);
+  if (followingErr) throw followingErr;
+  await Promise.all(
+    (following ?? []).map(row => supabase.from('manuscript_chapters').update({ idx: (row.idx as number) + 1 }).eq('id', row.id as string)),
+  );
+  await updateChapter(chapter.id, { content_html: beforeHtml });
+  const { error: insertErr } = await supabase.from('manuscript_chapters').insert({
+    manuscript_id: chapter.manuscript_id,
+    user_id: userId,
+    idx: chapter.idx + 1,
+    title: `${chapter.title} (cont.)`,
+    content_html: afterHtml,
+    word_count: countWords(afterHtml),
+  });
+  if (insertErr) throw insertErr;
+  await syncWordCount(chapter.manuscript_id, userId);
+  return listChapters(chapter.manuscript_id);
+}
+
+// ---- Revisions -------------------------------------------------------------
+
+export async function listRevisions(chapterId: string): Promise<ManuscriptRevision[]> {
+  const { data, error } = await supabase
+    .from('manuscript_revisions')
+    .select('*')
+    .eq('chapter_id', chapterId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as ManuscriptRevision[];
+}
+
+export async function createRevision(
+  chapterId: string,
+  userId: string,
+  contentHtml: string,
+  label: string | null,
+): Promise<ManuscriptRevision> {
+  const { data, error } = await supabase
+    .from('manuscript_revisions')
+    .insert({ chapter_id: chapterId, user_id: userId, content_html: contentHtml, word_count: countWords(contentHtml), label })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as ManuscriptRevision;
+}
+
+// Restore replaces the chapter's current content with a past revision's, but
+// snapshots the content being overwritten first — so a restore is itself
+// reversible from the same version-history list.
+export async function restoreRevision(
+  chapter: ManuscriptChapter,
+  userId: string,
+  revision: ManuscriptRevision,
+): Promise<ManuscriptChapter> {
+  await createRevision(chapter.id, userId, chapter.content_html, 'Before restore');
+  return updateChapter(chapter.id, { content_html: revision.content_html });
 }
 
 // Roll chapters' word counts up onto manuscripts.word_count, and — if the
