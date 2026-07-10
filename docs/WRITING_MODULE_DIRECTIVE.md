@@ -1,5 +1,8 @@
 # Build Directive: Writing Module ("Manuscripts")
 
+> **Status: Phases 1–3 shipped** (#207, #208, #209 — July 2026). Phase 4
+> (story bible) remains gated behind explicit approval, per §6b.
+
 **Audience:** the AI model / developer implementing this module. This document is
 self-contained — all repo discovery has already been done. Follow it as written;
 do not re-audit the old repos. Where this directive conflicts with something you
