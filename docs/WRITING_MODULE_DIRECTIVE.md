@@ -1,7 +1,8 @@
 # Build Directive: Writing Module ("Manuscripts")
 
-> **Status: Phases 1–3 shipped** (#207, #208, #209 — July 2026). Phase 4
-> (story bible) remains gated behind explicit approval, per §6b.
+> **Status: Phases 1–3 shipped** (#207, #208, #209 — July 2026). **Phase 3.5
+> (§8 — author feedback round 1) is next up.** Phase 4 (story bible) remains
+> gated behind explicit approval, per §6b.
 
 **Audience:** the AI model / developer implementing this module. This document is
 self-contained — all repo discovery has already been done. Follow it as written;
@@ -327,3 +328,189 @@ migration.
 - Do not add themes, fonts settings, or anything from the "Drop" column in §1.
 - If a decision isn't covered here, choose the smallest option consistent with
   the Audiobook/Catalog precedents and note it in the PR description.
+
+---
+
+## 8. Phase 3.5 — Author feedback round 1 (UX, providers & AI settings)
+
+Melissa used Phases 1–3 and gave direct feedback. This phase is that feedback,
+turned into instructions. Everything here modifies the existing Writing module
+(`src/modules/writing/`, `api/writing/ai.ts`) — re-read §2's repo facts and
+§7's ground rules before starting. One PR. All pre-researched API facts in
+§8.5–§8.7 were verified against current provider documentation — trust them
+over training-data recall, especially the "rejected parameters" rules.
+
+### 8.1 Layout — the text area gets the space
+
+The current manuscript view wastes vertical space (header block, linked-book
+picker, progress card all stack above the draft) and caps width at
+`max-w-6xl`. Fix:
+
+- The manuscript view escapes the `max-w-6xl` container — full viewport width
+  (`px-4 lg:px-6`), editor/reading pane filling the remaining height. Keep the
+  *text measure* comfortable (`max-w-[72ch]` centered inside the pane) — wide
+  pane, readable column.
+- Collapse the header to **one compact row**: back arrow, inline-editable
+  title, word-count text, status pill, then icon-only actions (export, chat,
+  sync-to-catalog, delete). No subtitle line, no always-visible book picker,
+  no progress card in the writing view.
+- Give each manuscript **two tabs: Write | Analytics** (house `TabButton`
+  pattern). Write = collapsible chapter sidebar (collapse to a narrow rail,
+  persist state in localStorage) + the pane. **Edit mode becomes the default**
+  when a chapter opens — this is a writing app; keep the reading-view toggle.
+- Editor pane minimum height ~70vh so the draft dominates the screen (the
+  benchmark: the old Google AI Studio build, where the text area was the page).
+
+### 8.2 Analytics tab
+
+Everything measurement-related moves here (from Omniscribe's analytics view):
+
+- Total words; per-chapter word counts (simple horizontal bar list, no
+  library gymnastics — recharts is available if needed).
+- **Manuscript-level goal**: new `manuscripts.target_word_count` column
+  (migration, §8.8) with an editable goal field and a progress bar. The goal
+  lives on the manuscript now, NOT on the Catalog book — `ProgressWidget`'s
+  read of `books.target_word_count` goes away.
+- **Daily words chart (last 30 days)** from a new `manuscript_word_logs`
+  table (§8.8) — one row per manuscript per day, upserted by the same
+  `syncWordCount` path that already rolls counts up. This makes analytics
+  work with no Catalog link at all.
+- A small **Connections** card at the bottom of Analytics is the new (only)
+  home of `CatalogBookPicker`, with one line of copy: "Status and word count
+  sync to this book in Catalog."
+
+### 8.3 Loosen the Catalog coupling
+
+The link becomes one-way, Writing → Catalog, and minimal:
+
+- Keep: word-count push to `books.word_count` + `book_word_logs` when linked
+  (unchanged), and the book link itself (Analytics → Connections + import).
+- Add: the Catalog book form/detail shows a small read-only chip for a linked
+  manuscript — its status and word count — via `getManuscriptForBook`
+  (this is the one permitted edit outside the writing module + settings).
+- Remove: any Writing-module read of `books.target_word_count`; the pen-name
+  filter on the manuscript list stays (it's cheap and correct).
+
+### 8.4 Chat becomes a docked side panel
+
+The modal-over-the-draft is gone. Instead:
+
+- Chat opens as a **right-docked panel** (~`w-[380px]`, full height of the
+  Write tab) beside the draft; the draft stays visible and editable. Toggle
+  from the header icon; persist open/closed in localStorage.
+- Every assistant message gets two small actions: **Copy** (clipboard) and
+  **Insert into draft** — inserts that message's text at the cursor of the
+  open editor via the same `plainTextToHtml` + `insertContent` path the
+  review panel uses. If the reading view is active, the insert button is
+  disabled with a tooltip ("Switch to Edit to insert").
+- Keep the chapter-context checkboxes and the 30k-word truncation note.
+- RevisionsPanel and SyncToCatalogPanel stay as modals (review flows —
+  not part of this complaint).
+
+### 8.5 AI Settings — full generation parameters, provider-aware
+
+Replace `AiModelPicker` with an **AI Settings popover/panel** (gear icon in
+the editor AI row and in the chat panel; one shared component, one shared
+localStorage-persisted settings object extending `getAiSettings()`), exposing:
+provider, model, max tokens, temperature, top-p, frequency penalty, presence
+penalty, repetition penalty, reasoning/effort, and an "Enable caching" toggle.
+
+**Show each knob only where it actually works.** These applicability rules
+are verified current API behavior — sending an unsupported parameter is a
+hard 400, not a no-op:
+
+| Knob | Anthropic | OpenAI | OpenRouter |
+|---|---|---|---|
+| Max tokens | ✓ (`max_tokens`) | ✓ (`max_completion_tokens`) | ✓ (`max_tokens`) |
+| Temperature / Top-P | **Only** on Sonnet 4.6 / Opus 4.6 and older. **Rejected (400) on Sonnet 5, Opus 4.7/4.8, Fable 5** — omit entirely there | ✓ (omit on o-series / gpt-5 reasoning models, which reject them) | ✓ |
+| Frequency / Presence penalty | ✗ never supported | ✓ (not on reasoning models) | ✓ |
+| Repetition penalty | ✗ | ✗ | ✓ (OpenRouter-specific) |
+| Reasoning | **Effort level** `low/medium/high/xhigh/max` via `output_config: {effort}` + `thinking: {type: "adaptive"}`. `budget_tokens` is REMOVED on modern models (400) — do not implement a token-budget knob for Anthropic. On Fable 5, omit the `thinking` param entirely (always on); effort still applies | `reasoning_effort` (reasoning models only) | `reasoning: {effort}` or `reasoning: {max_tokens}` per OpenRouter's unified param |
+| Enable caching | ✓ — send `system` as a content-block array with `cache_control: {type: "ephemeral"}` on the last system block (this is where the manuscript context lives, so chat re-turns pay ~10% for the cached prefix; writes cost 1.25×; 5-min TTL; short prompts below the per-model minimum silently don't cache — fine) | hide the toggle (OpenAI caches automatically) | pass `cache_control` through for `anthropic/*` models; hide otherwise |
+
+Implementation notes:
+
+- The **server strips defensively too**: `api/writing/ai.ts` accepts the full
+  param object but drops whatever the target provider/model can't take
+  (e.g. any `temperature` sent with `claude-sonnet-5`), so a stale client
+  can't 400 the request.
+- UI: knobs not applicable to the current provider+model render disabled with
+  a one-line reason, not hidden entirely — Melissa is selling this; users
+  should see what exists.
+- Defaults: max tokens 1024 (editor actions) / 1500 (chat), everything else
+  provider default (i.e. omitted from the request unless the user changes it).
+
+### 8.6 Dynamic model lists — every version, including Fable
+
+The hardcoded 3-model Anthropic allowlist is the complaint; kill it.
+
+- New server action `GET /api/writing/ai?action=models&provider=anthropic|openai`:
+  decrypts the caller's key for that provider and proxies the provider's
+  models list — Anthropic: `GET https://api.anthropic.com/v1/models` (headers
+  `x-api-key` + `anthropic-version: 2023-06-01`; items carry `id` and
+  `display_name`); OpenAI: `GET https://api.openai.com/v1/models` (Bearer),
+  client-filtered to chat-capable families (`gpt-*`, `o*`, `chatgpt-*`;
+  exclude embeddings/audio/image/moderation ids). Return `[{id, name}]`.
+- **Remove `ANTHROPIC_ALLOWED_MODELS`** from the completion path — accept any
+  non-empty model id ≤ 100 chars; the user's own key gates access. This is
+  what surfaces every dated version and `claude-fable-5` when the key has it
+  (note in the picker UI that Fable-tier models bill ~2× Opus).
+- OpenRouter keeps its existing public client-side list. Cache all lists
+  in-memory per session.
+
+### 8.7 OpenAI as a third chat provider
+
+`user_openai_keys` already exists (Media module) — reuse it, do NOT create a
+table or a new Settings row.
+
+- ⚠️ **Different master secret**: the Media module encrypts OpenAI keys with
+  `FAL_KEY_ENCRYPTION_SECRET` and salt `media-openai-key-v1` (see
+  `api/media/key.ts` → `PROVIDERS.openai`) — NOT the Anthropic secret the
+  rest of `api/writing/ai.ts` uses. The writing endpoint must read that env
+  var + salt pair for the openai table or it will decrypt garbage.
+- Completion: `POST https://api.openai.com/v1/chat/completions`, OpenAI
+  message shape (same as the OpenRouter branch), `Authorization: Bearer`,
+  `max_completion_tokens`. Omit temperature/top-p/penalties for reasoning
+  models (`o*`, `gpt-5*`) per §8.5.
+- Provider type becomes `'anthropic' | 'openrouter' | 'openai'` end to end
+  (server routing, `lib/ai.ts`, settings panel). Key status for the picker
+  UI comes from the existing `getOpenaiKeyStatus` in
+  `src/modules/media/lib/client.ts`.
+
+### 8.8 Migration — `writing_manuscript_analytics`
+
+One idempotent migration (next free number; check `ls supabase/migrations`):
+
+```
+ALTER TABLE manuscripts ADD COLUMN IF NOT EXISTS target_word_count INTEGER;
+
+manuscript_word_logs
+  id            UUID PK DEFAULT gen_random_uuid()
+  user_id       UUID NOT NULL → auth.users ON DELETE CASCADE
+  manuscript_id UUID NOT NULL → manuscripts(id) ON DELETE CASCADE
+  day           DATE NOT NULL
+  word_count    INTEGER NOT NULL DEFAULT 0
+  created_at / updated_at
+  UNIQUE (manuscript_id, day)   -- upsert target, mirrors book_word_logs
+```
+
+House RLS pattern (four named owner policies), indexes on `(user_id)` and
+`(manuscript_id, day)`, `updated_at` trigger reusing
+`manuscripts_set_updated_at()`.
+
+### 8.9 Acceptance
+
+Import or open a manuscript → Write tab: draft fills the screen, chapter rail
+collapses, editing is the default → open chat: panel docks beside the draft,
+an assistant reply can be inserted at the cursor → gear: switch to OpenRouter,
+see the full model list; switch to Claude, see every model the key can access
+(incl. dated versions); temperature knob disables itself on Sonnet 5+ with an
+explanatory note; enable caching and confirm a second chat turn returns
+(server may log `cache_read_input_tokens` for verification) → Analytics tab:
+set a goal, see the progress bar and per-chapter bars; write, save, and see
+today's row in `manuscript_word_logs` → Catalog book form shows the linked
+manuscript chip → `npx tsc --noEmit` clean → PR includes the Supabase SQL
+editor link.
+
+**Out of scope (unchanged decisions):** prompt library, per-project agents,
+model preset/favorite management, themes, Phase 4 story bible.
