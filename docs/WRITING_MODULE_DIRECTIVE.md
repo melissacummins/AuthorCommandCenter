@@ -42,14 +42,15 @@ This module replaces two abandoned prototypes:
 
 | Keep (rebuild here) | Drop (and why) |
 |---|---|
-| Manuscript import (DOCX/TXT, PDF later) | OpenRouter + model manager + per-project AI agents — Command Center standardizes on the existing Claude BYOK infra; no second key system |
+| Manuscript import (DOCX/TXT, PDF later) | Per-project AI "agents" with saved model configs — needless complexity for v1 |
+| OpenRouter as a second BYOK provider alongside the existing Anthropic infra (the app is a sellable product; OpenRouter's one OpenAI-compatible endpoint lets any customer bring any model) | Full model-manager UI (search/favorite/hide hundreds of models) — a simple picker suffices |
 | Chapter-structured storage (improves on both old apps, which had none) | Category → Project → Material hierarchy — redundant; Pen Names → Books already exists |
 | Autosaving editor | TinyMCE — heavy external dependency; use TipTap (MIT) instead |
 | AI continue/rewrite/chat **with manuscript context** | 12 themes / font manager — app already has ThemeContext |
 | Export (DOCX/TXT/HTML/Markdown), incl. Omniscribe's whole-book compile | Print-window "PDF export" hack |
 | Word-count progress (Omniscribe's daily drafted/revised log maps onto existing `book_word_logs`) | Firebase single-document state (1 MB limit workarounds) — Supabase rows instead |
 | AI metadata extraction (themes/tropes/blurb from manuscript → written into the Catalog `books` row, which already has `blurb` and `tropes[]` fields) | Multi-chat pin/archive management — defer; one assistant thread per manuscript is enough |
-| Chapter structure (Omniscribe validated it; drop its extra Scenes sub-level — chapters are enough) | Multi-provider AI settings / model presets / fav-hidden model lists — Claude BYOK only |
+| Chapter structure (Omniscribe validated it; drop its extra Scenes sub-level — chapters are enough) | Model presets / fav-hidden model lists — defer; a provider toggle + model dropdown is enough |
 | — | Gemini image generation for covers/portraits — key infra for image AI (fal/Ideogram) already exists in other modules; out of scope here |
 | — | File System Access disk sync + JSON backup import — Supabase is the source of truth; export (§5) covers backup |
 | — | Series entity — Catalog `books` already has `series`/`series_position` |
@@ -242,11 +243,36 @@ chapter order and word counts → `getManuscriptPlainText` returns clean text �
 
 ## 6. Phase 3 — AI assist (only after 1 & 2 are merged)
 
-Reuse the existing Claude BYOK infra. Create `api/writing/ai.ts` **cloned from**
-`api/planner/ai.ts` (same auth check, same `user_anthropic_keys` decryption,
-same model allowlist) — or, simpler, call `plannerComplete()` from
-`src/modules/planner/ai.ts` directly if no writing-specific server logic is
-needed. **No new key tables, no OpenRouter, no model manager.**
+The writing AI supports **two BYOK providers: Anthropic (existing infra) and
+OpenRouter (new)**. OpenRouter matters commercially — the Command Center will
+be sold, and OpenRouter's single OpenAI-compatible endpoint
+(`https://openrouter.ai/api/v1/chat/completions`, `Authorization: Bearer`,
+plus `HTTP-Referer` and `X-Title` headers) lets any customer use any model
+with one key.
+
+Implementation:
+- **Key storage**: new `user_openrouter_keys` table cloned field-for-field from
+  `user_anthropic_keys` (migration `069` — `encrypted_key`/`nonce`/`auth_tag`/
+  `key_hint`, AES-256-GCM, owner-only RLS). Encrypt with the same
+  `ANTHROPIC_KEY_ENCRYPTION_SECRET` (it's a generic AES secret despite the
+  name — `user_elevenlabs_keys` and others already share this pattern). Add
+  key entry/removal to `src/modules/settings/ApiKeysSection.tsx` alongside the
+  existing providers, validating the `sk-or-` prefix.
+- **Serverless endpoint**: create `api/writing/ai.ts` cloned from
+  `api/planner/ai.ts` (same Supabase bearer-token verification, same
+  decryption), extended with a `provider: 'anthropic' | 'openrouter'` request
+  field that selects which key table to read and which upstream API shape to
+  call (Anthropic Messages API vs OpenAI-style chat completions). Never call
+  OpenRouter from the browser — keys stay server-side like every other
+  provider in this app.
+- **Model selection**: per-user setting (localStorage is fine for v1) —
+  provider toggle + model dropdown. For Anthropic, the small allowlist from
+  `api/planner/ai.ts`. For OpenRouter, fetch the public
+  `https://openrouter.ai/api/v1/models` list client-side (no key required)
+  with a text filter; default `anthropic/claude-sonnet-4-6`. No
+  favorites/hide/preset management in v1.
+- All Phase 3 features below are provider-agnostic — they format a prompt and
+  read back text; only the endpoint routing differs.
 
 Features, in priority order:
 1. **Continue writing** — sends the current chapter's tail (last ~2,000 words,
@@ -271,7 +297,7 @@ Features, in priority order:
    payoff of manuscript-in-one-place: Catalog, Marketing, and KDP Optimizer all
    read those fields today.
 5. Skip entirely: prompt library, per-project agents, extended-thinking
-   toggles, model pickers. Default model as in `api/planner/ai.ts`.
+   toggles, model preset/favorite management.
 
 ## 6b. Phase 4 (optional — do NOT start without explicit approval)
 
@@ -292,8 +318,9 @@ migration.
 - Follow existing code style: hand-rolled Tailwind, no new UI libraries, no
   CSS files, `clsx`/`tailwind-merge` from `src/lib/utils.ts` where helpful.
 - Do not modify other modules except: the five registration files, and (Phase 3
-  only) reading `src/modules/planner/ai.ts`. Never edit the Audiobook module —
-  copy from it.
+  only) reading `src/modules/planner/ai.ts` and adding the OpenRouter key
+  entry to `src/modules/settings/ApiKeysSection.tsx`. Never edit the Audiobook
+  module — copy from it.
 - Do not add themes, fonts settings, or anything from the "Drop" column in §1.
 - If a decision isn't covered here, choose the smallest option consistent with
   the Audiobook/Catalog precedents and note it in the PR description.
