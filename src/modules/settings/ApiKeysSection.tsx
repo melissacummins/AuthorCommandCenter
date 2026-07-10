@@ -1,5 +1,5 @@
 import { useEffect, useState, type ComponentType } from 'react';
-import { KeyRound, ImagePlus, Mail, Sparkles, Info, Loader2, Trash2, Check, AudioLines } from 'lucide-react';
+import { KeyRound, ImagePlus, Mail, Sparkles, Info, Loader2, Trash2, Check, AudioLines, Zap } from 'lucide-react';
 import {
   getFalKeyStatus, setFalKey, removeFalKey,
   getOpenaiKeyStatus, setOpenaiKey, removeOpenaiKey,
@@ -8,6 +8,7 @@ import {
 import { getKlaviyoKeyStatus, setKlaviyoKey, removeKlaviyoKey } from '../../lib/klaviyo';
 import { getAnthropicKeyStatus, setAnthropicKey, removeAnthropicKey, plannerComplete } from '../planner/ai';
 import { getElevenlabsKeyStatus, setElevenlabsKey, removeElevenlabsKey } from '../audiobook/lib/client';
+import { getOpenrouterKeyStatus, setOpenrouterKey, removeOpenrouterKey } from '../writing/lib/ai';
 
 // Shared status shape across every BYOK provider.
 interface KeyStatus { has_key: boolean; hint: string | null; updated_at: string | null }
@@ -74,6 +75,14 @@ const PROVIDERS: Provider[] = [
     helpUrl: 'https://elevenlabs.io/app/settings/api-keys', helpLabel: 'Get an ElevenLabs key',
     description: 'Powers the Audiobook module — voice creation, cloning, and multi-voice narration. Billed to your own ElevenLabs account.',
     getStatus: getElevenlabsKeyStatus, saveKey: setElevenlabsKey, removeKey: removeElevenlabsKey,
+  },
+  {
+    id: 'openrouter', name: 'OpenRouter', Icon: Zap, iconColor: 'text-lime-600',
+    placeholder: 'sk-or-…', minLength: 20,
+    validate: k => k.startsWith('sk-or-') ? null : 'OpenRouter keys start with "sk-or-".',
+    helpUrl: 'https://openrouter.ai/keys', helpLabel: 'Get an OpenRouter key',
+    description: 'Optional second AI provider for the Writing module — one key unlocks any model OpenRouter hosts, not just Claude. Billed to your own OpenRouter account.',
+    getStatus: getOpenrouterKeyStatus, saveKey: setOpenrouterKey, removeKey: removeOpenrouterKey,
   },
 ];
 

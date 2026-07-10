@@ -6,7 +6,7 @@
 import { supabase } from '../../lib/supabase';
 import { logWordCount, updateBook } from '../catalog/api';
 import { countWords, htmlToPlainText } from './types';
-import type { Manuscript, ManuscriptInsert, ManuscriptUpdate, ManuscriptChapter, ChapterDraft, ManuscriptRevision } from './types';
+import type { Manuscript, ManuscriptInsert, ManuscriptUpdate, ManuscriptChapter, ChapterDraft, ManuscriptRevision, ManuscriptChatMessage } from './types';
 
 // ---- Manuscripts ----
 
@@ -281,4 +281,37 @@ export async function getManuscriptPlainText(
   return chapters
     .map(c => `=== ${c.title || 'Untitled chapter'} ===\n\n${htmlToPlainText(c.content_html)}`)
     .join('\n\n');
+}
+
+// ---- Manuscript chat -------------------------------------------------------
+// One thread per manuscript (directive §6.3) — flat messages, no session table.
+
+export async function listManuscriptChatMessages(manuscriptId: string): Promise<ManuscriptChatMessage[]> {
+  const { data, error } = await supabase
+    .from('manuscript_chats')
+    .select('*')
+    .eq('manuscript_id', manuscriptId)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ManuscriptChatMessage[];
+}
+
+export async function addManuscriptChatMessage(
+  manuscriptId: string,
+  userId: string,
+  role: 'user' | 'assistant',
+  content: string,
+): Promise<ManuscriptChatMessage> {
+  const { data, error } = await supabase
+    .from('manuscript_chats')
+    .insert({ manuscript_id: manuscriptId, user_id: userId, role, content })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as ManuscriptChatMessage;
+}
+
+export async function clearManuscriptChat(manuscriptId: string): Promise<void> {
+  const { error } = await supabase.from('manuscript_chats').delete().eq('manuscript_id', manuscriptId);
+  if (error) throw error;
 }

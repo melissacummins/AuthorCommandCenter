@@ -1,18 +1,47 @@
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useRef, useState } from 'react';
-import { Bold, Italic, Heading1, Heading2, Heading3, Quote, List, ListOrdered, Undo2, Redo2, Scissors, Camera } from 'lucide-react';
+import {
+  Bold, Italic, Heading1, Heading2, Heading3, Quote, List, ListOrdered, Undo2, Redo2, Scissors, Camera,
+  Wand2, Loader2, Check, RotateCcw, X, ArrowDownToLine, MousePointerClick,
+} from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { updateChapter, listRevisions, createRevision } from '../api';
 import { blockIndexAtSelection, splitHtmlAtBlockIndex } from '../lib/chapterOps';
+import { getAiSettings, writingComplete, plainTextToHtml } from '../lib/ai';
+import { htmlToPlainText } from '../types';
+import AiModelPicker from './AiModelPicker';
 import type { ManuscriptChapter } from '../types';
 
 const SNAPSHOT_INTERVAL_MS = 60 * 60 * 1000;
+const CONTINUE_TAIL_WORDS = 2000;
+
+type SelectionAction = 'rewrite' | 'tighten' | 'expand' | 'describe';
+type AiAction = 'continue' | SelectionAction;
+
+const SELECTION_LABELS: Record<SelectionAction, string> = {
+  rewrite: 'Rewrite', tighten: 'Tighten', expand: 'Expand', describe: 'Describe more',
+};
+const SELECTION_INSTRUCTIONS: Record<SelectionAction, string> = {
+  rewrite: 'Rewrite the following passage for clarity and flow, preserving its meaning, voice, and tense.',
+  tighten: 'Tighten the following passage — cut wordiness and filler while preserving its meaning and voice.',
+  expand: 'Expand the following passage with more sensory and emotional detail, preserving its voice and tense.',
+  describe: 'Add more vivid descriptive detail to the following passage, preserving its voice and tense.',
+};
+
+interface AiPanelState {
+  action: AiAction;
+  response: string;
+  loading: boolean;
+  error: string | null;
+  selectionRange: { from: number; to: number } | null;
+}
 
 // Rich-text editor for one chapter: TipTap with a minimal toolbar, 2s
 // debounced autosave, an hourly autosnapshot (plus a manual "Snapshot"
-// button) into manuscript_revisions, and "Split chapter here" which hands the
-// two halves up to the parent rather than writing to the DB itself.
+// button) into manuscript_revisions, "Split chapter here" which hands the
+// two halves up to the parent rather than writing to the DB itself, and the
+// two review-before-apply AI actions (continue writing / selection rewrite).
 export default function ChapterEditor({
   chapter,
   onSaved,
@@ -25,6 +54,8 @@ export default function ChapterEditor({
   const { user } = useAuth();
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [splitHint, setSplitHint] = useState<string | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  const [aiPanel, setAiPanel] = useState<AiPanelState | null>(null);
   const lastSnapshotAtRef = useRef<number | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Holds the debounced save call itself (not just the html) so cleanup can
@@ -36,6 +67,7 @@ export default function ChapterEditor({
     extensions: [StarterKit],
     content: chapter.content_html,
     onUpdate: ({ editor }) => scheduleSave(editor.getHTML()),
+    onSelectionUpdate: ({ editor }) => setHasSelection(!editor.state.selection.empty),
   }, [chapter.id]);
 
   useEffect(() => {
@@ -46,13 +78,16 @@ export default function ChapterEditor({
     return () => { cancelled = true; };
   }, [chapter.id]);
 
-  useEffect(() => () => {
-    if (saveTimerRef.current) {
-      clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = null;
-      pendingSaveRef.current?.();
-      pendingSaveRef.current = null;
-    }
+  useEffect(() => {
+    setAiPanel(null);
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+        pendingSaveRef.current?.();
+        pendingSaveRef.current = null;
+      }
+    };
   }, [chapter.id]);
 
   function scheduleSave(html: string) {
@@ -100,11 +135,80 @@ export default function ChapterEditor({
     onSplit(before, after);
   }
 
+  // ---- AI: continue writing ----
+
+  async function runContinue() {
+    if (!editor) return;
+    setAiPanel({ action: 'continue', response: '', loading: true, error: null, selectionRange: null });
+    const words = htmlToPlainText(editor.getHTML()).split(/\s+/).filter(Boolean);
+    const tail = words.slice(-CONTINUE_TAIL_WORDS).join(' ');
+    const settings = getAiSettings();
+    try {
+      const text = await writingComplete({
+        provider: settings.provider,
+        model: settings.model,
+        system: "You are a skilled fiction ghostwriter. Continue the author's manuscript in their exact voice, tense, and style. Write only prose — no headers, no commentary.",
+        prompt: `Continue writing from where this excerpt leaves off:\n\n"""${tail || '(the chapter is empty — begin it)'}"""\n\nWrite the next 200-400 words. Return ONLY the continuation text, with no quotation marks and without repeating any of the text above.`,
+        maxTokens: 1200,
+      });
+      setAiPanel(p => (p && p.action === 'continue' ? { ...p, response: text, loading: false } : p));
+    } catch (e) {
+      setAiPanel(p => (p && p.action === 'continue' ? { ...p, loading: false, error: (e as Error)?.message ?? 'AI request failed.' } : p));
+    }
+  }
+
+  // ---- AI: selection actions ----
+
+  async function runSelectionAction(action: SelectionAction) {
+    if (!editor) return;
+    const { from, to } = editor.state.selection;
+    if (from === to) return;
+    const selectedText = editor.state.doc.textBetween(from, to, ' ');
+    setAiPanel({ action, response: '', loading: true, error: null, selectionRange: { from, to } });
+    const settings = getAiSettings();
+    try {
+      const text = await writingComplete({
+        provider: settings.provider,
+        model: settings.model,
+        system: "You help an author revise their own fiction manuscript. Preserve meaning, voice, and tense unless asked otherwise.",
+        prompt: `${SELECTION_INSTRUCTIONS[action]}\n\n"""${selectedText}"""\n\nReturn ONLY the replacement text, with no quotation marks and no commentary.`,
+        maxTokens: 1200,
+      });
+      setAiPanel(p => (p && p.action === action ? { ...p, response: text, loading: false } : p));
+    } catch (e) {
+      setAiPanel(p => (p && p.action === action ? { ...p, loading: false, error: (e as Error)?.message ?? 'AI request failed.' } : p));
+    }
+  }
+
+  function retry() {
+    if (!aiPanel) return;
+    if (aiPanel.action === 'continue') runContinue();
+    else runSelectionAction(aiPanel.action);
+  }
+
+  function appendToEnd() {
+    if (!editor || !aiPanel) return;
+    editor.chain().focus('end').insertContent(plainTextToHtml(aiPanel.response)).run();
+    setAiPanel(null);
+  }
+
+  function insertAtCursor() {
+    if (!editor || !aiPanel) return;
+    editor.chain().focus().insertContent(plainTextToHtml(aiPanel.response)).run();
+    setAiPanel(null);
+  }
+
+  function replaceSelection() {
+    if (!editor || !aiPanel?.selectionRange) return;
+    editor.chain().focus().setTextSelection(aiPanel.selectionRange).insertContent(plainTextToHtml(aiPanel.response)).run();
+    setAiPanel(null);
+  }
+
   if (!editor) return null;
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1 mb-3 pb-3 border-b border-slate-100">
+      <div className="flex flex-wrap items-center gap-1 mb-2 pb-2 border-b border-slate-100">
         <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} label="Bold">
           <Bold className="w-4 h-4" />
         </ToolbarButton>
@@ -149,7 +253,83 @@ export default function ChapterEditor({
         </span>
       </div>
 
+      <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-slate-100">
+        <button
+          onClick={runContinue}
+          disabled={!!aiPanel?.loading}
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-md disabled:opacity-50"
+        >
+          <Wand2 className="w-3.5 h-3.5" /> Continue writing
+        </button>
+        <select
+          disabled={!hasSelection || !!aiPanel?.loading}
+          value=""
+          onChange={e => { const v = e.target.value as SelectionAction | ''; if (v) runSelectionAction(v); }}
+          title={hasSelection ? 'AI actions for the selected text' : 'Select some text first'}
+          className="px-2 py-1.5 text-xs border border-slate-300 rounded-md text-slate-600 bg-white disabled:opacity-50"
+        >
+          <option value="" disabled>
+            {hasSelection ? 'AI: rewrite selection…' : 'Select text for AI'}
+          </option>
+          {(Object.keys(SELECTION_LABELS) as SelectionAction[]).map(k => (
+            <option key={k} value={k}>{SELECTION_LABELS[k]}</option>
+          ))}
+        </select>
+        {!hasSelection && <MousePointerClick className="w-3.5 h-3.5 text-slate-300" />}
+        <div className="flex-1" />
+        <AiModelPicker />
+      </div>
+
       {splitHint && <p className="text-xs text-amber-600 mb-3">{splitHint}</p>}
+
+      {aiPanel && (
+        <div className="mb-4 rounded-xl border border-lime-200 bg-lime-50/50 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-xs font-medium text-lime-800 flex items-center gap-1.5">
+              <Wand2 className="w-3.5 h-3.5" />
+              {aiPanel.action === 'continue' ? 'AI continuation' : `AI: ${SELECTION_LABELS[aiPanel.action]}`}
+            </p>
+            <button onClick={() => setAiPanel(null)} className="text-slate-400 hover:text-slate-600">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {aiPanel.loading ? (
+            <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+              <Loader2 className="w-4 h-4 animate-spin" /> Thinking…
+            </div>
+          ) : aiPanel.error ? (
+            <p className="text-sm text-rose-600">{aiPanel.error}</p>
+          ) : (
+            <p className="font-serif text-[15px] leading-relaxed text-slate-700 whitespace-pre-wrap mb-3">{aiPanel.response}</p>
+          )}
+
+          {!aiPanel.loading && (
+            <div className="flex flex-wrap items-center gap-2">
+              {aiPanel.action === 'continue' ? (
+                <>
+                  <ActionButton onClick={appendToEnd} disabled={!!aiPanel.error} icon={<ArrowDownToLine className="w-3.5 h-3.5" />}>
+                    Append to end
+                  </ActionButton>
+                  <ActionButton onClick={insertAtCursor} disabled={!!aiPanel.error} icon={<MousePointerClick className="w-3.5 h-3.5" />}>
+                    Insert at cursor
+                  </ActionButton>
+                </>
+              ) : (
+                <ActionButton onClick={replaceSelection} disabled={!!aiPanel.error} icon={<Check className="w-3.5 h-3.5" />}>
+                  Replace selection
+                </ActionButton>
+              )}
+              <ActionButton onClick={retry} secondary icon={<RotateCcw className="w-3.5 h-3.5" />}>
+                Retry
+              </ActionButton>
+              <button onClick={() => setAiPanel(null)} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5">
+                Discard
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <EditorContent
         editor={editor}
@@ -176,6 +356,28 @@ function ToolbarButton({
       className={`p-1.5 rounded-md ${active ? 'bg-lime-100 text-lime-700' : 'text-slate-500 hover:bg-slate-100'}`}
     >
       {children}
+    </button>
+  );
+}
+
+function ActionButton({
+  onClick, disabled, secondary, icon, children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  secondary?: boolean;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg disabled:opacity-50 ${
+        secondary ? 'border border-slate-300 text-slate-600 hover:bg-white' : 'bg-lime-600 text-white hover:bg-lime-700'
+      }`}
+    >
+      {icon} {children}
     </button>
   );
 }

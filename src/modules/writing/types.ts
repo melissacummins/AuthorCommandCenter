@@ -54,6 +54,18 @@ export interface ManuscriptRevision {
   created_at: string;
 }
 
+// One message in a manuscript's single AI chat thread (directive: "one
+// assistant thread per manuscript" — messages sit flat against manuscript_id
+// rather than behind a separate session wrapper).
+export interface ManuscriptChatMessage {
+  id: string;
+  manuscript_id: string;
+  user_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  created_at: string;
+}
+
 export const STATUS_LABELS: Record<ManuscriptStatus, string> = {
   draft: 'Draft',
   revising: 'Revising',
