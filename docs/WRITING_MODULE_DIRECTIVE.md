@@ -23,8 +23,20 @@ This module replaces two abandoned prototypes:
   import (flattened to one blob, no chapters), per-document DOCX/PDF/HTML/TXT
   export, OpenRouter-based AI (send-with-context, continue-writing, multi-chat,
   prompt library, per-project "agents" with model configs), 12 themes.
-- **Omniscribe** — source lost; only the HTML shell survives. Was a React 19 +
-  Gemini writing studio with recharts stats and file export.
+- **Omniscribe** (audited from the `Omniscribe---January` repo, the latest
+  version) — React 19 + Gemini studio. Series → Books → Chapters → Scenes
+  structure; story bible (characters with relationships/traits/aliases, world
+  lore items, pitch/comps); planning (plot points with status, three-act
+  structure, chapter breakdown); daily word-count logs (drafted vs revised)
+  with an analytics view; whole-book compile export (DOCX + Markdown);
+  localStorage/IndexedDB persistence with JSON backup and File System Access
+  disk sync; multi-provider AI settings (Google/OpenAI/OpenRouter) with model
+  presets; AI features: context-doc chat with **tool-calling knowledge-base
+  updates**, manuscript↔bible consistency sync, refine-selection, metadata
+  extraction (themes/tropes/blurb as JSON), character-profile generation from
+  manuscript text, and Gemini image generation for covers/portraits. Notably it
+  had **no manuscript file import** (JSON backups only) — ai-writing-hub was
+  the only one of the two that could ingest a DOCX/PDF.
 
 **Decisions taken from the audit:**
 
@@ -34,9 +46,13 @@ This module replaces two abandoned prototypes:
 | Chapter-structured storage (improves on both old apps, which had none) | Category → Project → Material hierarchy — redundant; Pen Names → Books already exists |
 | Autosaving editor | TinyMCE — heavy external dependency; use TipTap (MIT) instead |
 | AI continue/rewrite/chat **with manuscript context** | 12 themes / font manager — app already has ThemeContext |
-| Export (DOCX/TXT/HTML/Markdown) | Print-window "PDF export" hack |
-| Word-count progress | Firebase single-document state (1 MB limit workarounds) — Supabase rows instead |
-| — | Multi-chat pin/archive management — defer; one assistant thread per manuscript is enough |
+| Export (DOCX/TXT/HTML/Markdown), incl. Omniscribe's whole-book compile | Print-window "PDF export" hack |
+| Word-count progress (Omniscribe's daily drafted/revised log maps onto existing `book_word_logs`) | Firebase single-document state (1 MB limit workarounds) — Supabase rows instead |
+| AI metadata extraction (themes/tropes/blurb from manuscript → written into the Catalog `books` row, which already has `blurb` and `tropes[]` fields) | Multi-chat pin/archive management — defer; one assistant thread per manuscript is enough |
+| Chapter structure (Omniscribe validated it; drop its extra Scenes sub-level — chapters are enough) | Multi-provider AI settings / model presets / fav-hidden model lists — Claude BYOK only |
+| — | Gemini image generation for covers/portraits — key infra for image AI (fal/Ideogram) already exists in other modules; out of scope here |
+| — | File System Access disk sync + JSON backup import — Supabase is the source of truth; export (§5) covers backup |
+| — | Series entity — Catalog `books` already has `series`/`series_position` |
 
 **Enhancements neither old app had (in scope):** chapter splitting on import,
 snapshots/revision history, whole-manuscript compile export, word-count goals
@@ -246,8 +262,27 @@ Features, in priority order:
    truncated to a sane budget (~30k words) with a visible note when truncated.
    This replicates the old app's "enabled materials" context toggle — its
    second-best idea.
-4. Skip entirely: prompt library, per-project agents, extended-thinking
+4. **Sync to Catalog** (from Omniscribe's `analyzeStoryMetadata` — the
+   highest-leverage AI feature for this app): a "Analyze for Catalog" button
+   that sends the manuscript plain text (truncated ~30k words) and asks for
+   strict JSON — `{ themes[], tropes[], suggestedBlurb }` — then shows a review
+   panel where the user can accept each field into the linked `books` row
+   (`blurb`, `tropes`; merge, don't overwrite silently). This is the concrete
+   payoff of manuscript-in-one-place: Catalog, Marketing, and KDP Optimizer all
+   read those fields today.
+5. Skip entirely: prompt library, per-project agents, extended-thinking
    toggles, model pickers. Default model as in `api/planner/ai.ts`.
+
+## 6b. Phase 4 (optional — do NOT start without explicit approval)
+
+Omniscribe's story-bible layer (characters with relationships/traits/aliases,
+world lore items, plot points, AI manuscript↔bible consistency sync,
+AI character-profile generation from manuscript text) is genuinely valuable for
+series continuity — but it is a module-sized project of its own. If approved
+later, it gets its own directive; the only accommodation to make now is that
+`getManuscriptPlainText` (§4.5) accepts `chapterIds` so a future bible-sync can
+analyze incrementally. Do not create character/lore tables in the Phase 1
+migration.
 
 ## 7. Ground rules
 
