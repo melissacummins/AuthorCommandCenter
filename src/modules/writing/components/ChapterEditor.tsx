@@ -344,7 +344,8 @@ function ChapterEditor({
 
       <EditorContent
         editor={editor}
-        className="font-serif text-[17px] leading-relaxed text-slate-700 max-w-prose [&_.ProseMirror]:min-h-[45vh] [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:mb-4"
+        onClick={() => editor.chain().focus('end').run()}
+        className="font-serif text-[17px] leading-relaxed text-slate-700 [&_.ProseMirror]:min-h-[65vh] [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:mb-4 [&_.ProseMirror]:cursor-text"
       />
     </div>
   );
