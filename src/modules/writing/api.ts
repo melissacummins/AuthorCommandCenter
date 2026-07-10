@@ -6,7 +6,7 @@
 import { supabase } from '../../lib/supabase';
 import { logWordCount, updateBook } from '../catalog/api';
 import { countWords, htmlToPlainText } from './types';
-import type { Manuscript, ManuscriptInsert, ManuscriptUpdate, ManuscriptChapter, ChapterDraft, ManuscriptRevision, ManuscriptChatMessage } from './types';
+import type { Manuscript, ManuscriptInsert, ManuscriptUpdate, ManuscriptChapter, ChapterDraft, ManuscriptRevision, ManuscriptChatMessage, ManuscriptWordLog } from './types';
 
 // ---- Manuscripts ----
 
@@ -215,7 +215,9 @@ export async function restoreRevision(
   return updateChapter(chapter.id, { content_html: revision.content_html });
 }
 
-// Roll chapters' word counts up onto manuscripts.word_count, and — if the
+// Roll chapters' word counts up onto manuscripts.word_count, today's
+// manuscript_word_logs row (unconditional — this is what makes Analytics
+// work with no Catalog link at all, directive §8.2), and — if the
 // manuscript is linked to a Catalog book — onto that book's word_count plus
 // today's book_word_logs row. Reuses Catalog's existing word-log infra
 // (src/modules/catalog/api.ts) rather than a parallel one.
@@ -223,6 +225,7 @@ async function syncWordCount(manuscriptId: string, userId: string, knownChapters
   const chapters = knownChapters ?? (await listChapters(manuscriptId));
   const total = chapters.reduce((sum, c) => sum + (c.word_count ?? 0), 0);
   const manuscript = await updateManuscript(manuscriptId, { word_count: total });
+  await upsertManuscriptWordLog(manuscriptId, userId, todayISO(), total).catch(() => undefined);
   if (manuscript.book_id) {
     await updateBook(manuscript.book_id, { word_count: total }).catch(() => undefined);
     await logWordCount(userId, manuscript.book_id, todayISO(), total).catch(() => undefined);
@@ -234,6 +237,25 @@ async function syncWordCount(manuscriptId: string, userId: string, knownChapters
 function todayISO(): string {
   const d = new Date();
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
+// ---- Manuscript word logs (Analytics — directive §8.2/§8.8) ---------------
+
+export async function listManuscriptWordLogs(manuscriptId: string): Promise<ManuscriptWordLog[]> {
+  const { data, error } = await supabase
+    .from('manuscript_word_logs')
+    .select('*')
+    .eq('manuscript_id', manuscriptId)
+    .order('day', { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as ManuscriptWordLog[];
+}
+
+async function upsertManuscriptWordLog(manuscriptId: string, userId: string, day: string, wordCount: number): Promise<void> {
+  const { error } = await supabase
+    .from('manuscript_word_logs')
+    .upsert({ manuscript_id: manuscriptId, user_id: userId, day, word_count: wordCount }, { onConflict: 'manuscript_id,day' });
+  if (error) throw error;
 }
 
 // ---- Cross-module read API ------------------------------------------------
