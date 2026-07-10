@@ -73,9 +73,9 @@ export default function WritingModule() {
   }
 
   if (view.mode === 'read') {
-    // No max-w wrapper here (directive §8.1) — the manuscript view gets the
-    // full viewport width so the draft dominates the screen; ManuscriptReader
-    // applies its own px-4 lg:px-6 and centers the text measure internally.
+    // No max-w wrapper here — the manuscript view gets the full viewport
+    // width so the draft dominates the screen; ManuscriptReader applies its
+    // own px-4 lg:px-6 and lets the writing pane fill the remaining width.
     return (
       <ManuscriptReader
         manuscriptId={view.manuscriptId}
