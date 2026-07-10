@@ -443,7 +443,7 @@ export default function ManuscriptReader({
 
           <div className="flex-1 min-w-0 h-full bg-white rounded-2xl border border-slate-200 p-6 lg:p-10 overflow-y-auto">
             {activeChapter ? (
-              <div className="max-w-[72ch] mx-auto min-h-[70vh]">
+              <div className="min-h-[70vh]">
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <h2 className="font-serif text-2xl text-slate-800">{activeChapter.title || 'Untitled chapter'}</h2>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -481,7 +481,7 @@ export default function ManuscriptReader({
                   <ChapterEditor ref={editorRef} chapter={activeChapter} onSaved={handleChapterSaved} onSplit={handleSplit} />
                 ) : activeChapter.content_html ? (
                   <div
-                    className="font-serif text-[17px] leading-relaxed text-slate-700 [&_p]:mb-4"
+                    className="max-w-[72ch] mx-auto font-serif text-[17px] leading-relaxed text-slate-700 [&_p]:mb-4"
                     dangerouslySetInnerHTML={{ __html: activeChapter.content_html }}
                   />
                 ) : (
