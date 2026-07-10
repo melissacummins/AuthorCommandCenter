@@ -36,6 +36,7 @@ export interface AppModule {
 // and each path matches the route registered in App.tsx.
 export const GATED_MODULES: { key: string; path: string; label: string }[] = [
   { key: 'catalog', path: '/catalog', label: 'Catalog' },
+  { key: 'writing', path: '/writing', label: 'Writing' },
   { key: 'timeline', path: '/timeline', label: 'Timeline' },
   { key: 'book-tracker', path: '/book-tracker', label: 'Book Tracker' },
   { key: 'profit-track', path: '/profit-track', label: 'Profit' },

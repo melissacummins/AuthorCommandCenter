@@ -6,7 +6,7 @@ import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
-  ChevronDown, ChevronRight, AudioLines, Gift,
+  ChevronDown, ChevronRight, AudioLines, Gift, PenTool,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -26,6 +26,14 @@ const moduleByPath: Record<string, ModuleCard> = {
     icon: Library,
     gradient: 'from-indigo-500 to-violet-600',
     shadow: 'shadow-indigo-500/25',
+  },
+  '/writing': {
+    name: 'Writing',
+    description: 'Import a manuscript, chapter by chapter, so the rest of the Command Center can use it.',
+    path: '/writing',
+    icon: PenTool,
+    gradient: 'from-lime-500 to-lime-600',
+    shadow: 'shadow-lime-500/25',
   },
   '/timeline': {
     name: 'Timeline',
@@ -150,7 +158,7 @@ const moduleByPath: Record<string, ModuleCard> = {
 };
 
 const sections: { label: string; paths: string[] }[] = [
-  { label: 'Catalog',    paths: ['/catalog', '/timeline'] },
+  { label: 'Catalog',    paths: ['/catalog', '/writing', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
   { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },

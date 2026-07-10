@@ -124,6 +124,7 @@ export default function CatalogBookPicker({
         reviews: [],
         cover_url: null,
         notes: null,
+        include_in_arcs: true,
       });
       setBooks(prev => [created, ...prev]);
       onChange(created.id, created);
