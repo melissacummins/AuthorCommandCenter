@@ -41,6 +41,19 @@ export interface ChapterDraft {
   content_html: string;
 }
 
+// A saved snapshot of a chapter's content — either an hourly autosave taken
+// while editing, or a user-labeled manual snapshot. Restoring one snapshots
+// the chapter's current content first, so a restore is itself reversible.
+export interface ManuscriptRevision {
+  id: string;
+  chapter_id: string;
+  user_id: string;
+  content_html: string;
+  word_count: number;
+  label: string | null;
+  created_at: string;
+}
+
 export const STATUS_LABELS: Record<ManuscriptStatus, string> = {
   draft: 'Draft',
   revising: 'Revising',
