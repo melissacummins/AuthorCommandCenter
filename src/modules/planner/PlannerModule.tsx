@@ -329,6 +329,29 @@ export default function PlannerModule() {
     } catch (e) { setError((e as Error)?.message ?? 'Could not add item.'); return undefined; }
   }
 
+  // One to-do's even share of a TIMED block, as a session on the block's day —
+  // so checking it off can record that time without a timer. The block's length
+  // is split evenly across the to-dos in it and placed back-to-back, so all of
+  // them together sum to the block's duration. Untimed blocks yield nothing.
+  function blockShareSession(task: PlannerTask): { started_at: string; ended_at: string; minutes: number } | null {
+    if (!task.block_id) return null;
+    const block = blocks.find(b => b.id === task.block_id);
+    if (!block || block.start_minute == null || block.end_minute == null || block.end_minute <= block.start_minute) return null;
+    const inBlock = tasks.filter(t => t.kind === 'task' && t.block_id === block.id)
+      .sort((a, b) => (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at));
+    const n = inBlock.length;
+    if (!n) return null;
+    const idx = Math.max(0, inBlock.findIndex(t => t.id === task.id));
+    const dur = block.end_minute - block.start_minute;
+    const per = Math.floor(dur / n);
+    const minutes = idx === n - 1 ? dur - per * (n - 1) : per; // last one absorbs the remainder
+    if (minutes <= 0) return null;
+    const base = new Date(block.day + 'T00:00:00');
+    const s = new Date(base); s.setMinutes(block.start_minute + idx * per);
+    const e = new Date(s.getTime() + minutes * 60_000);
+    return { started_at: s.toISOString(), ended_at: e.toISOString(), minutes };
+  }
+
   async function patchTask(id: string, patch: Partial<PlannerTask>) {
     // Completing a recurring to-do rolls it forward to the next occurrence
     // (and resets its checklist) instead of finishing it.
@@ -345,6 +368,30 @@ export default function PlannerModule() {
     if (patch.done === true && task?.timer_started_at) {
       effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + elapsedMinutes(task.timer_started_at), timer_started_at: null };
     }
+
+    // Timed-block time: checking a to-do off inside a timed block records its
+    // share of the block as worked time (no timer needed); un-checking gives that
+    // time back. Recurring to-dos and ones with real tracked time are left alone.
+    let blockLogRow: { task_id: string; started_at: string; ended_at: string; minutes: number } | null = null;
+    let removeBlockSessions: PlannerTimeSession[] = [];
+    if (task) {
+      const completing = patch.done === true && !task.done && !task.recurrence
+        && !task.timer_started_at && (task.actual_minutes ?? 0) === 0;
+      if (completing && !sessions.some(s => s.task_id === id && s.source === 'block')) {
+        const share = blockShareSession(task);
+        if (share) {
+          blockLogRow = { task_id: id, ...share };
+          effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + share.minutes };
+        }
+      } else if (patch.done === false && task.done) {
+        removeBlockSessions = sessions.filter(s => s.task_id === id && s.source === 'block');
+        if (removeBlockSessions.length) {
+          const mins = removeBlockSessions.reduce((m, s) => m + s.minutes, 0);
+          effective = { ...effective, actual_minutes: Math.max(0, (task.actual_minutes ?? 0) - mins) };
+        }
+      }
+    }
+
     // Only one timer runs at a time: starting one stops + banks every other.
     const startingTimer = !!patch.timer_started_at;
     const others = startingTimer ? tasks.filter(t => t.id !== id && t.timer_started_at) : [];
@@ -383,6 +430,14 @@ export default function PlannerModule() {
       if (sessionRows.length && user) {
         const created = await createTimeSessions(user.id, sessionRows);
         setSessions(prev => [...prev, ...created]);
+      }
+      if (blockLogRow && user) {
+        const created = await createTimeSessions(user.id, [blockLogRow], 'block');
+        setSessions(prev => [...prev, ...created]);
+      }
+      if (removeBlockSessions.length) {
+        setSessions(prev => prev.filter(s => !removeBlockSessions.some(r => r.id === s.id)));
+        await Promise.all(removeBlockSessions.map(s => deleteTimeSession(s.id)));
       }
     }
     catch (e) { setError((e as Error)?.message ?? 'Could not update item.'); }
@@ -453,7 +508,7 @@ export default function PlannerModule() {
         const t = tasks.find(x => x.id === id);
         return t ? updateTask(id, { actual_minutes: (t.actual_minutes ?? 0) + m }) : Promise.resolve();
       }));
-      const created = await createTimeSessions(user.id, rows);
+      const created = await createTimeSessions(user.id, rows, 'block');
       setSessions(prev => [...prev, ...created]);
     } catch (e) { setError((e as Error)?.message ?? 'Could not log the block.'); }
   }
