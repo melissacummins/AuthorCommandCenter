@@ -8,6 +8,7 @@ import { getManuscriptForBook } from '../writing/api';
 import type { Manuscript } from '../writing/types';
 import HooksTab from './components/HooksTab';
 import PlaybookTab from './components/PlaybookTab';
+import SlideshowsTab from './components/SlideshowsTab';
 
 type Tab = 'hooks' | 'slideshows' | 'screenshots' | 'videos' | 'playbook';
 
@@ -107,10 +108,14 @@ export default function ContentCreatorModule() {
         )
       )}
       {tab === 'slideshows' && (
-        <ComingNext
-          title="Slideshow Studio"
-          body="Pick an approved hook, add direction notes, choose your slide count, and generate an editable carousel with AI, library, or uploaded backgrounds. Exports 9:16 for TikTok and 4:5 for Instagram."
-        />
+        book ? (
+          <SlideshowsTab key={book.id} book={book} />
+        ) : (
+          <ComingNext
+            title="Slideshow Studio"
+            body="Pick a book above, approve a hook, and generate an editable carousel with AI, library, or uploaded backgrounds. Exports 9:16 for TikTok and 4:5 for Instagram."
+          />
+        )
       )}
       {tab === 'screenshots' && (
         <ComingNext

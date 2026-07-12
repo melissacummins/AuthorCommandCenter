@@ -31,3 +31,7 @@ export const TASK_LABELS: Record<AiTask, { name: string; hint: string }> = {
 };
 
 export const ALL_TASKS = Object.keys(DEFAULT_MODELS) as AiTask[];
+
+// Default image model for slide backgrounds (fast + pennies). Same rule as
+// AI tasks: one place to change, user-selectable in the slideshow editor.
+export const DEFAULT_IMAGE_MODEL = 'flux-schnell';
