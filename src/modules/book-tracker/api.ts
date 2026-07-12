@@ -44,7 +44,6 @@ export async function createTrackedBook(userId: string, input: TrackedBookInsert
       cost_breakdown: input.cost_breakdown ?? [],
       status: input.status ?? 'active',
       catalog_book_id: input.catalog_book_id ?? null,
-      klaviyo_list_id: input.klaviyo_list_id ?? null,
       notes: input.notes ?? null,
       legacy_id: input.legacy_id ?? null,
     })

@@ -27,7 +27,6 @@ const MediaModule = lazy(() => import('./modules/media/MediaModule'));
 const SocialMediaModule = lazy(() => import('./modules/social-media/SocialMediaModule'));
 const AudiobookModule = lazy(() => import('./modules/audiobook/AudiobookModule'));
 const SettingsModule = lazy(() => import('./modules/settings/SettingsModule'));
-const TimelineModule = lazy(() => import('./modules/timeline/TimelineModule'));
 const PlannerModule = lazy(() => import('./modules/planner/PlannerModule'));
 const ShopifyCallback = lazy(() => import('./modules/orders/components/ShopifyCallback'));
 
@@ -35,7 +34,6 @@ const ShopifyCallback = lazy(() => import('./modules/orders/components/ShopifyCa
 const GATED_ELEMENTS: Record<string, ReactElement> = {
   'catalog': <CatalogModule />,
   'writing': <WritingModule />,
-  'timeline': <TimelineModule />,
   'book-tracker': <BookTrackerModule />,
   'profit-track': <ProfitTrackModule />,
   'finstream': <FinStreamModule />,

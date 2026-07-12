@@ -5,7 +5,7 @@ import { moduleKeyForPath } from '../lib/access';
 import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Clapperboard, Wallet, Search, ArrowRight, Library, Link2, Users, ImagePlus, Share2, Clock,
+  Clapperboard, Wallet, Search, ArrowRight, Library, Link2, Users, ImagePlus, Share2,
   ChevronDown, ChevronRight, AudioLines, Gift, PenTool,
 } from 'lucide-react';
 
@@ -34,14 +34,6 @@ const moduleByPath: Record<string, ModuleCard> = {
     icon: PenTool,
     gradient: 'from-lime-500 to-lime-600',
     shadow: 'shadow-lime-500/25',
-  },
-  '/timeline': {
-    name: 'Timeline',
-    description: 'Per-book story of sales, ad spend, promos, newsletters, and launches in chronological order.',
-    path: '/timeline',
-    icon: Clock,
-    gradient: 'from-indigo-500 to-blue-600',
-    shadow: 'shadow-indigo-500/25',
   },
   '/book-tracker': {
     name: 'Book Tracker',
@@ -150,7 +142,7 @@ const moduleByPath: Record<string, ModuleCard> = {
 };
 
 const sections: { label: string; paths: string[] }[] = [
-  { label: 'Catalog',    paths: ['/catalog', '/writing', '/timeline'] },
+  { label: 'Catalog',    paths: ['/catalog', '/writing'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
   { label: 'Marketing',  paths: ['/content-creator', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },

@@ -13,7 +13,7 @@
 Modules are grouped into four sections in `src/components/Layout.tsx`
 and the same order on `src/pages/Home.tsx`:
 
-1. **Catalog** — Catalog, Writing, Timeline
+1. **Catalog** — Catalog, Writing
 2. **Finances** — Book Tracker, Profit, Transactions
 3. **Operations** — Inventory, Cross-Sell Analyzer, Upsells
 4. **Marketing** — Content Creator, Media, Social Media, Audiobook, KDP Optimizer, Links, ARCs
