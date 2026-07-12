@@ -138,14 +138,44 @@ export function buildRankPrompt(candidates: HookCandidate[], target: number): st
     `- You are WRITING fresh caption copy about each moment, not excerpting it. Returning a line copied from the scene_excerpt as the hook is an automatic failure — quote the book only inside a frame, and only verbatim.`,
     `- Name characters by trope role (pull from the book facts/tags), never by in-book name.`,
     `- Every FACT in a hook must come straight from its scene_excerpt. If the excerpt doesn't support a detail, you can't use it.`,
-    `- Variety: don't return multiple versions of the same moment or the same shape ten times.`,
+    `- VARIETY IS MANDATORY: use a different strategy from the library (or a different PROVEN SHAPE) for every hook — never the same shape twice until every fitting one is used. Never return two hooks from the same moment.`,
     `- Pass each candidate's scene_excerpt through EXACTLY as given.`,
-    `Return for each: hook_text (the hook), scene_excerpt (unchanged), rationale (one sentence: which shape it uses and why it stops the scroll), tags.`,
+    `Return for each: hook_text (the hook), scene_excerpt (unchanged), rationale (start with the strategy/shape name, then one sentence on why it stops the scroll), tags.`,
     `Respond with JSON only, matching: {"hooks": [{"hook_text": "...", "scene_excerpt": "...", "rationale": "...", "tags": ["..."]}]}`,
     ``,
     `MOMENTS:`,
     JSON.stringify(candidates, null, 1),
   ].join('\n');
+}
+
+// ---------------- Quote workshop: one moment, many strategies ----------------
+// The author pastes ONE quote/excerpt they already love; the model writes one
+// hook per fitting strategy from the library so she can compare framings side
+// by side. Variety is the whole point — strategy diversity is enforced by
+// construction, not by asking nicely.
+
+export interface HookVariation {
+  strategy: string;
+  hook_text: string;
+  rationale: string;
+}
+
+export function buildVariationsPrompt(quote: string, notes: string, maxVariations: number): string {
+  return [
+    HOOK_ANATOMY,
+    ``,
+    `The author pasted ONE moment from the book below — a quote or short excerpt she already believes in. Write up to ${maxVariations} DIFFERENT hooks from this single moment, each using a DIFFERENT strategy from the HOOK STRATEGY LIBRARY (or the author's own playbook patterns).`,
+    `Rules:`,
+    `- One hook per strategy, each a genuinely different framing — not the same sentence reworded. If two strategies would produce near-identical hooks, keep the stronger and move on.`,
+    `- Only use strategies that honestly fit this moment. Skipping a strategy beats forcing it; fewer strong variations beat ${maxVariations} padded ones.`,
+    `- Every fact comes from the pasted moment (plus the book facts above). Words inside quotation marks must be verbatim from the paste.`,
+    `- strategy: the library/playbook entry title, exactly as written there.`,
+    notes.trim() ? `AUTHOR DIRECTION (follow it): ${notes.trim()}` : '',
+    `Respond with JSON only, best first: {"variations": [{"strategy": "...", "hook_text": "...", "rationale": "..."}]}`,
+    ``,
+    `THE MOMENT (verbatim from the book):`,
+    quote.slice(0, 4000),
+  ].filter(Boolean).join('\n');
 }
 
 // ---------------- Verification (per surviving hook) ----------------

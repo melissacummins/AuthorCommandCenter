@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Anchor, Loader2, Play, Square, Star, Trash2, ChevronDown, ChevronRight, ShieldAlert, Plus } from 'lucide-react';
+import { Anchor, Loader2, Play, Square, Star, Trash2, ChevronDown, ChevronRight, ShieldAlert, Plus, Quote, Sparkles, Check } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { Book } from '../../catalog/types';
 import type { Manuscript } from '../../writing/types';
@@ -13,7 +13,7 @@ import type { ContentHook, HookCandidate, WrittenHook, HookStatus } from '../typ
 import { runJsonTask, runTask, getTaskModel } from '../lib/ai';
 import {
   buildPreamble, buildExtractPrompt, buildRankPrompt, buildVerifyPrompt, buildSynonymPrompt,
-  parseJsonResponse, type HookVerdict,
+  buildVariationsPrompt, parseJsonResponse, type HookVerdict, type HookVariation,
 } from '../lib/prompts';
 import ScanModelPickers from './ScanModelPickers';
 import {
@@ -261,6 +261,14 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
         </div>
       </div>
 
+      <QuoteWorkshop
+        userId={user.id}
+        book={book}
+        manuscriptId={manuscript?.id ?? null}
+        bannedActive={bannedActive}
+        onSaved={h => setHooks(prev => [h, ...prev])}
+      />
+
       <div className="flex items-center justify-between">
         <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
           {(['all', 'candidate', 'approved', 'archived'] as const).map(s => (
@@ -308,6 +316,148 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
               onDeleted={() => setHooks(prev => prev.filter(x => x.id !== h.id))}
             />
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const MAX_VARIATIONS = 8;
+
+// Paste one quote you already love → one hook per fitting strategy from the
+// library, labeled, side by side. The answer to "the scan converges on one
+// shape": here variety is the assignment, not a suggestion.
+function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
+  userId: string;
+  book: Book;
+  manuscriptId: string | null;
+  bannedActive: ActiveBannedWord[];
+  onSaved: (h: ContentHook) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [quote, setQuote] = useState('');
+  const [notes, setNotes] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [variations, setVariations] = useState<HookVariation[]>([]);
+  const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
+
+  async function generate() {
+    if (quote.trim().length < 20) { setError('Paste a little more of the moment — a line or two at least.'); return; }
+    setBusy(true); setError(null); setVariations([]); setSavedIdx(new Set());
+    try {
+      const [entries, rules] = await Promise.all([listPlaybookEntries(userId), listRules(userId)]);
+      const activeEntries = entries.filter(e => e.active && (!e.pen_name_id || e.pen_name_id === book.pen_name_id));
+      const system = buildPreamble({ book, entries: activeEntries, rules: rules.filter(r => r.active), bannedWords: bannedActive });
+      const out = await runJsonTask<{ variations: HookVariation[] }>({
+        userId,
+        task: 'rank',
+        system,
+        prompt: buildVariationsPrompt(quote, notes, MAX_VARIATIONS),
+        maxTokens: 2048,
+      });
+      const clean = (out.variations ?? []).filter(v => v.hook_text?.trim()).slice(0, MAX_VARIATIONS);
+      if (!clean.length) throw new Error('No variations came back — try a longer or more charged excerpt.');
+      setVariations(clean);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveVariation(v: HookVariation, idx: number) {
+    const [h] = await insertHooks(userId, [{
+      book_id: book.id,
+      manuscript_id: manuscriptId,
+      hook_text: v.hook_text.trim(),
+      scene_excerpt: quote.trim(),
+      rationale: v.strategy ? `${v.strategy}${v.rationale ? ` — ${v.rationale}` : ''}` : v.rationale ?? '',
+      tags: [],
+      source: 'manual' as const,
+    }]);
+    setSavedIdx(prev => new Set(prev).add(idx));
+    onSaved(h);
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between gap-3 text-left">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+            <Quote className="w-4 h-4 text-slate-400" /> Hook workshop
+          </h3>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Paste one quote or moment you love and get a different hook per playbook strategy — compare the framings side by side.
+          </p>
+        </div>
+        {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="mt-4 space-y-3">
+          <textarea
+            rows={4}
+            value={quote}
+            onChange={e => setQuote(e.target.value)}
+            placeholder={'Paste the quote or short excerpt, verbatim from the book…\ne.g. "You are mine," he growled, hooking her knees and pulling her into him.'}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none"
+          />
+          <div className="flex flex-wrap gap-2 items-center">
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Optional direction (e.g. lean possessive, he's a vampire boss)…"
+              className="flex-1 min-w-52 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none"
+            />
+            <button
+              onClick={generate}
+              disabled={busy || !quote.trim()}
+              className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
+            >
+              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {busy ? 'Writing…' : variations.length ? 'Re-roll variations' : 'Write variations'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+
+          {variations.length > 0 && (
+            <div className="space-y-2 pt-1">
+              {variations.map((v, i) => {
+                const matches = scanForBannedWords(v.hook_text, bannedActive);
+                const saved = savedIdx.has(i);
+                return (
+                  <div key={i} className="rounded-lg border border-slate-200 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 border border-pink-100 mb-1.5">
+                          {v.strategy || 'Untitled strategy'}
+                        </span>
+                        <p className="text-sm text-slate-800">{v.hook_text}</p>
+                        {v.rationale && <p className="text-xs text-slate-400 mt-1">{v.rationale}</p>}
+                        {matches.length > 0 && (
+                          <p className="text-[11px] text-amber-700 mt-1 flex items-center gap-1">
+                            <ShieldAlert className="w-3.5 h-3.5" /> contains banned {matches.length === 1 ? 'word' : 'words'}: {matches.map(m => `"${m.found}"`).join(', ')} — fixes available after saving
+                          </p>
+                        )}
+                      </div>
+                      {saved ? (
+                        <span className="text-xs text-emerald-600 flex items-center gap-1 shrink-0"><Check className="w-3.5 h-3.5" /> Saved</span>
+                      ) : (
+                        <button onClick={() => saveVariation(v, i)}
+                          className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-white hover:bg-slate-700 shrink-0">
+                          Save
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <p className="text-[11px] text-slate-400">
+                Saved variations join your hook list below (the pasted quote rides along as the scene). Re-roll keeps the quote and writes a fresh set.
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
