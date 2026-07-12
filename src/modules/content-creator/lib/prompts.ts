@@ -212,6 +212,25 @@ export function buildImagePromptPrompt(sceneExcerpt: string, slideText: string):
   ].join('\n');
 }
 
+// ---------------- Video script writing ----------------
+
+export function buildScriptPrompt(hookText: string, sceneExcerpt: string, notes: string, targetSeconds: number): string {
+  return [
+    HOOK_ANATOMY,
+    ``,
+    `Turn this approved hook into a timed caption script for a ~${targetSeconds}-second video. Each line is one text card shown over the video for a few seconds.`,
+    `Structure: line 1 IS the hook. Middle lines escalate with real beats from the scene, one beat per line, keeping the gap open. The final line lands the payoff or cliff. 3-7 lines total; total seconds ≈ ${targetSeconds}.`,
+    `Rules: every fact and quoted line comes straight from the scene — invent nothing. Each line under 90 characters, plain punchy reader voice, no hashtags, no emoji. Give each line a duration in whole seconds (2-6s; longer lines get more time).`,
+    notes.trim() ? `AUTHOR DIRECTION (follow it): ${notes.trim()}` : '',
+    `Respond with JSON only: {"lines": [{"text": "...", "seconds": 3}]}`,
+    ``,
+    `HOOK: ${hookText}`,
+    ``,
+    `SOURCE SCENE (verbatim):`,
+    sceneExcerpt || '(no excerpt — stay strictly on the hook itself; do not invent scene details)',
+  ].filter(Boolean).join('\n');
+}
+
 // ---------------- Synonym suggestion ----------------
 
 export function buildSynonymPrompt(word: string, sentence: string): string {

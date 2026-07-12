@@ -180,6 +180,36 @@ export async function uploadBackground(userId: string, file: File): Promise<stri
   return data.publicUrl;
 }
 
+// Completed video generations, for the composer's background picker.
+export async function listLibraryVideos(userId: string): Promise<Array<{ id: string; url: string; prompt: string }>> {
+  const { data, error } = await supabase
+    .from('media_generations')
+    .select('id, output_url, prompt, kind, status')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? [])
+    .filter(g => g.output_url && g.kind === 'video')
+    .map(g => ({ id: g.id, url: g.output_url as string, prompt: g.prompt ?? '' }));
+}
+
+// Generate a background-music track via the BYOK ElevenLabs endpoint.
+export async function generateMusic(prompt: string, durationSeconds: number): Promise<string> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData.session?.access_token;
+  if (!token) throw new Error('Not signed in.');
+  const res = await fetch('/api/content/music', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, duration_seconds: durationSeconds }),
+  });
+  const json = await res.json().catch(() => ({})) as { url?: string; error?: string };
+  if (!res.ok || !json.url) throw new Error(json.error || `Music generation failed (${res.status}).`);
+  return json.url;
+}
+
 // The user's completed image generations, for the background library picker.
 export async function listLibraryImages(userId: string): Promise<Array<{ id: string; url: string; prompt: string }>> {
   const { data, error } = await supabase

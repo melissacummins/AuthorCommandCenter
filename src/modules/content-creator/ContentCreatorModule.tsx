@@ -10,6 +10,7 @@ import HooksTab from './components/HooksTab';
 import PlaybookTab from './components/PlaybookTab';
 import SlideshowsTab from './components/SlideshowsTab';
 import ScreenshotsTab from './components/ScreenshotsTab';
+import VideosTab from './components/VideosTab';
 
 type Tab = 'hooks' | 'slideshows' | 'screenshots' | 'videos' | 'playbook';
 
@@ -129,10 +130,14 @@ export default function ContentCreatorModule() {
         )
       )}
       {tab === 'videos' && (
-        <ComingNext
-          title="Video Composer"
-          body="Timed script text over a generated or uploaded video, with music from your library or ElevenLabs. Preview live, export WebM or the assets for CapCut."
-        />
+        book ? (
+          <VideosTab key={book.id} book={book} />
+        ) : (
+          <ComingNext
+            title="Video Composer"
+            body="Pick a book above, then put timed script text over a generated or uploaded video, with music from ElevenLabs or your own track. Preview live, export WebM or the assets for CapCut."
+          />
+        )
       )}
       {tab === 'playbook' && <PlaybookTab />}
     </div>
