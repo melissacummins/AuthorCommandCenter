@@ -10,6 +10,7 @@ import { listChapters } from '../../writing/api';
 import { listHooks, listCreatives, insertCreative, updateCreative, deleteCreative, type ContentCreative } from '../api';
 import type { ContentHook } from '../types';
 import { downloadBlob } from '../lib/slides';
+import SendTo from '../../../components/SendTo';
 import {
   detectDialogue, wordRangeAt, rangesOverlap, segmentText, renderScreenshotToPng,
   PAGE_BGS, HIGHLIGHT_FILLS, FONT_SIZES, PAGE_WIDTH, PAGE_PADDING,
@@ -272,17 +273,26 @@ function ScreenshotEditor({ creative, onBack, onChanged }: {
     commit({ ...payload, stamps: [...payload.stamps, { kind: tool, x, y, scale: 1 }] });
   }
 
+  const fileBase = (creative.title || 'screenshot').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+
   async function exportPng() {
     setExporting(true); setError(null);
     try {
       const pageHeight = pageRef.current?.offsetHeight ?? 640;
       const blob = await renderScreenshotToPng(payload, pageHeight);
-      downloadBlob(blob, `${(creative.title || 'screenshot').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`);
+      downloadBlob(blob, `${fileBase}.png`);
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setExporting(false);
     }
+  }
+
+  // Same render as exportPng, but as a blob for the cloud-export buttons.
+  async function renderForCloud() {
+    const pageHeight = pageRef.current?.offsetHeight ?? 640;
+    const blob = await renderScreenshotToPng(payload, pageHeight);
+    return [{ blob, filename: `${fileBase}.png` }];
   }
 
   const bg = PAGE_BGS[payload.page.bg];
@@ -331,6 +341,7 @@ function ScreenshotEditor({ creative, onBack, onChanged }: {
           className="px-3 py-2 rounded-lg bg-slate-800 text-white font-medium hover:bg-slate-700 disabled:opacity-50 flex items-center gap-1.5">
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Export PNG
         </button>
+        <SendTo getFiles={renderForCloud} disabled={exporting} />
       </div>
       {error && <p className="text-xs text-rose-600">{error}</p>}
       <p className="text-[11px] text-slate-400">

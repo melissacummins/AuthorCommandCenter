@@ -14,6 +14,7 @@ import {
 import type { ContentHook } from '../types';
 import { runJsonTask } from '../lib/ai';
 import { buildSlidesPrompt, buildImagePromptPrompt } from '../lib/prompts';
+import SendTo from '../../../components/SendTo';
 import {
   SLIDE_FORMATS, DEFAULT_SLIDE_STYLE, renderSlideToPng, downloadBlob,
   type Slide, type SlideFormat, type SlideshowPayload, type SlideStyle,
@@ -310,12 +311,14 @@ function SlideshowEditor({ userId, creative, bannedActive, onBack, onChanged }: 
     commit({ ...payload, slides });
   }
 
+  const fileBase = (title || 'slideshow').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+
   async function exportAll() {
     setExporting(true); setError(null);
     try {
       for (let i = 0; i < payload.slides.length; i++) {
         const blob = await renderSlideToPng(payload.slides[i], payload.format);
-        downloadBlob(blob, `${(title || 'slideshow').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${i + 1}.png`);
+        downloadBlob(blob, `${fileBase}-${i + 1}.png`);
         // Small gap so browsers don't swallow rapid multi-downloads.
         await new Promise(r => setTimeout(r, 350));
       }
@@ -324,6 +327,18 @@ function SlideshowEditor({ userId, creative, bannedActive, onBack, onChanged }: 
     } finally {
       setExporting(false);
     }
+  }
+
+  // Same renders as exportAll, but as blobs for the cloud-export buttons.
+  async function renderAllForCloud() {
+    const files = [];
+    for (let i = 0; i < payload.slides.length; i++) {
+      files.push({
+        blob: await renderSlideToPng(payload.slides[i], payload.format),
+        filename: `${fileBase}-${i + 1}.png`,
+      });
+    }
+    return files;
   }
 
   const fmt = SLIDE_FORMATS[payload.format];
@@ -347,6 +362,7 @@ function SlideshowEditor({ userId, creative, bannedActive, onBack, onChanged }: 
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           Download PNGs ({fmt.width}×{fmt.height})
         </button>
+        <SendTo getFiles={renderAllForCloud} disabled={exporting} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">

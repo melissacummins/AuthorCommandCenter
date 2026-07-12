@@ -14,6 +14,7 @@ import type { ContentHook } from '../types';
 import { runJsonTask } from '../lib/ai';
 import { buildScriptPrompt } from '../lib/prompts';
 import { downloadBlob, DEFAULT_SLIDE_STYLE, type SlideStyle } from '../lib/slides';
+import SendTo from '../../../components/SendTo';
 import {
   exportWebm, renderCaptionPng, activeLineAt, totalDuration,
   type VideoPayload, type CaptionLine,
@@ -264,13 +265,27 @@ function VideoEditor({ userId, creative, onBack, onChanged }: {
     finally { setBusy(null); }
   }
 
+  const fileBase = (creative.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase();
+
   async function doExport() {
     setExportProgress(0); setError(null);
     try {
       const blob = await exportWebm(payload, setExportProgress);
-      downloadBlob(blob, `${(creative.title || 'video').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.webm`);
+      downloadBlob(blob, `${fileBase}.webm`);
     } catch (err) { setError((err as Error).message); }
     finally { setExportProgress(null); }
+  }
+
+  // Same real-time recording as doExport, but handed to the cloud-export
+  // buttons instead of the browser's download tray.
+  async function renderForCloud() {
+    setExportProgress(0);
+    try {
+      const blob = await exportWebm(payload, setExportProgress);
+      return [{ blob, filename: `${fileBase}.webm` }];
+    } finally {
+      setExportProgress(null);
+    }
   }
 
   async function exportAssets() {
@@ -314,6 +329,7 @@ function VideoEditor({ userId, creative, onBack, onChanged }: {
           {exportProgress !== null ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
           {exportProgress !== null ? `Recording ${Math.round(exportProgress * 100)}%` : 'Export WebM'}
         </button>
+        {payload.bg_url && <SendTo getFiles={renderForCloud} disabled={exportProgress !== null} />}
       </div>
       {error && <p className="text-xs text-rose-600">{error}</p>}
 
