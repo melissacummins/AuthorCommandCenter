@@ -44,6 +44,10 @@ export interface Book {
   content_warnings: string | null;
   kinks: string | null;
   tropes: string[];
+  // Marketing facts consumed by Content Creator: 1 (sweet) to 5 (scorching),
+  // and the marketing subgenre ("dark mafia romance", "monster romance", …).
+  heat_level: number | null;
+  subgenre: string | null;
 
   page_count: number | null;
   word_count: number | null;

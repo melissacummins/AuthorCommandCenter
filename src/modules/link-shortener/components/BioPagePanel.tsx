@@ -18,7 +18,7 @@ import {
   reorderBioItems, updateBioBlock, updateLink, uploadBioImage, uploadBioLogo, upsertBioSettings,
 } from '../api';
 import { BIO_THEMES, DEFAULT_BIO_THEME, bioThemeById } from '../bioThemes';
-import KlaviyoListPicker from '../../book-tracker/components/KlaviyoListPicker';
+import KlaviyoListPicker from './KlaviyoListPicker';
 import FormattedTextarea from './FormattedTextarea';
 import {
   detectSocialPlatform, SOCIAL_HEX, SOCIAL_NAMES, SIMPLEICONS_SLUG,

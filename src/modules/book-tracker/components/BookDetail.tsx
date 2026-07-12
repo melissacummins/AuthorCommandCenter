@@ -13,7 +13,6 @@ import { usePenNames } from '../../../contexts/PenNameContext';
 import PenNameChip from '../../../components/PenNameChip';
 import BookTimeline from './BookTimeline';
 import QuarterlyUpdatesPanel from './QuarterlyUpdatesPanel';
-import KlaviyoListPicker from './KlaviyoListPicker';
 
 interface Props {
   book: TrackedBook;
@@ -59,11 +58,6 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
     const nextBook = await deleteQuarterlyUpdate(user.id, id, book.id);
     setUpdates(prev => prev.filter(u => u.id !== id));
     onBookUpdated(nextBook);
-  }
-
-  async function handleKlaviyoChange(listId: string | null) {
-    const updated = await updateTrackedBook(book.id, { klaviyo_list_id: listId });
-    onBookUpdated(updated);
   }
 
   const launchLabel = book.launch_date
@@ -159,7 +153,6 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
               onAdd={handleAddUpdate}
               onDelete={handleDeleteUpdate}
             />
-            <KlaviyoListPicker value={book.klaviyo_list_id} onChange={handleKlaviyoChange} />
           </div>
         </div>
       )}

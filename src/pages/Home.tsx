@@ -5,7 +5,7 @@ import { moduleKeyForPath } from '../lib/access';
 import TodayPanel from '../modules/planner/TodayPanel';
 import {
   Package, BarChart3, BookOpen, DollarSign,
-  Sparkles, Wallet, Search, ArrowRight, Megaphone, Library, Link2, Users, ImagePlus, Share2, Clock,
+  Clapperboard, Wallet, Search, ArrowRight, Library, Link2, Users, ImagePlus, Share2, Clock,
   ChevronDown, ChevronRight, AudioLines, Gift, PenTool,
 } from 'lucide-react';
 
@@ -91,19 +91,11 @@ const moduleByPath: Record<string, ModuleCard> = {
     gradient: 'from-sky-500 to-sky-600',
     shadow: 'shadow-sky-500/25',
   },
-  '/ad-alchemy': {
-    name: 'Ad Alchemy',
-    description: 'Analyze Facebook ad performance, identify winning hooks, and optimize creatives.',
-    path: '/ad-alchemy',
-    icon: Sparkles,
-    gradient: 'from-orange-500 to-orange-600',
-    shadow: 'shadow-orange-500/25',
-  },
-  '/marketing': {
-    name: 'Marketing',
-    description: 'Create ad copy, manage creatives, build reel scripts, and adapt content for social media.',
-    path: '/marketing',
-    icon: Megaphone,
+  '/content-creator': {
+    name: 'Content Creator',
+    description: 'Scan your manuscript for hooks, then turn them into slideshows, Kindle screenshots, and videos for ads and social.',
+    path: '/content-creator',
+    icon: Clapperboard,
     gradient: 'from-pink-500 to-pink-600',
     shadow: 'shadow-pink-500/25',
   },
@@ -161,7 +153,7 @@ const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/writing', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
+  { label: 'Marketing',  paths: ['/content-creator', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 export default function Home() {

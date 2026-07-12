@@ -128,6 +128,18 @@ Write the actual SQL fully; the comments above are the spec.
 
 ## Phase 1 — Playbook + Scanner
 
+### Source material — Author Ad Copy Pro
+Melissa's AACP plugin content is extracted under `docs/reference/aacp/` (README, ad-copy-writer
+and avatar-builder skills + reference files: 23 video hook strategies, TikTok/BookTok hook
+research, copy examples, comp authors by subgenre, excerpt-mining guide, example avatar
+profiles). Use it two ways:
+1. **Prompt design:** `_prompts.ts` must follow its methods — avatar-grounded specificity
+   ("she told the monster to chase her" beats "possessive hero"), named hook framings,
+   excerpt-mining guidance for scene selection, plain reader-facing language.
+2. **Import fixtures:** these files are the acceptance-test input for the Playbook importer
+   and the seed content for Melissa's own account (imported through the UI, not hard-coded
+   into other users' accounts).
+
 ### Playbook tab
 - CRUD for `hook_playbook_entries` and `playbook_rules`. Import panel: textarea paste +
   file upload (.txt/.md/.docx via the writing importer's mammoth path, .csv via
@@ -196,7 +208,13 @@ Write the actual SQL fully; the comments above are the spec.
   notes ("open with…", tone), extra banned words (session-only additions), slide count
   (2–10, default 5), optional avatar rule pick. → `slides` task returns
   `{ slides: [{ text }] }` in narrative order (hook → escalation → payoff/CTA).
-- Editor: vertical 9:16 carousel (1080×1920 design size). Per slide: editable text
+- **Format presets:** every slideshow has a target format — **9:16** (1080×1920; TikTok
+  photo mode, Reels covers) or **4:5** (1080×1350; Instagram/Facebook feed carousels —
+  IG feed renders max 4:5 and crops 9:16, so carousels must be 4:5). Slides are layouts,
+  not fixed bitmaps: switching preset **re-renders** each slide at the new aspect (never
+  crops), and export offers both sizes from one authored slideshow. Safe-area guides are
+  per-format.
+- Editor: vertical carousel at the selected preset (design size per above). Per slide: editable text
   (banned-word guard live), drag-reorder (dnd-kit, already a dependency), background =
   none / **generate** (`image_prompt` task on the hook's scene_excerpt → user can edit
   the prompt → POST `api/media/generate` with an existing cheap image model preset;

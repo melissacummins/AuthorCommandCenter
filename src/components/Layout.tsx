@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Sparkles, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Megaphone, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen, AudioLines, Gift, PenTool
+  Clapperboard, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen, AudioLines, Gift, PenTool
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -19,8 +19,7 @@ const modules = [
   { name: 'Inventory', path: '/inventory', icon: Package, color: 'text-blue-400' },
   { name: 'Cross-Sell Analyzer', path: '/cross-sell', icon: BarChart3, color: 'text-emerald-400' },
   { name: 'Upsells', path: '/upsells', icon: Gift, color: 'text-sky-400' },
-  { name: 'Ad Alchemy', path: '/ad-alchemy', icon: Sparkles, color: 'text-orange-400' },
-  { name: 'Marketing', path: '/marketing', icon: Megaphone, color: 'text-pink-400' },
+  { name: 'Content Creator', path: '/content-creator', icon: Clapperboard, color: 'text-pink-400' },
   { name: 'KDP Optimizer', path: '/kdp-optimizer', icon: Search, color: 'text-rose-400' },
   { name: 'Links', path: '/links', icon: Link2, color: 'text-indigo-400' },
   { name: 'ARCs', path: '/arcs', icon: Users, color: 'text-pink-400' },
@@ -36,7 +35,7 @@ const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/writing', '/timeline'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
-  { label: 'Marketing',  paths: ['/ad-alchemy', '/marketing', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
+  { label: 'Marketing',  paths: ['/content-creator', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];
 
 const moduleByPath = Object.fromEntries(modules.map(m => [m.path, m]));

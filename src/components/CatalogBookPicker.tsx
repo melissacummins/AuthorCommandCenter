@@ -109,6 +109,8 @@ export default function CatalogBookPicker({
         content_warnings: null,
         kinks: null,
         tropes: [],
+        heat_level: null,
+        subgenre: null,
         page_count: null,
         word_count: null,
         target_word_count: null,
