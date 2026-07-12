@@ -57,7 +57,7 @@ const PROVIDERS: Provider[] = [
     id: 'klaviyo', name: 'Klaviyo', Icon: Mail, iconColor: 'text-purple-600',
     placeholder: 'pk_xxxxxxxx…', minLength: 16,
     helpUrl: 'https://www.klaviyo.com/settings/account/api-keys', helpLabel: 'Get a Private API key',
-    description: 'Lets the Command Center read your lists, campaigns, and metrics on demand (Marketing → Newsletters). Nothing syncs automatically.',
+    description: 'Only needed for the newsletter signup block on your Links bio page — visitors who subscribe there are added to the Klaviyo list you pick.',
     getStatus: getKlaviyoKeyStatus, saveKey: setKlaviyoKey, removeKey: removeKlaviyoKey,
   },
   {

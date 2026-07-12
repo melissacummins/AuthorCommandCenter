@@ -44,6 +44,8 @@ function emptyDraft(): BookInsert {
     content_warnings: null,
     kinks: null,
     tropes: [],
+    heat_level: null,
+    subgenre: null,
     page_count: null,
     word_count: null,
     target_word_count: null,
@@ -540,6 +542,32 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         <div>
           <label className={labelCls}>Kinks / spice notes</label>
           <textarea rows={3} className={inputCls} value={draft.kinks ?? ''} onChange={e => setText('kinks', e.target.value)} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className={labelCls}>Subgenre</label>
+            <input
+              className={inputCls}
+              value={draft.subgenre ?? ''}
+              onChange={e => setText('subgenre', e.target.value)}
+              placeholder="Dark mafia romance, monster romance…"
+            />
+          </div>
+          <div>
+            <label className={labelCls}>Heat level</label>
+            <select
+              className={inputCls}
+              value={draft.heat_level ?? ''}
+              onChange={e => setDraft(d => ({ ...d, heat_level: e.target.value ? Number(e.target.value) : null }))}
+            >
+              <option value="">Not set</option>
+              <option value="1">1 — Sweet</option>
+              <option value="2">2 — Warm</option>
+              <option value="3">3 — Steamy</option>
+              <option value="4">4 — Spicy</option>
+              <option value="5">5 — Scorching</option>
+            </select>
+          </div>
         </div>
         <div>
           <label className={labelCls}>Tropes</label>
