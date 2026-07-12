@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Loader2, Upload, Check, ShieldBan, Cpu } from 'lucide-react';
+import { Plus, Trash2, Loader2, Upload, Check, ShieldBan, Cpu, BookMarked } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import {
   listPlaybookEntries, insertPlaybookEntries, updatePlaybookEntry, deletePlaybookEntry,
@@ -10,6 +10,7 @@ import type { PlaybookEntry, PlaybookRule, DefaultBannedWord } from '../types';
 import { runJsonTask, invalidateTaskModelCache } from '../lib/ai';
 import { buildImportSplitPrompt } from '../lib/prompts';
 import ModelSettingsPanel from './ModelSettingsPanel';
+import { BUILTIN_STRATEGIES } from '../lib/builtinPlaybook';
 
 // The Hook Playbook: curated hook patterns (imported from Author Ad Copy
 // Pro or added by hand), writing/avatar rules, and the banned-word list.
@@ -62,6 +63,7 @@ export default function PlaybookTab() {
 
   return (
     <div className="space-y-6 max-w-4xl">
+      <BuiltinLibraryPanel />
       <ImportPanel
         userId={user.id}
         onImported={added => setEntries(prev => [...added, ...prev])}
@@ -94,6 +96,32 @@ function Centered({ children }: { children: React.ReactNode }) {
 
 const cardCls = 'bg-white rounded-xl border border-slate-200 p-5';
 const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none bg-white';
+
+// ---------------- Built-in strategy library ----------------
+
+function BuiltinLibraryPanel() {
+  return (
+    <details className={cardCls}>
+      <summary className="cursor-pointer select-none">
+        <span className="text-sm font-semibold text-slate-800 inline-flex items-center gap-2">
+          <BookMarked className="w-4 h-4 text-slate-400" /> Built-in strategy library ({BUILTIN_STRATEGIES.length})
+        </span>
+        <span className="block text-xs text-slate-500 mt-1">
+          The tested BookTok hook strategies ship with the app and apply to every scan and generation automatically — for every book, no import needed. Everything below this panel is <em>your</em> additions on top.
+        </span>
+      </summary>
+      <div className="mt-4 space-y-2">
+        {BUILTIN_STRATEGIES.map(s => (
+          <div key={s.title} className="p-3 rounded-lg border border-slate-100 bg-slate-50/50">
+            <p className="text-sm font-medium text-slate-700">{s.title}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{s.pattern}</p>
+            {s.example && <p className="text-xs text-slate-400 italic mt-0.5">"{s.example}"</p>}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
 
 // ---------------- Import ----------------
 
