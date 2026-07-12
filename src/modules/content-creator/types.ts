@@ -21,9 +21,18 @@ export interface ContentHook {
 
 export type ScanStatus = 'running' | 'done' | 'cancelled';
 
-// A raw per-chapter candidate accumulated in content_scans.candidates while
-// the scan runs; the rank pass distills these into content_hooks rows.
+// A raw per-chapter moment accumulated in content_scans.candidates while the
+// scan runs. Extraction only LOCATES (plain factual moment + verbatim
+// excerpt); the rank pass writes the actual hooks from these on the stronger
+// model, and a verify pass fact-checks each survivor against its excerpt.
 export interface HookCandidate {
+  moment: string;
+  scene_excerpt: string;
+  tags: string[];
+}
+
+// A written hook coming out of the rank pass, pre-verification.
+export interface WrittenHook {
   hook_text: string;
   scene_excerpt: string;
   rationale: string;

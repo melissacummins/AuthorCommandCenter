@@ -49,6 +49,18 @@ export async function deleteHook(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// Bulk cleanup after a bad scan: wipe everything still in 'candidate' for a
+// book (approved and archived hooks are never touched).
+export async function deleteCandidateHooks(userId: string, bookId: string): Promise<void> {
+  const { error } = await supabase
+    .from('content_hooks')
+    .delete()
+    .eq('user_id', userId)
+    .eq('book_id', bookId)
+    .eq('status', 'candidate');
+  if (error) throw error;
+}
+
 export async function setHookStatus(id: string, status: HookStatus): Promise<ContentHook> {
   return updateHook(id, { status });
 }

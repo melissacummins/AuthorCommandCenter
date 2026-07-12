@@ -5,13 +5,17 @@ import type { Book } from '../../catalog/types';
 import type { Manuscript } from '../../writing/types';
 import { listChapters } from '../../writing/api';
 import {
-  listHooks, insertHooks, updateHook, deleteHook,
+  listHooks, insertHooks, updateHook, deleteHook, deleteCandidateHooks,
   getRunningScan, createScan, updateScan,
   listPlaybookEntries, listRules, listDefaultBannedWords, listBannedWordOptouts,
 } from '../api';
-import type { ContentHook, HookCandidate, HookStatus, PlaybookRule } from '../types';
+import type { ContentHook, HookCandidate, WrittenHook, HookStatus } from '../types';
 import { runJsonTask, runTask, getTaskModel } from '../lib/ai';
-import { buildPreamble, buildExtractPrompt, buildRankPrompt, buildSynonymPrompt, parseJsonResponse } from '../lib/prompts';
+import {
+  buildPreamble, buildExtractPrompt, buildRankPrompt, buildVerifyPrompt, buildSynonymPrompt,
+  parseJsonResponse, type HookVerdict,
+} from '../lib/prompts';
+import ScanModelPickers from './ScanModelPickers';
 import {
   buildActiveBannedWords, scanForBannedWords, maskWord, replaceBannedWord,
   type ActiveBannedWord, type BannedMatch,
@@ -26,7 +30,7 @@ const RANK_TARGET = 20;
 interface ScanProgress {
   total: number;
   done: number;
-  phase: 'chapters' | 'ranking';
+  phase: 'chapters' | 'ranking' | 'verifying';
 }
 
 export default function HooksTab({ book, manuscript }: { book: Book; manuscript: Manuscript | null }) {
@@ -39,6 +43,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<HookStatus | 'all'>('all');
   const [bannedActive, setBannedActive] = useState<ActiveBannedWord[]>([]);
+  const [playbookEmpty, setPlaybookEmpty] = useState(false);
   const cancelRef = useRef(false);
 
   useEffect(() => {
@@ -51,12 +56,14 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
       listDefaultBannedWords(),
       listBannedWordOptouts(user.id),
       listRules(user.id),
+      listPlaybookEntries(user.id),
     ])
-      .then(([h, scan, defaults, optouts, rules]) => {
+      .then(([h, scan, defaults, optouts, rules, entries]) => {
         if (cancelled) return;
         setHooks(h);
         setResumable(!!scan);
         setBannedActive(buildActiveBannedWords(defaults, optouts, rules));
+        setPlaybookEmpty(entries.filter(e => e.active).length === 0);
       })
       .catch(err => { if (!cancelled) setError((err as Error).message); })
       .finally(() => { if (!cancelled) setLoading(false); });
@@ -110,10 +117,9 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
             maxTokens: 2048,
           });
           candidates = candidates.concat(
-            (out.candidates ?? []).filter(c => c.hook_text?.trim()).map(c => ({
-              hook_text: c.hook_text.trim(),
-              scene_excerpt: c.scene_excerpt ?? '',
-              rationale: c.rationale ?? '',
+            (out.candidates ?? []).filter(c => c.moment?.trim() && c.scene_excerpt?.trim()).map(c => ({
+              moment: c.moment.trim(),
+              scene_excerpt: c.scene_excerpt,
               tags: Array.isArray(c.tags) ? c.tags : [],
             })),
           );
@@ -131,20 +137,48 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
       }
 
       setProgress(p => p ? { ...p, phase: 'ranking' } : p);
-      const ranked = await runJsonTask<{ hooks: HookCandidate[] }>({
+      const ranked = await runJsonTask<{ hooks: WrittenHook[] }>({
         userId: user.id,
         task: 'rank',
         system,
         prompt: buildRankPrompt(candidates, RANK_TARGET),
         maxTokens: 4096,
       });
-      const survivors = (ranked.hooks ?? []).filter(h => h.hook_text?.trim()).slice(0, RANK_TARGET);
-      if (!survivors.length) throw new Error('Ranking returned no hooks — try re-running the scan.');
+      const written = (ranked.hooks ?? []).filter(h => h.hook_text?.trim()).slice(0, RANK_TARGET);
+      if (!written.length) throw new Error('The writing pass returned no hooks — try re-running the scan.');
+
+      // Verify pass: fact-check every hook against its own excerpt and apply
+      // the interest test. Bad hooks get one rewrite or are dropped entirely.
+      setProgress({ total: written.length, done: 0, phase: 'verifying' });
+      const survivors: WrittenHook[] = [];
+      for (const h of written) {
+        if (cancelRef.current) break;
+        try {
+          const verdict = await runJsonTask<HookVerdict>({
+            userId: user.id,
+            task: 'rank',
+            system,
+            prompt: buildVerifyPrompt(h.hook_text, h.scene_excerpt ?? ''),
+            maxTokens: 1024,
+          });
+          if (verdict.is_hook && (verdict.accurate || verdict.fixed_hook_text)) {
+            survivors.push({
+              ...h,
+              hook_text: (verdict.accurate ? h.hook_text : verdict.fixed_hook_text ?? h.hook_text).trim(),
+            });
+          }
+        } catch {
+          // Verification hiccup shouldn't kill the scan — keep the hook as-is.
+          survivors.push(h);
+        }
+        setProgress(p => p ? { ...p, done: p.done + 1 } : p);
+      }
+      if (!survivors.length) throw new Error('Every hook failed verification — the scan found no material strong enough. Try adding playbook patterns first.');
 
       const added = await insertHooks(user.id, survivors.map(h => ({
         book_id: book.id,
         manuscript_id: manuscript.id,
-        hook_text: h.hook_text.trim(),
+        hook_text: h.hook_text,
         scene_excerpt: h.scene_excerpt ?? '',
         rationale: h.rationale ?? '',
         tags: Array.isArray(h.tags) ? h.tags : [],
@@ -201,18 +235,30 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
         {progress && (
           <div className="mt-4">
             <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>{progress.phase === 'chapters' ? `Chapter ${Math.min(progress.done + 1, progress.total)} of ${progress.total}` : 'Ranking candidates…'}</span>
-              {progress.phase === 'chapters' && <span>{Math.round((progress.done / progress.total) * 100)}%</span>}
+              <span>
+                {progress.phase === 'chapters' ? `Reading chapter ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`
+                  : progress.phase === 'ranking' ? 'Writing hooks from the strongest moments…'
+                  : `Fact-checking hook ${Math.min(progress.done + 1, progress.total)} of ${progress.total} against its scene…`}
+              </span>
+              {progress.phase !== 'ranking' && <span>{Math.round((progress.done / progress.total) * 100)}%</span>}
             </div>
             <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
               <div
                 className={`h-full rounded-full bg-pink-500 transition-all ${progress.phase === 'ranking' ? 'animate-pulse w-full' : ''}`}
-                style={progress.phase === 'chapters' ? { width: `${(progress.done / progress.total) * 100}%` } : undefined}
+                style={progress.phase !== 'ranking' ? { width: `${(progress.done / progress.total) * 100}%` } : undefined}
               />
             </div>
           </div>
         )}
         {error && <p className="text-xs text-rose-600 mt-3">{error}</p>}
+        {playbookEmpty && !scanning && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
+            Your playbook has no hook patterns yet — scans work dramatically better after you import your material in the Playbook tab.
+          </p>
+        )}
+        <div className="mt-3 border-t border-slate-100 pt-3">
+          <ScanModelPickers disabled={scanning} />
+        </div>
       </div>
 
       <div className="flex items-center justify-between">
@@ -227,7 +273,21 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
             </button>
           ))}
         </div>
-        <AddHookButton userId={user.id} bookId={book.id} manuscriptId={manuscript?.id ?? null} onAdded={h => setHooks(prev => [h, ...prev])} />
+        <div className="flex items-center gap-3">
+          {hooks.some(h => h.status === 'candidate') && (
+            <button
+              onClick={async () => {
+                if (!confirm('Delete every unapproved candidate for this book? Approved and archived hooks are kept.')) return;
+                await deleteCandidateHooks(user.id, book.id);
+                setHooks(prev => prev.filter(h => h.status !== 'candidate'));
+              }}
+              className="text-xs text-slate-400 hover:text-rose-600"
+            >
+              Clear candidates
+            </button>
+          )}
+          <AddHookButton userId={user.id} bookId={book.id} manuscriptId={manuscript?.id ?? null} onAdded={h => setHooks(prev => [h, ...prev])} />
+        </div>
       </div>
 
       {visible.length === 0 ? (

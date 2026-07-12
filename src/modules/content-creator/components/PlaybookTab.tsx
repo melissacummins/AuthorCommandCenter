@@ -35,9 +35,21 @@ export default function PlaybookTab() {
       listDefaultBannedWords(),
       listBannedWordOptouts(user.id),
     ])
-      .then(([e, r, d, o]) => {
+      .then(async ([e, r, d, o]) => {
         if (cancelled) return;
-        setEntries(e); setRules(r); setDefaults(d); setOptouts(new Set(o));
+        // Self-heal: every account should carry the default anti-purple-prose
+        // rule (the migration-time seed couldn't reach accounts that link by
+        // email at login).
+        let rules = r;
+        if (!r.some(rule => rule.rule_type === 'style')) {
+          try {
+            const seeded = await insertRule(user.id, 'style',
+              'Write in plain, punchy, contemporary social-media voice. No purple prose: no ornate metaphors, no archaic vocabulary, no melodramatic narration. Short sentences. Sound like a real reader talking, not a novelist narrating.');
+            rules = [...r, seeded];
+          } catch { /* non-fatal */ }
+        }
+        if (cancelled) return;
+        setEntries(e); setRules(rules); setDefaults(d); setOptouts(new Set(o));
       })
       .catch(err => { if (!cancelled) setError((err as Error).message); })
       .finally(() => { if (!cancelled) setLoading(false); });
