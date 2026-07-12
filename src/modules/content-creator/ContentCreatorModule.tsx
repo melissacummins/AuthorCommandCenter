@@ -9,6 +9,7 @@ import type { Manuscript } from '../writing/types';
 import HooksTab from './components/HooksTab';
 import PlaybookTab from './components/PlaybookTab';
 import SlideshowsTab from './components/SlideshowsTab';
+import ScreenshotsTab from './components/ScreenshotsTab';
 
 type Tab = 'hooks' | 'slideshows' | 'screenshots' | 'videos' | 'playbook';
 
@@ -118,10 +119,14 @@ export default function ContentCreatorModule() {
         )
       )}
       {tab === 'screenshots' && (
-        <ComingNext
-          title="Kindle Screenshots"
-          body="Pull a scene, auto-highlight the dialogue, strike out the naughty words, and stamp hearts, circles, and exclamations — then export as a PNG or drop it on a video."
-        />
+        book ? (
+          <ScreenshotsTab key={book.id} book={book} manuscript={manuscript} />
+        ) : (
+          <ComingNext
+            title="Kindle Screenshots"
+            body="Pick a book above, then pull a scene, auto-highlight the dialogue, strike out the naughty words, and stamp hearts, circles, and exclamations — then export as a PNG."
+          />
+        )
       )}
       {tab === 'videos' && (
         <ComingNext
