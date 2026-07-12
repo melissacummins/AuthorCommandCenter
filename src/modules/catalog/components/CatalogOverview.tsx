@@ -73,9 +73,12 @@ interface ActionItem {
   reason: string;
 }
 
-function buildAwaitingAction(books: Book[], kdpCounts: Record<string, number>): ActionItem[] {
+// Published books are excluded by default — they're done, not "awaiting";
+// their gaps show only in the opt-in Completeness panel (includePublished).
+function buildAwaitingAction(books: Book[], kdpCounts: Record<string, number>, includePublished = false): ActionItem[] {
   const items: ActionItem[] = [];
   for (const b of books) {
+    if (!includePublished && b.status === 'published') continue;
     if (!b.cover_url) items.push({ book: b, reason: 'Missing cover' });
     if (!b.blurb) items.push({ book: b, reason: 'Missing blurb' });
     if (b.status === 'pre_order' && !b.publish_date) {
@@ -132,6 +135,7 @@ export default function CatalogOverview({ books, onOpenBook, kdpKeywordCounts = 
 
   const upcoming = useMemo(() => buildUpcoming(books), [books]);
   const awaiting = useMemo(() => buildAwaitingAction(books, kdpKeywordCounts), [books, kdpKeywordCounts]);
+  const completeness = useMemo(() => buildAwaitingAction(books, kdpKeywordCounts, true), [books, kdpKeywordCounts]);
   const wips = useMemo(() => activeWips(books), [books]);
   const series = useMemo(() => bySeries(books), [books]);
 
@@ -216,6 +220,27 @@ export default function CatalogOverview({ books, onOpenBook, kdpKeywordCounts = 
               ))
             )}
           </div>
+          {completeness.length > awaiting.length && (
+            <details className="mt-2">
+              <summary className="text-xs text-slate-400 cursor-pointer select-none hover:text-slate-600">
+                Completeness — {completeness.length - awaiting.length} more item{completeness.length - awaiting.length === 1 ? '' : 's'} on published books (nothing urgent)
+              </summary>
+              <div className="mt-2 bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
+                {completeness.filter(c => c.book.status === 'published').map((a, i) => (
+                  <button
+                    key={`${a.book.id}-${a.reason}-c${i}`}
+                    onClick={() => onOpenBook(a.book)}
+                    className="w-full text-left flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-slate-50"
+                  >
+                    <div className="min-w-0">
+                      <div className="text-sm text-slate-600 truncate">{a.book.title}</div>
+                      <div className="text-xs text-slate-400">{a.reason}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
         </section>
       </div>
 
