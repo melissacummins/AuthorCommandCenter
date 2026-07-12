@@ -252,8 +252,8 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
         )}
         {error && <p className="text-xs text-rose-600 mt-3">{error}</p>}
         {playbookEmpty && !scanning && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-3">
-            Your playbook has no hook patterns yet — scans work dramatically better after you import your material in the Playbook tab.
+          <p className="text-xs text-slate-400 mt-3">
+            Scans use the built-in hook strategy library automatically. Add your own patterns in the Playbook tab to extend it.
           </p>
         )}
         <div className="mt-3 border-t border-slate-100 pt-3">

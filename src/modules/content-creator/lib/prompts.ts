@@ -1,6 +1,7 @@
 import type { Book } from '../../catalog/types';
 import type { PlaybookEntry, PlaybookRule, HookCandidate } from '../types';
 import type { ActiveBannedWord } from './bannedWords';
+import { builtinPlaybookBlock } from './builtinPlaybook';
 
 // Prompt builders for the Content Creator AI tasks. Order inside the system
 // preamble follows the directive's quality bar: book facts → playbook →
@@ -34,9 +35,13 @@ export function buildPreamble(ctx: PreambleContext): string {
   if (book.blurb) facts.push(`Blurb: ${book.blurb.slice(0, 800)}`);
   parts.push(`BOOK FACTS\n${facts.join('\n')}`);
 
+  // The built-in strategy library ships with the app — every account, every
+  // book, zero setup. The user's own playbook entries extend it.
+  parts.push(builtinPlaybookBlock());
+
   const activeEntries = entries.slice(0, MAX_PLAYBOOK_ENTRIES);
   if (activeEntries.length) {
-    parts.push(`HOOK PLAYBOOK — proven hook patterns. Prefer scenes and wordings that fit these patterns:\n${activeEntries
+    parts.push(`YOUR PLAYBOOK — the author's own curated patterns. These extend the library above and take priority when they conflict:\n${activeEntries
       .map(e => `- ${e.title}: ${e.pattern_text}${e.example_text ? ` (example: "${e.example_text.slice(0, 200)}")` : ''}`)
       .join('\n')}`);
   }
