@@ -268,15 +268,18 @@ export async function listTimeSessions(userId: string): Promise<PlannerTimeSessi
   return (data ?? []) as PlannerTimeSession[];
 }
 
-// Log one or more completed timer runs. Returns the inserted rows.
+// Log one or more completed timer runs. Returns the inserted rows. `source`
+// marks how the time was captured ('timer' by default, 'block' for time derived
+// from a timed block's checked-off to-dos) so block time can be reversed alone.
 export async function createTimeSessions(
   userId: string,
   rows: { task_id: string; started_at: string; ended_at: string; minutes: number }[],
+  source: string = 'timer',
 ): Promise<PlannerTimeSession[]> {
   if (!rows.length) return [];
   const { data, error } = await supabase
     .from('planner_time_sessions')
-    .insert(rows.map(r => ({ ...r, user_id: userId })))
+    .insert(rows.map(r => ({ ...r, user_id: userId, source })))
     .select('*');
   if (error) throw error;
   return (data ?? []) as PlannerTimeSession[];

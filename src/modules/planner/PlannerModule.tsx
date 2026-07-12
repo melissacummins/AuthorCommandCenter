@@ -134,7 +134,14 @@ export default function PlannerModule() {
   useEffect(() => {
     if (!user || loading || !settings?.auto_rollover) return;
     const today = todayISO();
-    const stale = tasks.filter(t => t.kind === 'task' && !t.done && !t.someday && !!t.due_date && t.due_date < today);
+    // Open to-dos still sitting in a PAST timed block are held back from rollover:
+    // they wait for the "did you work on these?" review on My Day, which decides
+    // their logged time before carrying them forward. Everything else rolls now.
+    const timedBlocks = new Set(blocks
+      .filter(b => b.start_minute != null && b.end_minute != null && b.end_minute > b.start_minute)
+      .map(b => b.id));
+    const stale = tasks.filter(t => t.kind === 'task' && !t.done && !t.someday && !!t.due_date && t.due_date < today
+      && !(t.block_id && timedBlocks.has(t.block_id)));
     if (!stale.length) return;
     const ids = new Set(stale.map(t => t.id));
     // Clear block_id too: the to-do's old time block lives on a past day, so
@@ -142,7 +149,7 @@ export default function PlannerModule() {
     // block nor in the loose list).
     setTasks(prev => prev.map(t => (ids.has(t.id) ? { ...t, due_date: today, block_id: null } : t)));
     Promise.all(stale.map(t => updateTask(t.id, { due_date: today, block_id: null }))).catch(() => { /* best effort */ });
-  }, [user, loading, settings?.auto_rollover, tasks]);
+  }, [user, loading, settings?.auto_rollover, tasks, blocks]);
 
   // Heal stale block links: a to-do whose block is on a different day than its
   // due date (e.g. rolled forward in an earlier build) is freed back to loose so
@@ -329,6 +336,29 @@ export default function PlannerModule() {
     } catch (e) { setError((e as Error)?.message ?? 'Could not add item.'); return undefined; }
   }
 
+  // One to-do's even share of a TIMED block, as a session on the block's day —
+  // so checking it off can record that time without a timer. The block's length
+  // is split evenly across the to-dos in it and placed back-to-back, so all of
+  // them together sum to the block's duration. Untimed blocks yield nothing.
+  function blockShareSession(task: PlannerTask): { started_at: string; ended_at: string; minutes: number } | null {
+    if (!task.block_id) return null;
+    const block = blocks.find(b => b.id === task.block_id);
+    if (!block || block.start_minute == null || block.end_minute == null || block.end_minute <= block.start_minute) return null;
+    const inBlock = tasks.filter(t => t.kind === 'task' && t.block_id === block.id)
+      .sort((a, b) => (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at));
+    const n = inBlock.length;
+    if (!n) return null;
+    const idx = Math.max(0, inBlock.findIndex(t => t.id === task.id));
+    const dur = block.end_minute - block.start_minute;
+    const per = Math.floor(dur / n);
+    const minutes = idx === n - 1 ? dur - per * (n - 1) : per; // last one absorbs the remainder
+    if (minutes <= 0) return null;
+    const base = new Date(block.day + 'T00:00:00');
+    const s = new Date(base); s.setMinutes(block.start_minute + idx * per);
+    const e = new Date(s.getTime() + minutes * 60_000);
+    return { started_at: s.toISOString(), ended_at: e.toISOString(), minutes };
+  }
+
   async function patchTask(id: string, patch: Partial<PlannerTask>) {
     // Completing a recurring to-do rolls it forward to the next occurrence
     // (and resets its checklist) instead of finishing it.
@@ -345,6 +375,30 @@ export default function PlannerModule() {
     if (patch.done === true && task?.timer_started_at) {
       effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + elapsedMinutes(task.timer_started_at), timer_started_at: null };
     }
+
+    // Timed-block time: checking a to-do off inside a timed block records its
+    // share of the block as worked time (no timer needed); un-checking gives that
+    // time back. Recurring to-dos and ones with real tracked time are left alone.
+    let blockLogRow: { task_id: string; started_at: string; ended_at: string; minutes: number } | null = null;
+    let removeBlockSessions: PlannerTimeSession[] = [];
+    if (task) {
+      const completing = patch.done === true && !task.done && !task.recurrence
+        && !task.timer_started_at && (task.actual_minutes ?? 0) === 0;
+      if (completing && !sessions.some(s => s.task_id === id && s.source === 'block')) {
+        const share = blockShareSession(task);
+        if (share) {
+          blockLogRow = { task_id: id, ...share };
+          effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + share.minutes };
+        }
+      } else if (patch.done === false && task.done) {
+        removeBlockSessions = sessions.filter(s => s.task_id === id && s.source === 'block');
+        if (removeBlockSessions.length) {
+          const mins = removeBlockSessions.reduce((m, s) => m + s.minutes, 0);
+          effective = { ...effective, actual_minutes: Math.max(0, (task.actual_minutes ?? 0) - mins) };
+        }
+      }
+    }
+
     // Only one timer runs at a time: starting one stops + banks every other.
     const startingTimer = !!patch.timer_started_at;
     const others = startingTimer ? tasks.filter(t => t.id !== id && t.timer_started_at) : [];
@@ -383,6 +437,14 @@ export default function PlannerModule() {
       if (sessionRows.length && user) {
         const created = await createTimeSessions(user.id, sessionRows);
         setSessions(prev => [...prev, ...created]);
+      }
+      if (blockLogRow && user) {
+        const created = await createTimeSessions(user.id, [blockLogRow], 'block');
+        setSessions(prev => [...prev, ...created]);
+      }
+      if (removeBlockSessions.length) {
+        setSessions(prev => prev.filter(s => !removeBlockSessions.some(r => r.id === s.id)));
+        await Promise.all(removeBlockSessions.map(s => deleteTimeSession(s.id)));
       }
     }
     catch (e) { setError((e as Error)?.message ?? 'Could not update item.'); }
@@ -453,7 +515,7 @@ export default function PlannerModule() {
         const t = tasks.find(x => x.id === id);
         return t ? updateTask(id, { actual_minutes: (t.actual_minutes ?? 0) + m }) : Promise.resolve();
       }));
-      const created = await createTimeSessions(user.id, rows);
+      const created = await createTimeSessions(user.id, rows, 'block');
       setSessions(prev => [...prev, ...created]);
     } catch (e) { setError((e as Error)?.message ?? 'Could not log the block.'); }
   }
@@ -475,6 +537,67 @@ export default function PlannerModule() {
       const task = tasks.find(t => t.id === session.task_id);
       if (task) await updateTask(task.id, { actual_minutes: Math.max(0, (task.actual_minutes ?? 0) - session.minutes) });
     } catch (e) { setError((e as Error)?.message ?? 'Could not remove that session.'); }
+  }
+
+  // Resolve a past timed block that still has open to-dos: for each open to-do
+  // you say whether you WORKED on it. Worked to-dos (plus any already checked
+  // off) share the block's time evenly — so saying "didn't" on one hands its
+  // share to the rest, matching how the block would've split if it were never
+  // there. "Worked" to-dos stay OPEN and carry forward to today to finish;
+  // "didn't" ones just drop back to today's loose list. Either way the block is
+  // done being counted, so its links are cleared.
+  async function resolveBlockReview(blockId: string, worked: Record<string, boolean>) {
+    if (!user) return;
+    const block = blocks.find(b => b.id === blockId);
+    if (!block || block.start_minute == null || block.end_minute == null || block.end_minute <= block.start_minute) return;
+    const dur = block.end_minute - block.start_minute;
+    const blockTasks = tasks.filter(t => t.kind === 'task' && t.block_id === blockId)
+      .sort((a, b) => (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at));
+    if (!blockTasks.length) return;
+
+    // Who the block's time is split across: everything checked off, plus the
+    // open to-dos you marked as worked.
+    const counted = blockTasks.filter(t => t.done || worked[t.id]);
+    const n = counted.length;
+    const per = n > 0 ? Math.floor(dur / n) : 0;
+    const base = new Date(block.day + 'T00:00:00');
+
+    // Wipe this block's existing derived sessions for the day and re-create them
+    // fresh at the new split — the simplest way to redistribute correctly.
+    const dayBlockSessions = sessions.filter(s =>
+      s.source === 'block' && localDay(s.started_at) === block.day && blockTasks.some(t => t.id === s.task_id));
+    const bump: Record<string, number> = {};
+    for (const s of dayBlockSessions) bump[s.task_id] = (bump[s.task_id] ?? 0) - s.minutes;
+    const rows: { task_id: string; started_at: string; ended_at: string; minutes: number }[] = [];
+    counted.forEach((t, i) => {
+      const mins = i === n - 1 ? dur - per * (n - 1) : per;
+      if (mins <= 0) return;
+      const s = new Date(base); s.setMinutes(block.start_minute! + i * per);
+      const e = new Date(s.getTime() + mins * 60_000);
+      rows.push({ task_id: t.id, started_at: s.toISOString(), ended_at: e.toISOString(), minutes: mins });
+      bump[t.id] = (bump[t.id] ?? 0) + mins;
+    });
+
+    const openIds = new Set(blockTasks.filter(t => !t.done).map(t => t.id));
+    const removeIds = new Set(dayBlockSessions.map(s => s.id));
+    // Optimistic: clear block links, carry open to-dos to today, adjust totals.
+    setTasks(prev => prev.map(t => (blockTasks.some(bt => bt.id === t.id)
+      ? { ...t, actual_minutes: Math.max(0, (t.actual_minutes ?? 0) + (bump[t.id] ?? 0)), block_id: null, due_date: openIds.has(t.id) ? today : t.due_date }
+      : t)));
+    setSessions(prev => prev.filter(s => !removeIds.has(s.id)));
+
+    try {
+      await Promise.all([...removeIds].map(id => deleteTimeSession(id)));
+      if (rows.length) {
+        const created = await createTimeSessions(user.id, rows, 'block');
+        setSessions(prev => [...prev, ...created]);
+      }
+      await Promise.all(blockTasks.map(t => updateTask(t.id, {
+        actual_minutes: Math.max(0, (t.actual_minutes ?? 0) + (bump[t.id] ?? 0)),
+        block_id: null,
+        ...(openIds.has(t.id) ? { due_date: today } : {}),
+      })));
+    } catch (e) { setError((e as Error)?.message ?? 'Could not save the block review.'); }
   }
 
   // ---- Weekly Reset ----
@@ -681,6 +804,7 @@ export default function PlannerModule() {
     onToggleCarryOver: updateCarryOver,
     onLogTime: logManualMinutes,
     onLogBlockWorked: logBlockWorked,
+    onResolveBlockReview: resolveBlockReview,
   };
 
   // Pick a view and dismiss the mobile rail in one go.

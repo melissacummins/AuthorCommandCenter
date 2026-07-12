@@ -34,6 +34,10 @@ export interface MyDayHandlers {
   onLogTime: (taskId: string, minutes: number, day: string) => void;
   // Record a time block's planned time as actually worked (its to-dos).
   onLogBlockWorked: (block: PlannerTimeBlock, tasks: PlannerTask[]) => void;
+  // Resolve a past timed block that still has open to-dos: worked[taskId] says
+  // whether you worked on each. Worked (+ already-done) to-dos split the block's
+  // time; worked ones stay open and carry to today.
+  onResolveBlockReview: (blockId: string, worked: Record<string, boolean>) => void;
 }
 
 export default function MyDayView({
@@ -186,6 +190,21 @@ export default function MyDayView({
     [sessions, selected],
   );
 
+  // Past timed blocks that STILL have open to-dos — the "you had these in a
+  // block yesterday, did you work on them?" review. Held out of rollover until
+  // resolved so their time gets logged (or not) on purpose.
+  const reviewBlocks = useMemo(() =>
+    blocks
+      .filter(b => b.day < today && b.start_minute != null && b.end_minute != null && b.end_minute > b.start_minute)
+      .map(b => {
+        const inBlock = tasks.filter(t => t.kind === 'task' && t.block_id === b.id);
+        return { block: b, all: inBlock, open: inBlock.filter(t => !t.done) };
+      })
+      .filter(x => x.open.length > 0)
+      .sort((a, b) => a.block.day.localeCompare(b.block.day)),
+    [blocks, tasks, today],
+  );
+
   // Working Phase: when one is active, it scales the day's target down (or up)
   // from the plain baseline — e.g. Recovery proposes a gentle fraction. This
   // becomes the effective base the bar and carry-over work from.
@@ -309,6 +328,13 @@ export default function MyDayView({
         </div>
       )}
       {gc.available && !gc.configured && <NotConfiguredCard />}
+
+      {/* "You had to-dos in a time block that you never checked off — did you
+          work on them?" Logging here records the block time without completing
+          the to-do (worked ≠ done); it then carries forward to today. */}
+      {selected === today && reviewBlocks.length > 0 && (
+        <BlockReview reviewBlocks={reviewBlocks} onResolve={handlers.onResolveBlockReview} />
+      )}
 
       {/* Search any task and jump to the day it's on / was done */}
       <TaskSearch
@@ -544,6 +570,109 @@ function GoalBar({ done, goal }: { done: number; goal: number }) {
       </div>
       <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
         <div className={`h-full rounded-full transition-all ${hit ? 'bg-emerald-500' : 'bg-indigo-400'}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Block review — "worked on" vs "done." When a timed block from an earlier day
+// still has un-checked to-dos, this asks whether you worked on each. Worked ones
+// log their share of the block's time and STAY OPEN (carried to today to finish);
+// "didn't" ones just drop back to today. Saying "didn't" hands that to-do's share
+// to the rest, so the block's time always lands on the work you actually did.
+// ---------------------------------------------------------------------------
+
+type ReviewBlock = { block: PlannerTimeBlock; all: PlannerTask[]; open: PlannerTask[] };
+
+function BlockReview({
+  reviewBlocks, onResolve,
+}: {
+  reviewBlocks: ReviewBlock[];
+  onResolve: (blockId: string, worked: Record<string, boolean>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = reviewBlocks.reduce((n, x) => n + x.open.length, 0);
+  return (
+    <div className="mb-4 rounded-2xl border border-violet-200 bg-violet-50/60 overflow-hidden">
+      <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-2 px-4 py-3 text-left">
+        <History className="w-4 h-4 text-violet-500 shrink-0" />
+        <span className="text-sm font-semibold text-violet-800">
+          {count} to-do{count === 1 ? '' : 's'} from earlier time block{reviewBlocks.length === 1 ? '' : 's'} — did you work on {count === 1 ? 'it' : 'them'}?
+        </span>
+        <span className="ml-auto text-xs font-medium text-violet-600">{open ? 'Hide' : 'Review'}</span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 space-y-2">
+          {reviewBlocks.map(rb => <BlockReviewCard key={rb.block.id} rb={rb} onResolve={onResolve} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BlockReviewCard({
+  rb, onResolve,
+}: {
+  rb: ReviewBlock;
+  onResolve: (blockId: string, worked: Record<string, boolean>) => void;
+}) {
+  const { block, all, open } = rb;
+  // Default each open to-do to "worked" — a scheduled block usually happened;
+  // flip the ones that didn't.
+  const [worked, setWorked] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(open.map(t => [t.id, true])));
+  const dur = (block.end_minute ?? 0) - (block.start_minute ?? 0);
+  const doneCount = all.filter(t => t.done).length;
+  const countedCount = doneCount + open.filter(t => worked[t.id]).length;
+  const share = countedCount > 0 ? Math.round(dur / countedCount) : 0;
+  const dayLabel = new Date(block.day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <div className="flex items-baseline gap-2 mb-2">
+        <span className="text-sm font-semibold text-slate-700">{block.title || 'Time block'}</span>
+        <span className="text-xs text-slate-400">
+          {dayLabel} · {formatClock(block.start_minute)}–{formatClock(block.end_minute)} · {formatMinutes(dur)}
+        </span>
+      </div>
+      {doneCount > 0 && (
+        <p className="text-xs text-slate-400 mb-1.5">{doneCount} already checked off{countedCount > 0 && <> · {formatMinutes(share)} each</>}</p>
+      )}
+      <ul className="space-y-1.5">
+        {open.map(t => (
+          <li key={t.id} className="flex items-center gap-2">
+            <span className="flex-1 min-w-0 text-sm text-slate-700 break-words">{t.title || 'Untitled'}</span>
+            <div className="shrink-0 inline-flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">
+              <button
+                onClick={() => setWorked(w => ({ ...w, [t.id]: true }))}
+                className={`px-2.5 py-1 transition-colors ${worked[t.id] ? 'bg-violet-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                title="I worked on it — log the time, keep it open"
+              >
+                Worked
+              </button>
+              <button
+                onClick={() => setWorked(w => ({ ...w, [t.id]: false }))}
+                className={`px-2.5 py-1 transition-colors ${!worked[t.id] ? 'bg-slate-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                title="I didn't — leave it untracked and move it to today"
+              >
+                Didn’t
+              </button>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <div className="mt-2.5 flex items-center gap-2">
+        <button
+          onClick={() => onResolve(block.id, worked)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg px-3 py-1.5"
+        >
+          <Check className="w-4 h-4" /> Save
+        </button>
+        <span className="text-xs text-slate-400">
+          {countedCount > 0
+            ? <>Logs {formatMinutes(share)} to each of {countedCount}; open ones carry to today.</>
+            : <>Nothing logged; all move to today.</>}
+        </span>
       </div>
     </div>
   );

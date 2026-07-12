@@ -143,6 +143,10 @@ export interface PlannerTimeSession {
   started_at: string;
   ended_at: string;
   minutes: number;
+  // How the run was recorded: 'timer' (a real timer or manual log) or 'block'
+  // (auto-derived from a timed block when its to-do was checked off). Block runs
+  // are the ones un-checking a to-do reverses.
+  source: string;
   created_at: string;
 }
 
