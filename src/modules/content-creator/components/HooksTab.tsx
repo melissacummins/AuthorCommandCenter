@@ -16,6 +16,7 @@ import {
   buildVariationsPrompt, parseJsonResponse, type HookVerdict, type HookVariation,
 } from '../lib/prompts';
 import ScanModelPickers from './ScanModelPickers';
+import { findSceneForQuote, type FoundScene } from '../lib/sceneLookup';
 import {
   buildActiveBannedWords, scanForBannedWords, maskWord, replaceBannedWord,
   type ActiveBannedWord, type BannedMatch,
@@ -341,11 +342,23 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
   const [error, setError] = useState<string | null>(null);
   const [variations, setVariations] = useState<HookVariation[]>([]);
   const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
+  const [scene, setScene] = useState<FoundScene | null>(null);
+  const [sceneStatus, setSceneStatus] = useState<'idle' | 'found' | 'notfound'>('idle');
 
   async function generate() {
     if (quote.trim().length < 20) { setError('Paste a little more of the moment — a line or two at least.'); return; }
     setBusy(true); setError(null); setVariations([]); setSavedIdx(new Set());
     try {
+      // Locate the pasted quote in the linked manuscript (plain text
+      // search, no AI cost) so the writer gets the whole scene, not just
+      // the one line — and so the saved hook carries slideshow material.
+      let found: FoundScene | null = null;
+      if (manuscriptId) {
+        try { found = await findSceneForQuote(manuscriptId, quote); } catch { /* search is best-effort */ }
+      }
+      setScene(found);
+      setSceneStatus(found ? 'found' : 'notfound');
+
       const [entries, rules] = await Promise.all([listPlaybookEntries(userId), listRules(userId)]);
       const activeEntries = entries.filter(e => e.active && (!e.pen_name_id || e.pen_name_id === book.pen_name_id));
       const system = buildPreamble({ book, entries: activeEntries, rules: rules.filter(r => r.active), bannedWords: bannedActive });
@@ -353,7 +366,7 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
         userId,
         task: 'rank',
         system,
-        prompt: buildVariationsPrompt(quote, notes, MAX_VARIATIONS),
+        prompt: buildVariationsPrompt(quote, found?.excerpt ?? '', notes, MAX_VARIATIONS),
         maxTokens: 2048,
       });
       const clean = (out.variations ?? []).filter(v => v.hook_text?.trim()).slice(0, MAX_VARIATIONS);
@@ -371,7 +384,10 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
       book_id: book.id,
       manuscript_id: manuscriptId,
       hook_text: v.hook_text.trim(),
-      scene_excerpt: quote.trim(),
+      // Prefer the located scene: slideshows and videos built from this
+      // hook mine the excerpt for middle beats, and one pasted line
+      // starves them.
+      scene_excerpt: scene?.excerpt ?? quote.trim(),
       rationale: v.strategy ? `${v.strategy}${v.rationale ? ` — ${v.rationale}` : ''}` : v.rationale ?? '',
       tags: [],
       source: 'manual' as const,
@@ -420,6 +436,16 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
             </button>
           </div>
           {error && <p className="text-xs text-rose-600">{error}</p>}
+          {sceneStatus === 'found' && scene && (
+            <p className="text-[11px] text-emerald-700 flex items-center gap-1">
+              <Check className="w-3.5 h-3.5" /> Found the scene in "{scene.chapterTitle}" — variations draw on the full moment, and saved hooks carry it for slideshows.
+            </p>
+          )}
+          {sceneStatus === 'notfound' && (
+            <p className="text-[11px] text-amber-700">
+              Couldn't find this quote in the linked manuscript — working from the paste and your direction only. If the quote IS in the book, check for typos or paste a longer stretch.
+            </p>
+          )}
 
           {variations.length > 0 && (
             <div className="space-y-2 pt-1">
@@ -454,7 +480,7 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
                 );
               })}
               <p className="text-[11px] text-slate-400">
-                Saved variations join your hook list below (the pasted quote rides along as the scene). Re-roll keeps the quote and writes a fresh set.
+                Saved variations join your hook list below with the {scene ? 'located scene' : 'pasted quote'} attached. Re-roll keeps the quote and writes a fresh set.
               </p>
             </div>
           )}
