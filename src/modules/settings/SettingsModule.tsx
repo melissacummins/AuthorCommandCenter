@@ -21,6 +21,7 @@ import PenNamesSection from './PenNamesSection';
 import MySidebarSection from './MySidebarSection';
 import AdminSection from './AdminSection';
 import ShopifySection from './ShopifySection';
+import CloudExportSection from './CloudExportSection';
 
 type Status = { kind: 'idle' } | { kind: 'busy'; msg: string } | { kind: 'ok'; msg: string } | { kind: 'error'; msg: string };
 
@@ -138,6 +139,8 @@ export default function SettingsModule() {
       <PenNamesSection />
 
       <ShopifySection />
+
+      <CloudExportSection />
 
       <ApiKeysSection />
 

@@ -24,6 +24,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 type VercelRequest = {
   method?: string;
   headers: Record<string, string | string[] | undefined>;
+  body?: unknown;
 };
 
 type VercelResponse = {
@@ -39,9 +40,19 @@ function authHeader(req: VercelRequest): string | null {
   return v.slice(7);
 }
 
-// Full calendar scope so we can read every calendar (Business Tasks,
-// Deadlines…) and create/update time-block events.
-const GOOGLE_SCOPE = 'https://www.googleapis.com/auth/calendar';
+// One Google connection, per-feature scopes. `include_granted_scopes`
+// below merges anything the user already approved into the new grant,
+// so connecting Drive after Calendar (or vice versa) keeps both.
+//   calendar — full calendar scope so the planner can read every
+//     calendar (Business Tasks, Deadlines…) and create/update events.
+//   drive — drive.file only: the app can touch ONLY files/folders it
+//     created itself. This scope is non-sensitive, so Google doesn't
+//     require the app-verification review that the broader Drive and
+//     Calendar scopes do.
+const GOOGLE_SCOPES: Record<string, string> = {
+  calendar: 'https://www.googleapis.com/auth/calendar',
+  drive: 'https://www.googleapis.com/auth/drive.file',
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -81,6 +92,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const userId = userData.user.id;
 
+  const body = (req.body ?? {}) as { service?: unknown };
+  const service = typeof body.service === 'string' && body.service in GOOGLE_SCOPES ? body.service : 'calendar';
+
   const payload = {
     user_id: userId,
     nonce: randomBytes(16).toString('base64url'),
@@ -95,7 +109,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     response_type: 'code',
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: GOOGLE_SCOPE,
+    scope: GOOGLE_SCOPES[service],
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',

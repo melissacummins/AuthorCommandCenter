@@ -236,7 +236,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  respondHtml(res, 200, 'Google Calendar connected!', `Connected${googleEmail ? ` as ${googleEmail}` : ''}. You can close this window.`, {
+  respondHtml(res, 200, 'Google account connected!', `Connected${googleEmail ? ` as ${googleEmail}` : ''}. You can close this window.`, {
     ok: true,
     google_email: googleEmail,
   });

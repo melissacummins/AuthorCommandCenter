@@ -95,7 +95,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const { data: row, error: rowErr } = await supabase
     .from('user_google_tokens')
-    .select('encrypted_refresh_token, refresh_token_nonce, refresh_token_auth_tag, google_email')
+    .select('encrypted_refresh_token, refresh_token_nonce, refresh_token_auth_tag, google_email, scopes')
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -152,5 +152,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     access_token: tokenJson.access_token,
     expires_in: tokenJson.expires_in ?? 3600,
     google_email: row.google_email ?? null,
+    // What the grant actually covers (space-separated). Google reports
+    // the live set on every refresh; fall back to what the callback
+    // stored. Clients use this to tell "Calendar connected" apart from
+    // "Drive connected" since both share one Google account row.
+    scopes: tokenJson.scope ?? row.scopes ?? null,
   });
 }

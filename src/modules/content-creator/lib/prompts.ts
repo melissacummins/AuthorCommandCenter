@@ -69,31 +69,41 @@ export function buildPreamble(ctx: PreambleContext): string {
 // rides along on every hook-writing and hook-verifying call.
 
 export const HOOK_ANATOMY = `WHAT A HOOK IS
-A hook is ONE moment turned into an open loop: the viewer learns just enough to have a question they can only answer by reading the book. It must land in under 2 seconds. It is NOT a summary, NOT a description of the couple's dynamic, and NOT a synopsis with attitude.
+A hook is caption copy written by a MARKETER, addressed TO the scrolling reader, ABOUT one moment in the book — framed from outside the story. It turns that moment into an open loop: the viewer learns just enough to have a question they can only answer by reading the book, and it lands in under 2 seconds. It reads like a viral BookTok caption ("when the vampire boss finally calls you mine"), NEVER like a line lifted off the page. It is NOT a summary, NOT a description of the couple's dynamic, and NOT a quote.
+
+VOICE & FRAME — non-negotiable:
+- Speak to the viewer in caption register: "when...", "that moment when...", "POV: you...", or a direct question. Lowercase caption energy is fine.
+- Name characters by their trope role, the label a stranger instantly gets — "the vampire boss", "the grumpy bodyguard", "her masked stalker" — never by their in-book name (a stranger doesn't know who "Kieran" is).
+- The viewer stands in the HEROINE'S/POV character's shoes, on the RECEIVING end of the love interest's attention. "POV: you..." means the fantasy happens TO you ("POV: the man who never smiles just told the whole court you're his") — never the viewer performing the protagonist's plot actions.
+- ACCURACY GOVERNS FACTS, NOT WORDING. The hook's language is always your fresh copy; only words inside quotation marks must be verbatim from the scene. Copying the scene's prose is not accuracy — it is a failure.
 
 STRUCTURE — every hook has exactly these parts:
-1. GRABBER: one concrete moment or line from the book — an action taken or a thing said. Specific beats general ("She told the monster to chase her" beats "a possessive hero").
-2. GAP: exactly one piece of withheld context that creates a genuine question (wait, why? who IS he? what happens next?). The withheld thing must actually be surprising or charged — never manufacture mystery around something ordinary.
-3. NOTHING ELSE. No setup, no explanation, no second beat. If the hook answers its own question, it is dead. Less context = more pull.
+1. FRAME: the reader-facing shape from above (when.../POV: you.../question).
+2. GRABBER: one concrete moment from the book — an action taken or a thing said. Specific beats general ("she told the monster to chase her" beats "a possessive hero").
+3. GAP: exactly one piece of withheld context that creates a genuine question (wait, why? who IS he? what happens next?). The withheld thing must actually be surprising or charged — never manufacture mystery around something ordinary.
+4. NOTHING ELSE. No setup, no explanation, no second beat. If the hook answers its own question, it is dead. Less context = more pull.
 
 PROVEN SHAPES (tested BookTok data — use these, don't invent new shapes):
-- Curiosity gap: [subject] + [unexpected action that raises a question]
-- Pattern interrupt: [expected role] does the opposite ("She didn't run. She told him to chase her.")
-- Single devastating line: one visceral line under 8 words ("Touch her and you die.")
-- Plan vs. what happened: intended action, derailed spectacularly
-- Disproportionate reaction: the love interest's outsized response IS the hook ("His response? 'But do you feel better?'")
-- Vulnerable moment: the guarded one finally cracks
-- POV framing: "POV: you..." puts the viewer in the scene
+- Finally-payoff: "when the [trope role] finally [charged payoff]" ("when the vampire boss finally calls you mine") — "finally" implies the whole slow burn.
+- Curiosity gap: [trope role] + [unexpected action that raises a question] ("she told the monster to chase her")
+- Pattern interrupt: [expected role] does the opposite ("she didn't run. she told him to chase her.")
+- Framed devastating line: one visceral quoted line INSIDE a frame that supplies the gap ("when you touch his scars and the man who feels nothing says 'do it again'") — the frame is mandatory; a bare quote is not a hook.
+- Plan vs. what happened: intended action, derailed spectacularly ("she snuck in to kill him. he made her stay for breakfast.")
+- Disproportionate reaction: the love interest's outsized response IS the hook ("when he burns down a ballroom because someone else touched your hand")
+- Vulnerable moment: the guarded one finally cracks ("that moment when the tattooed biker finally says he wants him")
+- POV fantasy: "POV: you..." puts the viewer on the receiving end of the love interest ("POV: you're hiding from the vampire king and he says he can hear your heartbeat")
 
 THE INTEREST TEST — apply before returning anything:
 Would a stranger who has never heard of this book stop scrolling because they NEED the answer? If the honest answer is "it's fine," cut it. Returning fewer hooks is always better than padding with weak ones.
 
 FAILURE MODES — anything matching these is rejected:
+- RAW QUOTE / PAGE-LIFT: the hook is a line, sentence, or fragment copied from the manuscript with no reader-facing frame ("You are mine!" / "Because"—he hooked her knees). Dialogue may ONLY appear quoted inside a frame that tells the viewer why to care.
+- MISAIMED POV: "POV: you" doing the protagonist's plot actions instead of receiving the romance payoff ("POV: you destroyed a room with vines").
 - SUMMARY: describes the premise or dynamic ("He's powerful, but he'd drop everything for her") — that's back-cover copy, not a hook.
 - FAKE MYSTERY: coy about something that isn't mysterious, or withholds/implies something the scene doesn't support.
 - OVERSTUFFED: two or more beats, or explains who/why/how.
 - MELODRAMA / PURPLE PROSE: ornate phrasing, stacked adjectives, events exaggerated beyond what the scene actually says.
-- INACCURACY: ANY detail that differs from the scene — wrong pronoun, wrong speaker, invented event, altered dialogue. Quoted dialogue must be copied verbatim, attributed to the person who actually said it.`;
+- INACCURACY: ANY factual detail that differs from the scene — wrong pronoun, wrong speaker, invented event, altered dialogue. Words inside quotation marks must be copied verbatim and attributed to the person who actually said them; everything outside quotation marks must be your own fresh caption copy.`;
 
 // ---------------- Extraction (per chapter) — LOCATE ONLY ----------------
 // The extraction model finds and copies; it never writes marketing copy.
@@ -124,8 +134,10 @@ export function buildRankPrompt(candidates: HookCandidate[], target: number): st
     ``,
     `Below are ${candidates.length} moments located by a full manuscript scan, each with its verbatim scene excerpt. Choose the strongest material and WRITE up to ${Math.min(target, candidates.length)} hooks from it, best first — fewer is fine; only moments that pass the interest test.`,
     `Rules:`,
-    `- Every hook must follow the STRUCTURE and use one of the PROVEN SHAPES above.`,
-    `- Every fact in a hook must come straight from its scene_excerpt. Quoted dialogue: copied verbatim, right speaker. If the excerpt doesn't support a detail, you can't use it.`,
+    `- Every hook must follow the VOICE & FRAME and STRUCTURE rules and use one of the PROVEN SHAPES above. Match the register of the strategy-library examples — they are the target sound.`,
+    `- You are WRITING fresh caption copy about each moment, not excerpting it. Returning a line copied from the scene_excerpt as the hook is an automatic failure — quote the book only inside a frame, and only verbatim.`,
+    `- Name characters by trope role (pull from the book facts/tags), never by in-book name.`,
+    `- Every FACT in a hook must come straight from its scene_excerpt. If the excerpt doesn't support a detail, you can't use it.`,
     `- Variety: don't return multiple versions of the same moment or the same shape ten times.`,
     `- Pass each candidate's scene_excerpt through EXACTLY as given.`,
     `Return for each: hook_text (the hook), scene_excerpt (unchanged), rationale (one sentence: which shape it uses and why it stops the scroll), tags.`,
@@ -152,8 +164,8 @@ export function buildVerifyPrompt(hookText: string, sceneExcerpt: string): strin
     HOOK_ANATOMY,
     ``,
     `You are the quality gate. Judge this hook against its source scene. Be harsh — a rejected hook costs nothing; a bad hook published costs money.`,
-    `Check 1 — ACCURACY: verify every claim in the hook against the excerpt. Pronouns, who speaks each line, what actually happens, exact dialogue wording. Any mismatch = not accurate.`,
-    `Check 2 — IS IT A HOOK: apply the STRUCTURE, the FAILURE MODES, and the INTEREST TEST above.`,
+    `Check 1 — ACCURACY: verify every claim in the hook against the excerpt. Pronouns, who speaks each line, what actually happens, exact wording inside quotation marks. Any mismatch = not accurate.`,
+    `Check 2 — IS IT A HOOK: apply the VOICE & FRAME rules, the STRUCTURE, the FAILURE MODES, and the INTEREST TEST above. Be especially ruthless about RAW QUOTE / PAGE-LIFT — if the hook is just a line from the book with no reader-facing frame, it is not a hook, no matter how good the line is (that's fixable: wrap the line in a frame in fixed_hook_text).`,
     `If the underlying moment is strong but the wording fails, write a corrected version in fixed_hook_text (following the anatomy, verbatim dialogue only). If the moment itself can't carry a hook, set is_hook to false and fixed_hook_text to null.`,
     `Respond with JSON only: {"accurate": true/false, "is_hook": true/false, "problems": ["..."], "fixed_hook_text": "..." or null}`,
     ``,
