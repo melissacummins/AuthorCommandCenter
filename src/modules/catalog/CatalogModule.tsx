@@ -6,6 +6,7 @@ import { createBook, deleteBook, listBooks, logWordCount, removeBookCover, updat
 import type { Book, BookInsert } from './types';
 import { STATUS_COLORS, STATUS_LABELS, languageLabel } from './types';
 import BookForm from './components/BookForm';
+import BookView from './components/BookView';
 import CatalogOverview from './components/CatalogOverview';
 import PenNameChip from '../../components/PenNameChip';
 import { fetchSelectedKeywordCountsByBook } from '../kdp-optimizer/api';
@@ -21,6 +22,7 @@ type Tab = 'overview' | 'books';
 type View =
   | { mode: 'list'; tab: Tab }
   | { mode: 'new' }
+  | { mode: 'view'; book: Book }
   | { mode: 'edit'; book: Book };
 
 export default function CatalogModule() {
@@ -123,7 +125,7 @@ export default function CatalogModule() {
         await logWordCount(user.id, id, todayISO(), input.word_count).catch(() => undefined);
       }
       setBooks(prev => prev.map(b => (b.id === id ? updated : b)));
-      setView({ mode: 'list', tab: 'books' });
+      setView({ mode: 'view', book: updated });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -141,6 +143,25 @@ export default function CatalogModule() {
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
+  }
+
+  if (view.mode === 'view') {
+    const b = books.find(x => x.id === view.book.id) ?? view.book;
+    const pen = b.pen_name_id ? penNameById.get(b.pen_name_id) ?? null : null;
+    return (
+      <div className="p-6 lg:p-8">
+        <BookView
+          book={b}
+          penName={pen ? { name: pen.name, color: pen.color } : null}
+          onBack={() => setView({ mode: 'list', tab: 'books' })}
+          onEdit={() => setView({ mode: 'edit', book: b })}
+          onBookUpdated={async patch => {
+            const updated = await updateBook(b.id, patch);
+            setBooks(prev => prev.map(x => (x.id === b.id ? updated : x)));
+          }}
+        />
+      </div>
+    );
   }
 
   if (view.mode !== 'list') {
@@ -172,6 +193,10 @@ export default function CatalogModule() {
               : handleCreate(input, file)
           }
           onDelete={isEdit && initial ? () => handleDelete(initial.id) : undefined}
+          onAutosave={isEdit && initial ? async input => {
+            const updated = await updateBook(initial.id, input).catch(() => null);
+            if (updated) setBooks(prev => prev.map(b => (b.id === initial.id ? updated : b)));
+          } : undefined}
         />
       </div>
     );
@@ -221,7 +246,7 @@ export default function CatalogModule() {
         <CatalogOverview
           books={books}
           kdpKeywordCounts={kdpKeywordCounts}
-          onOpenBook={book => setView({ mode: 'edit', book })}
+          onOpenBook={book => setView({ mode: 'view', book })}
         />
       ) : (
         <>
@@ -248,8 +273,8 @@ export default function CatalogModule() {
                   book={parent}
                   translations={children}
                   penName={penNameById.get(parent.pen_name_id ?? '')}
-                  onClick={() => setView({ mode: 'edit', book: parent })}
-                  onClickTranslation={t => setView({ mode: 'edit', book: t })}
+                  onClick={() => setView({ mode: 'view', book: parent })}
+                  onClickTranslation={t => setView({ mode: 'view', book: t })}
                 />
               ))}
             </div>

@@ -21,6 +21,10 @@ interface BookFormProps {
   onCancel: () => void;
   onDelete?: () => Promise<void> | void;
   saving?: boolean;
+  // When set (edit mode), field changes save automatically ~1.5s after the
+  // last keystroke — no more mandatory Save clicks. Covers everything except
+  // cover-image changes, which still go through Save.
+  onAutosave?: (input: BookInsert) => Promise<void> | void;
 }
 
 function emptyDraft(): BookInsert {
@@ -103,7 +107,7 @@ const inputCls =
 const sectionCls = 'bg-white rounded-2xl border border-slate-200 p-5 space-y-4';
 const sectionTitle = 'text-sm font-semibold text-slate-800 uppercase tracking-wide';
 
-export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving }: BookFormProps) {
+export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving, onAutosave }: BookFormProps) {
   const { user } = useAuth();
   const { penNames, selectedPenNameId } = usePenNames();
   // New books default to the currently-selected pen name from the header
@@ -120,6 +124,32 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
   const [keywordsText, setKeywordsText] = useState((initial?.keywords ?? []).join('\n'));
   const [bisacText, setBisacText] = useState((initial?.bisac_categories ?? []).join('\n'));
   const [reviews, setReviews] = useState<ReviewExcerpt[]>(initial?.reviews ?? []);
+
+  // Autosave (edit mode): every field change patches the book ~1.5s after
+  // the last keystroke, Notion-style. Skips the initial mount, requires a
+  // title, and never touches cover files (those need the explicit Save).
+  const autosaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!onAutosave) return;
+    if (!mountedRef.current) { mountedRef.current = true; return; }
+    if (!draft.title.trim()) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      onAutosave({
+        ...draft,
+        tropes: linesToArray(tropesText),
+        amazon_keywords: linesToArray(amazonKwText),
+        keywords: linesToArray(keywordsText),
+        bisac_categories: linesToArray(bisacText),
+        reviews: reviews
+          .map(r => ({ quote: r.quote.trim(), source: r.source.trim(), rating: r.rating ?? null }))
+          .filter(r => r.quote || r.source),
+      });
+    }, 1500);
+    return () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, tropesText, amazonKwText, keywordsText, bisacText, reviews]);
 
   // KDP data for the linked book. Loaded once when editing an existing
   // catalog book; lets us surface the keywords selected in KDP

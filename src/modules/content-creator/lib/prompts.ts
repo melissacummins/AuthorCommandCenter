@@ -242,6 +242,45 @@ export function buildSynonymPrompt(word: string, sentence: string): string {
   ].join('\n');
 }
 
+// ---------------- Manuscript -> catalog autofill ----------------
+
+export function buildCatalogChapterPrompt(chapterTitle: string, chapterIdx: number, chapterText: string): string {
+  return [
+    `You are cataloguing a romance manuscript chapter by chapter. Summarize ONLY what is marketing-relevant in this chapter, in under 120 words:`,
+    `- tropes present (use standard romance trope names)`,
+    `- kinks / spice acts (frank but clinical), and how explicit the chapter is`,
+    `- content warnings (violence, abuse, death, etc.)`,
+    `- key relationship beats or themes`,
+    `Plain factual notes only — no praise, no prose. Respond with JSON only: {"notes": "..."}`,
+    ``,
+    `CHAPTER ${chapterIdx + 1}: ${chapterTitle}`,
+    ``,
+    chapterText,
+  ].join('\n');
+}
+
+export interface CatalogProposals {
+  subgenre: string;
+  heat_level: number;
+  tropes: string[];
+  kinks: string;
+  content_warnings: string;
+  amazon_keywords: string[];
+  comp_authors: string[];
+  blurb_draft: string;
+}
+
+export function buildCatalogSynthesisPrompt(bookTitle: string, chapterNotes: string[]): string {
+  return [
+    `Below are per-chapter cataloguing notes for the romance novel "${bookTitle}". Synthesize the book-level catalog facts.`,
+    `Rules: only claim what the notes support. Trope names in standard reader-facing form ("enemies to lovers", "fated mates"). heat_level: 1 sweet (no on-page intimacy) … 5 scorching (frequent explicit scenes). amazon_keywords: 7 buyer-search phrases readers of THIS book would type. comp_authors: 3-6 authors whose readers would love this book. blurb_draft: a 3-paragraph back-cover blurb in the book's voice — hooky first line, stakes, no spoilers past the midpoint.`,
+    `Respond with JSON only: {"subgenre": "...", "heat_level": 4, "tropes": ["..."], "kinks": "...", "content_warnings": "...", "amazon_keywords": ["..."], "comp_authors": ["..."], "blurb_draft": "..."}`,
+    ``,
+    `CHAPTER NOTES:`,
+    chapterNotes.map((n, i) => `${i + 1}. ${n}`).join('\n'),
+  ].join('\n');
+}
+
 // ---------------- JSON extraction ----------------
 
 // Models occasionally wrap JSON in fences or preamble text despite the
