@@ -72,7 +72,8 @@ export const HOOK_ANATOMY = `WHAT A HOOK IS
 A hook is caption copy written by a MARKETER, addressed TO the scrolling reader, ABOUT one moment in the book — framed from outside the story. It turns that moment into an open loop: the viewer learns just enough to have a question they can only answer by reading the book, and it lands in under 2 seconds. It reads like a viral BookTok caption ("when the vampire boss finally calls you mine"), NEVER like a line lifted off the page. It is NOT a summary, NOT a description of the couple's dynamic, and NOT a quote.
 
 VOICE & FRAME — non-negotiable:
-- Speak to the viewer in caption register: "when...", "that moment when...", "POV: you...", or a direct question. Lowercase caption energy is fine.
+- Speak to the viewer in caption register. Frames include: "when...", "that moment when...", "POV: you...", a direct question ("what do you do when..."), a dare ("tell me you'd survive chapter 12"), a trope-forward declaration ("the vampire boss x the courier whose blood he craves"), and plan-vs-instead ("she snuck in to kill him. he made her stay for breakfast."). The frame's job is ADDRESSING THE READER — not literally starting with "when". Lowercase caption energy is fine.
+- VARY THE FRAME across a set: a batch of hooks that all open with "when" or "POV:" is a craft failure even if each one works alone.
 - Name characters by their trope role, the label a stranger instantly gets — "the vampire boss", "the grumpy bodyguard", "her masked stalker" — never by their in-book name (a stranger doesn't know who "Kieran" is).
 - The viewer stands in the HEROINE'S/POV character's shoes, on the RECEIVING end of the love interest's attention. "POV: you..." means the fantasy happens TO you ("POV: the man who never smiles just told the whole court you're his") — never the viewer performing the protagonist's plot actions.
 - ACCURACY GOVERNS FACTS, NOT WORDING. The hook's language is always your fresh copy; only words inside quotation marks must be verbatim from the scene. Copying the scene's prose is not accuracy — it is a failure.
@@ -160,21 +161,26 @@ export interface HookVariation {
   rationale: string;
 }
 
-export function buildVariationsPrompt(quote: string, notes: string, maxVariations: number): string {
+export function buildVariationsPrompt(quote: string, sceneContext: string, notes: string, maxVariations: number): string {
   return [
     HOOK_ANATOMY,
     ``,
-    `The author pasted ONE moment from the book below — a quote or short excerpt she already believes in. Write up to ${maxVariations} DIFFERENT hooks from this single moment, each using a DIFFERENT strategy from the HOOK STRATEGY LIBRARY (or the author's own playbook patterns).`,
+    `The author picked ONE moment from the book below — a quote she already believes in. Write up to ${maxVariations} DIFFERENT hooks from this single moment, each using a DIFFERENT strategy from the HOOK STRATEGY LIBRARY (or the author's own playbook patterns).`,
     `Rules:`,
     `- One hook per strategy, each a genuinely different framing — not the same sentence reworded. If two strategies would produce near-identical hooks, keep the stronger and move on.`,
+    `- DON'T ORBIT THE QUOTE. Mine the surrounding scene (reactions, the beat before, the beat after, what's at stake) and the book facts (tropes, dynamic) — several strategies work best when the hook comes at the moment from an angle the quote alone doesn't give you.`,
+    `- Vary the frame across the set: at most two hooks opening with "when", at most one "POV:". Use questions, dares, trope-forward declarations, and plan-vs-instead for the rest.`,
     `- Only use strategies that honestly fit this moment. Skipping a strategy beats forcing it; fewer strong variations beat ${maxVariations} padded ones.`,
-    `- Every fact comes from the pasted moment (plus the book facts above). Words inside quotation marks must be verbatim from the paste.`,
+    `- Every fact comes from the quote, the surrounding scene, or the book facts above. Words inside quotation marks must be verbatim from the quote or scene.`,
     `- strategy: the library/playbook entry title, exactly as written there.`,
     notes.trim() ? `AUTHOR DIRECTION (follow it): ${notes.trim()}` : '',
     `Respond with JSON only, best first: {"variations": [{"strategy": "...", "hook_text": "...", "rationale": "..."}]}`,
     ``,
-    `THE MOMENT (verbatim from the book):`,
+    `THE QUOTE (the author's chosen moment, verbatim):`,
     quote.slice(0, 4000),
+    ``,
+    `SURROUNDING SCENE (verbatim from the manuscript — mine it):`,
+    sceneContext.trim() || '(scene not found in the manuscript — work from the quote, the author direction, and the book facts only; invent nothing beyond them)',
   ].filter(Boolean).join('\n');
 }
 
