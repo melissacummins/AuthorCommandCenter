@@ -37,7 +37,6 @@ export interface AppModule {
 export const GATED_MODULES: { key: string; path: string; label: string }[] = [
   { key: 'catalog', path: '/catalog', label: 'Catalog' },
   { key: 'writing', path: '/writing', label: 'Writing' },
-  { key: 'timeline', path: '/timeline', label: 'Timeline' },
   { key: 'book-tracker', path: '/book-tracker', label: 'Book Tracker' },
   { key: 'profit-track', path: '/profit-track', label: 'Profit' },
   { key: 'finstream', path: '/finstream', label: 'Transactions' },

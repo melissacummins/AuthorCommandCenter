@@ -13,7 +13,6 @@
 //   BIO_TITLE                 - heading on the page (default "Links")
 //   BIO_SUBTITLE              - tagline below the heading
 import { createClient } from '@supabase/supabase-js';
-import { createDecipheriv, scryptSync } from 'node:crypto';
 
 type VercelRequest = {
   method?: string;
@@ -57,7 +56,6 @@ interface BioBlockRow {
   image_url: string | null;
   link_url: string | null;
   buttons: BioButtonRow[] | null;
-  klaviyo_list_id: string | null;
   button_label: string | null;
   landing_page_id: string | null;
   text_mode: string | null;
@@ -306,23 +304,6 @@ type CardItem =
   | { kind: 'link'; data: BioLink }
   | { kind: 'block'; data: BioBlockRow };
 
-function renderEmailBlock(block: BioBlockRow): string {
-  const listId = block.klaviyo_list_id?.trim();
-  if (!listId) return '';
-  const title = block.title?.trim();
-  const body = block.body?.trim();
-  const button = block.button_label?.trim() || 'Subscribe';
-  return `<form class="signup" data-list="${escapeHtml(listId)}">
-    ${title ? `<h2 class="section-title">${escapeHtml(title)}</h2>` : ''}
-    ${body ? `<p class="section-body">${escapeHtml(body)}</p>` : ''}
-    <div class="signup-row">
-      <input class="signup-input" type="email" name="email" required placeholder="you@email.com" autocomplete="email" />
-      <button class="signup-btn" type="submit">${escapeHtml(button)}</button>
-    </div>
-    <p class="signup-msg" hidden></p>
-  </form>`;
-}
-
 // Inline expandable book: cover + title collapsed; opens to the blurb +
 // retailer buttons (from the referenced landing page) without navigating
 // away. Uses native <details> so it needs no JavaScript.
@@ -357,7 +338,6 @@ function renderCardItem(item: CardItem, ogImageByDest: Map<string, string | null
   if (item.data.type === 'section') return renderSectionBlock(item.data);
   if (item.data.type === 'image') return renderImageBlock(item.data);
   if (item.data.type === 'buttons') return renderButtonsBlock(item.data);
-  if (item.data.type === 'email') return renderEmailBlock(item.data);
   if (item.data.type === 'book') return renderBookBlock(item.data, item.data.landing_page_id ? bookPages.get(item.data.landing_page_id) : undefined);
   return '';
 }
@@ -545,32 +525,7 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
 .rbtn:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: 0 12px 28px -16px var(--accent-soft); }
 .rbtn-icon { width: 20px; height: 20px; object-fit: contain; flex-shrink: 0; }
 .rbtn-label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 360px) { .rbtns { grid-template-columns: 1fr; } }
-.signup {
-  width: 100%; margin-top: 6px; padding: 18px 16px; border-radius: 16px;
-  background: var(--surface); border: 1px solid var(--border); text-align: center;
-}
-.signup .section-title, .signup .section-body { margin-top: 0; }
-.signup-row { display: flex; gap: 8px; margin-top: 10px; }
-.signup-input {
-  flex: 1; min-width: 0; padding: 11px 13px; font-size: 14px;
-  border: 1px solid var(--border); border-radius: 12px;
-  background: var(--bg); color: var(--text);
-}
-.signup-input:focus { outline: none; border-color: var(--accent); }
-.signup-btn {
-  padding: 11px 16px; font-size: 14px; font-weight: 600; white-space: nowrap;
-  border: 0; border-radius: 12px; cursor: pointer;
-  background: var(--accent); color: #fff;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-.signup-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 28px -16px var(--accent-soft); }
-.signup-btn:disabled { opacity: 0.6; cursor: default; transform: none; }
-.signup-msg { margin: 10px 0 0; font-size: 13px; }
-.signup-msg.ok { color: var(--accent); }
-.signup-msg.err { color: #e11d48; }
-@media (max-width: 360px) { .signup-row { flex-direction: column; } }
-.biobook { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+@media (max-width: 360px) { .rbtns { grid-template-columns: 1fr; } }.biobook { width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
 .biobook[open] { box-shadow: 0 12px 28px -16px var(--accent-soft); }
 .biobook-head { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; list-style: none; }
 .biobook-head::-webkit-details-marker { display: none; }
@@ -599,47 +554,6 @@ h1 { margin: 4px 0 0; font-size: 26px; letter-spacing: -0.015em; text-align: cen
   <div class="foot">All links</div>
 </main>
 <img src="/api/bv" alt="" width="1" height="1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" aria-hidden="true" />
-<script>
-(function () {
-  var forms = document.querySelectorAll('form.signup');
-  for (var i = 0; i < forms.length; i++) {
-    forms[i].addEventListener('submit', function (e) {
-      e.preventDefault();
-      var form = e.currentTarget;
-      var input = form.querySelector('.signup-input');
-      var btn = form.querySelector('.signup-btn');
-      var msg = form.querySelector('.signup-msg');
-      var email = (input && input.value || '').trim();
-      if (!email) return;
-      function show(text, ok) {
-        if (!msg) return;
-        msg.textContent = text;
-        msg.className = 'signup-msg ' + (ok ? 'ok' : 'err');
-        msg.hidden = false;
-      }
-      if (btn) { btn.disabled = true; }
-      fetch('/api/bio', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, list: form.getAttribute('data-list') })
-      }).then(function (r) {
-        return r.json().catch(function () { return {}; }).then(function (d) { return { ok: r.ok, d: d }; });
-      }).then(function (res) {
-        if (res.ok) {
-          form.querySelector('.signup-row').style.display = 'none';
-          show("You're subscribed — thank you!", true);
-        } else {
-          show((res.d && res.d.error) || 'Something went wrong. Please try again.', false);
-          if (btn) { btn.disabled = false; }
-        }
-      }).catch(function () {
-        show('Something went wrong. Please try again.', false);
-        if (btn) { btn.disabled = false; }
-      });
-    });
-  }
-})();
-</script>
 </body>
 </html>`;
 }
@@ -663,152 +577,10 @@ function hostHeader(req: VercelRequest): string {
   return (raw ?? '').toLowerCase().split(':')[0];
 }
 
-// ---------- Public newsletter signup (POST to this same endpoint) ----------
-// Folded in here rather than a separate /api function to stay under the
-// Vercel Hobby 12-function limit. Mirrors the Klaviyo crypto in
-// api/klaviyo/[action].ts (scrypt salt + AES-256-GCM).
-function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && email.length <= 254;
-}
-
-function decryptKlaviyoKey(
-  row: { encrypted_key: string; nonce: string; auth_tag: string },
-  masterSecret: string,
-): string | null {
-  try {
-    const key = scryptSync(masterSecret, 'marketing-klaviyo-key-v1', 32);
-    const iv = Buffer.from(row.nonce, 'base64');
-    const ciphertext = Buffer.from(row.encrypted_key, 'base64');
-    const authTag = Buffer.from(row.auth_tag, 'base64');
-    const decipher = createDecipheriv('aes-256-gcm', key, iv);
-    decipher.setAuthTag(authTag);
-    return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString('utf8');
-  } catch {
-    return null;
-  }
-}
-
-async function handleSubscribe(req: VercelRequest, res: VercelResponse) {
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const masterSecret = process.env.KLAVIYO_KEY_ENCRYPTION_SECRET;
-  if (!supabaseUrl || !serviceKey || !masterSecret) {
-    res.status(500).json({ error: 'Signup is not configured.' });
-    return;
-  }
-
-  let body: { email?: unknown; list?: unknown };
-  try {
-    body = (typeof req.body === 'string' ? JSON.parse(req.body) : req.body) as { email?: unknown; list?: unknown };
-  } catch {
-    res.status(400).json({ error: 'Invalid request.' });
-    return;
-  }
-  const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
-  const listId = typeof body?.list === 'string' ? body.list.trim() : '';
-  if (!isValidEmail(email)) {
-    res.status(400).json({ error: 'Please enter a valid email address.' });
-    return;
-  }
-  if (!listId) {
-    res.status(400).json({ error: 'This signup form is not finished being set up.' });
-    return;
-  }
-
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const host = hostHeader(req);
-  let userId: string | null = null;
-  if (host) {
-    const { data } = await supabase
-      .from('custom_domains')
-      .select('user_id')
-      .eq('domain', host)
-      .eq('verified', true)
-      .maybeSingle();
-    if (data) userId = data.user_id;
-  }
-  if (!userId) userId = process.env.BIO_USER_ID || null;
-  if (!userId) {
-    res.status(404).json({ error: 'Unknown signup form.' });
-    return;
-  }
-
-  // Only allow lists the author actually wired to a bio email block.
-  const { data: block } = await supabase
-    .from('bio_blocks')
-    .select('id')
-    .eq('user_id', userId)
-    .eq('type', 'email')
-    .eq('klaviyo_list_id', listId)
-    .limit(1)
-    .maybeSingle();
-  if (!block) {
-    res.status(400).json({ error: 'This signup form is no longer available.' });
-    return;
-  }
-
-  const { data: keyRow } = await supabase
-    .from('user_klaviyo_keys')
-    .select('encrypted_key, nonce, auth_tag')
-    .eq('user_id', userId)
-    .maybeSingle();
-  if (!keyRow?.encrypted_key || !keyRow.nonce || !keyRow.auth_tag) {
-    res.status(400).json({ error: 'Signups are not available right now.' });
-    return;
-  }
-  const klaviyoKey = decryptKlaviyoKey(keyRow, masterSecret);
-  if (!klaviyoKey) {
-    res.status(500).json({ error: 'Signups are not available right now.' });
-    return;
-  }
-
-  try {
-    const kRes = await fetch('https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/', {
-      method: 'POST',
-      headers: {
-        Authorization: `Klaviyo-API-Key ${klaviyoKey}`,
-        revision: '2024-10-15',
-        accept: 'application/json',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        data: {
-          type: 'profile-subscription-bulk-create-job',
-          attributes: {
-            profiles: {
-              data: [{
-                type: 'profile',
-                attributes: {
-                  email,
-                  subscriptions: { email: { marketing: { consent: 'SUBSCRIBED' } } },
-                },
-              }],
-            },
-          },
-          relationships: { list: { data: { type: 'list', id: listId } } },
-        },
-      }),
-    });
-    if (!kRes.ok && kRes.status !== 202) {
-      const detail = await kRes.text().catch(() => '');
-      res.status(502).json({ error: 'Could not complete signup. Please try again.', detail: detail.slice(0, 300) });
-      return;
-    }
-  } catch {
-    res.status(502).json({ error: 'Could not reach the mailing list. Please try again.' });
-    return;
-  }
-
-  res.setHeader('cache-control', 'no-store');
-  res.status(200).json({ ok: true });
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
-    return handleSubscribe(req, res);
+    res.status(405).json({ error: 'Method not allowed.' });
+    return;
   }
   try {
     const supabaseUrl = process.env.SUPABASE_URL;
@@ -872,7 +644,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const blocksPromise = supabase
       .from('bio_blocks')
-      .select('id, type, title, body, image_url, link_url, buttons, klaviyo_list_id, button_label, landing_page_id, text_mode, bio_sort_order, created_at')
+      .select('id, type, title, body, image_url, link_url, buttons, button_label, landing_page_id, text_mode, bio_sort_order, created_at')
       .eq('user_id', userId)
       .order('bio_sort_order', { ascending: true })
       .limit(100)

@@ -201,6 +201,7 @@ export interface CustomDomain {
   updated_at: string;
 }
 
+// 'email' is legacy: the Klaviyo signup block was removed; old rows may still carry it.
 export type BioBlockType = 'section' | 'image' | 'buttons' | 'email' | 'book';
 
 export interface BioButton {
@@ -217,7 +218,6 @@ export interface BioBlock {
   image_url: string | null;
   link_url: string | null;
   buttons: BioButton[];
-  klaviyo_list_id: string | null;
   button_label: string | null;
   landing_page_id: string | null;
   text_mode: string | null;
@@ -233,7 +233,6 @@ export type BioBlockInsert = {
   image_url?: string | null;
   link_url?: string | null;
   buttons?: BioButton[];
-  klaviyo_list_id?: string | null;
   button_label?: string | null;
   landing_page_id?: string | null;
   text_mode?: string | null;
@@ -241,7 +240,7 @@ export type BioBlockInsert = {
 };
 
 export type BioBlockUpdate = Partial<
-  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'buttons' | 'klaviyo_list_id' | 'button_label' | 'landing_page_id' | 'text_mode' | 'bio_sort_order'>
+  Pick<BioBlock, 'title' | 'body' | 'image_url' | 'link_url' | 'buttons' | 'button_label' | 'landing_page_id' | 'text_mode' | 'bio_sort_order'>
 >;
 
 export type ShortLinkInsert = Pick<

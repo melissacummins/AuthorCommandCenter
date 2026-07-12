@@ -1,11 +1,10 @@
 import { useEffect, useState, type ComponentType } from 'react';
-import { KeyRound, ImagePlus, Mail, Sparkles, Info, Loader2, Trash2, Check, AudioLines, Zap } from 'lucide-react';
+import { KeyRound, ImagePlus, Sparkles, Info, Loader2, Trash2, Check, AudioLines, Zap } from 'lucide-react';
 import {
   getFalKeyStatus, setFalKey, removeFalKey,
   getOpenaiKeyStatus, setOpenaiKey, removeOpenaiKey,
   getIdeogramKeyStatus, setIdeogramKey, removeIdeogramKey,
 } from '../media/lib/client';
-import { getKlaviyoKeyStatus, setKlaviyoKey, removeKlaviyoKey } from '../../lib/klaviyo';
 import { getAnthropicKeyStatus, setAnthropicKey, removeAnthropicKey, plannerComplete } from '../planner/ai';
 import { getElevenlabsKeyStatus, setElevenlabsKey, removeElevenlabsKey } from '../audiobook/lib/client';
 import { getOpenrouterKeyStatus, setOpenrouterKey, removeOpenrouterKey } from '../writing/lib/ai';
@@ -52,13 +51,6 @@ const PROVIDERS: Provider[] = [
     helpUrl: 'https://ideogram.ai/manage-api', helpLabel: 'Get an Ideogram key',
     description: 'Optional. Routes Ideogram v3/v4 directly to Ideogram — unlocks the Turbo speed (~half Fal’s price) and the Quality tier Fal doesn’t expose.',
     getStatus: getIdeogramKeyStatus, saveKey: setIdeogramKey, removeKey: removeIdeogramKey,
-  },
-  {
-    id: 'klaviyo', name: 'Klaviyo', Icon: Mail, iconColor: 'text-purple-600',
-    placeholder: 'pk_xxxxxxxx…', minLength: 16,
-    helpUrl: 'https://www.klaviyo.com/settings/account/api-keys', helpLabel: 'Get a Private API key',
-    description: 'Only needed for the newsletter signup block on your Links bio page — visitors who subscribe there are added to the Klaviyo list you pick.',
-    getStatus: getKlaviyoKeyStatus, saveKey: setKlaviyoKey, removeKey: removeKlaviyoKey,
   },
   {
     id: 'anthropic', name: 'Claude (AI)', Icon: Sparkles, iconColor: 'text-violet-600',

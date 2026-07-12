@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Clapperboard, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Settings, Link2, Library, Users, ImagePlus, Share2, Clock, NotebookPen, AudioLines, Gift, PenTool
+  Clapperboard, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Settings, Link2, Library, Users, ImagePlus, Share2, NotebookPen, AudioLines, Gift, PenTool
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -12,7 +12,6 @@ const modules = [
   { name: 'Planner', path: '/planner', icon: NotebookPen, color: 'text-teal-400' },
   { name: 'Catalog', path: '/catalog', icon: Library, color: 'text-indigo-400' },
   { name: 'Writing', path: '/writing', icon: PenTool, color: 'text-lime-400' },
-  { name: 'Timeline', path: '/timeline', icon: Clock, color: 'text-indigo-400' },
   { name: 'Book Tracker', path: '/book-tracker', icon: BookOpen, color: 'text-purple-400' },
   { name: 'Profit', path: '/profit-track', icon: DollarSign, color: 'text-green-400' },
   { name: 'Transactions', path: '/finstream', icon: Wallet, color: 'text-cyan-400' },
@@ -32,7 +31,7 @@ const modules = [
 // Sidebar sections — each section header groups the module paths that
 // follow it. Home and Settings live outside any section.
 const sections: { label: string; paths: string[] }[] = [
-  { label: 'Catalog',    paths: ['/catalog', '/writing', '/timeline'] },
+  { label: 'Catalog',    paths: ['/catalog', '/writing'] },
   { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
   { label: 'Marketing',  paths: ['/content-creator', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },

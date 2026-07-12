@@ -37,7 +37,6 @@ export interface TrackedBook {
   payoff_quarter: string | null;
   months_to_payoff: number | null;
   catalog_book_id: string | null;
-  klaviyo_list_id: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -58,7 +57,6 @@ export interface TrackedBookInsert {
   cost_breakdown?: CostLineItem[];
   status?: TrackedBookStatus;
   catalog_book_id?: string | null;
-  klaviyo_list_id?: string | null;
   notes?: string | null;
   legacy_id?: number | null;
 }
