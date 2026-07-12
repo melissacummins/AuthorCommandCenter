@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { Anchor, Clapperboard, GalleryHorizontalEnd, BookOpenText, Video, LibraryBig, Flame } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import CatalogBookPicker from '../../components/CatalogBookPicker';
+import { listBooks } from '../catalog/api';
 import type { Book } from '../catalog/types';
 import { getManuscriptForBook } from '../writing/api';
 import type { Manuscript } from '../writing/types';
+import HooksTab from './components/HooksTab';
+import PlaybookTab from './components/PlaybookTab';
 
 type Tab = 'hooks' | 'slideshows' | 'screenshots' | 'videos' | 'playbook';
 
@@ -20,6 +23,22 @@ export default function ContentCreatorModule() {
   const [book, setBook] = useState<Book | null>(null);
   const [manuscript, setManuscript] = useState<Manuscript | null>(null);
   const [manuscriptLoading, setManuscriptLoading] = useState(false);
+
+  // Restore the remembered book on first load (the picker only reports
+  // selections the user makes; a stored id needs its Book object fetched).
+  useEffect(() => {
+    if (!user || !bookId || book) return;
+    let cancelled = false;
+    listBooks(user.id)
+      .then(books => {
+        if (cancelled) return;
+        const found = books.find(b => b.id === bookId);
+        if (found) setBook(found);
+        else { setBookId(null); localStorage.removeItem(LAST_BOOK_KEY); }
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [user, bookId, book]);
 
   useEffect(() => {
     if (!user || !book) { setManuscript(null); return; }
@@ -78,10 +97,14 @@ export default function ContentCreatorModule() {
       </div>
 
       {tab === 'hooks' && (
-        <ComingNext
-          title="Hook Scanner"
-          body="Scan the linked manuscript chapter by chapter and build your saved hook list — each hook with its scene, ready to approve, edit, or favorite. Scans are manual and resumable."
-        />
+        book ? (
+          <HooksTab key={book.id} book={book} manuscript={manuscript} />
+        ) : (
+          <ComingNext
+            title="Hook Scanner"
+            body="Pick a book above to see its hooks. Scanning reads the linked manuscript chapter by chapter and builds your saved hook list — manual, resumable, and only when you start it."
+          />
+        )
       )}
       {tab === 'slideshows' && (
         <ComingNext
@@ -101,12 +124,7 @@ export default function ContentCreatorModule() {
           body="Timed script text over a generated or uploaded video, with music from your library or ElevenLabs. Preview live, export WebM or the assets for CapCut."
         />
       )}
-      {tab === 'playbook' && (
-        <ComingNext
-          title="Hook Playbook"
-          body="Your curated hook patterns, writing rules, avatar frameworks, and the built-in banned-word list. Everything generated in this module follows the playbook."
-        />
-      )}
+      {tab === 'playbook' && <PlaybookTab />}
     </div>
   );
 }

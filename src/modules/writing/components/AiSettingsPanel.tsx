@@ -5,6 +5,7 @@ import {
   fetchAnthropicModels, fetchOpenAiModels, fetchOpenRouterModels,
 } from '../lib/ai';
 import type { AiSettings, AiProvider, ReasoningEffort, KnobState, ModelOption } from '../lib/ai';
+import ModelSelect from '../../../components/ModelSelect';
 
 const PROVIDER_LABELS: Record<AiProvider, string> = { anthropic: 'Claude', openai: 'OpenAI', openrouter: 'OpenRouter' };
 const REASONING_LEVELS: ReasoningEffort[] = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -90,18 +91,12 @@ export default function AiSettingsPanel({ onChange }: { onChange?: (settings: Ai
             ) : modelError ? (
               <p className="text-rose-600">{modelError}</p>
             ) : (
-              <select
-                value={settings.model}
-                onChange={e => update({ model: e.target.value })}
-                className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-slate-600 bg-white"
-              >
-                {(!settings.model || !models.some(m => m.id === settings.model)) && (
-                  <option value={settings.model}>{settings.model || '— pick a model —'}</option>
-                )}
-                {models.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}{m.id.includes('fable') ? ' (~2× Opus billing)' : ''}</option>
-                ))}
-              </select>
+              <ModelSelect
+                provider={settings.provider}
+                model={settings.model}
+                models={models.map(m => m.id.includes('fable') ? { ...m, name: `${m.name} (~2× Opus billing)` } : m)}
+                onChange={model => update({ model })}
+              />
             )}
           </div>
 
