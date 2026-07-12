@@ -1,245 +1,230 @@
-# Marketing Studio — Feasibility Audit & Build Plan
+# Content Creator — Feasibility Audit & Build Plan (v2)
 
 **Status:** Proposal for review — no code has been built yet.
-**Question being answered:** Can we turn the Marketing module into an Author-Scale-style
-tool (manuscript scanning → hooks → slideshows → e-reader scene graphics), fed by one
-shared manuscript source and the catalog, instead of re-typing book info everywhere?
+**v2 changes:** Incorporates Melissa's review of v1 — the AuthorScale-style flow
+(scan → saved hook list → pick one → direct it → carousel), the script-over-video
+answer, keeping the "Kindle Screenshots" name, retiring Ads/Promotions/Newsletters/Ad
+Alchemy, the Author Ad Copy Pro hook playbook, no hard-coded AI models,
+manuscript-to-catalog autofill, catalog view-mode fixes, and background music.
 
-**Short answer: yes, and you're much closer than you think.** Roughly 70% of the
-infrastructure already exists in the app — it's just not wired together. The two genuinely
-new things are (1) the manuscript scanner pipeline and (2) the e-reader scene / slideshow
-renderer. Everything else is plumbing between systems you already built.
+**The module gets rebuilt from the top as "Content Creator"** (name open to change),
+replacing the current Marketing module. Ad Alchemy is deleted.
 
 ---
 
-## 1. What you actually have today (the audit)
-
-I had three research passes go through the whole codebase. Here's the honest state of it:
+## 1. What exists today (unchanged audit findings)
 
 | Piece | Reality |
 |---|---|
-| **Marketing → Ads wizard** (Book Analysis, Creative Studio, Hook Workshop, Copy Generator, Script Builder) | **A UI prototype.** The "AI analysis" is a hard-coded 2.5-second timer that always returns the same fake themes and comp authors (`BookAnalysisStep.tsx:32` literally says `// Simulate AI analysis (replace with real API call)`). Nothing is saved — close the tab and it's gone. The Book Basics form re-asks for title/series/pen name/subgenre/heat/tropes and never touches the catalog. The steps don't even share data with each other (hooks you favorite never reach the Copy Generator despite the UI claiming they will). |
-| **Marketing → Promotions & Newsletters** | Real and working. Both use the catalog book picker and persist to Supabase. These are fine — leave them alone. |
-| **Ad Alchemy** | A 29-line "Coming Up" splash screen. Nothing behind it. |
-| **Catalog** | Solid. `books` has title, subtitle, series + position, pen name, blurb, `tropes[]`, kinks, content warnings, ASIN/ISBNs, keywords, cover, reviews. **But: no `heat_level` and no `subgenre` column** — that's why other tools can't pull them. Nine modules already consume the catalog, so the "single source for book facts" pattern is proven. |
-| **Writing module** | This is your manuscript home and it's better positioned than you may realize. Manuscripts import from .docx/.txt/.md (italics preserved), chapters stored as HTML in Supabase, word counts sync — and **each manuscript already has an optional `book_id` link to the catalog** plus a `status` field with a `final` value. The "one place to put the manuscript that everything else picks up" **already exists**; nothing else reads it yet, but the schema is ready. |
-| **AI backend** | Already built and multi-provider: `api/writing/ai.ts` supports Anthropic, OpenRouter, and OpenAI with your own keys stored encrypted per-user. This is directly reusable for manuscript scanning. |
-| **Image & video generation** | Already built and extensive: `api/media/generate.ts` has ~35 image models (Flux, gpt-image, Ideogram, Imagen…) plus video models (Kling, Veo3, LTX…), with outputs saved to the `media-outputs` storage bucket. **The "generate a background from the scene" feature is 90% done** — it just needs a scene-to-prompt step in front of it. |
-| **Social Media module** | Read-only Pinterest analytics. The Marketing tab of the same name is an empty placeholder. |
-| **What does NOT exist anywhere** | Any canvas/compositing/rendering capability — no slideshow renderer, no text-on-image, no video assembly (no ffmpeg/Remotion/canvas drawing). This is the one genuinely new subsystem. |
-
-So your instinct is exactly right: you built good individual organs and never connected the
-circulatory system.
+| **Marketing → Ads wizard** | UI prototype. The "AI analysis" is a hard-coded 2.5-second timer with fake results; nothing persists; steps don't share data. **Being retired.** |
+| **Marketing → Promotions & Newsletters tabs** | Real, catalog-backed, Supabase-persisted (Klaviyo integration). **Melissa says these can go too** — see open question #1 about whether to delete or park them. |
+| **Ad Alchemy** | 29-line placeholder splash. **Delete.** |
+| **Catalog** | Solid schema (title, series, pen name, blurb, tropes[], kinks, content warnings, identifiers, keywords, cover, reviews) but **no heat_level or subgenre columns**, and the UX has real problems: permanently in edit mode, no reading view, manual save, and a task system that nags about 30 "missing" items on published books. |
+| **Writing module** | Manuscript home. Imports .docx/.txt/.md with italics preserved, chapters stored as HTML, optional `book_id` link to catalog, `final` status. **This is the manuscript source of truth** — nothing else consumes it yet, but the schema is ready. |
+| **AI backend** | `api/writing/ai.ts`: Anthropic + OpenRouter + OpenAI, per-user encrypted keys, **and it already has a "list available models" action** — the foundation for user-selectable models per task. |
+| **Media module** | ~35 image models + video generation (Kling, Veo3, LTX…) via Fal/OpenAI/Ideogram, outputs stored in the `media-outputs` bucket. Scene-background generation is ~90% built. |
+| **ElevenLabs** | Keys already stored per-user for the audiobook module — reusable for background music (ElevenLabs has a music API; Suno does not offer an official public API). |
+| **Social module** | Pinterest analytics (approved app incoming). Untouched by this plan; finished assets will be handed to it later. |
+| **Missing everywhere** | Any renderer that puts text on images/video. This is the main new subsystem. |
 
 ---
 
-## 2. The unifying concept
+## 2. The unifying rules
 
-One rule fixes the "why am I typing this again" problem everywhere:
-
-> **The catalog is the source of truth for book *facts*. The Writing module is the source
-> of truth for book *text*. Marketing reads both and never asks for either.**
-
-Concretely:
-
-1. **Add `heat_level` and `subgenre` to the `books` table** (one small migration). Now the
-   catalog carries everything Book Analysis was re-asking for: title, series, pen name,
-   subgenre, heat level, tropes, blurb.
-2. **Treat a manuscript with `status = 'final'` + a `book_id` link as "the marketing
-   manuscript"** for that book. You already import finals into Writing; a small "Use for
-   marketing / final" toggle makes it explicit. Any module that needs the text calls the
-   existing `getManuscriptsForBook(bookId)` helper.
-3. **The Marketing module opens with the catalog book picker** (like Promotions already
-   does). Picking a book pulls facts from the catalog and text from Writing. Zero re-entry.
-
-This also future-proofs Ad Alchemy, ARCs, KDP Optimizer, etc. — they inherit the same rule.
+1. **Catalog = source of truth for book facts.** Add `heat_level` + `subgenre` (migration).
+   Content Creator opens with the catalog book picker and never asks for facts again.
+2. **Writing module = source of truth for book text.** A final manuscript linked to a book
+   is what gets scanned. Scanning is **always manual** — a button, never automatic — so
+   nobody pays for a feature they aren't using.
+3. **The Hook Playbook = source of truth for voice.** Nothing generates hooks or copy
+   without the playbook in its prompt (see §4). This is the anti-purple-prose insurance.
+4. **No AI model is ever hard-coded.** Every AI task (scan, generate, image-prompt, copy)
+   has a model setting whose options come from the live provider model list (the
+   mechanism the Writing chat already uses). Defaults are just defaults — if a model is
+   retired, you re-point a dropdown in Settings, not rebuild the feature.
 
 ---
 
-## 3. The proposed build — "Marketing Studio" in five phases
+## 3. The user flow (per Melissa, matching AuthorScale)
 
-Each phase is a self-contained PR that leaves the app working. Order matters: each one
-feeds the next.
+```
+Pick book (catalog picker)
+  └─ Scan manuscript  ──────────── manual button, per-chapter under the hood, resumable
+        └─ Saved hook list  ─────── persists; browse, favorite, delete
+              └─ Pick ONE hook
+                    ├─ Direction notes: "open with this trend", "don't use these words",
+                    │    tone guidance, target avatar          (optional, free text + toggles)
+                    ├─ Slide count (2–10)
+                    └─ Generate → carousel preview (slide 1, 2, 3… in order)
+                          ├─ Edit any slide's text, reorder
+                          ├─ Approve → backgrounds (generate-from-scene / library / upload)
+                          └─ Output: download PNGs · compose video (§5) · save to library
+```
 
-### Phase 0 — Foundation glue (small, unblocks everything)
-- Migration: `heat_level` (e.g. 1–5 or text) and `subgenre` on `books`; backfill UI in
-  Catalog edit form.
-- Migration: new marketing tables — `marketing_hooks`, `marketing_scenes`,
-  `marketing_creatives` (slideshows + scene cards), reusing the type shapes that already
-  exist unused in `src/lib/types.ts:430-500`.
-- Replace `BookBasicsForm` with `CatalogBookPicker` + read-only book facts panel +
-  manuscript selector (finals for that book, from Writing).
-- **No AI in this phase. Pure plumbing.**
+Generation is **one hook at a time, on demand** — there is no "generate 20 slideshows"
+button. The only bulk-ish operation is the manuscript scan itself, which runs
+chapter-by-chapter from the browser (small requests, progress bar, resumable) so it can't
+hit serverless timeouts.
 
-### Phase 1 — Manuscript Hook Scanner (the Author Scale core)
-- New `api/marketing/ai.ts` endpoint modeled directly on `api/writing/ai.ts` (same BYOK
-  key handling, same providers).
-- **Two-pass scan, orchestrated from the browser one chapter at a time** (this matters —
-  see risk #1):
-  1. *Extraction pass* — cheap model reads each chapter and returns candidate hooks as
-     JSON: the hook line(s), why it works, trope/heat tags, and the surrounding scene
-     excerpt for later use.
-  2. *Ranking & wording pass* — a stronger model takes all candidates plus the book's
-     catalog facts (tropes, heat, subgenre) and returns the top N, each with suggested
-     slideshow wording (slide-by-slide text) and suggested ad-copy angle.
-- Results save to `marketing_hooks` with the scene context attached. You approve, edit,
-  or discard each one — edits persist.
-- Progress bar per chapter; a scan is resumable (chapters already scanned are skipped).
-
-### Phase 2 — Slideshow Studio
-- Pick an approved hook → it becomes an editable slide deck (usually 3–7 short text
-  slides, 1080×1920).
-- Per-slide background, three options:
-  a. **Generate from scene** — a cheap model turns the stored scene excerpt into an image
-     prompt, then calls your existing `api/media/generate.ts` (Flux etc.). Costs pennies.
-  b. **Pick from Media library** (anything already in `media-outputs`).
-  c. **Upload your own.**
-- Text overlay editor: font, size, position, color, safe-area guides for TikTok/Reels UI.
-- Export: PNG per slide (drop straight into TikTok's photo-mode/CapCut), saved to
-  `media-outputs` so the Media module sees them too.
-- Rendering approach: plain HTML/CSS slide → PNG via canvas snapshot. Deterministic,
-  free, no AI.
-
-### Phase 3 — E-reader Scene Cards (the "Kindle screenshot" feature)
-- Pick a scene: either jump from a hook's stored excerpt or browse chapters directly
-  (chapter text is already HTML in Supabase — italics intact, which matters for romance).
-- The scene renders as a **generic e-reader page** (paper background, book title header,
-  page footer — deliberately *not* Amazon's Kindle UI; see risk #4).
-- **Dialogue auto-detection is plain code, not AI** — quoted text is found with
-  deterministic parsing, for free. Each dialogue span gets a toggleable highlight.
-- Annotation layer: highlight color, strike-through for the naughty words, underline,
-  circle, heart, exclamation — hand-drawn-style SVG stamps you can place, move, resize.
-- Export options:
-  a. PNG of the annotated page (transparent or paper background) — use over any video in
-     CapCut/TikTok. **This is the MVP.**
-  b. Generated video background from the Media module (Kling/Veo/LTX already work) with
-     the page composited on top, exported in-browser as WebM. **Stretch goal** — see
-     risk #3 before counting on it.
-
-### Phase 4 — Rewire the rest of the wizard to real data
-- Copy Generator and Script Builder call the real AI endpoint, pre-seeded with catalog
-  facts + your approved hooks (favorited hooks actually get prioritized now).
-- Outputs persist (`marketing_copy` table) instead of dying on tab-switch.
-- Book Analysis step's fake timer is deleted; the real reader-avatar/comp-author analysis
-  runs off the manuscript + catalog and is saved.
-- The Marketing "Social Media" placeholder tab becomes a gallery of generated assets
-  (slideshows, scene cards) with per-book/per-pen-name filtering — a natural bridge to the
-  Social module later.
-- Ad Alchemy, whenever you build it, consumes these same tables instead of inventing
-  its own.
+Same pattern applies to Kindle Screenshots (§6): pick scene → annotate → export.
 
 ---
 
-## 4. Where this could break — the honest risks
+## 4. The Hook Playbook (Author Ad Copy Pro integration)
 
-1. **Serverless timeouts kill whole-book scans.** Vercel functions have short execution
-   limits; sending a 90k-word novel in one request will time out. **Solution baked into
-   the design:** the browser loops over chapters and makes one small API call per chapter
-   (exactly how your audiobook module already handles long work). Also why scans are
-   resumable.
-2. **AI cost per scan.** A full novel is ~120–130k tokens of input. Scanning every chapter
-   with a top-tier model on every scan would get expensive fast. The two-pass design fixes
-   this: the per-chapter extraction runs on Haiku (cheap), and only the distilled
-   candidates go to a stronger model. Realistic cost: **roughly $0.20–0.40 per full-book
-   scan, and ~$0.01–0.05 per generated background image** on your own keys. See §6.
-3. **In-browser video export is the shakiest piece.** Browsers can compose video + overlay
-   to WebM natively, but true MP4 export needs ffmpeg-in-the-browser (heavy, slow) or a
-   server (Vercel functions aren't suited to it). TikTok/CapCut accept PNG overlays and
-   WebM in most flows, so the plan ships PNG + WebM and treats MP4 as explicitly out of
-   scope for v1. If MP4 becomes a must-have later, the right answer is a small external
-   render service — a separate decision.
-4. **"Kindle" is Amazon's trademark.** A pixel-perfect fake Kindle screenshot in paid ads
-   invites takedowns. The scene card uses a clean generic e-reader look (which is also
-   what most of these tools actually render). You lose nothing functionally.
-5. **Catalog gaps.** No heat/subgenre columns today (Phase 0 fixes), and some catalog
-   entries may have empty tropes/blurbs — the scanner should degrade gracefully and can
-   even *suggest* tropes back to the catalog from the manuscript scan (nice enhancement).
-6. **BYOK dependency.** Scanning needs your Anthropic (or OpenRouter) key set in Settings;
-   background generation needs your Fal key. Both flows already exist — the UI just needs
-   clear "add your key" prompts when missing.
-7. **The existing Ads wizard isn't worth preserving as-is.** Since it has no persistence
-   and no AI, rebuilding its steps on real data is not "throwing work away" — the UI
-   shells and step layout get reused; only the fake internals are replaced.
+The concern is real: unguided models drift into purple prose, and hooks that don't follow
+proven patterns waste generation money. So the playbook is a first-class feature, not an
+afterthought:
 
-Nothing here is a blocker. Risk #3 is the only one that constrains scope (video export),
-and it's phased so it can't sink the rest.
+- New tables: `hook_playbook_entries` (the curated hook patterns — the monthly batch you
+  currently collect, convert to bookish form, and approve) and `playbook_rules` (writing
+  rules: banned words/phrases, tone constraints, "no purple prose" style directives,
+  avatar frameworks — what kind of reader this appeals to and what conversation they want
+  to join).
+- **Import:** paste or upload from your personalized Author Ad Copy Pro content (whatever
+  format it lives in — see open question #2). The monthly refresh becomes: paste new
+  batch → review → save.
+- **Usage:** every scan, slideshow generation, and copy generation injects the relevant
+  playbook entries + rules into the prompt. Hook extraction is told to find scenes that
+  *match known-working hook patterns*; generation is told to write in the patterns'
+  register, with the banned-word list enforced both in the prompt **and** by a free
+  post-check in code (deterministic scan of output for banned words → auto-retry once,
+  then flag).
+- Entries can be tagged (genre, heat, format: slideshow/ad/screenshot) and scoped
+  global or per pen name.
+
+This also improves per-book targeting: the scan pass receives the book's tropes, heat,
+subgenre **and** the avatar framework, so hooks come out aimed at the right reader.
 
 ---
 
-## 5. Enhancements you'd get over Author Scale
+## 5. Video — answering the question directly
 
-Because this lives inside your command center instead of a standalone tool:
+> "Is what you're saying that generating the video is expensive, or that putting the
+> text on it is hard?"
 
-- **Catalog-aware voice.** Every prompt automatically knows the book's tropes, heat
-  level, subgenre, pen name, and blurb — hooks come out already on-brand, per pen name.
-- **Assets land in your Media library** and are reusable across Marketing, future Ads,
-  and Socials — not trapped in an external app.
-- **Hooks are a shared asset.** The same approved hook feeds slideshows, scene cards, ad
-  copy, and reel scripts, so your messaging stays consistent across formats.
-- **Manuscript-to-catalog backflow.** The scanner can propose tropes/content warnings it
-  detects that aren't in the catalog yet — one click to accept.
-- **Scene cards can quote-attribute automatically** (book title, series, pen name) for
-  legally-clean teaser graphics.
-- Later: pipe finished assets into the Social module for scheduling/tracking, and into
-  Ad Alchemy for performance analysis — same tables, no re-import.
+Neither, mostly. Three separate things:
 
----
+1. **Generating a video background** — already works in your Media module, costs whatever
+   the model costs on your Fal key (roughly $0.10–$1 per short clip depending on model).
+   Not a problem.
+2. **Putting timed script text over a video** — **easy and free.** This is exactly what
+   your Claude cowork HTML demo did: a video plays, a text layer sits on top, the text
+   swaps every N seconds. That's just HTML/CSS. The Script Builder concept from the old
+   wizard comes back for real here: hook → timed script → captions over your chosen
+   video, previewed live in the app, per-line duration editable (like AuthorScale's
+   per-slide Duration dropdowns).
+3. **Baking it into one downloadable video file** — this was my only real caution.
+   Browsers can record the composed result natively to **WebM** (fine, and TikTok's web
+   uploader accepts it). What browsers can't do cheaply is **MP4** — that needs a heavy
+   in-browser encoder or a server, and Vercel functions aren't suited to video encoding.
 
-## 6. The right tool for each job (efficiency plan)
+**So the revised plan:** build the composer (video background + timed script text + music
+track), live preview in-app, export as WebM, plus "download assets separately" (video +
+transparent caption PNGs) for anyone who prefers assembling in CapCut. MP4 export stays
+out of v1; if WebM ever causes real friction we add a small render service or direct
+TikTok posting as a follow-up. The image-slideshow video (AuthorScale's "Create Slideshow
+Video": slides × durations × music) uses the exact same composer with still images.
 
-Guiding rule you stated, applied: **never pay a model to do what deterministic code does
-for free.**
-
-### Free / deterministic (plain TypeScript, no AI, no cost)
-- Dialogue detection & quote spans (regex/parser over chapter HTML)
-- E-reader page layout & pagination
-- Slide rendering, text overlay, PNG/WebM export
-- Highlight/strike/annotation editing
-- All persistence, progress tracking, resume logic
-
-### Runtime AI (your keys, chosen per job)
-
-| Job | Model | Why | Est. cost |
-|---|---|---|---|
-| Per-chapter hook extraction | **Claude Haiku 4.5** (`claude-haiku-4-5`) | $1/$5 per M tokens; extraction is pattern-spotting, not deep reasoning | ~$0.15–0.25 per full novel |
-| Hook ranking + slideshow wording | **Claude Sonnet** (`claude-sonnet-4-6`, already the app's default; `claude-sonnet-5` when you want the newer model — intro-priced $2/$10 through Aug 2026) | Needs taste + genre awareness; runs once per scan over distilled candidates | ~$0.05–0.15 per scan |
-| Scene → image prompt | Haiku 4.5 | One short call per background | <$0.01 |
-| Copy Generator / Script Builder | Sonnet | Quality matters, volume is low | ~$0.02–0.05 per generation |
-| Background images | Existing Media models (Flux Schnell ≈ $0.003/img up to Imagen/gpt-image ≈ $0.04–0.08) | Already wired | pennies |
-
-All calls go through the existing encrypted-BYOK endpoints, so provider choice stays
-yours (OpenRouter works too). Everything supports per-user model override like the
-Writing chat already does.
-
-### Build execution (who writes the code)
-- **This is a TypeScript/React/Supabase repo — no Python or shell scripting is the right
-  tool here.** The runtime never shells out to `claude -p`; the app calls the API
-  directly through the endpoint pattern you already have (cheaper, no CLI dependency,
-  works on Vercel).
-- **Builder:** Claude Code sessions in this repo, one PR per phase, following the
-  existing directive pattern (like `WRITING_MODULE_DIRECTIVE.md`). Phases 0–1 are the
-  highest-value, lowest-risk start. Sonnet-tier is fully sufficient for the
-  implementation work — no need to pay Opus rates for plumbing.
-- Each phase's directive will include the Supabase SQL editor link for its migration,
-  per house rules, and all migrations will be idempotent for preview branching.
+**Music:** upload-your-own track (stored in `media-outputs`), or generate via
+**ElevenLabs' music API — your keys are already stored** from the audiobook module. Suno
+currently has no official public API, so it's out unless that changes.
 
 ---
 
-## 7. Decisions I need from you before writing the build directive
+## 6. Kindle Screenshots
 
-1. **Heat level format** — a 1–5 flame scale, or free text (e.g. "sweet / steamy /
-   scorching")? (Affects the catalog migration and every prompt.)
-2. **Video in v1?** — Ship Phase 3 with PNG scene cards + WebM slideshow export and defer
-   MP4, or keep v1 strictly image-based and add motion later? (My recommendation: PNG +
-   WebM, defer MP4.)
-3. **Scan trigger** — manual "Scan manuscript" button only (my recommendation — you
-   control cost), or auto-scan when a manuscript is marked final?
-4. **Keep or fold Ad Alchemy?** — This plan makes Marketing the creative studio. Should
-   Ad Alchemy stay reserved for ad *performance* (CSV import, Golden Ratio math) so the
-   two don't overlap? (My recommendation: yes — Marketing = make, Ad Alchemy = measure.)
-5. **Scope check** — anything in Author Scale I didn't cover that you use? (e.g. do they
-   do anything with sound/music you'd want noted as future scope?)
+Agreed — dropping the caution from v1. It's annotated text on a plain page, which is a
+generic reading-app look, not Amazon trade dress; "Kindle screenshot" stays as the
+feature name since that's what everyone calls it. Unchanged mechanics:
 
-Answer these (or just say "your recommendations are fine") and the next step is the full
-build directive: `docs/MARKETING_STUDIO_DIRECTIVE.md` with per-phase specs, schemas,
-prompts, and acceptance checks that another model can execute phase by phase.
+- Source text: pull from a hook's stored scene, browse chapters, or paste freely.
+- Dialogue auto-detection is deterministic code (free, no AI). Toggleable highlights.
+- Annotations: highlight color, strike-through (for the naughty words), underline,
+  circle, heart, exclamation — placeable/movable hand-drawn-style stamps.
+- Export PNG (paper or transparent background); drop it into the video composer (§5) for
+  a video-background version.
+
+---
+
+## 7. Manuscript → Catalog autofill (new)
+
+Since we're scanning the manuscript anyway, a second output of the same scan (or a
+standalone "Analyze into catalog" button on a book) proposes catalog values:
+
+- tropes, kinks, content warnings, heat level, subgenre, Amazon keyword candidates,
+  themes, comp-author suggestions, series position hints.
+- Presented as a **confirm screen** — nothing writes to the catalog without approval;
+  accepted values fill the book record. You then only hand-enter the small stuff
+  (pricing, ISBNs, dates).
+- Blurb can't be *extracted* (it's not in the manuscript) but can be *drafted* from the
+  scan + playbook as a starting point, clearly marked as a draft.
+
+### Catalog quality-of-life (same phase)
+- **A read view.** Opening a book shows a clean, organized display (collapsible sections
+  / tabs, like your old Notion setup) — edit becomes an explicit mode or per-section
+  inline edit.
+- **Autosave** on edits (debounced, like the Writing module) — no more "save changes"
+  every time.
+- **Quiet the task nagging:** published books stop generating "fill this in" tasks by
+  default; the checklist becomes an opt-in "completeness" panel instead of 30 standing
+  to-dos.
+
+(The full command-center interface redesign Melissa mentioned is explicitly **out of
+scope** here — separate conversation, so this plan stays digestible.)
+
+---
+
+## 8. Build phases (revised)
+
+Each phase = one PR, app always working. Migrations idempotent, PR descriptions include
+the Supabase SQL editor link, per house rules.
+
+| Phase | Contents |
+|---|---|
+| **0 — Foundation** | Migrations: `heat_level` + `subgenre` on books; `content_hooks`, `content_scenes`, `content_creatives`, `hook_playbook_entries`, `playbook_rules`, per-task model settings. New **Content Creator** module shell (catalog picker + manuscript selector + empty tabs), replacing Marketing in the sidebar. Delete Ad Alchemy. Old Marketing tabs handled per open question #1. |
+| **1 — Playbook + Scanner** | Playbook import/manage UI first, then the manual manuscript scan (per-chapter, resumable, playbook-informed) producing the saved hook list with scene context. Per-task model pickers live here from day one. |
+| **2 — Slideshow Studio** | Pick hook → direction notes + slide count → carousel generation → slide editor (text, reorder) → backgrounds (scene-generated / media library / upload) → PNG export, saved to library. |
+| **3 — Video Composer** | Timed script over video or image slides (per-slide duration), music (upload or ElevenLabs), live preview, WebM export + separate-assets download. Revives Script Builder as the caption engine. |
+| **4 — Kindle Screenshots** | Scene picker, deterministic dialogue highlighting, annotation stamps, PNG export, feed into composer. |
+| **5 — Catalog autofill + QoL** | Scan-to-catalog confirm screen; catalog read view with collapsible sections; autosave; task quieting for published books. |
+
+Phases 4 and 5 are independent of each other and can swap order.
+
+---
+
+## 9. Model & cost policy (revised — nothing hard-coded)
+
+- Every AI task gets a **settings-backed model choice** populated from the live model
+  list of whichever provider key is configured (Anthropic / OpenRouter / OpenAI — the
+  Writing module's existing pattern). Settings ship with sensible defaults
+  (small/cheap model for per-chapter extraction; the app's standard default model for
+  ranking, slideshow wording, and copy) but **any model can be swapped in the UI at any
+  time** — a retired model means changing a dropdown, not rebuilding features.
+- Cost shape at defaults: full-novel scan ≈ $0.20–0.40; slideshow generation ≈ a few
+  cents; background image ≈ $0.003–0.08; video background ≈ $0.10–1. All on your own
+  keys; every generation is user-initiated.
+- Deterministic code (free, no AI): dialogue detection, banned-word post-check, page
+  layout, slide rendering, caption timing, all exports, persistence.
+- Runtime never shells out to a CLI; the app calls provider APIs through the existing
+  encrypted-BYOK endpoints.
+
+---
+
+## 10. Open questions (small ones)
+
+1. **Promotions & Newsletters:** those tabs are real working features with data (Klaviyo
+   sync, catalog-linked promos). When Marketing dies, do we (a) delete them outright, or
+   (b) park them as a hidden/legacy module for one release so nothing is lost, then
+   delete? Recommendation: (b).
+2. **Author Ad Copy Pro import:** what format does your personalized version live in
+   (doc, Notion page, plugin config file, GPT/Claude project instructions)? Paste-in
+   always works; if it's a file we can build a proper importer.
+3. **Heat level format:** proposal — 1–5 scale with editable labels (1 sweet → 5
+   scorching), shown as flames in the UI. Confirm or adjust.
+4. **Module name:** "Content Creator" — keep, or something else (Creator Studio,
+   Content Studio…)?
+
+Once these are settled, next deliverable is `docs/CONTENT_CREATOR_DIRECTIVE.md` — the
+full phase-by-phase build instructions (schemas, endpoints, prompt templates including
+playbook injection, acceptance checks) that a build session can execute one PR at a time.
