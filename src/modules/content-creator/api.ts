@@ -107,6 +107,94 @@ export async function updateScan(
 
 export type { HookCandidate };
 
+// ---------------- Creatives (slideshows / screenshots / videos) ----------------
+
+export interface ContentCreative {
+  id: string;
+  user_id: string;
+  book_id: string | null;
+  hook_id: string | null;
+  type: 'slideshow' | 'screenshot' | 'video';
+  title: string;
+  payload: Record<string, unknown>;
+  status: 'draft' | 'final';
+  created_at: string;
+  updated_at: string;
+}
+
+export async function listCreatives(userId: string, bookId: string, type: ContentCreative['type']): Promise<ContentCreative[]> {
+  const { data, error } = await supabase
+    .from('content_creatives')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('book_id', bookId)
+    .eq('type', type)
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function insertCreative(
+  userId: string,
+  row: Pick<ContentCreative, 'book_id' | 'hook_id' | 'type' | 'title' | 'payload'>,
+): Promise<ContentCreative> {
+  const { data, error } = await supabase
+    .from('content_creatives')
+    .insert({ ...row, user_id: userId })
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateCreative(
+  id: string,
+  patch: Partial<Pick<ContentCreative, 'title' | 'payload' | 'status'>>,
+): Promise<ContentCreative> {
+  const { data, error } = await supabase
+    .from('content_creatives')
+    .update({ ...patch, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteCreative(id: string): Promise<void> {
+  const { error } = await supabase.from('content_creatives').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// Upload a user-provided background to the public media-outputs bucket
+// (client uploads to own folder are allowed by the 024 policies) and return
+// its stable public URL.
+export async function uploadBackground(userId: string, file: File): Promise<string> {
+  const ext = file.name.includes('.') ? file.name.split('.').pop() : 'png';
+  const path = `${userId}/content-creator/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error } = await supabase.storage
+    .from('media-outputs')
+    .upload(path, file, { cacheControl: '31536000', upsert: false });
+  if (error) throw error;
+  const { data } = supabase.storage.from('media-outputs').getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// The user's completed image generations, for the background library picker.
+export async function listLibraryImages(userId: string): Promise<Array<{ id: string; url: string; prompt: string }>> {
+  const { data, error } = await supabase
+    .from('media_generations')
+    .select('id, output_url, prompt, kind, status')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return (data ?? [])
+    .filter(g => g.output_url && g.kind === 'image')
+    .map(g => ({ id: g.id, url: g.output_url as string, prompt: g.prompt ?? '' }));
+}
+
 // ---------------- Playbook entries ----------------
 
 export async function listPlaybookEntries(userId: string): Promise<PlaybookEntry[]> {

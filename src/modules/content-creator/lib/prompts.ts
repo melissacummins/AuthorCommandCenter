@@ -178,6 +178,40 @@ export function buildImportSplitPrompt(pasted: string): string {
   ].join('\n');
 }
 
+// ---------------- Slideshow writing ----------------
+
+export function buildSlidesPrompt(
+  hookText: string, sceneExcerpt: string, notes: string, slideCount: number,
+): string {
+  return [
+    HOOK_ANATOMY,
+    ``,
+    `Turn this approved hook into a ${slideCount}-slide TikTok/Instagram photo carousel. Each slide is one short text card shown over a background image.`,
+    `Structure: slide 1 IS the hook (the grabber — you may tighten it, never blunt it). Middle slides escalate with real beats from the scene, one beat per slide, keeping the gap open. The final slide lands the payoff or the cliff that makes them need the book — never a summary, never "read to find out".`,
+    `Rules: every fact and every quoted line must come straight from the scene below — invent nothing. Each slide under 110 characters, plain punchy reader voice, no hashtags, no emoji.`,
+    notes.trim() ? `AUTHOR DIRECTION (follow it): ${notes.trim()}` : '',
+    `Respond with JSON only: {"slides": [{"text": "..."}]}`,
+    ``,
+    `HOOK: ${hookText}`,
+    ``,
+    `SOURCE SCENE (verbatim):`,
+    sceneExcerpt || '(no excerpt — stay strictly on the hook itself; do not invent scene details)',
+  ].filter(Boolean).join('\n');
+}
+
+// ---------------- Scene → background image prompt ----------------
+
+export function buildImagePromptPrompt(sceneExcerpt: string, slideText: string): string {
+  return [
+    `Write one image-generation prompt for a vertical background behind this slideshow text. Describe mood, setting, palette, and lighting drawn from the scene — atmospheric and cinematic, softly blurred/darkened enough for overlaid text, romance-aesthetic.`,
+    `Never include: people's faces in close-up, any text or lettering, logos, watermarks.`,
+    `Under 60 words. Respond with JSON only: {"prompt": "..."}`,
+    ``,
+    `SLIDE TEXT: ${slideText}`,
+    `SCENE: ${sceneExcerpt || '(none — use the slide text mood alone)'}`,
+  ].join('\n');
+}
+
 // ---------------- Synonym suggestion ----------------
 
 export function buildSynonymPrompt(word: string, sentence: string): string {
