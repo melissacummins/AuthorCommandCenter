@@ -1,6 +1,10 @@
-# Content Creator — Feasibility Audit & Build Plan (v2)
+# Content Creator — Feasibility Audit & Build Plan (v3 — decisions locked)
 
-**Status:** Proposal for review — no code has been built yet.
+**Status:** Approved direction; build directive lives in `docs/CONTENT_CREATOR_DIRECTIVE.md`.
+**v3 changes:** Decisions from Melissa locked in (delete Promotions/Newsletters/Klaviyo
+outright; heat level 1–5; module named Content Creator; AACP is a plugin — export needed).
+New features added: built-in default banned-word list with auto-substitution, model
+favorites, and Google Drive / Dropbox export (with the OAuth-verification answer).
 **v2 changes:** Incorporates Melissa's review of v1 — the AuthorScale-style flow
 (scan → saved hook list → pick one → direct it → carousel), the script-over-video
 answer, keeping the "Kindle Screenshots" name, retiring Ads/Promotions/Newsletters/Ad
@@ -17,7 +21,7 @@ replacing the current Marketing module. Ad Alchemy is deleted.
 | Piece | Reality |
 |---|---|
 | **Marketing → Ads wizard** | UI prototype. The "AI analysis" is a hard-coded 2.5-second timer with fake results; nothing persists; steps don't share data. **Being retired.** |
-| **Marketing → Promotions & Newsletters tabs** | Real, catalog-backed, Supabase-persisted (Klaviyo integration). **Melissa says these can go too** — see open question #1 about whether to delete or park them. |
+| **Marketing → Promotions & Newsletters tabs** | Real, catalog-backed, Supabase-persisted (Klaviyo integration). **Decision: delete outright** — Klaviyo is no longer in use. UI and modules removed; underlying tables left in place (harmless, preserves old data) with an optional cleanup migration later. |
 | **Ad Alchemy** | 29-line placeholder splash. **Delete.** |
 | **Catalog** | Solid schema (title, series, pen name, blurb, tropes[], kinks, content warnings, identifiers, keywords, cover, reviews) but **no heat_level or subgenre columns**, and the UX has real problems: permanently in edit mode, no reading view, manual save, and a task system that nags about 30 "missing" items on published books. |
 | **Writing module** | Manuscript home. Imports .docx/.txt/.md with italics preserved, chapters stored as HTML, optional `book_id` link to catalog, `final` status. **This is the manuscript source of truth** — nothing else consumes it yet, but the schema is ready. |
@@ -92,6 +96,18 @@ afterthought:
   then flag).
 - Entries can be tagged (genre, heat, format: slideshow/ad/screenshot) and scoped
   global or per pen name.
+
+### Built-in banned words (ships with the app)
+The app ships a **default platform-safety word list** (Facebook/TikTok ad-unfriendly
+terms — "hunt," explicit anatomy, etc., seeded from published advertiser lists) that
+applies to everyone automatically; users can disable individual entries and add their
+own. Enforcement is two-layer and mostly free:
+1. **Prompt layer** — the active list rides along in every generation prompt.
+2. **Editor layer (deterministic, free)** — any banned word appearing in generated or
+   hand-edited text gets flagged inline with one-click fixes: swap to an AI-suggested
+   synonym, or apply a character mask that passes filters (accented letter or `@`
+   substitution — "hùnt" / "h@nt"), whichever the user prefers.
+So neither Melissa nor her users ever have to maintain this manually — it's just there.
 
 This also improves per-book targeting: the scan pass receives the book's tropes, heat,
 subgenre **and** the avatar framework, so hooks come out aimed at the right reader.
@@ -175,6 +191,29 @@ scope** here — separate conversation, so this plan stays digestible.)
 
 ---
 
+## 7b. Google Drive / Dropbox export (new — and why Calendar burned us but this won't)
+
+Sending finished assets (slideshow PNGs, WebM videos, screenshots) straight to Drive or
+Dropbox is feasible, and the Google Calendar verification wall **does not apply here**:
+
+- **Why Calendar failed:** calendar scopes are classified *sensitive* by Google, so a
+  public app must pass Google's verification review before anyone can authorize it.
+- **Why Drive export is different:** Google offers a special scope, `drive.file`, that
+  only lets the app touch **files the app itself created**. It's classified
+  *non-sensitive* — exactly the scope designed to avoid that verification wall. Since
+  export-to-Drive only ever writes our own output files, that's all we need. Bonus: the
+  app already has per-user Google token storage from the Calendar attempt, so the
+  plumbing exists.
+- **Dropbox:** apps run in development mode for a generous user allowance, and moving to
+  production is a lightweight review (nothing like Google's). Scoped to write-only file
+  access.
+
+Both appear as per-user "Connect" buttons in Settings, and every export screen gets
+"Download / Send to Drive / Send to Dropbox." Scheduled as the final phase since plain
+downloads work from day one.
+
+---
+
 ## 8. Build phases (revised)
 
 Each phase = one PR, app always working. Migrations idempotent, PR descriptions include
@@ -188,8 +227,10 @@ the Supabase SQL editor link, per house rules.
 | **3 — Video Composer** | Timed script over video or image slides (per-slide duration), music (upload or ElevenLabs), live preview, WebM export + separate-assets download. Revives Script Builder as the caption engine. |
 | **4 — Kindle Screenshots** | Scene picker, deterministic dialogue highlighting, annotation stamps, PNG export, feed into composer. |
 | **5 — Catalog autofill + QoL** | Scan-to-catalog confirm screen; catalog read view with collapsible sections; autosave; task quieting for published books. |
+| **6 — Cloud export** | Google Drive (`drive.file` scope — no verification wall) + Dropbox "send to" buttons on every export surface. |
 
-Phases 4 and 5 are independent of each other and can swap order.
+Phases 4 and 5 are independent of each other and can swap order; 6 can slot in any time
+after 2.
 
 ---
 
@@ -201,6 +242,10 @@ Phases 4 and 5 are independent of each other and can swap order.
   (small/cheap model for per-chapter extraction; the app's standard default model for
   ranking, slideshow wording, and copy) but **any model can be swapped in the UI at any
   time** — a retired model means changing a dropdown, not rebuilding features.
+- **Model favorites:** star any model in the dropdown; favorites pin to the top and can
+  be set as the always-use default per task. The same favorites-aware dropdown component
+  gets retrofitted into the Writing module's model picker (the thing Melissa wished it
+  had).
 - Cost shape at defaults: full-novel scan ≈ $0.20–0.40; slideshow generation ≈ a few
   cents; background image ≈ $0.003–0.08; video background ≈ $0.10–1. All on your own
   keys; every generation is user-initiated.
@@ -211,20 +256,21 @@ Phases 4 and 5 are independent of each other and can swap order.
 
 ---
 
-## 10. Open questions (small ones)
+## 10. Decisions (locked)
 
-1. **Promotions & Newsletters:** those tabs are real working features with data (Klaviyo
-   sync, catalog-linked promos). When Marketing dies, do we (a) delete them outright, or
-   (b) park them as a hidden/legacy module for one release so nothing is lost, then
-   delete? Recommendation: (b).
-2. **Author Ad Copy Pro import:** what format does your personalized version live in
-   (doc, Notion page, plugin config file, GPT/Claude project instructions)? Paste-in
-   always works; if it's a file we can build a proper importer.
-3. **Heat level format:** proposal — 1–5 scale with editable labels (1 sweet → 5
-   scorching), shown as flames in the UI. Confirm or adjust.
-4. **Module name:** "Content Creator" — keep, or something else (Creator Studio,
-   Content Studio…)?
+1. **Promotions & Newsletters:** delete outright, Klaviyo included. UI/modules removed;
+   DB tables left in place for now (optional cleanup migration later).
+2. **Author Ad Copy Pro:** it's a plugin. Melissa will export its contents — the
+   instructions/rules text, any knowledge/reference files, and a batch of approved hooks
+   (any format: paste, txt/md/docx/csv). The Playbook importer accepts paste + file
+   upload, so the exact export shape isn't a blocker for the build.
+3. **Heat level:** 1–5 scale, flame display, editable labels.
+4. **Module name:** **Content Creator.**
+5. **Scanning:** always manual (user-initiated, user pays only when they choose to use it).
+6. **Ad Alchemy:** deleted.
+7. **Music:** upload-your-own + ElevenLabs (keys already stored); Suno excluded (no
+   official public API).
 
-Once these are settled, next deliverable is `docs/CONTENT_CREATOR_DIRECTIVE.md` — the
-full phase-by-phase build instructions (schemas, endpoints, prompt templates including
-playbook injection, acceptance checks) that a build session can execute one PR at a time.
+**Next deliverable:** `docs/CONTENT_CREATOR_DIRECTIVE.md` — the full phase-by-phase build
+instructions (schemas, endpoints, prompt templates including playbook injection,
+acceptance checks) that a build session executes one PR at a time.
