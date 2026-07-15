@@ -28,7 +28,7 @@ export function calculateTrueCostForQuote(product: Product, quoteUnitCost: numbe
   return { trueCost, reprintQaCost, netMargin, netMarginPercent };
 }
 
-export function calculateProductMetrics(product: Product, allProducts?: Product[]) {
+export function calculateProductMetrics(product: Product, allProducts?: Product[], avgDailyFromOrders?: number) {
   // Transaction Fees: (basePrice * 0.029) + 0.30
   const transactionFees = product.base_price > 0
     ? (product.base_price * FEE_RATES.TRANSACTION_FEE_PERCENT) + FEE_RATES.TRANSACTION_FEE_FIXED
@@ -80,16 +80,26 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     bundlesInventory = calculateBundleInventory(product, allProducts);
   }
 
-  // Average daily sales — combines book AND bundle sales.
+  // Average daily sales priority (highest wins):
+  //   1. csv_avg_daily override — user has set it explicitly on the product
+  //   2. avgDailyFromOrders — computed live from synced Shopify order dates
+  //   3. (six_month_book_sales + six_month_bundle_sales) / 180 fallback
   // Coerce every input to a number so a null column from Supabase doesn't
   // propagate as NaN and silently zero out the reorder threshold.
   const csvAvgDaily = Number(product.csv_avg_daily) || 0;
   const sixMoBook = Number(product.six_month_book_sales) || 0;
   const sixMoBundle = Number(product.six_month_bundle_sales) || 0;
   const leadTime = Number(product.lead_time) || 0;
+  const shopifyDaily = Number(avgDailyFromOrders) || 0;
   const avgDailySales = csvAvgDaily > 0
     ? csvAvgDaily
-    : (sixMoBook + sixMoBundle) / 180;
+    : shopifyDaily > 0
+      ? shopifyDaily
+      : (sixMoBook + sixMoBundle) / 180;
+  const avgDailySource: 'override' | 'shopify' | 'six_month' | 'none' =
+    csvAvgDaily > 0 ? 'override'
+    : shopifyDaily > 0 ? 'shopify'
+    : (sixMoBook + sixMoBundle) > 0 ? 'six_month' : 'none';
 
   // Reorder Threshold: avgDailySales * leadTime
   const reorderThreshold = Math.ceil(avgDailySales * leadTime);
@@ -161,6 +171,7 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     bookInventory,
     bundlesInventory,
     avgDailySales,
+    avgDailySource,
     reorderThreshold,
     daysRemaining,
     reorderQty,

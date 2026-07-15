@@ -2,6 +2,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { Search, ChevronDown, ChevronUp, ChevronRight, Edit2, Check, X, Plus, Trash2, FileText, Copy } from 'lucide-react';
 import type { Product, PurchaseOrder } from '../../../lib/types';
 import { calculateProductMetrics, formatCurrency, formatPercent, marginColor, CATEGORIES, STATUSES } from '../utils';
+import { useSalesRates } from '../hooks/useSalesRates';
 import { updateProduct, deleteProduct } from '../api';
 import { getNotesForProduct, getDefectStatsForProduct } from '../api/purchaseOrders';
 import type { DefectStats } from '../api/purchaseOrders';
@@ -83,7 +84,12 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
   const [bulkValue, setBulkValue] = useState<string>('');
   const [bulkSaving, setBulkSaving] = useState(false);
 
-  const enriched = products.map(p => ({ ...p, metrics: calculateProductMetrics(p, products) }));
+  const { rates: salesRates } = useSalesRates(180);
+  const enriched = products.map(p => {
+    const sku = (p.sku || '').trim().toUpperCase();
+    const shopifyDaily = sku ? salesRates.get(sku)?.avgDaily : undefined;
+    return { ...p, metrics: calculateProductMetrics(p, products, shopifyDaily) };
+  });
 
   let filtered = enriched.filter(p => {
     const matchesSearch = !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase());
@@ -565,6 +571,12 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                                   <div>
                                     <p className="text-[11px] text-slate-400 uppercase mb-0.5">Avg Daily Sales</p>
                                     <span>{product.metrics.avgDailySales.toFixed(4)}</span>
+                                    <span className="ml-1 text-[10px] text-slate-400" title="Source of this number: Shopify orders, manual override, or 6-month sales fallback">
+                                      {product.metrics.avgDailySource === 'shopify' && '(Shopify)'}
+                                      {product.metrics.avgDailySource === 'override' && '(override)'}
+                                      {product.metrics.avgDailySource === 'six_month' && '(6mo)'}
+                                      {product.metrics.avgDailySource === 'none' && '(no data)'}
+                                    </span>
                                   </div>
                                 </>
                               ) : (
@@ -596,6 +608,12 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                                   <div>
                                     <p className="text-[11px] text-slate-400 uppercase mb-0.5">Avg Daily Sales</p>
                                     <span>{product.metrics.avgDailySales.toFixed(4)}</span>
+                                    <span className="ml-1 text-[10px] text-slate-400" title="Source of this number: Shopify orders, manual override, or 6-month sales fallback">
+                                      {product.metrics.avgDailySource === 'shopify' && '(Shopify)'}
+                                      {product.metrics.avgDailySource === 'override' && '(override)'}
+                                      {product.metrics.avgDailySource === 'six_month' && '(6mo)'}
+                                      {product.metrics.avgDailySource === 'none' && '(no data)'}
+                                    </span>
                                   </div>
                                 </>
                               )}
