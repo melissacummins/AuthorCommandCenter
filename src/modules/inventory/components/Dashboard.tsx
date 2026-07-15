@@ -2,6 +2,7 @@ import { Package, AlertTriangle, TrendingUp, DollarSign, RefreshCw, Plus, Search
 import type { Product } from '../../../lib/types';
 import { useAuth } from '../../../contexts/AuthContext';
 import { calculateProductMetrics, formatCurrency, formatPercent, marginColor } from '../utils';
+import { useSalesRates } from '../hooks/useSalesRates';
 
 interface DashboardProps {
   products: Product[];
@@ -13,7 +14,12 @@ export default function Dashboard({ products, onAddProduct, onAdjustStock }: Das
   const { profile, user } = useAuth();
   const firstName = (profile?.full_name || user?.user_metadata?.full_name || 'there').split(' ')[0];
 
-  const enriched = products.map(p => ({ ...p, metrics: calculateProductMetrics(p, products) }));
+  const { rates: salesRates } = useSalesRates(180);
+  const enriched = products.map(p => {
+    const sku = (p.sku || '').trim().toUpperCase();
+    const shopifyDaily = sku ? salesRates.get(sku)?.avgDaily : undefined;
+    return { ...p, metrics: calculateProductMetrics(p, products, shopifyDaily) };
+  });
 
   const totalProducts = products.length;
   const totalInventory = enriched.reduce((sum, p) => {

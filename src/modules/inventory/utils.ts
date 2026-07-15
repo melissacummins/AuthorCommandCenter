@@ -28,7 +28,7 @@ export function calculateTrueCostForQuote(product: Product, quoteUnitCost: numbe
   return { trueCost, reprintQaCost, netMargin, netMarginPercent };
 }
 
-export function calculateProductMetrics(product: Product, allProducts?: Product[]) {
+export function calculateProductMetrics(product: Product, allProducts?: Product[], avgDailyFromOrders?: number) {
   // Transaction Fees: (basePrice * 0.029) + 0.30
   const transactionFees = product.base_price > 0
     ? (product.base_price * FEE_RATES.TRANSACTION_FEE_PERCENT) + FEE_RATES.TRANSACTION_FEE_FIXED
@@ -80,13 +80,29 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     bundlesInventory = calculateBundleInventory(product, allProducts);
   }
 
-  // Average daily sales — combines book AND bundle sales
-  const avgDailySales = product.csv_avg_daily > 0
-    ? product.csv_avg_daily
-    : (product.six_month_book_sales + product.six_month_bundle_sales) / 180;
+  // Average daily sales priority (highest wins):
+  //   1. csv_avg_daily override — user has set it explicitly on the product
+  //   2. avgDailyFromOrders — computed live from synced Shopify order dates
+  //   3. (six_month_book_sales + six_month_bundle_sales) / 180 fallback
+  // Coerce every input to a number so a null column from Supabase doesn't
+  // propagate as NaN and silently zero out the reorder threshold.
+  const csvAvgDaily = Number(product.csv_avg_daily) || 0;
+  const sixMoBook = Number(product.six_month_book_sales) || 0;
+  const sixMoBundle = Number(product.six_month_bundle_sales) || 0;
+  const leadTime = Number(product.lead_time) || 0;
+  const shopifyDaily = Number(avgDailyFromOrders) || 0;
+  const avgDailySales = csvAvgDaily > 0
+    ? csvAvgDaily
+    : shopifyDaily > 0
+      ? shopifyDaily
+      : (sixMoBook + sixMoBundle) / 180;
+  const avgDailySource: 'override' | 'shopify' | 'six_month' | 'none' =
+    csvAvgDaily > 0 ? 'override'
+    : shopifyDaily > 0 ? 'shopify'
+    : (sixMoBook + sixMoBundle) > 0 ? 'six_month' : 'none';
 
   // Reorder Threshold: avgDailySales * leadTime
-  const reorderThreshold = Math.ceil(avgDailySales * product.lead_time);
+  const reorderThreshold = Math.ceil(avgDailySales * leadTime);
 
   // Days of Inventory Remaining
   let daysRemaining: number;
@@ -106,7 +122,7 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     status = 'OUT OF STOCK';
   } else if (bookInventory <= reorderThreshold && reorderThreshold > 0) {
     status = 'REORDER NOW';
-  } else if (daysRemaining !== Infinity && daysRemaining <= product.lead_time) {
+  } else if (daysRemaining !== Infinity && daysRemaining <= leadTime) {
     status = 'REORDER NOW';
   } else {
     status = 'Good';
@@ -116,7 +132,7 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
   let reorderQty = 0;
   if (status === 'REORDER NOW' || status === 'OUT OF STOCK') {
     reorderQty = Math.round(Math.max(
-      reorderThreshold - bookInventory + (avgDailySales * product.lead_time),
+      reorderThreshold - bookInventory + (avgDailySales * leadTime),
       0
     ));
   }
@@ -155,6 +171,7 @@ export function calculateProductMetrics(product: Product, allProducts?: Product[
     bookInventory,
     bundlesInventory,
     avgDailySales,
+    avgDailySource,
     reorderThreshold,
     daysRemaining,
     reorderQty,
