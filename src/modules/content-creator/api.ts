@@ -32,7 +32,7 @@ export async function insertHooks(
 
 export async function updateHook(
   id: string,
-  patch: Partial<Pick<ContentHook, 'hook_text' | 'scene_excerpt' | 'rationale' | 'tags' | 'status' | 'favorite'>>,
+  patch: Partial<Pick<ContentHook, 'hook_text' | 'scene_excerpt' | 'rationale' | 'tags' | 'status' | 'favorite' | 'test_result'>>,
 ): Promise<ContentHook> {
   const { data, error } = await supabase
     .from('content_hooks')

@@ -16,6 +16,10 @@ export interface PreambleContext {
   entries: PlaybookEntry[];  // pre-filtered to active + this pen name/global
   rules: PlaybookRule[];     // active style + avatar rules
   bannedWords: ActiveBannedWord[];
+  // The ad-performance feedback loop: hooks this author actually tested.
+  // Failed ones become negative examples; winners become the target sound.
+  workedHooks?: string[];
+  failedHooks?: string[];
 }
 
 const MAX_PLAYBOOK_ENTRIES = 15;
@@ -59,6 +63,15 @@ export function buildPreamble(ctx: PreambleContext): string {
     parts.push(`BANNED WORDS — never use any of these words in your output (ad platforms flag them): ${bannedWords.map(b => b.word).join(', ')}`);
   }
 
+  const worked = (ctx.workedHooks ?? []).slice(0, 8);
+  const failed = (ctx.failedHooks ?? []).slice(0, 8);
+  if (worked.length) {
+    parts.push(`HOOKS THAT WORKED IN THIS AUTHOR'S REAL ADS — this is the target sound:\n${worked.map(h => `- ${h}`).join('\n')}`);
+  }
+  if (failed.length) {
+    parts.push(`HOOKS THAT FAILED IN THIS AUTHOR'S REAL ADS — never produce anything shaped like these:\n${failed.map(h => `- ${h}`).join('\n')}`);
+  }
+
   return parts.join('\n\n');
 }
 
@@ -98,7 +111,8 @@ THE INTEREST TEST — apply before returning anything:
 Would a stranger who has never heard of this book stop scrolling because they NEED the answer? If the honest answer is "it's fine," cut it. Returning fewer hooks is always better than padding with weak ones.
 
 FAILURE MODES — anything matching these is rejected:
-- RAW QUOTE / PAGE-LIFT: the hook is a line, sentence, or fragment copied from the manuscript with no reader-facing frame ("You are mine!" / "Because"—he hooked her knees). Dialogue may ONLY appear quoted inside a frame that tells the viewer why to care.
+- RAW QUOTE / PAGE-LIFT: the hook is a line, sentence, or fragment copied from the manuscript with no reader-facing frame ("You are mine!" / "Because"—he hooked her knees). Dialogue may ONLY appear quoted inside a frame that tells the viewer why to care. NARROW EXCEPTION: a bare line may stand alone when a total stranger gets both the scenario AND the question from the line itself ("Touch her and you die" passes; "You are mine!" does not — any book could own it).
+- STAKELESS VOW: a pure devotion declaration with no cost, threat, or gap ("you are worth everything", "I will treat you like a goddess") — real ad data shows these fail. A vow qualifies only when it visibly costs the speaker something or carries an edge ("the circle can survive on its own. I can't survive without you" works because everyone else comes second).
 - MISAIMED POV: "POV: you" doing the protagonist's plot actions instead of receiving the romance payoff ("POV: you destroyed a room with vines").
 - SUMMARY: describes the premise or dynamic ("He's powerful, but he'd drop everything for her") — that's back-cover copy, not a hook.
 - FAKE MYSTERY: coy about something that isn't mysterious, or withholds/implies something the scene doesn't support.
@@ -112,7 +126,7 @@ FAILURE MODES — anything matching these is rejected:
 
 export function buildExtractPrompt(chapterTitle: string, chapterIdx: number, chapterText: string): string {
   return [
-    `Read this chapter and locate 0-4 moments with hook potential — moments that could stop a romance reader mid-scroll: killer dialogue, "wait, WHAT?" beats, unhinged devotion, power flips, disproportionate reactions, plans derailing, guarded characters cracking.`,
+    `Read this chapter and locate 0-4 moments with hook potential — moments that could stop a romance reader mid-scroll: killer dialogue, "wait, WHAT?" beats, devotion WITH stakes (a vow that costs the speaker something — pure compliments and worship don't count), power flips, disproportionate reactions, plans derailing, guarded characters cracking, reader-insertion moments (a viewer could imagine being her right here), and performable beats (a scene someone could act out in 15 seconds).`,
     `Your job is ONLY to find and copy. Do not write marketing copy, do not editorialize, do not exaggerate.`,
     `For each moment return:`,
     `- moment: one plain, factual sentence describing exactly what happens — who does/says what (match the scene precisely: right people, right pronouns, right speaker)`,
@@ -184,6 +198,23 @@ export function buildVariationsPrompt(quote: string, sceneContext: string, notes
   ].filter(Boolean).join('\n');
 }
 
+// Premise mode: no quote at all — hooks written from the book facts alone
+// (Premise Question, Reader Promise, trope-forward frames). The verified
+// biggest viral result in the research was a premise question, no scene.
+export function buildPremisePrompt(maxVariations: number): string {
+  return [
+    HOOK_ANATOMY,
+    ``,
+    `Write up to ${maxVariations} PREMISE-LEVEL hooks for this book using ONLY the book facts in the system prompt — no scene, no quote. Each must use a DIFFERENT strategy; lead with Premise Question and Reader Promise, then trope-forward frames (Trope Switch-Up, Trope Highlight (Question), Character Introduction).`,
+    `Rules:`,
+    `- Compress high-concept stakes + the central trope into one sentence per hook.`,
+    `- Every fact comes from the book facts. Invent nothing — no events, no names, no details the facts don't support.`,
+    `- Vary the frame across the set: at most one "when" opener, at most one "POV:".`,
+    `- strategy: the library entry title, exactly as written.`,
+    `Respond with JSON only, best first: {"variations": [{"strategy": "...", "hook_text": "...", "rationale": "..."}]}`,
+  ].join('\n');
+}
+
 // ---------------- Verification (per surviving hook) ----------------
 // Adversarial pass: fact-check the hook against its own excerpt and apply
 // the interest test. Runs on the same strong model as ranking.
@@ -203,6 +234,7 @@ export function buildVerifyPrompt(hookText: string, sceneExcerpt: string): strin
     `Check 1 — ACCURACY: verify every claim in the hook against the excerpt. Pronouns, who speaks each line, what actually happens, exact wording inside quotation marks. Any mismatch = not accurate.`,
     `Check 2 — IS IT A HOOK: apply the VOICE & FRAME rules, the STRUCTURE, the FAILURE MODES, and the INTEREST TEST above. Be especially ruthless about RAW QUOTE / PAGE-LIFT — if the hook is just a line from the book with no reader-facing frame, it is not a hook, no matter how good the line is (that's fixable: wrap the line in a frame in fixed_hook_text).`,
     `If the underlying moment is strong but the wording fails, write a corrected version in fixed_hook_text (following the anatomy, verbatim dialogue only). If the moment itself can't carry a hook, set is_hook to false and fixed_hook_text to null.`,
+    `Calibration: winners are unpredictable — hard-reject ONLY for inaccuracy, raw page-lifts, stakeless vows, and structural failures. If a hook is structurally sound but the interest test feels merely borderline, KEEP it (is_hook true) and note the doubt in problems — testing decides borderline cases, not you.`,
     `Respond with JSON only: {"accurate": true/false, "is_hook": true/false, "problems": ["..."], "fixed_hook_text": "..." or null}`,
     ``,
     `HOOK: ${hookText}`,

@@ -6,6 +6,7 @@ import { listBooks } from '../catalog/api';
 import type { Book } from '../catalog/types';
 import { getManuscriptForBook } from '../writing/api';
 import type { Manuscript } from '../writing/types';
+import { hashtagLine } from './lib/hashtags';
 import HooksTab from './components/HooksTab';
 import PlaybookTab from './components/PlaybookTab';
 import SlideshowsTab from './components/SlideshowsTab';
@@ -144,6 +145,22 @@ export default function ContentCreatorModule() {
   );
 }
 
+// Post-ready hashtag line from catalog data (3-5 tags incl. #booktok —
+// research: trope tags do framing work; more tags gets suppressed).
+function HashtagsChip({ book }: { book: Book }) {
+  const [copied, setCopied] = useState(false);
+  const line = hashtagLine(book);
+  return (
+    <button
+      onClick={() => { navigator.clipboard.writeText(line).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => undefined); }}
+      title="Copy post hashtags (built from this book's subgenre, tropes, and heat)"
+      className="text-xs text-sky-600 hover:text-sky-800 truncate max-w-xs text-left"
+    >
+      {copied ? 'Copied!' : line}
+    </button>
+  );
+}
+
 function BookFacts({ book, manuscript, manuscriptLoading }: {
   book: Book;
   manuscript: Manuscript | null;
@@ -174,6 +191,7 @@ function BookFacts({ book, manuscript, manuscriptLoading }: {
           ? `${manuscript.title} (${manuscript.status})`
           : 'none linked — link one in Writing to enable scanning'}
       </span>
+      <HashtagsChip book={book} />
     </div>
   );
 }

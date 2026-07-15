@@ -2,6 +2,9 @@
 
 export type HookStatus = 'candidate' | 'approved' | 'archived';
 export type HookSource = 'scan' | 'manual';
+// Ad-performance feedback: authors mark hooks after testing them; the AI
+// preamble feeds these back as positive/negative examples.
+export type HookTestResult = 'untested' | 'worked' | 'failed';
 
 export interface ContentHook {
   id: string;
@@ -15,6 +18,7 @@ export interface ContentHook {
   status: HookStatus;
   favorite: boolean;
   source: HookSource;
+  test_result: HookTestResult;
   created_at: string;
   updated_at: string;
 }
