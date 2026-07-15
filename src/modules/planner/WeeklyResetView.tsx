@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   RotateCcw, ChevronLeft, ChevronRight, ChevronDown, ImagePlus, Loader2, Plus, Trash2, Check,
   Sparkles, Star, Zap, Heart, CalendarClock, CalendarDays, AlertCircle, X,
@@ -244,37 +244,43 @@ export default function WeeklyResetView({
             Add a photo above, or add items by hand below. Nothing becomes a to-do until you approve.
           </li>
         ) : draft.items.map((it, i) => (
-          <li key={i} className={`flex items-center gap-2 px-3 py-2 ${it.uncertain ? 'bg-amber-50' : ''}`}>
-            {it.uncertain && <span title="Claude guessed this — please confirm"><AlertCircle className="w-3.5 h-3.5 text-amber-500 shrink-0" /></span>}
-            <input
-              value={it.text}
-              onChange={e => patchItem(i, { text: e.target.value, uncertain: false })}
-              placeholder="Describe it…"
-              className="flex-1 min-w-0 text-sm bg-transparent outline-none text-slate-700 placeholder:text-slate-300"
-            />
-            {it.quick && it.estimate_minutes ? <span className="hidden sm:inline text-[11px] text-slate-400 shrink-0">{it.estimate_minutes}m</span> : null}
-            {(it.meeting || it.date != null) && (
-              <input
-                type="date"
-                value={it.date ?? ''}
-                onChange={e => patchItem(i, { date: e.target.value || null })}
-                className="shrink-0 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-600"
-                title={it.meeting ? 'Meeting date' : 'Scheduled day'}
+          <li key={i} className={`px-3 py-2 ${it.uncertain ? 'bg-amber-50' : ''}`}>
+            {/* The item text gets the full width and wraps (auto-growing), so a
+                long transcribed line is fully readable — the tags sit on the row
+                below rather than squeezing it. */}
+            <div className="flex items-start gap-2">
+              {it.uncertain && <span className="mt-1 shrink-0" title="Claude guessed this — please confirm"><AlertCircle className="w-3.5 h-3.5 text-amber-500" /></span>}
+              <GrowTextarea
+                value={it.text}
+                onChange={v => patchItem(i, { text: v, uncertain: false })}
+                placeholder="Describe it…"
               />
-            )}
-            <TagButton active={!!it.priority} onClick={() => patchItem(i, { priority: !it.priority })} title="Priority (Important)" tone="amber"><Star className="w-3.5 h-3.5" fill={it.priority ? 'currentColor' : 'none'} /></TagButton>
-            <TagButton active={!!it.quick} onClick={() => toggleQuick(i, !it.quick)} title="Quick task (15 min)" tone="teal"><Zap className="w-3.5 h-3.5" fill={it.quick ? 'currentColor' : 'none'} /></TagButton>
-            <TagButton active={!!it.feel_good} onClick={() => patchItem(i, { feel_good: !it.feel_good })} title="Would feel good" tone="rose"><Heart className="w-3.5 h-3.5" fill={it.feel_good ? 'currentColor' : 'none'} /></TagButton>
-            {!it.meeting && (
-              <TagButton
-                active={it.date != null}
-                onClick={() => patchItem(i, { date: it.date != null ? null : today })}
-                title="Schedule on a day"
-                tone="violet"
-              ><CalendarDays className="w-3.5 h-3.5" /></TagButton>
-            )}
-            <TagButton active={!!it.meeting} onClick={() => patchItem(i, { meeting: !it.meeting })} title="Meeting (set a date)" tone="sky"><CalendarClock className="w-3.5 h-3.5" /></TagButton>
-            <button onClick={() => removeItem(i)} className="text-slate-300 hover:text-rose-500 shrink-0" title="Remove"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={() => removeItem(i)} className="mt-0.5 text-slate-300 hover:text-rose-500 shrink-0" title="Remove"><Trash2 className="w-3.5 h-3.5" /></button>
+            </div>
+            <div className="mt-1.5 flex items-center flex-wrap gap-1.5">
+              {it.quick && it.estimate_minutes ? <span className="text-[11px] text-slate-400 mr-0.5">{it.estimate_minutes}m</span> : null}
+              {(it.meeting || it.date != null) && (
+                <input
+                  type="date"
+                  value={it.date ?? ''}
+                  onChange={e => patchItem(i, { date: e.target.value || null })}
+                  className="shrink-0 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-600"
+                  title={it.meeting ? 'Meeting date' : 'Scheduled day'}
+                />
+              )}
+              <TagButton active={!!it.priority} onClick={() => patchItem(i, { priority: !it.priority })} title="Priority (Important)" tone="amber"><Star className="w-3.5 h-3.5" fill={it.priority ? 'currentColor' : 'none'} /></TagButton>
+              <TagButton active={!!it.quick} onClick={() => toggleQuick(i, !it.quick)} title="Quick task (15 min)" tone="teal"><Zap className="w-3.5 h-3.5" fill={it.quick ? 'currentColor' : 'none'} /></TagButton>
+              <TagButton active={!!it.feel_good} onClick={() => patchItem(i, { feel_good: !it.feel_good })} title="Would feel good" tone="rose"><Heart className="w-3.5 h-3.5" fill={it.feel_good ? 'currentColor' : 'none'} /></TagButton>
+              {!it.meeting && (
+                <TagButton
+                  active={it.date != null}
+                  onClick={() => patchItem(i, { date: it.date != null ? null : today })}
+                  title="Schedule on a day"
+                  tone="violet"
+                ><CalendarDays className="w-3.5 h-3.5" /></TagButton>
+              )}
+              <TagButton active={!!it.meeting} onClick={() => patchItem(i, { meeting: !it.meeting })} title="Meeting (set a date)" tone="sky"><CalendarClock className="w-3.5 h-3.5" /></TagButton>
+            </div>
           </li>
         ))}
       </ul>
@@ -282,6 +288,35 @@ export default function WeeklyResetView({
         <Plus className="w-3.5 h-3.5" /> add an item
       </button>
     </div>
+  );
+}
+
+// A textarea that grows to fit its content (starts at one line), so a long
+// brain-dump item wraps and is fully visible instead of scrolling sideways in a
+// single-line input.
+function GrowTextarea({
+  value, onChange, placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="flex-1 min-w-0 resize-none overflow-hidden text-sm bg-transparent outline-none text-slate-700 placeholder:text-slate-300 leading-snug"
+    />
   );
 }
 
