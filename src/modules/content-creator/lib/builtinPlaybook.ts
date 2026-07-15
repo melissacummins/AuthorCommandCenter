@@ -35,6 +35,9 @@ export const BUILTIN_STRATEGIES: BuiltinStrategy[] = [
   { title: 'Character Introduction (Trend Format)', pattern: 'Fill a trending intro format with actual character details.', example: "he's a 10 but he's dead and guilty of 3 murders and seeking a second chance" },
   { title: 'Text Exchange Highlight', pattern: "A text exchange where one character's reply reveals more than intended.", example: 'when she jokes about having other guys over and his text is not casual' },
   { title: 'Curiosity Gap', pattern: '[Subject] + [unexpected action that raises a question] — the viewer cannot scroll away without closing the gap.', example: 'She told the monster to chase her.' },
+  // Added from verified 2026 research (docs/reference/hook-research-2026.md):
+  { title: 'Premise Question', pattern: 'Pitch the whole premise as ONE direct question to the viewer — "would you read a book about…?" — compressing high-concept stakes and the central trope into a single sentence. Works from book facts alone; no scene needed. The best-documented viral book hook (1M+ views overnight) used this shape.', example: 'would you read a book about an island that appears every 100 years, where six rulers can break their curses and save their people?' },
+  { title: 'Reader Promise', pattern: "Promise the FEELING or fantasy the book delivers to the reader (Meta's 'value promise' hook type) — what it will do to them, not what happens in it.", example: 'warning: this vampire will ruin every other book boyfriend for you' },
 ];
 
 export function builtinPlaybookBlock(): string {

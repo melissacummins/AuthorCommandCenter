@@ -9,11 +9,11 @@ import {
   getRunningScan, createScan, updateScan,
   listPlaybookEntries, listRules, listDefaultBannedWords, listBannedWordOptouts,
 } from '../api';
-import type { ContentHook, HookCandidate, WrittenHook, HookStatus } from '../types';
+import type { ContentHook, HookCandidate, WrittenHook, HookStatus, HookTestResult } from '../types';
 import { runJsonTask, runTask, getTaskModel } from '../lib/ai';
 import {
   buildPreamble, buildExtractPrompt, buildRankPrompt, buildVerifyPrompt, buildSynonymPrompt,
-  buildVariationsPrompt, parseJsonResponse, type HookVerdict, type HookVariation,
+  buildVariationsPrompt, buildPremisePrompt, parseJsonResponse, type HookVerdict, type HookVariation,
 } from '../lib/prompts';
 import ScanModelPickers from './ScanModelPickers';
 import { findSceneForQuote, type FoundScene } from '../lib/sceneLookup';
@@ -45,6 +45,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
   const [statusFilter, setStatusFilter] = useState<HookStatus | 'all'>('all');
   const [bannedActive, setBannedActive] = useState<ActiveBannedWord[]>([]);
   const [playbookEmpty, setPlaybookEmpty] = useState(false);
+  const [workshopSeed, setWorkshopSeed] = useState<{ text: string } | null>(null);
   const cancelRef = useRef(false);
 
   useEffect(() => {
@@ -89,7 +90,11 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
       const activeEntries = entries.filter(e => e.active && (!e.pen_name_id || e.pen_name_id === book.pen_name_id));
       const activeRules = rules.filter(r => r.active);
       const banned = buildActiveBannedWords(defaults, optouts, rules);
-      const system = buildPreamble({ book, entries: activeEntries, rules: activeRules, bannedWords: banned });
+      const system = buildPreamble({
+        book, entries: activeEntries, rules: activeRules, bannedWords: banned,
+        workedHooks: hooks.filter(h => h.test_result === 'worked').map(h => h.hook_text),
+        failedHooks: hooks.filter(h => h.test_result === 'failed').map(h => h.hook_text),
+      });
 
       // Resume the running scan if there is one; otherwise start fresh.
       let scan = await getRunningScan(user.id, manuscript.id);
@@ -268,6 +273,9 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
         manuscriptId={manuscript?.id ?? null}
         bannedActive={bannedActive}
         onSaved={h => setHooks(prev => [h, ...prev])}
+        workedHooks={hooks.filter(h => h.test_result === 'worked').map(h => h.hook_text)}
+        failedHooks={hooks.filter(h => h.test_result === 'failed').map(h => h.hook_text)}
+        seed={workshopSeed}
       />
 
       <div className="flex items-center justify-between">
@@ -295,6 +303,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
               Clear candidates
             </button>
           )}
+          <ImportMomentsButton userId={user.id} bookId={book.id} manuscriptId={manuscript?.id ?? null} onAdded={added => setHooks(prev => [...added, ...prev])} />
           <AddHookButton userId={user.id} bookId={book.id} manuscriptId={manuscript?.id ?? null} onAdded={h => setHooks(prev => [h, ...prev])} />
         </div>
       </div>
@@ -315,6 +324,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
               bannedActive={bannedActive}
               onChanged={next => setHooks(prev => prev.map(x => x.id === next.id ? next : x))}
               onDeleted={() => setHooks(prev => prev.filter(x => x.id !== h.id))}
+              onWorkshop={text => { setWorkshopSeed({ text }); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
             />
           ))}
         </div>
@@ -328,12 +338,15 @@ const MAX_VARIATIONS = 8;
 // Paste one quote you already love → one hook per fitting strategy from the
 // library, labeled, side by side. The answer to "the scan converges on one
 // shape": here variety is the assignment, not a suggestion.
-function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
+function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, workedHooks, failedHooks, seed }: {
   userId: string;
   book: Book;
   manuscriptId: string | null;
   bannedActive: ActiveBannedWord[];
   onSaved: (h: ContentHook) => void;
+  workedHooks: string[];
+  failedHooks: string[];
+  seed: { text: string } | null;
 }) {
   const [open, setOpen] = useState(false);
   const [quote, setQuote] = useState('');
@@ -344,6 +357,34 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
   const [savedIdx, setSavedIdx] = useState<Set<number>>(new Set());
   const [scene, setScene] = useState<FoundScene | null>(null);
   const [sceneStatus, setSceneStatus] = useState<'idle' | 'found' | 'notfound'>('idle');
+  // Premise-mode runs write from book facts only; saved variations then
+  // carry no scene, and the quote box is ignored.
+  const [premiseRun, setPremiseRun] = useState(false);
+
+  // A hook card's "Workshop" button seeds the quote box.
+  useEffect(() => {
+    if (seed?.text) { setQuote(seed.text); setOpen(true); }
+  }, [seed]);
+
+  async function buildSystem(): Promise<string> {
+    const [entries, rules] = await Promise.all([listPlaybookEntries(userId), listRules(userId)]);
+    const activeEntries = entries.filter(e => e.active && (!e.pen_name_id || e.pen_name_id === book.pen_name_id));
+    return buildPreamble({
+      book, entries: activeEntries, rules: rules.filter(r => r.active), bannedWords: bannedActive,
+      workedHooks, failedHooks,
+    });
+  }
+
+  async function runVariations(prompt: string, premise: boolean) {
+    const system = await buildSystem();
+    const out = await runJsonTask<{ variations: HookVariation[] }>({
+      userId, task: 'rank', system, prompt, maxTokens: 2048,
+    });
+    const clean = (out.variations ?? []).filter(v => v.hook_text?.trim()).slice(0, MAX_VARIATIONS);
+    if (!clean.length) throw new Error(premise ? 'No premise hooks came back — check the book has tropes/blurb in Catalog.' : 'No variations came back — try a longer or more charged excerpt.');
+    setVariations(clean);
+    setPremiseRun(premise);
+  }
 
   async function generate() {
     if (quote.trim().length < 20) { setError('Paste a little more of the moment — a line or two at least.'); return; }
@@ -358,20 +399,20 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
       }
       setScene(found);
       setSceneStatus(found ? 'found' : 'notfound');
+      await runVariations(buildVariationsPrompt(quote, found?.excerpt ?? '', notes, MAX_VARIATIONS), false);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
-      const [entries, rules] = await Promise.all([listPlaybookEntries(userId), listRules(userId)]);
-      const activeEntries = entries.filter(e => e.active && (!e.pen_name_id || e.pen_name_id === book.pen_name_id));
-      const system = buildPreamble({ book, entries: activeEntries, rules: rules.filter(r => r.active), bannedWords: bannedActive });
-      const out = await runJsonTask<{ variations: HookVariation[] }>({
-        userId,
-        task: 'rank',
-        system,
-        prompt: buildVariationsPrompt(quote, found?.excerpt ?? '', notes, MAX_VARIATIONS),
-        maxTokens: 2048,
-      });
-      const clean = (out.variations ?? []).filter(v => v.hook_text?.trim()).slice(0, MAX_VARIATIONS);
-      if (!clean.length) throw new Error('No variations came back — try a longer or more charged excerpt.');
-      setVariations(clean);
+  // Premise hooks: book facts only, no quote needed (the Lightlark shape).
+  async function generatePremise() {
+    setBusy(true); setError(null); setVariations([]); setSavedIdx(new Set());
+    setScene(null); setSceneStatus('idle');
+    try {
+      await runVariations(buildPremisePrompt(MAX_VARIATIONS), true);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -386,10 +427,10 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
       hook_text: v.hook_text.trim(),
       // Prefer the located scene: slideshows and videos built from this
       // hook mine the excerpt for middle beats, and one pasted line
-      // starves them.
-      scene_excerpt: scene?.excerpt ?? quote.trim(),
+      // starves them. Premise hooks have no scene by design.
+      scene_excerpt: premiseRun ? '' : (scene?.excerpt ?? quote.trim()),
       rationale: v.strategy ? `${v.strategy}${v.rationale ? ` — ${v.rationale}` : ''}` : v.rationale ?? '',
-      tags: [],
+      tags: premiseRun ? ['premise'] : [],
       source: 'manual' as const,
     }]);
     setSavedIdx(prev => new Set(prev).add(idx));
@@ -433,6 +474,14 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved }: {
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {busy ? 'Writing…' : variations.length ? 'Re-roll variations' : 'Write variations'}
+            </button>
+            <button
+              onClick={generatePremise}
+              disabled={busy}
+              title="Write premise-level hooks from the Catalog facts alone — no quote needed (the 'would you read a book about…' shape)"
+              className="px-4 py-2 rounded-lg border border-pink-200 text-pink-700 text-sm font-medium hover:bg-pink-50 disabled:opacity-40"
+            >
+              Premise hooks
             </button>
           </div>
           {error && <p className="text-xs text-rose-600">{error}</p>}
@@ -526,12 +575,72 @@ function AddHookButton({ userId, bookId, manuscriptId, onAdded }: {
   );
 }
 
-function HookCard({ hook, userId, bannedActive, onChanged, onDeleted }: {
+// Bulk-import saved moments (e.g. from a spreadsheet of quotes collected
+// over time). One moment per paragraph; each becomes a candidate hook and
+// we auto-locate its scene in the linked manuscript (free text search).
+function ImportMomentsButton({ userId, bookId, manuscriptId, onAdded }: {
+  userId: string; bookId: string; manuscriptId: string | null; onAdded: (hooks: ContentHook[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [progress, setProgress] = useState<string | null>(null);
+
+  async function runImport() {
+    const blocks = text.split(/\n\s*\n/).map(b => b.trim()).filter(b => b.length >= 10).slice(0, 50);
+    if (!blocks.length) return;
+    const added: ContentHook[] = [];
+    for (let i = 0; i < blocks.length; i++) {
+      setProgress(`Importing ${i + 1}/${blocks.length}…`);
+      let scene = null;
+      if (manuscriptId) {
+        try { scene = await findSceneForQuote(manuscriptId, blocks[i]); } catch { /* best-effort */ }
+      }
+      const [h] = await insertHooks(userId, [{
+        book_id: bookId, manuscript_id: manuscriptId, hook_text: blocks[i],
+        scene_excerpt: scene?.excerpt ?? '', rationale: scene ? `Imported — scene found in "${scene.chapterTitle}"` : 'Imported moment',
+        tags: ['imported'], source: 'manual' as const,
+      }]);
+      added.push(h);
+    }
+    onAdded(added.reverse());
+    setProgress(null); setText(''); setOpen(false);
+  }
+
+  if (!open) {
+    return (
+      <button onClick={() => setOpen(true)} className="text-sm text-slate-500 hover:text-slate-700">
+        Import moments
+      </button>
+    );
+  }
+  return (
+    <div className="w-full space-y-2 bg-white rounded-xl border border-slate-200 p-3">
+      <textarea
+        rows={5}
+        autoFocus
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder={'Paste your saved moments — one per paragraph (blank line between them).\nEach becomes a candidate, and I\'ll find its scene in the linked manuscript automatically.'}
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none"
+      />
+      <div className="flex gap-2 items-center">
+        <button onClick={runImport} disabled={!!progress || !text.trim()}
+          className="px-3 py-1.5 rounded-lg bg-slate-800 text-white text-xs hover:bg-slate-700 disabled:opacity-50">
+          {progress ?? 'Import'}
+        </button>
+        <button onClick={() => { setOpen(false); setText(''); }} className="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function HookCard({ hook, userId, bannedActive, onChanged, onDeleted, onWorkshop }: {
   hook: ContentHook;
   userId: string;
   bannedActive: ActiveBannedWord[];
   onChanged: (h: ContentHook) => void;
   onDeleted: () => void;
+  onWorkshop: (text: string) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(hook.hook_text);
@@ -603,7 +712,7 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted }: {
               {m.replacement && (
                 <button onClick={() => applyFix(m, 'replacement')} className="underline hover:text-amber-950">use "{m.replacement}"</button>
               )}
-              <button onClick={() => applyFix(m, 'mask')} className="underline hover:text-amber-950">mask ({maskWord(m.found)})</button>
+              <button onClick={() => applyFix(m, 'mask')} title="Accent-mask — fine for ORGANIC captions. Never use in Meta paid ads: Meta rejects masked profanity and repeat violations can restrict your ad account. For ads, use the replacement or AI synonym." className="underline hover:text-amber-950">mask ({maskWord(m.found)}, organic only)</button>
               <button onClick={() => applyFix(m, 'synonym')} disabled={synonymBusy === m.word} className="underline hover:text-amber-950 disabled:opacity-50">
                 {synonymBusy === m.word ? 'thinking…' : 'AI synonym'}
               </button>
@@ -633,6 +742,19 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted }: {
           <button onClick={async () => onChanged(await updateHook(hook.id, { status: 'archived' }))}
             className="text-xs text-slate-400 hover:text-slate-600">Archive</button>
         )}
+        <button onClick={() => onWorkshop(hook.scene_excerpt || hook.hook_text)}
+          title="Send to the Hook workshop for strategy variations"
+          className="text-xs text-slate-400 hover:text-pink-600">Workshop</button>
+        <select
+          value={hook.test_result}
+          onChange={async e => onChanged(await updateHook(hook.id, { test_result: e.target.value as HookTestResult }))}
+          title="Mark how this hook performed in real ads/posts — the AI learns from these"
+          className={`text-[11px] border rounded-md px-1 py-0.5 bg-white ${hook.test_result === 'worked' ? 'border-emerald-300 text-emerald-700' : hook.test_result === 'failed' ? 'border-rose-300 text-rose-600' : 'border-slate-200 text-slate-400'}`}
+        >
+          <option value="untested">untested</option>
+          <option value="worked">✓ worked</option>
+          <option value="failed">✗ failed</option>
+        </select>
         <button
           onClick={async () => { if (!confirm('Delete this hook?')) return; await deleteHook(hook.id); onDeleted(); }}
           className="p-1.5 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 ml-auto"
