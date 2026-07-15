@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Author Command Center</title>
+<style>
+  body{font-family:system-ui,-apple-system,sans-serif;color:#1e293b;background:#f8fafc;margin:0;padding:40px 20px}
+  main{max-width:720px;margin:0 auto;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:40px}
+  h1{font-size:26px;margin:0 0 4px}
+  .updated{color:#64748b;font-size:14px;margin-bottom:28px}
+  h2{font-size:18px;margin:28px 0 8px}
+  p,li{font-size:15px;line-height:1.6;color:#334155}
+  a{color:#4f46e5}
+</style>
+</head>
+<body>
+<main>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Author Command Center · Last updated July 15, 2026</p>
+
+  <p>Author Command Center is a set of business tools for book authors. This policy describes what information the app stores and how it is used.</p>
+
+  <h2>Information we store</h2>
+  <ul>
+    <li><strong>Account information:</strong> your email address and authentication credentials, managed by our authentication provider (Supabase).</li>
+    <li><strong>Content you enter:</strong> book catalog details, manuscripts, marketing materials, sales records, and other data you create inside the app. It is stored in our database and is visible only to your account.</li>
+    <li><strong>Connected service tokens:</strong> if you connect an external service (such as Google Drive, Dropbox, or Shopify), we store the authorization token needed to act on your behalf. Refresh tokens are encrypted at rest (AES-256-GCM) and are never exposed to your browser.</li>
+  </ul>
+
+  <h2>Google user data</h2>
+  <p>If you connect Google Drive, the app requests only the <code>drive.file</code> scope, which allows it to see and manage <strong>only files it creates itself</strong> — it cannot read, browse, or modify anything else in your Drive. The app uses this access for exactly one purpose: uploading files you explicitly choose to export (such as marketing images and videos) to an "Author Command Center" folder in your Drive when you click a Send button.</p>
+  <p>Author Command Center's use and transfer of information received from Google APIs adheres to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noreferrer">Google API Services User Data Policy</a>, including the Limited Use requirements. Google user data is never sold, never used for advertising, and never shared with third parties, and is not used to train AI models.</p>
+
+  <h2>What we don't do</h2>
+  <ul>
+    <li>We do not sell your data.</li>
+    <li>We do not share your data with third parties, except the service providers that host the app (e.g. Vercel, Supabase) and services you explicitly connect.</li>
+    <li>We do not use your content for advertising.</li>
+  </ul>
+
+  <h2>AI features</h2>
+  <p>Some features send content you select (for example, manuscript chapters during a scan you start) to the AI provider configured with your own API key. Those requests happen only when you initiate them.</p>
+
+  <h2>Deleting your data</h2>
+  <p>You can disconnect any external service in Settings at any time, which deletes its stored token. To delete your account and its data, contact us at the email below.</p>
+
+  <h2>Contact</h2>
+  <p><a href="mailto:melissa@melissacummins.com">melissa@melissacummins.com</a></p>
+</main>
+</body>
+</html>
