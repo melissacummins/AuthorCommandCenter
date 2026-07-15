@@ -75,6 +75,7 @@ export interface PurchaseOrder {
   quantity: number;
   actual_quantity: number | null;
   scratch_dent_quantity: number;
+  added_to_inventory: number;
   scratch_dent_product_id: string | null;
   order_date: string;
   expected_dispatch: string;
