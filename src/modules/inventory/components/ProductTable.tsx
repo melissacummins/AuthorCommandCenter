@@ -730,8 +730,18 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                                   <EditableCell id={product.id} field="lead_time" value={product.lead_time} />
                                 </div>
                                 <div>
+                                  <p className="text-[11px] text-slate-400 uppercase mb-0.5" title="Overrides the 6-month sales calculation when set > 0">Avg Daily Sales (override)</p>
+                                  <EditableCell id={product.id} field="csv_avg_daily" value={product.csv_avg_daily} placeholder="Uses 6-mo calc" />
+                                </div>
+                                <div>
                                   <p className="text-[11px] text-slate-400 uppercase mb-0.5">Reorder Threshold</p>
                                   <span>{product.metrics.reorderThreshold}</span>
+                                  {product.metrics.reorderThreshold === 0 && (
+                                    <p className="text-[10px] text-amber-600 mt-0.5">
+                                      {(!product.lead_time || product.lead_time <= 0) && 'Set Lead Time above'}
+                                      {product.lead_time > 0 && product.metrics.avgDailySales === 0 && 'No sales data — set Avg Daily Sales or 6mo sales'}
+                                    </p>
+                                  )}
                                 </div>
                                 <div>
                                   <p className="text-[11px] text-slate-400 uppercase mb-0.5">Days Remaining</p>
