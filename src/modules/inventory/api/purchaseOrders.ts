@@ -79,6 +79,7 @@ export async function confirmArrival(id: string, input: ConfirmArrivalInput): Pr
       actual_quantity: totalReceived,
       scratch_dent_quantity: input.scratch_dent_quantity,
       scratch_dent_product_id: input.scratch_dent_product_id,
+      added_to_inventory: input.add_to_inventory,
       actual_arrival: new Date().toISOString().split('T')[0],
       notes: input.notes,
     })
@@ -120,6 +121,96 @@ export async function confirmArrival(id: string, input: ConfirmArrivalInput): Pr
   }
 }
 
+// Edits an already-arrived PO. Computes the deltas from the previously
+// stored values and applies them to inventory — so shrinking a received
+// quantity subtracts from inventory, growing it adds, and changing which
+// S&D product the damaged copies went into moves them correctly.
+export async function editArrival(id: string, input: ConfirmArrivalInput): Promise<void> {
+  const { data: po, error: fetchErr } = await supabase
+    .from('purchase_orders')
+    .select('product_id, product_name, actual_quantity, scratch_dent_quantity, scratch_dent_product_id, added_to_inventory')
+    .eq('id', id)
+    .single();
+  if (fetchErr || !po) throw new Error('Purchase order not found');
+
+  const userId = await getUserId();
+  const oldAdded = po.added_to_inventory || 0;
+  const oldScratch = po.scratch_dent_quantity || 0;
+  const oldScratchProduct = po.scratch_dent_product_id;
+
+  const newTotal = input.good_quantity + input.scratch_dent_quantity;
+
+  // 1) Main-product delta
+  if (po.product_id) {
+    const mainDelta = input.add_to_inventory - oldAdded;
+    if (mainDelta !== 0) {
+      await addToInventory(
+        po.product_id,
+        mainDelta,
+        userId,
+        `PO arrival edit: ${mainDelta > 0 ? '+' : ''}${mainDelta} unit${Math.abs(mainDelta) === 1 ? '' : 's'} (was ${oldAdded}, now ${input.add_to_inventory})${input.notes ? ' — ' + input.notes : ''}`
+      );
+    }
+  }
+
+  // 2) Scratch & dent — if the target product changed, reverse the whole old
+  //    amount from the old S&D product and add the new amount to the new one.
+  //    If it stayed the same, apply the delta.
+  const newScratchProduct = input.scratch_dent_quantity > 0 ? input.scratch_dent_product_id : null;
+  if (oldScratchProduct && oldScratchProduct !== newScratchProduct && oldScratch !== 0) {
+    await addToInventory(
+      oldScratchProduct,
+      -oldScratch,
+      userId,
+      `PO arrival edit: reversed ${oldScratch} S&D unit${oldScratch === 1 ? '' : 's'} (target changed)`
+    );
+  }
+  if (newScratchProduct && oldScratchProduct !== newScratchProduct) {
+    if (input.scratch_dent_quantity > 0) {
+      await addToInventory(
+        newScratchProduct,
+        input.scratch_dent_quantity,
+        userId,
+        `PO arrival edit (scratch & dent from ${po.product_name}): +${input.scratch_dent_quantity} unit${input.scratch_dent_quantity === 1 ? '' : 's'}`
+      );
+    }
+  } else if (oldScratchProduct === newScratchProduct && newScratchProduct) {
+    const scratchDelta = input.scratch_dent_quantity - oldScratch;
+    if (scratchDelta !== 0) {
+      await addToInventory(
+        newScratchProduct,
+        scratchDelta,
+        userId,
+        `PO arrival edit (scratch & dent from ${po.product_name}): ${scratchDelta > 0 ? '+' : ''}${scratchDelta} unit${Math.abs(scratchDelta) === 1 ? '' : 's'}`
+      );
+    }
+  }
+
+  // 3) Update the PO row itself
+  const { error: updateErr } = await supabase
+    .from('purchase_orders')
+    .update({
+      actual_quantity: newTotal,
+      scratch_dent_quantity: input.scratch_dent_quantity,
+      scratch_dent_product_id: newScratchProduct,
+      added_to_inventory: input.add_to_inventory,
+      notes: input.notes,
+    })
+    .eq('id', id);
+  if (updateErr) throw updateErr;
+
+  // 4) Optional: save S&D product as default
+  if (input.save_scratch_dent_as_default && newScratchProduct && po.product_id) {
+    await supabase
+      .from('products')
+      .update({
+        default_scratch_dent_product_id: newScratchProduct,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', po.product_id);
+  }
+}
+
 async function addToInventory(productId: string, quantity: number, userId: string, source: string) {
   const { data: product } = await supabase
     .from('products')
@@ -148,9 +239,9 @@ async function addToInventory(productId: string, quantity: number, userId: strin
   await supabase.from('inventory_orders').insert({
     user_id: userId,
     product_id: productId,
-    type: 'add',
+    type: quantity < 0 ? 'subtract' : 'add',
     inventory_type: isBundle ? 'bundle' : 'book',
-    quantity,
+    quantity: Math.abs(quantity),
     previous_value: currentInventory,
     new_value: newInventory,
     source: 'Purchase Order',

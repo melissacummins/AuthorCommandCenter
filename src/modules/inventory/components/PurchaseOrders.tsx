@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   Plus, Package, Truck, CheckCircle, Clock, Trash2, Loader2, AlertCircle, X, FileText
 } from 'lucide-react';
-import { getPurchaseOrders, createPurchaseOrder, confirmArrival, deletePurchaseOrder, getVendors, addVendor } from '../api/purchaseOrders';
+import { getPurchaseOrders, createPurchaseOrder, confirmArrival, editArrival, deletePurchaseOrder, getVendors, addVendor } from '../api/purchaseOrders';
 import type { CreatePOInput, POLineItem, ConfirmArrivalInput } from '../api/purchaseOrders';
 import type { PurchaseOrder, Product, Vendor } from '../../../lib/types';
 import Modal from '../../../components/Modal';
@@ -122,18 +122,24 @@ export default function PurchaseOrders({ products, onInventoryChanged }: Props) 
       <Modal
         open={!!confirmingPO}
         onClose={() => setConfirmingPO(null)}
-        title="Confirm Arrival"
+        title={confirmingPO?.status === 'arrived' ? 'Edit Arrival' : 'Confirm Arrival'}
         maxWidth="max-w-xl"
       >
         {confirmingPO && (
           <ConfirmArrivalForm
+            key={confirmingPO.id}
             po={confirmingPO}
             products={products}
+            siblings={(grouped.find(g => g.items.some(i => i.id === confirmingPO.id))?.items) ?? []}
             onClose={() => setConfirmingPO(null)}
-            onConfirmed={() => {
+            onConfirmed={nextPo => {
               fetchOrders();
               onInventoryChanged();
-              setConfirmingPO(null);
+              if (nextPo) {
+                setConfirmingPO(nextPo);
+              } else {
+                setConfirmingPO(null);
+              }
             }}
           />
         )}
@@ -241,9 +247,13 @@ function POCard({ group, products, onConfirm, onDelete }: {
                       Confirm Arrival
                     </button>
                   ) : (
-                    <span className="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg">
-                      Received
-                    </span>
+                    <button
+                      onClick={() => onConfirm(item)}
+                      title="Edit arrival — good qty, scratch & dent, notes"
+                      className="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"
+                    >
+                      Received (edit)
+                    </button>
                   )}
                   <button onClick={() => onDelete(item.id)} className="p-1 text-slate-300 hover:text-red-500">
                     <Trash2 className="w-3.5 h-3.5" />
@@ -470,27 +480,40 @@ function AddPOForm({ products, onClose, onCreated }: {
 
 // ---- Confirm Arrival Form ----
 
-function ConfirmArrivalForm({ po, products, onClose, onConfirmed }: {
+function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
   po: PurchaseOrder;
   products: Product[];
   onClose: () => void;
-  onConfirmed: () => void;
+  onConfirmed: (nextPo?: PurchaseOrder) => void;
+  // Other items in the same PO group — enables Prev/Next navigation
+  siblings?: PurchaseOrder[];
 }) {
   // Find the main product to get its default scratch & dent product
   const mainProduct = products.find(p => p.id === po.product_id);
   const defaultSdProductId = mainProduct?.default_scratch_dent_product_id || '';
 
-  const [goodQty, setGoodQty] = useState(po.quantity);
-  const [addToInv, setAddToInv] = useState(po.quantity);
-  const [sdQty, setSdQty] = useState(0);
+  const isEdit = po.status === 'arrived';
+  const previousGood = isEdit ? (po.actual_quantity ?? 0) - (po.scratch_dent_quantity ?? 0) : null;
+
+  const [goodQty, setGoodQty] = useState(isEdit ? (previousGood ?? 0) : po.quantity);
+  const [addToInv, setAddToInv] = useState(isEdit ? (po.added_to_inventory ?? previousGood ?? 0) : po.quantity);
+  const [sdQty, setSdQty] = useState(isEdit ? (po.scratch_dent_quantity ?? 0) : 0);
   // Once she manually edits scratch & dent, stop auto-filling it from goodQty
   // (covers the case where she received fewer than ordered).
-  const [sdTouched, setSdTouched] = useState(false);
-  const [sdProductId, setSdProductId] = useState<string>(defaultSdProductId);
+  const [sdTouched, setSdTouched] = useState(isEdit);
+  const [sdProductId, setSdProductId] = useState<string>(
+    isEdit ? (po.scratch_dent_product_id ?? defaultSdProductId) : defaultSdProductId
+  );
   const [saveAsDefault, setSaveAsDefault] = useState(false);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(isEdit ? (po.notes ?? '') : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // Compute prev/next among pending siblings (or all siblings if editing)
+  const navigable = siblings ?? [];
+  const currentIdx = navigable.findIndex(s => s.id === po.id);
+  const nextPending = navigable.slice(currentIdx + 1).find(s => s.status === 'pending');
+  const prevPending = [...navigable.slice(0, currentIdx)].reverse().find(s => s.status === 'pending');
 
   function handleGoodQtyChange(next: number) {
     if (addToInv === goodQty) setAddToInv(next);
@@ -503,10 +526,10 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed }: {
     setSdTouched(true);
   }
 
-  async function handleConfirm() {
+  async function saveCurrent(): Promise<boolean> {
     if (sdQty > 0 && !sdProductId) {
       setError('Please select a product for the scratch & dent items.');
-      return;
+      return false;
     }
     setSaving(true);
     setError('');
@@ -519,12 +542,34 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed }: {
         save_scratch_dent_as_default: saveAsDefault,
         notes,
       };
-      await confirmArrival(po.id, input);
-      onConfirmed();
+      if (isEdit) {
+        await editArrival(po.id, input);
+      } else {
+        await confirmArrival(po.id, input);
+      }
+      return true;
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to confirm arrival');
+      setError(err instanceof Error ? err.message : isEdit ? 'Failed to save' : 'Failed to confirm arrival');
       setSaving(false);
+      return false;
     }
+  }
+
+  async function handleConfirm() {
+    const ok = await saveCurrent();
+    if (ok) onConfirmed();
+  }
+
+  async function handleConfirmAndNext() {
+    if (!nextPending) return;
+    const ok = await saveCurrent();
+    if (ok) onConfirmed(nextPending);
+  }
+
+  async function handleGoToPrev() {
+    if (!prevPending) return;
+    const ok = await saveCurrent();
+    if (ok) onConfirmed(prevPending);
   }
 
   const total = goodQty + sdQty;
@@ -539,7 +584,14 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed }: {
     <div className="space-y-4">
       <div className="p-4 bg-slate-50 rounded-lg">
         <p className="text-sm font-medium text-slate-800">{po.product_name}</p>
-        <p className="text-xs text-slate-500 mt-1">Ordered: {po.quantity} units</p>
+        <p className="text-xs text-slate-500 mt-1">
+          Ordered: {po.quantity} units{isEdit && ` · Previously received: ${po.actual_quantity ?? 0} (${previousGood ?? 0} good + ${po.scratch_dent_quantity ?? 0} S&D · ${po.added_to_inventory ?? 0} to inventory)`}
+        </p>
+        {isEdit && (
+          <p className="text-xs text-amber-700 mt-1">
+            Editing an arrival applies the difference to inventory (subtracts if you shrink, adds if you grow).
+          </p>
+        )}
       </div>
 
       {/* Quantity Split */}
@@ -650,12 +702,29 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed }: {
         </div>
       )}
 
-      <div className="flex justify-end gap-3 pt-2">
+      <div className="flex items-center gap-3 pt-2">
+        {navigable.length > 1 && (
+          <p className="text-xs text-slate-500 mr-auto">
+            Item {currentIdx + 1} of {navigable.length}
+          </p>
+        )}
         <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+        {prevPending && (
+          <button onClick={handleGoToPrev} disabled={saving || total === 0}
+            className="px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+            ← Save & Prev
+          </button>
+        )}
         <button onClick={handleConfirm} disabled={saving || total === 0}
           className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
-          {saving ? 'Confirming...' : 'Confirm & Add to Inventory'}
+          {saving && !nextPending ? (isEdit ? 'Saving…' : 'Confirming…') : isEdit ? 'Save' : 'Confirm & Add to Inventory'}
         </button>
+        {nextPending && (
+          <button onClick={handleConfirmAndNext} disabled={saving || total === 0}
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+            {saving ? 'Saving…' : (isEdit ? 'Save & Next →' : 'Confirm & Next →')}
+          </button>
+        )}
       </div>
     </div>
   );
