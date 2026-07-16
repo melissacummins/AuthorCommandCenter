@@ -19,19 +19,32 @@ export async function getSalesRates(windowDays = 180): Promise<Map<string, Sales
 
   const { data, error } = await supabase
     .from('shopify_orders')
-    .select('order_date, line_items')
+    .select('order_date, line_items, refunds, cancelled_at')
     .gte('order_date', cutoffIso);
   if (error) throw error;
 
   const totals = new Map<string, number>();
   for (const row of data || []) {
-    const items = (row.line_items as { sku?: string | null; quantity?: number | null }[]) || [];
+    if (row.cancelled_at) continue; // cancelled order — nothing net-sold
+    const items = (row.line_items as { id?: number; sku?: string | null; quantity?: number | null }[]) || [];
+    const refunds = (row.refunds as { refund_line_items?: { line_item_id?: number; quantity?: number }[] }[]) || [];
+
+    const refundedByLineItem = new Map<number, number>();
+    for (const r of refunds) {
+      for (const rli of r.refund_line_items || []) {
+        if (rli.line_item_id == null) continue;
+        refundedByLineItem.set(rli.line_item_id, (refundedByLineItem.get(rli.line_item_id) || 0) + (Number(rli.quantity) || 0));
+      }
+    }
+
     for (const it of items) {
       const rawSku = (it?.sku || '').trim();
       if (!rawSku) continue;
       const key = rawSku.toUpperCase();
-      const qty = Number(it?.quantity) || 0;
-      totals.set(key, (totals.get(key) || 0) + qty);
+      const refunded = it.id != null ? (refundedByLineItem.get(it.id) || 0) : 0;
+      const netQty = (Number(it?.quantity) || 0) - refunded;
+      if (netQty <= 0) continue;
+      totals.set(key, (totals.get(key) || 0) + netQty);
     }
   }
 

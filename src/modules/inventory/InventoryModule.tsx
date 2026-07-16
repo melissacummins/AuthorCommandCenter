@@ -55,7 +55,7 @@ export default function InventoryModule() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        <div className="flex gap-1 bg-slate-100 rounded-lg p-1 overflow-x-auto max-w-full [&_button]:whitespace-nowrap [&_button]:shrink-0">
           <button
             onClick={() => setTab('dashboard')}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${

@@ -133,7 +133,24 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
         'book_stock', 'books_purchased', 'bundles_purchased', 'purchased_via_bundles',
         'six_month_book_sales', 'six_month_bundle_sales', 'csv_avg_daily', 'csv_reorder_threshold'];
       const value = numericFields.includes(field) ? Number(editValue) : editValue;
-      await updateProduct(id, { [field]: value });
+
+      // Editing book_stock manually is treated as receiving (or losing) that
+      // many units — bump book_inventory by the same delta so the two stay in
+      // sync. Otherwise a stock bump did nothing on the live shelf number.
+      if (field === 'book_stock') {
+        const current = products.find(p => p.id === id);
+        if (current) {
+          const delta = Number(value) - (current.book_stock || 0);
+          await updateProduct(id, {
+            book_stock: Number(value),
+            book_inventory: (current.book_inventory || 0) + delta,
+          });
+        } else {
+          await updateProduct(id, { [field]: value });
+        }
+      } else {
+        await updateProduct(id, { [field]: value });
+      }
 
       // When editing 6mo bundle sales on a bundle, propagate to all component books
       if (field === 'six_month_bundle_sales') {

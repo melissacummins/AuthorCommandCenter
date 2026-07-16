@@ -322,14 +322,16 @@ export async function applyOrdersToInventory(updates: InventoryUpdate[]): Promis
 
     if (fetchErr || !product) continue;
 
-    // Calculate the delta: how many MORE sold since last sync
+    // Calculate the delta: MORE sold (positive) or refunded/cancelled since
+    // last sync (negative). Negative deltas are the refund path — units flow
+    // back into inventory and books_purchased reduces.
     const prevSold = u.isBundle
       ? (product.bundles_purchased || 0)
       : (product.books_purchased || 0);
     const delta = u.quantitySold - prevSold;
 
-    // Skip if nothing new sold
-    if (delta <= 0) continue;
+    // Nothing to do
+    if (delta === 0) continue;
 
     const currentInventory = u.isBundle
       ? (product.bundles_inventory || 0)
@@ -359,13 +361,15 @@ export async function applyOrdersToInventory(updates: InventoryUpdate[]): Promis
     await supabase.from('inventory_orders').insert({
       user_id: userId,
       product_id: u.productId,
-      type: 'subtract',
+      type: delta > 0 ? 'subtract' : 'add',
       inventory_type: u.isBundle ? 'bundle' : 'book',
-      quantity: delta,
+      quantity: Math.abs(delta),
       previous_value: currentInventory,
       new_value: newInventory,
       source: 'Shopify Sync',
-      notes: `${delta} new sold (${u.quantitySold} total from Shopify)`,
+      notes: delta > 0
+        ? `${delta} new sold (${u.quantitySold} net from Shopify)`
+        : `${Math.abs(delta)} restocked from refund/cancel (${u.quantitySold} net from Shopify)`,
     });
 
     // Cascade bundle sales to each component product so the live bundle
@@ -373,7 +377,7 @@ export async function applyOrdersToInventory(updates: InventoryUpdate[]): Promis
     // Without this, every bundle sale leaves the components untouched and
     // the bundle would still show as available even after all its parts
     // were given away in earlier sales.
-    if (u.isBundle && delta > 0) {
+    if (u.isBundle && delta !== 0) {
       await cascadeBundleSaleToComponents(userId, u.productId, delta);
     }
 
@@ -426,13 +430,15 @@ async function cascadeBundleSaleToComponents(userId: string, bundleProductId: st
     await supabase.from('inventory_orders').insert({
       user_id: userId,
       product_id: comp.id,
-      type: 'subtract',
+      type: delta > 0 ? 'subtract' : 'add',
       inventory_type: 'book',
-      quantity: delta,
+      quantity: Math.abs(delta),
       previous_value: prevInv,
       new_value: newInv,
       source: 'Bundle Cascade',
-      notes: `${delta} consumed via "${bundle.name}" sale`,
+      notes: delta > 0
+        ? `${delta} consumed via "${bundle.name}" sale`
+        : `${Math.abs(delta)} restocked from "${bundle.name}" refund`,
     });
   }
 }
