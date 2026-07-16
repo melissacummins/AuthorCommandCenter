@@ -223,6 +223,8 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
           location_name: locationName,
           total_price: Number(o.total_price) || 0,
           line_items: o.line_items || [],
+          refunds: (o.refunds as unknown[]) || [],
+          cancelled_at: (o.cancelled_at as string | null) || null,
         }));
 
       const count = await upsertOrders(filteredOrders as Parameters<typeof upsertOrders>[0]);
@@ -660,7 +662,11 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
   );
 }
 
-// Build inventory updates by matching order line items to products by SKU
+// Build inventory updates by matching order line items to products by SKU.
+// Cancelled orders contribute 0. For each order, refund_line_items are
+// subtracted from their referenced line item's quantity so refunded units
+// don't count as sold (and, once a refund appears, will flow back into
+// inventory as a negative delta in applyOrdersToInventory).
 function buildInventoryUpdates(
   orders: Record<string, unknown>[],
   products: Product[]
@@ -668,11 +674,26 @@ function buildInventoryUpdates(
   const skuTotals = new Map<string, number>();
 
   for (const order of orders) {
-    const lineItems = (order.line_items as { sku?: string; quantity: number }[]) || [];
+    if (order.cancelled_at) continue; // cancelled — never sold
+    const lineItems = (order.line_items as { id?: number; sku?: string; quantity: number }[]) || [];
+    const refunds = (order.refunds as { refund_line_items?: { line_item_id?: number; quantity?: number }[] }[]) || [];
+
+    // Sum refunded quantities per Shopify line_item id.
+    const refundedByLineItem = new Map<number, number>();
+    for (const r of refunds) {
+      for (const rli of r.refund_line_items || []) {
+        if (rli.line_item_id == null) continue;
+        refundedByLineItem.set(rli.line_item_id, (refundedByLineItem.get(rli.line_item_id) || 0) + (Number(rli.quantity) || 0));
+      }
+    }
+
     for (const item of lineItems) {
       if (!item.sku) continue;
+      const refunded = item.id != null ? (refundedByLineItem.get(item.id) || 0) : 0;
+      const net = (item.quantity || 0) - refunded;
+      if (net === 0) continue;
       const key = item.sku.trim().toUpperCase();
-      skuTotals.set(key, (skuTotals.get(key) || 0) + item.quantity);
+      skuTotals.set(key, (skuTotals.get(key) || 0) + net);
     }
   }
 

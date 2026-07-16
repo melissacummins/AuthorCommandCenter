@@ -615,6 +615,19 @@ export interface ShopifyLineItem {
   variant_id: number | null;
 }
 
+export interface ShopifyRefundLineItem {
+  line_item_id: number;
+  quantity: number;
+  restock_type?: string; // 'return', 'cancel', 'legacy_restock', 'no_restock'
+}
+
+export interface ShopifyRefund {
+  id?: number;
+  created_at?: string;
+  processed_at?: string;
+  refund_line_items?: ShopifyRefundLineItem[];
+}
+
 export interface ShopifyOrder {
   id: string;
   user_id: string;
@@ -628,6 +641,8 @@ export interface ShopifyOrder {
   location_name: string | null;
   total_price: number;
   line_items: ShopifyLineItem[];
+  refunds: ShopifyRefund[];
+  cancelled_at: string | null;
   synced_at: string;
 }
 
