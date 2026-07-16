@@ -251,7 +251,26 @@ export async function upsertOrders(orders: Omit<ShopifyOrder, 'id' | 'synced_at'
     .from('shopify_orders')
     .upsert(orders, { onConflict: 'user_id,shopify_order_id' });
 
-  if (error) throw error;
+  // Fallback path — the refunds/cancelled_at columns from migration 104
+  // may not be in the DB yet on production. Strip those fields and retry
+  // so the sync still works; refunds just won't be tracked until the
+  // migration is applied.
+  if (error) {
+    const msg = (error.message || '').toLowerCase();
+    const missingRefunds = msg.includes('refunds') || msg.includes('cancelled_at') || msg.includes("column") && msg.includes("does not exist");
+    if (missingRefunds) {
+      const legacyOrders = orders.map(o => {
+        const { refunds: _r, cancelled_at: _c, ...rest } = o as Record<string, unknown> & { refunds?: unknown; cancelled_at?: unknown };
+        return rest;
+      });
+      const retry = await supabase
+        .from('shopify_orders')
+        .upsert(legacyOrders, { onConflict: 'user_id,shopify_order_id' });
+      if (retry.error) throw retry.error;
+      return orders.length;
+    }
+    throw error;
+  }
   return orders.length;
 }
 
