@@ -700,7 +700,9 @@ function buildInventoryUpdates(
       if (!item.sku) continue;
       const refunded = item.id != null ? (refundedByLineItem.get(item.id) || 0) : 0;
       const net = (item.quantity || 0) - refunded;
-      if (net === 0) continue;
+      // Do NOT skip when net === 0. If every unit of this SKU has been
+      // refunded, we still want the SKU present in skuTotals so
+      // applyOrdersToInventory sees a delta of (0 − prevSold) and can restock.
       const key = item.sku.trim().toUpperCase();
       skuTotals.set(key, (skuTotals.get(key) || 0) + net);
     }

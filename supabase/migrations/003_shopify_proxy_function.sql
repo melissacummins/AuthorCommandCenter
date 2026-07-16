@@ -48,7 +48,7 @@ BEGIN
         COALESCE(params->>'limit', '250')
       );
     ELSE
-      v_api_url := format('https://%s/admin/api/%s/orders.json?status=%s&limit=%s&fields=id,name,order_number,created_at,customer,fulfillment_status,financial_status,total_price,line_items,fulfillments,location_id',
+      v_api_url := format('https://%s/admin/api/%s/orders.json?status=%s&limit=%s&fields=id,name,order_number,created_at,cancelled_at,customer,fulfillment_status,financial_status,total_price,line_items,fulfillments,refunds,location_id',
         v_store_url, v_api_version,
         COALESCE(params->>'status', 'any'),
         COALESCE(params->>'limit', '250')
