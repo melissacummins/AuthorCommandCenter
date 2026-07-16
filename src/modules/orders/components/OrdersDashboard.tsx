@@ -264,8 +264,17 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
         setSyncSuccess(`Synced ${count} orders from "${locationName || 'all locations'}". No matching SKUs found to update inventory.`);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Sync failed';
+      // Surface as much detail as we can — a bare "Sync failed" is useless
+      // for debugging (Supabase errors carry code+details+hint separately).
+      let message = 'Sync failed';
+      if (err instanceof Error) {
+        message = err.message || 'Sync failed';
+      } else if (err && typeof err === 'object') {
+        const e = err as Record<string, unknown>;
+        message = String(e.message || e.details || e.hint || e.code || 'Sync failed');
+      }
       setSyncError(message);
+      console.error('Shopify sync error:', err);
       await logSync({
         sync_type: 'orders',
         status: 'error',
