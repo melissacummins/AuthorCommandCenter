@@ -194,8 +194,14 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
       const selectedLoc = locations.find(l => String(l.id) === selectedLocationId);
       const locationName = selectedLoc?.name || '';
 
-      // Filter by location — include unfulfilled orders (they haven't been
-      // assigned a fulfillment location yet but still represent pending sales)
+      // Filter by location — strict match to the selected fulfillment
+      // location. Previously we accepted any unfulfilled order regardless of
+      // routing, which pulled in orders destined for other fulfillment
+      // services (e.g. BookVault) and skewed inventory. Now unfulfilled
+      // orders are only included when every line item's fulfillment_service
+      // is "manual" AND the order's location_id either matches the selection
+      // or isn't set yet — i.e. the store owner is going to ship it and
+      // Shopify hasn't routed it elsewhere.
       const filteredOrders = allOrders
         .filter((o: Record<string, unknown>) => {
           if (!selectedLocationId) return true;
@@ -204,10 +210,15 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
           // Match if any fulfillment is from this location
           const fulfillments = (o.fulfillments as Record<string, unknown>[]) || [];
           if (fulfillments.some((f: Record<string, unknown>) => String(f.location_id) === selectedLocationId)) return true;
-          // Include unfulfilled orders (no fulfillments yet = hasn't shipped)
+          // Unfulfilled + unrouted + all-manual line items → assume the
+          // selected location will handle it.
           const fulfillmentStatus = o.fulfillment_status as string | null;
-          if (!fulfillmentStatus || fulfillmentStatus === 'null') return true;
-          return false;
+          const isUnfulfilled = !fulfillmentStatus || fulfillmentStatus === 'null' || fulfillmentStatus === 'unfulfilled';
+          if (!isUnfulfilled) return false;
+          const lineItems = (o.line_items as { fulfillment_service?: string }[]) || [];
+          const allManual = lineItems.length > 0 && lineItems.every(li => !li.fulfillment_service || li.fulfillment_service === 'manual');
+          const noLocation = !o.location_id;
+          return allManual && noLocation;
         })
         .map((o: Record<string, unknown>) => ({
           user_id: userId,
