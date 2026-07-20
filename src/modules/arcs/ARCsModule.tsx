@@ -242,15 +242,15 @@ export default function ARCsModule() {
       <div className="p-6 lg:p-8 max-w-4xl mx-auto">
         <button
           onClick={() => setView({ mode: 'list', tab: 'all' })}
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
+          className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> Back to ARCs
         </button>
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">
+        <h1 className="text-2xl font-bold text-content mb-6">
           {isEdit ? initial?.name : 'Add reader'}
         </h1>
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+          <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
         )}
         <ReaderForm
           initial={initial}
@@ -271,10 +271,10 @@ export default function ARCsModule() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-content flex items-center gap-2">
             <Users className="w-6 h-6 text-pink-500" /> ARCs
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">
+          <p className="text-content-secondary mt-1 text-sm">
             Your ARC readers across every launch — track who's gotten what, who reviewed,
             who's awaiting a copy, and where they post.
           </p>
@@ -289,17 +289,17 @@ export default function ARCsModule() {
                   ? 'No readers with email in the current view'
                   : `Export ${exportableCount} email${exportableCount === 1 ? '' : 's'} as CSV for Bookfunnel`
               }
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-content bg-surface border border-edge-strong hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed rounded-control shadow-sm"
             >
               <Download className="w-4 h-4" /> Export emails
               {exportableCount > 0 && (
-                <span className="text-xs text-slate-500">({exportableCount})</span>
+                <span className="text-xs text-content-secondary">({exportableCount})</span>
               )}
             </button>
           )}
           <button
             onClick={() => setView({ mode: 'new' })}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control shadow-sm"
           >
             <Plus className="w-4 h-4" /> Add reader
           </button>
@@ -307,7 +307,7 @@ export default function ARCsModule() {
       </div>
 
       {/* Tab strip */}
-      <div className="flex gap-1 border-b border-slate-200 mb-5 overflow-x-auto">
+      <div className="flex gap-1 border-b border-edge mb-5 overflow-x-auto">
         <TabButton active={view.tab === 'all'} onClick={() => setView({ mode: 'list', tab: 'all' })}>
           All {readers.length > 0 && <Counter n={readers.length} />}
         </TabButton>
@@ -326,32 +326,32 @@ export default function ARCsModule() {
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+        <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
       )}
 
       {view.tab === 'import' ? (
         <ImportTab userId={user!.id} catalogBooks={catalogBooks} onImported={reload} />
       ) : loading ? (
-        <div className="text-center py-16 text-slate-500 text-sm">Loading readers…</div>
+        <div className="text-center py-16 text-content-secondary text-sm">Loading readers…</div>
       ) : (
         <>
           {/* Filters */}
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <div className="relative flex-1 min-w-[14rem] max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-content-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search name, email, handle, or book title"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge-strong"
               />
             </div>
             <div className="flex items-center gap-2 text-sm">
-              <Filter className="w-4 h-4 text-slate-500" />
+              <Filter className="w-4 h-4 text-content-secondary" />
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value as ArcStatus | 'all')}
-                className="rounded-lg border border-slate-300 px-2 py-2 text-sm bg-white"
+                className="rounded-control border border-edge-strong px-2 py-2 text-sm bg-surface"
               >
                 <option value="all">All statuses</option>
                 {STATUS_ORDER.map(s => (
@@ -359,19 +359,19 @@ export default function ARCsModule() {
                 ))}
               </select>
             </div>
-            <div className="ml-auto text-xs text-slate-500">
+            <div className="ml-auto text-xs text-content-secondary">
               {filtered.length} of {readers.length} shown
             </div>
           </div>
 
           {selectedIds.size > 0 && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 text-sm mb-3 space-y-2">
+            <div className="bg-indigo-50 border border-indigo-200 rounded-card p-3 text-sm mb-3 space-y-2">
               <div className="flex flex-wrap items-center gap-3">
                 <span className="font-medium text-indigo-800">{selectedIds.size} selected</span>
                 <select
                   value={bulkStatus}
                   onChange={e => setBulkStatus(e.target.value as ArcStatus)}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
+                  className="rounded-control border border-edge-strong px-2 py-1 text-sm bg-surface"
                 >
                   <option value="">Change status to…</option>
                   {STATUS_ORDER.map(s => (
@@ -381,13 +381,13 @@ export default function ARCsModule() {
                 <button
                   onClick={applyBulk}
                   disabled={!bulkStatus || saving}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
                 >
                   Apply
                 </button>
                 <button
                   onClick={() => setSelectedIds(new Set())}
-                  className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg ml-auto"
+                  className="px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-sunken rounded-control ml-auto"
                 >
                   Clear selection
                 </button>
@@ -396,7 +396,7 @@ export default function ARCsModule() {
                 <select
                   value={bulkAction}
                   onChange={e => setBulkAction(e.target.value as 'add' | 'remove')}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
+                  className="rounded-control border border-edge-strong px-2 py-1 text-sm bg-surface"
                 >
                   <option value="add">Add</option>
                   <option value="remove">Remove</option>
@@ -404,7 +404,7 @@ export default function ARCsModule() {
                 <select
                   value={bulkField}
                   onChange={e => setBulkField(e.target.value as ReaderBookRelationship | '')}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white"
+                  className="rounded-control border border-edge-strong px-2 py-1 text-sm bg-surface"
                 >
                   <option value="">Field…</option>
                   <option value="applied">Applied for</option>
@@ -414,7 +414,7 @@ export default function ARCsModule() {
                 <select
                   value={bulkBookId}
                   onChange={e => setBulkBookId(e.target.value)}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm bg-white max-w-xs"
+                  className="rounded-control border border-edge-strong px-2 py-1 text-sm bg-surface max-w-xs"
                 >
                   <option value="">Book…</option>
                   {catalogBooks.map(b => (
@@ -424,7 +424,7 @@ export default function ARCsModule() {
                 <button
                   onClick={applyBulkBook}
                   disabled={!bulkField || !bulkBookId || saving}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
                 >
                   Apply
                 </button>
@@ -439,10 +439,10 @@ export default function ARCsModule() {
               onImport={() => setView({ mode: 'list', tab: 'import' })}
             />
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="bg-surface rounded-card border border-edge overflow-hidden">
               <div className="overflow-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0">
+                  <thead className="bg-surface-hover text-content-secondary font-medium sticky top-0">
                     <tr>
                       <th className="px-3 py-2 w-10">
                         <input
@@ -461,11 +461,11 @@ export default function ARCsModule() {
                       <th className="px-3 py-2 whitespace-nowrap">Opt-ins</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-edge-soft">
                     {filtered.map(r => (
                       <tr
                         key={r.id}
-                        className={`hover:bg-slate-50 cursor-pointer ${selectedIds.has(r.id) ? 'bg-indigo-50/50' : ''}`}
+                        className={`hover:bg-surface-hover cursor-pointer ${selectedIds.has(r.id) ? 'bg-indigo-50/50' : ''}`}
                         onClick={() => setView({ mode: 'edit', reader: r })}
                       >
                         <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
@@ -483,8 +483,8 @@ export default function ARCsModule() {
                           />
                         </td>
                         <td className="px-3 py-2">
-                          <div className="font-medium text-slate-800">{r.name}</div>
-                          {r.email && <div className="text-xs text-slate-500 truncate max-w-[16rem]">{r.email}</div>}
+                          <div className="font-medium text-content">{r.name}</div>
+                          {r.email && <div className="text-xs text-content-secondary truncate max-w-[16rem]">{r.email}</div>}
                         </td>
                         <td className="px-3 py-2">
                           <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[r.status]}`}>
@@ -494,7 +494,7 @@ export default function ARCsModule() {
                         <td className="px-3 py-2"><BookCount count={readerBookCount(r, 'received')} /></td>
                         <td className="px-3 py-2"><BookCount count={readerBookCount(r, 'reviewed')} /></td>
                         <td className="px-3 py-2">
-                          <div className="flex items-center gap-2 text-slate-500">
+                          <div className="flex items-center gap-2 text-content-secondary">
                             {r.newsletter_subscribed && <Mail className="w-4 h-4 text-emerald-500" />}
                             {r.promo_team && <Megaphone className="w-4 h-4 text-amber-500" />}
                           </div>
@@ -517,7 +517,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
-        active ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'
+        active ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
       {children}
@@ -526,14 +526,14 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 }
 
 function Counter({ n }: { n: number }) {
-  return <span className="ml-1 text-xs text-slate-400">({n})</span>;
+  return <span className="ml-1 text-xs text-content-muted">({n})</span>;
 }
 
 function BookCount({ count }: { count: number }) {
-  if (count === 0) return <span className="text-xs text-slate-400">—</span>;
+  if (count === 0) return <span className="text-xs text-content-muted">—</span>;
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-slate-700">
-      <BookOpen className="w-3.5 h-3.5 text-slate-400" /> {count}
+    <span className="inline-flex items-center gap-1 text-xs text-content">
+      <BookOpen className="w-3.5 h-3.5 text-content-muted" /> {count}
     </span>
   );
 }
@@ -542,22 +542,22 @@ function EmptyState({
   hasAny, onAdd, onImport,
 }: { hasAny: boolean; onAdd: () => void; onImport: () => void }) {
   return (
-    <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
+    <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
       <Users className="w-10 h-10 text-pink-400 mx-auto mb-3" />
-      <h3 className="text-lg font-semibold text-slate-800 mb-1">
+      <h3 className="text-lg font-semibold text-content mb-1">
         {hasAny ? 'No readers match these filters' : 'No ARC readers yet'}
       </h3>
-      <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">
+      <p className="text-sm text-content-secondary mb-5 max-w-sm mx-auto">
         {hasAny
           ? 'Try clearing the search or changing the status filter.'
           : 'Import your Notion ARC database, or add readers one at a time.'}
       </p>
       {!hasAny && (
         <div className="inline-flex gap-2">
-          <button onClick={onAdd} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg">
+          <button onClick={onAdd} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control">
             <Plus className="w-4 h-4" /> Add reader
           </button>
-          <button onClick={onImport} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg">
+          <button onClick={onImport} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-content bg-surface border border-edge-strong hover:bg-surface-hover rounded-control">
             Import from Notion
           </button>
         </div>

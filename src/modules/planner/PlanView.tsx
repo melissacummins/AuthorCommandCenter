@@ -149,13 +149,13 @@ export default function PlanView({
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex items-center gap-3 mb-5">
         <CalendarRange className="w-6 h-6 text-sky-500" />
-        <h2 className="text-2xl font-bold text-slate-800">Planning</h2>
-        <div className="ml-auto inline-flex rounded-lg border border-slate-200 overflow-hidden">
+        <h2 className="text-2xl font-bold text-content">Planning</h2>
+        <div className="ml-auto inline-flex rounded-control border border-edge overflow-hidden">
           {(['week', 'month'] as const).map(r => (
             <button
               key={r}
               onClick={() => { setRange(r); setAnchor(today); }}
-              className={`px-3 py-1.5 text-sm font-medium capitalize transition-colors ${range === r ? 'bg-teal-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`px-3 py-1.5 text-sm font-medium capitalize transition-colors ${range === r ? 'bg-teal-600 text-white' : 'text-content-secondary hover:bg-surface-sunken'}`}
             >
               {r}
             </button>
@@ -164,9 +164,9 @@ export default function PlanView({
       </div>
 
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => shift(-1)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><ChevronLeft className="w-5 h-5" /></button>
-        <div className="text-sm font-semibold text-slate-700">{rangeLabel}</div>
-        <button onClick={() => shift(1)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><ChevronRight className="w-5 h-5" /></button>
+        <button onClick={() => shift(-1)} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken"><ChevronLeft className="w-5 h-5" /></button>
+        <div className="text-sm font-semibold text-content">{rangeLabel}</div>
+        <button onClick={() => shift(1)} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken"><ChevronRight className="w-5 h-5" /></button>
       </div>
 
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -191,7 +191,7 @@ export default function PlanView({
         ) : (
           <div>
             <div className="grid grid-cols-7 mb-1">
-              {WEEKDAYS.map(w => <div key={w} className="text-[11px] font-semibold uppercase tracking-wide text-slate-400 text-center">{w}</div>)}
+              {WEEKDAYS.map(w => <div key={w} className="text-[11px] font-semibold uppercase tracking-wide text-content-muted text-center">{w}</div>)}
             </div>
             <div className="grid grid-cols-7 gap-1">
               {monthGrid.map(day => (
@@ -212,18 +212,18 @@ export default function PlanView({
         {/* Unscheduled items from a Weekly Reset — grouped & collapsible so a big
             reset doesn't become a wall of chips. Drag a row onto a day above. */}
         {resetTray.length > 0 && (
-          <div className="mt-6 pt-4 border-t border-slate-200">
+          <div className="mt-6 pt-4 border-t border-edge">
             <button
               onClick={() => setTrayOpen(o => !o)}
-              className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-700"
+              className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-content-secondary hover:text-content"
             >
               {trayOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
               <RotateCcw className="w-3.5 h-3.5 text-violet-500" /> From your weekly reset
-              <span className="text-slate-400 font-medium normal-case tracking-normal">({resetTray.length})</span>
+              <span className="text-content-muted font-medium normal-case tracking-normal">({resetTray.length})</span>
             </button>
             {trayOpen && (
               <>
-                <p className="text-xs text-slate-400 mt-1 mb-2 ml-5">Open a group and drag a to-do onto a day — or tap its <CalendarPlus className="inline w-3 h-3 -mt-0.5" /> to pick a day (handy on mobile).</p>
+                <p className="text-xs text-content-muted mt-1 mb-2 ml-5">Open a group and drag a to-do onto a day — or tap its <CalendarPlus className="inline w-3 h-3 -mt-0.5" /> to pick a day (handy on mobile).</p>
                 <div className="space-y-1.5">
                   {traySections.map(g => (
                     <TraySection
@@ -272,21 +272,21 @@ function DayPlanCard({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-2xl border bg-white p-3 min-h-[12rem] flex flex-col transition-colors ${
-        isOver ? 'border-teal-400 ring-2 ring-teal-100' : isToday ? 'border-teal-300' : 'border-slate-200'
+      className={`rounded-card border bg-surface p-3 min-h-[12rem] flex flex-col transition-colors ${
+        isOver ? 'border-teal-400 ring-2 ring-teal-100' : isToday ? 'border-teal-300' : 'border-edge'
       }`}
     >
       <button onClick={() => onOpenDay(day)} className="flex items-baseline justify-between mb-2 text-left w-full">
-        <span className={`text-sm font-bold ${isToday ? 'text-teal-700' : 'text-slate-700'}`}>
+        <span className={`text-sm font-bold ${isToday ? 'text-teal-700' : 'text-content'}`}>
           {d.toLocaleDateString(undefined, { weekday: 'short' })}
-          <span className="ml-1.5 text-xs font-medium text-slate-400">{d.getDate()}</span>
+          <span className="ml-1.5 text-xs font-medium text-content-muted">{d.getDate()}</span>
         </span>
         {planned > 0 && (
-          <span className={`text-[11px] font-medium shrink-0 ${over ? 'text-rose-500' : 'text-slate-400'}`}>{formatMinutes(planned)}</span>
+          <span className={`text-[11px] font-medium shrink-0 ${over ? 'text-rose-500' : 'text-content-muted'}`}>{formatMinutes(planned)}</span>
         )}
       </button>
       {items.length === 0 ? (
-        <button onClick={() => onOpenDay(day)} className="text-xs text-slate-300 flex-1 text-left hover:text-slate-400">
+        <button onClick={() => onOpenDay(day)} className="text-xs text-content-faint flex-1 text-left hover:text-content-muted">
           Drag a to-do here
         </button>
       ) : (
@@ -315,14 +315,14 @@ function DayCell({
     <div
       ref={setNodeRef}
       onClick={() => onOpenDay(day)}
-      className={`min-h-[5.5rem] rounded-lg border p-1.5 text-left cursor-pointer transition-colors ${
+      className={`min-h-[5.5rem] rounded-control border p-1.5 text-left cursor-pointer transition-colors ${
         isOver ? 'border-teal-400 ring-2 ring-teal-100 bg-teal-50/40'
           : isToday ? 'border-teal-300 bg-teal-50/30'
-          : inMonth ? 'border-slate-200 hover:bg-slate-50' : 'border-slate-100 bg-slate-50/40'
+          : inMonth ? 'border-edge hover:bg-surface-hover' : 'border-edge-soft bg-surface-hover/40'
       }`}
     >
       <div className="flex items-center justify-between mb-1">
-        <span className={`text-xs font-semibold ${isToday ? 'text-teal-700' : inMonth ? 'text-slate-600' : 'text-slate-300'}`}>
+        <span className={`text-xs font-semibold ${isToday ? 'text-teal-700' : inMonth ? 'text-content-secondary' : 'text-content-faint'}`}>
           {new Date(day + 'T00:00:00').getDate()}
         </span>
         {over && <span className="w-1.5 h-1.5 rounded-full bg-rose-400" title="Over capacity" />}
@@ -332,13 +332,13 @@ function DayCell({
           <div
             key={t.id}
             onClick={e => { e.stopPropagation(); onOpenDay(day); }}
-            className={`text-[11px] leading-tight truncate rounded px-1 py-0.5 ${t.flagged ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600'}`}
+            className={`text-[11px] leading-tight truncate rounded px-1 py-0.5 ${t.flagged ? 'bg-amber-50 text-amber-700' : 'bg-surface-sunken text-content-secondary'}`}
             title={t.title}
           >
             {t.title || 'Untitled'}
           </div>
         ))}
-        {extra > 0 && <div className="text-[10px] text-slate-400 px-1">+{extra} more</div>}
+        {extra > 0 && <div className="text-[10px] text-content-muted px-1">+{extra} more</div>}
       </div>
     </div>
   );
@@ -364,20 +364,20 @@ function TaskChip({
       {...attributes}
       {...listeners}
       onClick={() => task.due_date && onOpenDay(task.due_date)}
-      className={`group flex items-center gap-1.5 text-xs rounded-lg border border-slate-200 bg-white px-2 py-1 cursor-grab active:cursor-grabbing hover:border-slate-300 ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
+      className={`group flex items-center gap-1.5 text-xs rounded-control border border-edge bg-surface px-2 py-1 cursor-grab active:cursor-grabbing hover:border-edge-strong ${isDragging ? 'opacity-50 shadow-lg' : ''}`}
     >
       {task.done
         ? <Check className="w-3 h-3 text-teal-500 shrink-0" />
         : task.flagged
           ? <Star className="w-3 h-3 text-amber-400 shrink-0" fill="currentColor" />
           : <span className="w-1.5 h-1.5 rounded-full bg-teal-400 shrink-0" />}
-      <span className={`flex-1 truncate ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title || 'Untitled'}</span>
+      <span className={`flex-1 truncate ${task.done ? 'text-content-muted line-through' : 'text-content'}`}>{task.title || 'Untitled'}</span>
       {showDay && task.due_date && (
-        <span className={`shrink-0 ${overdue ? 'text-rose-500' : 'text-slate-400'}`}>
+        <span className={`shrink-0 ${overdue ? 'text-rose-500' : 'text-content-muted'}`}>
           {new Date(task.due_date + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short' })}
         </span>
       )}
-      {task.estimate_minutes ? <span className="text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
+      {task.estimate_minutes ? <span className="text-content-muted shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
     </li>
   );
 }
@@ -399,15 +399,15 @@ function TraySection({
   onSchedule: (id: string, day: string) => void;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
+    <div className="rounded-card border border-edge bg-surface">
       <button onClick={onToggle} className="w-full flex items-center gap-2 px-3 py-2 text-left">
-        {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+        {open ? <ChevronDown className="w-4 h-4 text-content-muted shrink-0" /> : <ChevronRight className="w-4 h-4 text-content-muted shrink-0" />}
         {star && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />}
-        <span className="flex-1 text-sm font-semibold text-slate-700">{label}</span>
-        <span className="text-xs text-slate-400">{items.length}</span>
+        <span className="flex-1 text-sm font-semibold text-content">{label}</span>
+        <span className="text-xs text-content-muted">{items.length}</span>
       </button>
       {open && (
-        <ul className="px-2 pb-2 space-y-0.5 border-t border-slate-100 pt-1">
+        <ul className="px-2 pb-2 space-y-0.5 border-t border-edge-soft pt-1">
           {items.map(t => (
             <TrayRow key={t.id} task={t} onOpenList={onOpenList} weekDays={weekDays} today={today} onSchedule={onSchedule} />
           ))}
@@ -440,7 +440,7 @@ function TrayRow({
       style={style}
       {...attributes}
       {...listeners}
-      className={`group flex items-start gap-2 text-sm rounded-lg px-2 py-1.5 cursor-grab active:cursor-grabbing hover:bg-slate-50 ${isDragging ? 'opacity-60 shadow-lg bg-white ring-1 ring-slate-200' : ''}`}
+      className={`group flex items-start gap-2 text-sm rounded-control px-2 py-1.5 cursor-grab active:cursor-grabbing hover:bg-surface-hover ${isDragging ? 'opacity-60 shadow-lg bg-surface ring-1 ring-edge' : ''}`}
     >
       {task.flagged
         ? <Star className="w-3 h-3 mt-1 text-amber-400 shrink-0" fill="currentColor" />
@@ -452,11 +452,11 @@ function TrayRow({
         onClick={() => { if (task.note_id && onOpenList) onOpenList(task.note_id); }}
         disabled={!canOpen}
         title={canOpen ? 'Open in its list to edit' : undefined}
-        className={`flex-1 min-w-0 text-left break-words ${canOpen ? 'text-slate-700 hover:text-teal-600 cursor-pointer' : 'text-slate-700'}`}
+        className={`flex-1 min-w-0 text-left break-words ${canOpen ? 'text-content hover:text-teal-600 cursor-pointer' : 'text-content'}`}
       >
         {task.title || 'Untitled'}
       </button>
-      {task.estimate_minutes ? <span className="mt-0.5 text-slate-400 shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
+      {task.estimate_minutes ? <span className="mt-0.5 text-content-muted shrink-0 inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(task.estimate_minutes)}</span> : null}
       {/* Tap-to-schedule — the mobile alternative to dragging. stopPropagation on
           pointer-down keeps the drag sensor from swallowing the tap. */}
       <div className="relative shrink-0">
@@ -465,7 +465,7 @@ function TrayRow({
           onPointerDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); setPickOpen(o => !o); }}
           title="Schedule on a day"
-          className="mt-0.5 text-slate-300 hover:text-teal-600 sm:opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity"
+          className="mt-0.5 text-content-faint hover:text-teal-600 sm:opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity"
         >
           <CalendarPlus className="w-4 h-4" />
         </button>
@@ -495,8 +495,8 @@ function SchedulePopover({
   return (
     <>
       <div className="fixed inset-0 z-40" onPointerDown={e => { e.stopPropagation(); onClose(); }} />
-      <div className="absolute right-0 top-7 z-50 w-44 rounded-xl border border-slate-200 bg-white shadow-lg p-1.5">
-        <div className="px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-slate-400">Schedule for…</div>
+      <div className="absolute right-0 top-7 z-50 w-44 rounded-card border border-edge bg-surface shadow-lg p-1.5">
+        <div className="px-1.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-content-muted">Schedule for…</div>
         {weekDays.map(day => {
           const d = new Date(day + 'T00:00:00');
           return (
@@ -504,10 +504,10 @@ function SchedulePopover({
               key={day}
               onPointerDown={e => e.stopPropagation()}
               onClick={e => { e.stopPropagation(); onPick(day); }}
-              className={`w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-sm hover:bg-teal-50 ${day === today ? 'text-teal-700 font-medium' : 'text-slate-600'}`}
+              className={`w-full flex items-center justify-between px-2 py-1.5 rounded-control text-sm hover:bg-teal-50 ${day === today ? 'text-teal-700 font-medium' : 'text-content-secondary'}`}
             >
               <span>{d.toLocaleDateString(undefined, { weekday: 'short' })}</span>
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-content-muted">
                 {d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}{day === today ? ' · Today' : ''}
               </span>
             </button>

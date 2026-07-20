@@ -154,16 +154,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left: Yearly Revenue vs Spend */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-surface p-6 rounded-card shadow-sm border border-gray-100">
           <h3 className="text-lg font-bold text-gray-800 mb-6">Revenue vs Ad Spend (Yearly)</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={yearlyChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                <XAxis dataKey="year" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-edge)" />
+                <XAxis dataKey="year" stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
                 <Tooltip 
-                  cursor={{fill: '#f3f4f6'}}
+                  cursor={{fill: 'var(--color-surface-sunken)'}}
                   formatter={(value: number) => formatCurrency(value)}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
                 />
@@ -176,7 +176,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
         </div>
 
         {/* Right: Platform Breakdown */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
+        <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100 flex flex-col">
           <h3 className="text-lg font-bold text-gray-800 mb-2">Earnings by Platform</h3>
           <div className="flex-1 min-h-[300px] relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -214,7 +214,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
       </div>
 
       {/* Fourth Row: Year-Over-Year Growth Trend */}
-      <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
         <h3 className="text-lg font-bold text-gray-800 mb-6">Year-Over-Year Revenue Growth</h3>
         <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -225,9 +225,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
                     <stop offset="95%" stopColor="#4F46E5" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="year" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                <XAxis dataKey="year" stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val/1000}k`} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-edge)" />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Area type="monotone" dataKey="totalRevenue" stroke="#4F46E5" strokeWidth={3} fillOpacity={1} fill="url(#colorGrowth)" />
               </AreaChart>

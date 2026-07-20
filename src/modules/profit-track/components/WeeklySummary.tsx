@@ -41,7 +41,7 @@ const AutoResizeTextarea = ({ value, onChange, placeholder, minHeight = '38px', 
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={1}
-      className="w-full text-sm border border-gray-300 bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-md px-3 py-2 transition-all placeholder-gray-400 resize-none overflow-hidden leading-relaxed shadow-sm"
+      className="w-full text-sm border border-gray-300 bg-surface focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-control px-3 py-2 transition-all placeholder-gray-400 resize-none overflow-hidden leading-relaxed shadow-sm"
       style={{ minHeight }}
     />
   );
@@ -86,14 +86,14 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data, notes, categ
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Year Filter Controls */}
-      <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+      <div className="flex justify-between items-center bg-surface p-4 rounded-card shadow-sm border border-gray-100">
          <h2 className="text-lg font-bold text-gray-800">Weekly Performance</h2>
          
          <div className="relative">
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500 cursor-pointer"
+              className="appearance-none bg-surface border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-control leading-tight focus:outline-none focus:bg-surface focus:border-blue-500 cursor-pointer"
             >
               <option value="All">All Years</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -104,7 +104,7 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data, notes, categ
          </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-surface rounded-card shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -122,7 +122,7 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data, notes, categ
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Notes</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="bg-surface divide-y divide-gray-200">
               {filteredData.map((row) => {
                 const start = new Date(row.weekStart + 'T00:00:00');
                 const end = new Date(row.weekEnd + 'T00:00:00');

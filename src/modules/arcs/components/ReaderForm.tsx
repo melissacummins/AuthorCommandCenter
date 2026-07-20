@@ -27,10 +27,10 @@ interface Props {
   onDismissUnmatched?: (title: string, relationship: ReaderBookRelationship) => Promise<void> | void;
 }
 
-const labelCls = 'block text-xs font-medium text-slate-700 mb-1';
+const labelCls = 'block text-xs font-medium text-content mb-1';
 const inputCls =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-white';
-const sectionCls = 'bg-white rounded-2xl border border-slate-200 p-5 space-y-4';
+  'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-surface';
+const sectionCls = 'bg-surface rounded-card border border-edge p-5 space-y-4';
 
 // Project an ArcReader down to the insert shape. The joined
 // `reader_books` rows and the backfill `unmatched_titles` JSONB are
@@ -261,8 +261,8 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
 
       {/* Per-book history */}
       <div className={sectionCls}>
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-700">Per-book history</h3>
-        <p className="text-xs text-slate-500 -mt-2">
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-content">Per-book history</h3>
+        <p className="text-xs text-content-secondary -mt-2">
           Books from Catalog. Reader status auto-flips as you move titles through Applied → Received → Reviewed.
         </p>
         <ReaderBookSection
@@ -338,7 +338,7 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
                     : [...d.place_to_review, p],
                 }))}
                 className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                  on ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  on ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-surface text-content-secondary border-edge hover:border-edge-strong'
                 }`}
               >
                 {p}
@@ -373,20 +373,20 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
             <button
               type="button"
               onClick={() => { if (confirm(`Delete ${draft.name}?`)) onDelete(); }}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-lg"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-control"
             >
               <Trash2 className="w-4 h-4" /> Delete
             </button>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving || !draft.name.trim()}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
           >
             {saving ? 'Saving…' : initial ? 'Save changes' : 'Add reader'}
           </button>
@@ -430,19 +430,19 @@ function PromoteBooksModal({
   const anySelected = Array.from(selected).length > 0;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-3">
-        <h3 className="text-sm font-semibold text-slate-800">
+      <div className="bg-surface rounded-card shadow-xl w-full max-w-md p-5 space-y-3">
+        <h3 className="text-sm font-semibold text-content">
           {single
             ? `Also mark this book as ${verb}?`
             : `Also mark these books as ${verb}?`}
         </h3>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-content-secondary">
           Only pending books show here — anything already {verb} is left alone.
         </p>
         <ul className="space-y-1.5 max-h-64 overflow-auto">
           {candidates.map(c => (
             <li key={c.id}>
-              <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+              <label className="flex items-center gap-2 text-sm text-content cursor-pointer">
                 <input
                   type="checkbox"
                   checked={selected.has(c.id)}
@@ -457,7 +457,7 @@ function PromoteBooksModal({
           <button
             type="button"
             onClick={onSkip}
-            className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg"
+            className="px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-sunken rounded-control"
           >
             Just change status
           </button>
@@ -465,7 +465,7 @@ function PromoteBooksModal({
             type="button"
             onClick={onConfirm}
             disabled={!anySelected}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+            className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
           >
             {single ? 'Yes, mark it' : 'Yes, mark them'}
           </button>

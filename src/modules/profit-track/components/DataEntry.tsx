@@ -342,24 +342,24 @@ export const DataEntry: React.FC<DataEntryProps> = ({
         <div className="flex space-x-4 mb-6">
           <button 
             onClick={() => setActiveTab('manual')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'manual' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            className={`px-4 py-2 rounded-control font-medium transition-colors ${activeTab === 'manual' ? 'bg-blue-600 text-white' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
           >
             Manual Entry
           </button>
           <button 
             onClick={() => setActiveTab('csv')}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'csv' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+            className={`px-4 py-2 rounded-control font-medium transition-colors ${activeTab === 'csv' ? 'bg-blue-600 text-white' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
           >
             Bulk Upload (CSV)
           </button>
         </div>
       ) : (
-        <div className="mb-6 flex items-center justify-between bg-blue-50 p-4 rounded-lg border border-blue-100">
+        <div className="mb-6 flex items-center justify-between bg-blue-50 p-4 rounded-control border border-blue-100">
             <div className="flex items-center text-blue-800 font-medium">
                 <Save className="w-5 h-5 mr-2" />
                 <span>Editing Record for {new Date(formData.date || '').toLocaleDateString()}</span>
             </div>
-            <button onClick={onCancelEdit} className="flex items-center text-sm text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-3 py-1.5 rounded-md shadow-sm">
+            <button onClick={onCancelEdit} className="flex items-center text-sm text-gray-600 hover:text-gray-900 bg-surface border border-gray-200 px-3 py-1.5 rounded-control shadow-sm">
                 <X className="w-4 h-4 mr-1" />
                 Cancel Edit
             </button>
@@ -367,14 +367,14 @@ export const DataEntry: React.FC<DataEntryProps> = ({
       )}
 
       {successMsg && (
-        <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center border border-green-100">
+        <div className="bg-green-50 text-green-700 p-4 rounded-control flex items-center border border-green-100">
           <CheckCircle className="w-5 h-5 mr-2" />
           {successMsg}
         </div>
       )}
 
       {errorMsg && (
-        <div className="bg-red-50 text-red-700 p-4 rounded-lg flex items-center border border-red-100">
+        <div className="bg-red-50 text-red-700 p-4 rounded-control flex items-center border border-red-100">
           <AlertCircle className="w-5 h-5 mr-2" />
           {errorMsg}
         </div>
@@ -382,7 +382,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
 
       {/* --- Manual Form --- */}
       {activeTab === 'manual' && (
-        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        <form onSubmit={handleSubmit} className="bg-surface p-8 rounded-card shadow-sm border border-gray-100">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* General */}
             <div className="md:col-span-2">
@@ -393,7 +393,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
                 required
                 value={formData.date}
                 onChange={handleInputChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-control focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
               {dateMatchId && !editingRecord && (
                  <p className="text-xs text-blue-600 mt-1 flex items-center">
@@ -425,7 +425,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
           <div className="mt-8 pt-4 border-t flex justify-end">
             <button 
               type="submit" 
-              className={`flex items-center px-6 py-3 text-white rounded-lg transition shadow-md font-medium ${isEditMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+              className={`flex items-center px-6 py-3 text-white rounded-control transition shadow-md font-medium ${isEditMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {isEditMode ? (
                 <>
@@ -447,7 +447,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
       {activeTab === 'csv' && importStep === 'upload' && (
         <div className="space-y-6">
             {/* Mode Selection */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Select Target Category</h3>
                 <p className="text-sm text-gray-500 mb-4">
                     Upload a CSV report (e.g. Facebook Ads, Amazon Ads). We will sum the data by date and merge it into the selected category.
@@ -458,7 +458,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
                     <select
                         value={targetCategory}
                         onChange={(e) => setTargetCategory(e.target.value)}
-                        className="block w-full max-w-md border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
+                        className="block w-full max-w-md border-gray-300 rounded-control shadow-sm focus:ring-blue-500 focus:border-blue-500 p-2 border"
                     >
                         <option value="">-- Select where this data goes --</option>
                         <optgroup label="Ad Spend">
@@ -478,7 +478,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
                 </div>
             </div>
 
-            <div className="bg-white p-12 rounded-xl shadow-sm border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center hover:border-blue-400 transition-colors relative">
+            <div className="bg-surface p-12 rounded-card shadow-sm border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-center hover:border-blue-400 transition-colors relative">
             {isProcessing ? (
                 <div className="flex flex-col items-center">
                     <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
@@ -507,7 +507,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
 
       {/* --- CSV Mapping View --- */}
       {activeTab === 'csv' && importStep === 'mapping' && (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-surface p-8 rounded-card shadow-sm border border-gray-100">
            <div className="flex items-center justify-between mb-6 border-b pb-4">
               <div>
                 <h3 className="text-xl font-bold text-gray-900 flex items-center">
@@ -518,14 +518,14 @@ export const DataEntry: React.FC<DataEntryProps> = ({
               </div>
               <button 
                 onClick={() => { setImportStep('upload'); setCsvHeaders([]); setColumnMapping({}); setErrorMsg(''); }}
-                className="text-sm text-gray-500 hover:text-gray-800 flex items-center bg-gray-100 px-3 py-1.5 rounded-md"
+                className="text-sm text-gray-500 hover:text-gray-800 flex items-center bg-gray-100 px-3 py-1.5 rounded-control"
               >
                 <ArrowLeft className="w-4 h-4 mr-1" />
                 Start Over
               </button>
            </div>
 
-           <div className="bg-blue-50 p-4 rounded-lg mb-6 border border-blue-100">
+           <div className="bg-blue-50 p-4 rounded-control mb-6 border border-blue-100">
              <div className="flex items-start">
                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5 mr-2" />
                <p className="text-sm text-blue-800">
@@ -535,14 +535,14 @@ export const DataEntry: React.FC<DataEntryProps> = ({
            </div>
 
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div className="bg-gray-50 p-4 rounded-control border border-gray-200">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Date Column <span className="text-red-500">*</span>
                     </label>
                     <select 
                         value={columnMapping['date'] !== undefined ? columnMapping['date'] : -1}
                         onChange={(e) => handleMappingChange('date', e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-2 border border-gray-300 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="-1">-- Select Date Column --</option>
                         {csvHeaders.map((header, idx) => (
@@ -550,14 +550,14 @@ export const DataEntry: React.FC<DataEntryProps> = ({
                         ))}
                     </select>
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                <div className="bg-gray-50 p-4 rounded-control border border-gray-200">
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
                         Amount/Spend Column <span className="text-red-500">*</span>
                     </label>
                     <select 
                         value={columnMapping['amount'] !== undefined ? columnMapping['amount'] : -1}
                         onChange={(e) => handleMappingChange('amount', e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                        className="w-full p-2 border border-gray-300 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                     >
                         <option value="-1">-- Select Amount Column --</option>
                         {csvHeaders.map((header, idx) => (
@@ -570,7 +570,7 @@ export const DataEntry: React.FC<DataEntryProps> = ({
            <div className="flex justify-end">
               <button 
                 onClick={executeImport}
-                className="flex items-center px-6 py-3 bg-green-600 text-white rounded-lg font-bold shadow-md hover:bg-green-700 transition-colors"
+                className="flex items-center px-6 py-3 bg-green-600 text-white rounded-control font-bold shadow-md hover:bg-green-700 transition-colors"
               >
                 Complete Import
                 <ArrowRight className="w-5 h-5 ml-2" />
@@ -628,7 +628,7 @@ const CategoryFieldGroup: React.FC<CategoryFieldGroupProps> = ({
                   const n = parseFloat(e.target.value);
                   onChange(cat, Number.isFinite(n) ? n : 0);
                 }}
-                className="pl-7 block w-full border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 border p-2"
+                className="pl-7 block w-full border-gray-300 rounded-control focus:ring-blue-500 focus:border-blue-500 border p-2"
               />
             </div>
           </div>

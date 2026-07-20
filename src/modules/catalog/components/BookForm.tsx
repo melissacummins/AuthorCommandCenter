@@ -101,11 +101,11 @@ function logDayLabel(day: string): string {
   return new Date(day + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-const labelCls = 'block text-sm font-medium text-slate-700 mb-1';
+const labelCls = 'block text-sm font-medium text-content mb-1';
 const inputCls =
-  'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-white';
-const sectionCls = 'bg-white rounded-2xl border border-slate-200 p-5 space-y-4';
-const sectionTitle = 'text-sm font-semibold text-slate-800 uppercase tracking-wide';
+  'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-surface';
+const sectionCls = 'bg-surface rounded-card border border-edge p-5 space-y-4';
+const sectionTitle = 'text-sm font-semibold text-content uppercase tracking-wide';
 
 export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving, onAutosave }: BookFormProps) {
   const { user } = useAuth();
@@ -316,7 +316,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       <div className={sectionCls}>
         <h3 className={sectionTitle}>Cover</h3>
         <div className="flex items-start gap-4">
-          <div className="w-28 h-40 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden border border-slate-200">
+          <div className="w-28 h-40 rounded-control bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden border border-edge">
             {previewUrl ? (
               <img src={previewUrl} alt="Cover preview" className="w-full h-full object-cover" />
             ) : (
@@ -335,7 +335,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
+                className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-content bg-surface border border-edge-strong hover:bg-surface-hover rounded-control"
               >
                 <Upload className="w-4 h-4" />
                 {previewUrl ? 'Replace cover' : 'Upload cover'}
@@ -344,13 +344,13 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
                 <button
                   type="button"
                   onClick={clearCover}
-                  className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-lg"
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-control"
                 >
                   <X className="w-4 h-4" /> Remove
                 </button>
               )}
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-content-secondary">
               PNG, JPG, WebP, or GIF. Up to 10MB. Saved when you save the book.
             </p>
           </div>
@@ -403,7 +403,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         <div>
           <label className={labelCls}>Pen name</label>
           {penNames.length === 0 ? (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-content-secondary">
               No pen names yet — add one in <a href="/settings" className="text-indigo-600 hover:underline">Settings</a>.
             </p>
           ) : (
@@ -441,7 +441,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           </label>
 
           {translationSuggestion && (
-            <div className="mb-2 flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-lg p-2.5 text-xs text-indigo-800">
+            <div className="mb-2 flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-control p-2.5 text-xs text-indigo-800">
               <Link2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <div className="flex-1">
                 Looks like a {languageLabel(translationSuggestion.languageCode)} translation of{' '}
@@ -454,7 +454,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
                   parent_book_id: translationSuggestion.parent.id,
                   language: translationSuggestion.languageCode,
                 }))}
-                className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-control hover:bg-indigo-700"
               >
                 Link it
               </button>
@@ -487,12 +487,12 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
             </select>
           </div>
           {parentBook && (
-            <p className="text-xs text-slate-500 mt-1.5">
+            <p className="text-xs text-content-secondary mt-1.5">
               {languageLabel(draft.language) ?? 'Language not set'} translation of{' '}
-              <strong className="text-slate-700">{parentBook.title}</strong>
+              <strong className="text-content">{parentBook.title}</strong>
             </p>
           )}
-          <label className="mt-3 flex items-center gap-2 text-xs text-slate-700">
+          <label className="mt-3 flex items-center gap-2 text-xs text-content">
             <input
               type="checkbox"
               checked={draft.include_in_arcs !== false}
@@ -618,12 +618,12 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         {linkedManuscript && (
           <div className="flex items-center gap-2 text-sm">
             <PenTool className="w-4 h-4 text-lime-500 shrink-0" />
-            <span className="text-slate-600">Linked manuscript:</span>
-            <span className="font-medium text-slate-800">{linkedManuscript.title}</span>
+            <span className="text-content-secondary">Linked manuscript:</span>
+            <span className="font-medium text-content">{linkedManuscript.title}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full ${MANUSCRIPT_STATUS_COLORS[linkedManuscript.status]}`}>
               {MANUSCRIPT_STATUS_LABELS[linkedManuscript.status]}
             </span>
-            <span className="text-xs text-slate-400">{linkedManuscript.word_count.toLocaleString()} words</span>
+            <span className="text-xs text-content-muted">{linkedManuscript.word_count.toLocaleString()} words</span>
           </div>
         )}
 
@@ -648,10 +648,10 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
 
         {/* Hours worked — rolled up from any planner lists linked to this book. */}
         {trackedMinutes > 0 && (
-          <div className="flex items-center gap-2 text-sm text-slate-600">
+          <div className="flex items-center gap-2 text-sm text-content-secondary">
             <Clock className="w-4 h-4 text-teal-500 shrink-0" />
             <span className="font-semibold">{formatHm(trackedMinutes)}</span>
-            <span className="text-slate-400 text-xs">worked — tracked via linked planner lists</span>
+            <span className="text-content-muted text-xs">worked — tracked via linked planner lists</span>
           </div>
         )}
 
@@ -664,8 +664,8 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           return (
             <div>
               <div className="flex items-baseline justify-between mb-2">
-                <span className="text-xs font-medium text-slate-600">Word-count history</span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs font-medium text-content-secondary">Word-count history</span>
+                <span className="text-xs text-content-muted">
                   {wordLogs.length} {wordLogs.length === 1 ? 'entry' : 'entries'}
                   {wordLogs.length > 1 && gained !== 0 && (
                     <span className={gained > 0 ? 'text-emerald-600 ml-1' : 'text-rose-600 ml-1'}>
@@ -688,11 +688,11 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
                   </div>
                 ))}
               </div>
-              <div className="flex items-center justify-between mt-1 text-[10px] text-slate-400">
+              <div className="flex items-center justify-between mt-1 text-[10px] text-content-muted">
                 <span>{logDayLabel(first.day)}</span>
                 {wordLogs.length > 1 && <span>{logDayLabel(last.day)}</span>}
               </div>
-              <p className="text-[11px] text-slate-400 mt-2">
+              <p className="text-[11px] text-content-muted mt-2">
                 A snapshot is recorded automatically each time you save this book.
               </p>
             </div>
@@ -739,7 +739,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
               <ExternalLink className="w-3.5 h-3.5" /> Open KDP Optimizer
             </Link>
           </div>
-          <p className="text-xs text-slate-500 -mt-2">
+          <p className="text-xs text-content-secondary -mt-2">
             Pulled from the linked KDP book — manage selections in KDP Optimizer. The boxes below
             are computed from your selected keywords with words from this book's title, subtitle,
             and series filtered out.
@@ -747,7 +747,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="md:col-span-2 space-y-2">
-              <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              <h4 className="text-xs font-semibold text-content uppercase tracking-wider">
                 Amazon keyword boxes ({Math.min(kdpBoxes.length, 7)}/7)
               </h4>
               {Array.from({ length: 7 }).map((_, i) => (
@@ -761,25 +761,25 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
               )}
             </div>
             <div className="space-y-2">
-              <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              <h4 className="text-xs font-semibold text-content uppercase tracking-wider">
                 Selected phrases
               </h4>
-              <div className="text-2xl font-bold text-slate-800">{kdpData.keywords.length}</div>
-              <div className="text-xs text-slate-500">
-                Total search volume: <span className="font-semibold text-slate-700">{totalKdpVolume.toLocaleString()}</span>
+              <div className="text-2xl font-bold text-content">{kdpData.keywords.length}</div>
+              <div className="text-xs text-content-secondary">
+                Total search volume: <span className="font-semibold text-content">{totalKdpVolume.toLocaleString()}</span>
               </div>
-              <div className="max-h-48 overflow-auto border border-slate-100 rounded-lg bg-slate-50">
+              <div className="max-h-48 overflow-auto border border-edge-soft rounded-control bg-surface-hover">
                 {kdpData.keywords
                   .slice()
                   .sort((a, b) => b.search_volume - a.search_volume)
                   .slice(0, 25)
                   .map(k => (
-                    <div key={k.id} className="px-2 py-1 text-xs text-slate-700 truncate">
+                    <div key={k.id} className="px-2 py-1 text-xs text-content truncate">
                       {k.text}
                     </div>
                   ))}
                 {kdpData.keywords.length > 25 && (
-                  <div className="px-2 py-1 text-xs text-slate-400">
+                  <div className="px-2 py-1 text-xs text-content-muted">
                     + {kdpData.keywords.length - 25} more
                   </div>
                 )}
@@ -796,7 +796,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         return (
           <div className={sectionCls}>
             <h3 className={sectionTitle}>Discovery</h3>
-            <p className="text-xs text-slate-500 -mt-2">One entry per line.</p>
+            <p className="text-xs text-content-secondary -mt-2">One entry per line.</p>
             <div className={`grid grid-cols-1 ${gridCols} gap-3`}>
               {!kdpLinked && (
                 <div>
@@ -846,13 +846,13 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           </button>
         </div>
         {reviews.length === 0 ? (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-content-secondary">
             Pull-quotes you want to reuse on covers, ads, or your bio page.
           </p>
         ) : (
           <div className="space-y-3">
             {reviews.map((rev, i) => (
-              <div key={i} className="rounded-lg border border-slate-200 p-3 space-y-2 bg-slate-50/50">
+              <div key={i} className="rounded-control border border-edge p-3 space-y-2 bg-surface-hover/50">
                 <textarea
                   rows={2}
                   className={inputCls}
@@ -901,20 +901,20 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
               onClick={() => {
                 if (confirm('Delete this book? This cannot be undone.')) onDelete();
               }}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-lg"
+              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 rounded-control"
             >
               <Trash2 className="w-4 h-4" /> Delete
             </button>
           )}
         </div>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">
+          <button type="button" onClick={onCancel} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving || !draft.title.trim()}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
           >
             {saving ? 'Saving…' : initial ? 'Save changes' : 'Add book'}
           </button>
@@ -935,18 +935,18 @@ function KdpBoxRow({ index, content }: { index: number; content: string }) {
   }
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] uppercase tracking-wider text-slate-500 w-12 shrink-0">
+      <span className="text-[10px] uppercase tracking-wider text-content-secondary w-12 shrink-0">
         Box {index}
       </span>
       <input
         readOnly
         value={content}
         placeholder="Empty"
-        className={`flex-1 px-3 py-1.5 rounded-md font-mono text-xs border ${
-          isEmpty ? 'bg-slate-50 border-slate-200' : 'bg-white border-indigo-200'
+        className={`flex-1 px-3 py-1.5 rounded-control font-mono text-xs border ${
+          isEmpty ? 'bg-surface-hover border-edge' : 'bg-surface border-indigo-200'
         }`}
       />
-      <span className="text-[10px] font-mono text-slate-400 w-12 text-right">
+      <span className="text-[10px] font-mono text-content-muted w-12 text-right">
         {content.length}/50
       </span>
       <button
@@ -954,7 +954,7 @@ function KdpBoxRow({ index, content }: { index: number; content: string }) {
         onClick={copy}
         disabled={isEmpty}
         title="Copy"
-        className="p-1.5 text-slate-400 hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-slate-400"
+        className="p-1.5 text-content-muted hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-content-muted"
       >
         {copied ? <span className="text-[10px] text-emerald-600">Copied</span> : <Copy className="w-3.5 h-3.5" />}
       </button>
@@ -977,7 +977,7 @@ function StarPicker({ value, onChange }: { value: number | null; onChange: (v: n
             aria-checked={value === n}
             role="radio"
           >
-            <Star className={`w-4 h-4 ${active ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`} />
+            <Star className={`w-4 h-4 ${active ? 'text-amber-400 fill-amber-400' : 'text-content-faint'}`} />
           </button>
         );
       })}

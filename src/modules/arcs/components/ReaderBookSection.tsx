@@ -39,7 +39,7 @@ export default function ReaderBookSection({
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-slate-700">{label}</span>
+        <span className="text-xs font-medium text-content">{label}</span>
         {!adding && (
           <button
             type="button"
@@ -53,7 +53,7 @@ export default function ReaderBookSection({
 
       <div className="flex flex-wrap gap-1.5 mb-2">
         {bookIds.length === 0 && !unmatched?.length && (
-          <span className="text-xs text-slate-400 italic">No books in this list yet.</span>
+          <span className="text-xs text-content-muted italic">No books in this list yet.</span>
         )}
         {bookIds.map(id => {
           const b = booksById.get(id);
@@ -119,7 +119,7 @@ export default function ReaderBookSection({
           <button
             type="button"
             onClick={() => setAdding(false)}
-            className="text-xs text-slate-500 hover:text-slate-700"
+            className="text-xs text-content-secondary hover:text-content"
           >
             Cancel
           </button>

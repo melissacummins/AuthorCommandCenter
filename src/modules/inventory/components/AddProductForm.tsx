@@ -75,43 +75,43 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {duplicateFrom && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-lg text-sm">
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-control text-sm">
           Pricing & costs copied from <strong>{duplicateFrom.name}</strong>. Enter a new name and SKU below.
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2">
-          <label className="block text-xs text-slate-500 mb-1">Product Name *</label>
+          <label className="block text-xs text-content-secondary mb-1">Product Name *</label>
           <input
             type="text"
             value={form.name}
             onChange={e => updateField('name', e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
           />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">SKU</label>
+          <label className="block text-xs text-content-secondary mb-1">SKU</label>
           <input
             type="text"
             value={form.sku}
             onChange={e => updateField('sku', e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
           />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Category</label>
+          <label className="block text-xs text-content-secondary mb-1">Category</label>
           <select
             value={form.category}
             onChange={e => updateField('category', e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
           >
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
       </div>
 
-      <div className="border-t border-slate-200 pt-4">
-        <p className="text-sm font-medium text-slate-700 mb-3">Pricing</p>
+      <div className="border-t border-edge pt-4">
+        <p className="text-sm font-medium text-content mb-3">Pricing</p>
         <div className="grid grid-cols-2 gap-4">
           <NumberField label="Base Price" value={form.base_price} onChange={v => updateField('base_price', v)} />
           <NumberField label="TT Shop Price" value={form.tt_shop_price} onChange={v => updateField('tt_shop_price', v)} />
@@ -126,8 +126,8 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
         </div>
       </div>
 
-      <div className="border-t border-slate-200 pt-4">
-        <p className="text-sm font-medium text-slate-700 mb-3">
+      <div className="border-t border-edge pt-4">
+        <p className="text-sm font-medium text-content mb-3">
           {isBundle ? 'Bundle Inventory' : 'Inventory'}
         </p>
         <div className="grid grid-cols-2 gap-4">
@@ -144,21 +144,21 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
       </div>
 
       {isBundle && (
-        <div className="border-t border-slate-200 pt-4">
-          <p className="text-sm font-medium text-slate-700 mb-3">Bundle Contents</p>
+        <div className="border-t border-edge pt-4">
+          <p className="text-sm font-medium text-content mb-3">Bundle Contents</p>
           <div>
-            <label className="block text-xs text-slate-500 mb-1">Books in Bundle (comma-separated)</label>
+            <label className="block text-xs text-content-secondary mb-1">Books in Bundle (comma-separated)</label>
             <input
               type="text"
               value={form.books_in_bundle}
               onChange={e => updateField('books_in_bundle', e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
             />
           </div>
         </div>
       )}
 
-      <div className="flex items-center gap-2 border-t border-slate-200 pt-4">
+      <div className="flex items-center gap-2 border-t border-edge pt-4">
         <input
           type="checkbox"
           id="doNotReorder"
@@ -166,17 +166,17 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
           onChange={e => updateField('do_not_reorder', e.target.checked)}
           className="rounded"
         />
-        <label htmlFor="doNotReorder" className="text-sm text-slate-600">Do not reorder (tracking only)</label>
+        <label htmlFor="doNotReorder" className="text-sm text-content-secondary">Do not reorder (tracking only)</label>
       </div>
 
-      {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+      {error && <p className="text-red-600 text-sm bg-red-50 px-3 py-2 rounded-control">{error}</p>}
 
       <div className="flex justify-end gap-3 pt-2">
-        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Cancel</button>
         <button
           type="submit"
           disabled={saving}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50"
         >
           {saving ? 'Adding...' : 'Add Product'}
         </button>
@@ -188,12 +188,12 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
 function NumberField({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
   return (
     <div>
-      <label className="block text-xs text-slate-500 mb-1">{label}</label>
+      <label className="block text-xs text-content-secondary mb-1">{label}</label>
       <input
         type="number"
         value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+        className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
       />
     </div>
   );

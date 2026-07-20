@@ -61,20 +61,20 @@ export default function FirebaseImport() {
   const cancel = () => setPhase({ kind: 'idle' });
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 space-y-6">
+    <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100 space-y-6">
       <div className="flex items-start gap-3">
         <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
         <div>
-          <h3 className="font-semibold text-slate-800">
+          <h3 className="font-semibold text-content">
             Import from original ProfitTrack backup
           </h3>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-secondary mt-1">
             Upload the JSON file you exported from the Firebase-era ProfitTrack
-            app. This tool <strong className="text-slate-700">only adds</strong>{' '}
+            app. This tool <strong className="text-content">only adds</strong>{' '}
             rows that are missing from your current data — it will never delete
             or overwrite anything you've entered recently.
           </p>
-          <ul className="text-xs text-slate-500 mt-2 list-disc pl-5 space-y-0.5">
+          <ul className="text-xs text-content-secondary mt-2 list-disc pl-5 space-y-0.5">
             <li>Daily records with dates you already have are skipped.</li>
             <li>Order sources with matching names are reused (bundles, Amazon, etc.).</li>
             <li>Monthly orders and page reads are only added for missing months.</li>
@@ -94,7 +94,7 @@ export default function FirebaseImport() {
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
+            className="flex items-center gap-2 px-4 py-2 border border-edge-strong text-content text-sm font-medium rounded-control hover:bg-surface-hover"
           >
             <Upload className="w-4 h-4" />
             Choose backup file…
@@ -103,14 +103,14 @@ export default function FirebaseImport() {
       )}
 
       {phase.kind === 'running' && (
-        <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg p-4 text-sm text-slate-700">
+        <div className="flex items-center gap-3 bg-surface-hover border border-edge rounded-control p-4 text-sm text-content">
           <Loader2 className="w-4 h-4 animate-spin" />
           {phase.msg}
         </div>
       )}
 
       {phase.kind === 'error' && (
-        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+        <div className="flex items-start gap-3 bg-red-50 border border-red-200 rounded-control p-4 text-sm text-red-800">
           <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
           <div className="flex-1">{phase.msg}</div>
           <button
@@ -124,7 +124,7 @@ export default function FirebaseImport() {
 
       {phase.kind === 'parsed' && (
         <div className="space-y-4">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-control p-4">
             <p className="text-sm font-medium text-emerald-800 mb-3">
               Backup parsed. Here's what will happen when you click Import:
             </p>
@@ -133,14 +133,14 @@ export default function FirebaseImport() {
           <div className="flex gap-2">
             <button
               onClick={handleExecute}
-              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 shadow-sm"
+              className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-control hover:bg-emerald-700 shadow-sm"
             >
               <CheckCircle className="w-4 h-4" />
               Import now
             </button>
             <button
               onClick={cancel}
-              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+              className="px-4 py-2 text-sm text-content-secondary hover:text-content"
             >
               Cancel
             </button>
@@ -150,7 +150,7 @@ export default function FirebaseImport() {
 
       {phase.kind === 'done' && (
         <div className="space-y-3">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-start gap-3">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-control p-4 flex items-start gap-3">
             <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <div className="text-sm text-emerald-800">
               <p className="font-medium mb-2">Import complete.</p>
@@ -162,7 +162,7 @@ export default function FirebaseImport() {
           </div>
           <button
             onClick={cancel}
-            className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+            className="px-4 py-2 text-sm text-content-secondary hover:text-content"
           >
             Done
           </button>
@@ -185,7 +185,7 @@ function PlanTable({ plan }: { plan: ImportPlan }) {
   return (
     <table className="w-full text-xs">
       <thead>
-        <tr className="text-slate-500">
+        <tr className="text-content-secondary">
           <th className="text-left font-medium py-1">Table</th>
           <th className="text-right font-medium py-1">Will add</th>
           <th className="text-right font-medium py-1">Already present</th>
@@ -198,7 +198,7 @@ function PlanTable({ plan }: { plan: ImportPlan }) {
             <td className="text-right font-semibold text-emerald-700">
               {r.toInsert.toLocaleString()}
             </td>
-            <td className="text-right text-slate-500">
+            <td className="text-right text-content-secondary">
               {r.skipped.toLocaleString()}
             </td>
           </tr>

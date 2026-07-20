@@ -831,47 +831,47 @@ export default function PlannerModule() {
       {/* Left rail: smart views + lists. Static from md up; a slide-over on
           mobile so the day/list has full width for adding to-dos. */}
       <aside
-        className={`w-64 shrink-0 border-r border-slate-200 bg-slate-50 flex-col overflow-y-auto nice-scrollbar
-          md:static md:flex md:bg-slate-50/60
+        className={`w-64 shrink-0 border-r border-edge bg-surface-hover flex-col overflow-y-auto nice-scrollbar
+          md:static md:flex md:bg-surface-hover/60
           ${railOpen ? 'fixed inset-y-0 left-0 z-50 flex shadow-2xl' : 'hidden md:flex'}`}
       >
         <div className="md:hidden flex justify-end p-2">
-          <button onClick={() => setRailOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-200" title="Close menu">
+          <button onClick={() => setRailOpen(false)} className="p-1.5 rounded-control text-content-muted hover:bg-edge" title="Close menu">
             <X className="w-5 h-5" />
           </button>
         </div>
         <nav className="p-3 space-y-1">
           <button
             onClick={() => choose({ kind: 'myday' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'myday' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'myday' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
             <Sun className="w-4 h-4 text-amber-500" />
             <span className="flex-1 text-left">My Day</span>
-            {viewCounts.today > 0 && <span className="text-xs text-slate-400 font-medium">{viewCounts.today}</span>}
+            {viewCounts.today > 0 && <span className="text-xs text-content-muted font-medium">{viewCounts.today}</span>}
           </button>
           {orbitEnabled && (
             <button
               onClick={() => choose({ kind: 'orbit' })}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                selection.kind === 'orbit' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+                selection.kind === 'orbit' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
               }`}
             >
               <OrbitIcon className="w-4 h-4 text-violet-500" />
               <span className="flex-1 text-left">Orbit</span>
-              {orbitCount > 0 && <span className="text-xs text-slate-400 font-medium">{orbitCount}</span>}
+              {orbitCount > 0 && <span className="text-xs text-content-muted font-medium">{orbitCount}</span>}
             </button>
           )}
           <button
             onClick={() => choose({ kind: 'inbox' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'inbox' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'inbox' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
-            <Inbox className="w-4 h-4 text-slate-400" />
+            <Inbox className="w-4 h-4 text-content-muted" />
             <span className="flex-1 text-left">Inbox</span>
-            {inboxCount > 0 && <span className="text-xs text-slate-400 font-medium">{inboxCount}</span>}
+            {inboxCount > 0 && <span className="text-xs text-content-muted font-medium">{inboxCount}</span>}
           </button>
           {VIEWS.map(v => {
             const Icon = v.icon;
@@ -881,20 +881,20 @@ export default function PlannerModule() {
               <button
                 key={v.bucket}
                 onClick={() => choose({ kind: 'view', bucket: v.bucket })}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                  active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+                  active ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${v.color}`} />
                 <span className="flex-1 text-left">{v.label}</span>
-                {count > 0 && <span className="text-xs text-slate-400 font-medium">{count}</span>}
+                {count > 0 && <span className="text-xs text-content-muted font-medium">{count}</span>}
               </button>
             );
           })}
           <button
             onClick={() => choose({ kind: 'plan' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'plan' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'plan' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
             <CalendarRange className="w-4 h-4 text-sky-500" />
@@ -902,8 +902,8 @@ export default function PlannerModule() {
           </button>
           <button
             onClick={() => choose({ kind: 'reset' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'reset' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'reset' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
             <RotateCcw className="w-4 h-4 text-violet-500" />
@@ -911,8 +911,8 @@ export default function PlannerModule() {
           </button>
           <button
             onClick={() => choose({ kind: 'logbook' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'logbook' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'logbook' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
             <BookCheck className="w-4 h-4 text-emerald-500" />
@@ -920,8 +920,8 @@ export default function PlannerModule() {
           </button>
           <button
             onClick={() => choose({ kind: 'stats' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'stats' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'stats' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
             <BarChart3 className="w-4 h-4 text-indigo-500" />
@@ -929,17 +929,17 @@ export default function PlannerModule() {
           </button>
           <button
             onClick={() => choose({ kind: 'settings' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-              selection.kind === 'settings' ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'settings' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
-            <SettingsIcon className="w-4 h-4 text-slate-400" />
+            <SettingsIcon className="w-4 h-4 text-content-muted" />
             <span className="flex-1 text-left">Settings</span>
           </button>
         </nav>
 
         {penNames.length > 0 && (
-          <div className="px-3 pt-1 pb-2 border-b border-slate-200/70">
+          <div className="px-3 pt-1 pb-2 border-b border-edge/70">
             <PenFilterSwitcher
               penNames={penNames}
               value={penFilter}
@@ -949,21 +949,21 @@ export default function PlannerModule() {
         )}
 
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Lists</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Lists</span>
           <div className="flex items-center gap-1">
             {railNotes.length > 1 && (
-              <button onClick={sortNotesAZ} className="text-slate-400 hover:text-teal-600" title="Sort lists A–Z">
+              <button onClick={sortNotesAZ} className="text-content-muted hover:text-teal-600" title="Sort lists A–Z">
                 <ArrowDownAZ className="w-4 h-4" />
               </button>
             )}
-            <button onClick={handleNewNote} className="text-slate-400 hover:text-teal-600" title="New list">
+            <button onClick={handleNewNote} className="text-content-muted hover:text-teal-600" title="New list">
               <Plus className="w-4 h-4" />
             </button>
           </div>
         </div>
         <nav className="px-3 pb-4 space-y-1">
           {railNotes.length === 0 && (
-            <p className="px-3 py-2 text-xs text-slate-400">
+            <p className="px-3 py-2 text-xs text-content-muted">
               {penFilter ? 'No lists for this pen name yet.' : 'No lists yet. Hit + to start one.'}
             </p>
           )}
@@ -984,10 +984,10 @@ export default function PlannerModule() {
 
           {/* Archived lists — collapsed by default, with restore + delete. */}
           {archivedNotes.length > 0 && (
-            <div className="mt-2 pt-2 border-t border-slate-200/70">
+            <div className="mt-2 pt-2 border-t border-edge/70">
               <button
                 onClick={() => setShowArchived(v => !v)}
-                className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+                className="w-full flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted hover:text-content-secondary"
               >
                 {showArchived ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
                 Archived ({archivedNotes.length})
@@ -995,13 +995,13 @@ export default function PlannerModule() {
               {showArchived && (
                 <div className="mt-0.5 space-y-0.5">
                   {archivedNotes.map(n => (
-                    <div key={n.id} className="group/arch flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-slate-500 hover:bg-white/70">
-                      <Archive className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                    <div key={n.id} className="group/arch flex items-center gap-2 px-3 py-1.5 rounded-control text-sm text-content-secondary hover:bg-surface/70">
+                      <Archive className="w-3.5 h-3.5 text-content-faint shrink-0" />
                       <span className="flex-1 truncate">{n.title.trim() || 'Untitled list'}</span>
-                      <button onClick={() => saveNote(n.id, { archived: false })} className="text-slate-300 hover:text-teal-600 shrink-0" title="Restore list">
+                      <button onClick={() => saveNote(n.id, { archived: false })} className="text-content-faint hover:text-teal-600 shrink-0" title="Restore list">
                         <ArchiveRestore className="w-4 h-4" />
                       </button>
-                      <button onClick={() => removeNote(n.id)} className="text-slate-300 hover:text-rose-500 shrink-0" title="Delete list">
+                      <button onClick={() => removeNote(n.id)} className="text-content-faint hover:text-rose-500 shrink-0" title="Delete list">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -1017,19 +1017,19 @@ export default function PlannerModule() {
       {/* pb-24 keeps the last row clear of the floating Focus button / timer bar. */}
       <section className="flex-1 min-w-0 overflow-y-auto nice-scrollbar pb-24">
         {/* Mobile-only bar to reopen the planner rail */}
-        <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 bg-white/85 backdrop-blur border-b border-slate-100 px-3 py-2">
-          <button onClick={() => setRailOpen(true)} className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-teal-600">
+        <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 bg-surface/85 backdrop-blur border-b border-edge-soft px-3 py-2">
+          <button onClick={() => setRailOpen(true)} className="inline-flex items-center gap-2 text-sm font-medium text-content-secondary hover:text-teal-600">
             <Menu className="w-5 h-5" /> Menu
           </button>
         </div>
         {error && (
-          <div className="m-4 flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">
+          <div className="m-4 flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-control px-3 py-2">
             <span className="flex-1">{error}</span>
             <button onClick={() => setError(null)}><X className="w-4 h-4" /></button>
           </div>
         )}
         {loading ? (
-          <div className="p-8 text-slate-400">Loading your planner…</div>
+          <div className="p-8 text-content-muted">Loading your planner…</div>
         ) : selection.kind === 'myday' ? (
           <MyDayView
             tasks={scopedTasks}
@@ -1072,7 +1072,7 @@ export default function PlannerModule() {
           />
         ) : selection.kind === 'reset' ? (
           resetLoading ? (
-            <div className="p-8 text-slate-400">Loading your weekly reset…</div>
+            <div className="p-8 text-content-muted">Loading your weekly reset…</div>
           ) : (
             <WeeklyResetView
               key={resetWeek}
@@ -1129,7 +1129,7 @@ export default function PlannerModule() {
             onReorder={reorder}
           />
         ) : (
-          <div className="p-8 text-slate-400">Select a note or view.</div>
+          <div className="p-8 text-content-muted">Select a note or view.</div>
         )}
       </section>
 
@@ -1191,14 +1191,14 @@ function SelectableRow({ task, selected, onToggle, listName }: {
     <li>
       <button
         onClick={onToggle}
-        className={`w-full flex items-start gap-2 px-2 py-1.5 rounded-lg text-left transition-colors ${selected ? 'bg-teal-50' : 'hover:bg-slate-50'}`}
+        className={`w-full flex items-start gap-2 px-2 py-1.5 rounded-control text-left transition-colors ${selected ? 'bg-teal-50' : 'hover:bg-surface-hover'}`}
       >
-        <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selected ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300 bg-white'}`}>
+        <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selected ? 'bg-teal-600 border-teal-600 text-white' : 'border-edge-strong bg-surface'}`}>
           {selected && <Check className="w-3 h-3" />}
         </span>
-        <span className={`flex-1 min-w-0 text-sm break-words ${task.done ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title || 'Untitled'}</span>
+        <span className={`flex-1 min-w-0 text-sm break-words ${task.done ? 'text-content-muted line-through' : 'text-content'}`}>{task.title || 'Untitled'}</span>
         {task.flagged && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" fill="currentColor" />}
-        {listName && <span className="text-[11px] text-slate-300 shrink-0 mt-0.5 truncate max-w-[8rem]">{listName}</span>}
+        {listName && <span className="text-[11px] text-content-faint shrink-0 mt-0.5 truncate max-w-[8rem]">{listName}</span>}
       </button>
     </li>
   );
@@ -1223,10 +1223,10 @@ function BulkBar({
   onNewHeading?: () => void;
 }) {
   const none = count === 0;
-  const btn = 'text-xs font-medium border border-slate-200 rounded-lg px-2 py-1 bg-white text-slate-600 hover:text-teal-700 disabled:opacity-40';
+  const btn = 'text-xs font-medium border border-edge rounded-control px-2 py-1 bg-surface text-content-secondary hover:text-teal-700 disabled:opacity-40';
   return (
-    <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50/95 backdrop-blur px-3 py-2">
-      <span className="text-sm font-semibold text-slate-700">{count} selected</span>
+    <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-1.5 rounded-card border border-teal-200 bg-teal-50/95 backdrop-blur px-3 py-2">
+      <span className="text-sm font-semibold text-content">{count} selected</span>
       <button onClick={onSelectAll} className="text-xs font-medium text-teal-700 hover:underline">{allSelected ? 'Clear' : 'Select all'}</button>
       <span className="w-px h-5 bg-teal-200 mx-1" />
       <select
@@ -1254,8 +1254,8 @@ function BulkBar({
       <button onClick={() => onFlag(false)} disabled={none} className={btn}>Unflag</button>
       <button onClick={() => onDone(true)} disabled={none} className={btn}>Mark done</button>
       <button onClick={() => onDone(false)} disabled={none} className={btn}>Reopen</button>
-      <button onClick={onDelete} disabled={none} className="text-xs font-medium border border-rose-200 rounded-lg px-2 py-1 bg-white text-rose-600 hover:bg-rose-50 disabled:opacity-40">Delete</button>
-      <button onClick={onExit} className="ml-auto text-xs font-medium text-slate-500 hover:text-slate-700">Done</button>
+      <button onClick={onDelete} disabled={none} className="text-xs font-medium border border-rose-200 rounded-control px-2 py-1 bg-surface text-rose-600 hover:bg-rose-50 disabled:opacity-40">Delete</button>
+      <button onClick={onExit} className="ml-auto text-xs font-medium text-content-secondary hover:text-content">Done</button>
     </div>
   );
 }
@@ -1286,7 +1286,7 @@ function ViewPane({
   const meta = orbit
     ? { label: 'Orbit', icon: OrbitIcon, color: 'text-violet-500' }
     : inbox
-      ? { label: 'Inbox', icon: Inbox, color: 'text-slate-500' }
+      ? { label: 'Inbox', icon: Inbox, color: 'text-content-secondary' }
       : VIEWS.find(v => v.bucket === bucket)!;
   const Icon = meta.icon;
   const [draft, setDraft] = useState('');
@@ -1427,11 +1427,11 @@ function ViewPane({
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Icon className={`w-6 h-6 ${meta.color}`} />
-        <h2 className="text-2xl font-bold text-slate-800">{meta.label}</h2>
+        <h2 className="text-2xl font-bold text-content">{meta.label}</h2>
         {orbit && orbitEnabled && (
           <button
             onClick={runOrbitAi}
-            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1.5"
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
             title="Let Claude suggest which to-dos to pull into Orbit"
           >
             <Sparkles className="w-3.5 h-3.5" /> Suggest picks
@@ -1439,12 +1439,12 @@ function ViewPane({
         )}
         <div className="ml-auto flex items-center gap-2">
           {(orbit || inbox || bucket === 'today' || bucket === 'anytime') && totalMinutes > 0 && (
-            <span className="inline-flex items-center gap-1 text-sm font-medium text-slate-500">
+            <span className="inline-flex items-center gap-1 text-sm font-medium text-content-secondary">
               <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
             </span>
           )}
           {items.length > 0 && !selectMode && (
-            <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-1.5">Select</button>
+            <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-content-secondary hover:text-teal-600 border border-edge rounded-control px-2.5 py-1.5">Select</button>
           )}
         </div>
       </div>
@@ -1463,7 +1463,7 @@ function ViewPane({
         />
       )}
       {orbit && (
-        <p className="text-sm text-slate-400 -mt-4 mb-5">What's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus.</p>
+        <p className="text-sm text-content-muted -mt-4 mb-5">What's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus.</p>
       )}
 
       <QuickAdd
@@ -1475,15 +1475,15 @@ function ViewPane({
       />
 
       {items.length > 0 && (
-        <div className="mt-3 flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2">
-          <Search className="w-4 h-4 text-slate-400 shrink-0" />
+        <div className="mt-3 flex items-center gap-2 bg-surface border border-edge rounded-control px-3 py-2">
+          <Search className="w-4 h-4 text-content-muted shrink-0" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder={`Search ${meta.label}…`}
-            className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+            className="flex-1 text-sm bg-transparent outline-none placeholder:text-content-muted text-content"
           />
-          {search && <button onClick={() => setSearch('')} className="text-slate-300 hover:text-slate-500" title="Clear"><X className="w-4 h-4" /></button>}
+          {search && <button onClick={() => setSearch('')} className="text-content-faint hover:text-content-secondary" title="Clear"><X className="w-4 h-4" /></button>}
         </div>
       )}
 
@@ -1508,7 +1508,7 @@ function ViewPane({
       {bucket === 'today' && <DayEventsStrip events={eventsByDay[today]} />}
 
       {visible.length === 0 ? (
-        <p className="text-sm text-slate-400 mt-4">{search ? 'Nothing matches that search.' : 'Nothing here right now.'}</p>
+        <p className="text-sm text-content-muted mt-4">{search ? 'Nothing matches that search.' : 'Nothing here right now.'}</p>
       ) : bucket === 'upcoming' ? (
         // Group by day, like the Things "Upcoming" list.
         <div className="mt-4 space-y-5">
@@ -1516,14 +1516,14 @@ function ViewPane({
             <div key={group.date}>
               <DayHeader date={group.date} today={today} totalMinutes={sumEstimate(group.items)} />
               <DayEventsStrip events={eventsByDay[group.date]} />
-              <ul className={selectMode ? 'space-y-0.5' : 'divide-y divide-slate-100'}>
+              <ul className={selectMode ? 'space-y-0.5' : 'divide-y divide-edge-soft'}>
                 {group.items.map(row)}
               </ul>
             </div>
           ))}
         </div>
       ) : (
-        <ul className={selectMode ? 'mt-2 space-y-0.5' : 'mt-2 divide-y divide-slate-100'}>
+        <ul className={selectMode ? 'mt-2 space-y-0.5' : 'mt-2 divide-y divide-edge-soft'}>
           {visible.map(row)}
         </ul>
       )}
@@ -1553,7 +1553,7 @@ function eventTimeLabel(ev: GCalEvent): string {
 function DayEventsStrip({ events }: { events?: GCalEvent[] }) {
   if (!events || events.length === 0) return null;
   return (
-    <div className="mt-3 mb-1 rounded-lg bg-sky-50/70 border border-sky-100 px-3 py-2">
+    <div className="mt-3 mb-1 rounded-control bg-sky-50/70 border border-sky-100 px-3 py-2">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-500 mb-1 flex items-center gap-1">
         <CalendarDays className="w-3 h-3" /> On your calendar
       </p>
@@ -1561,7 +1561,7 @@ function DayEventsStrip({ events }: { events?: GCalEvent[] }) {
         {events.map(ev => (
           <li key={ev.id} className="flex items-center gap-2 text-sm">
             <span className="text-xs font-medium text-sky-600 w-16 shrink-0">{eventTimeLabel(ev)}</span>
-            <span className="flex-1 text-slate-600 truncate">{ev.summary || '(no title)'}</span>
+            <span className="flex-1 text-content-secondary truncate">{ev.summary || '(no title)'}</span>
           </li>
         ))}
       </ul>
@@ -1589,11 +1589,11 @@ function DayHeader({ date, today, totalMinutes }: { date: string; today: string;
   const rel = diff === 1 ? 'Tomorrow' : weekday;
   return (
     <div className="flex items-baseline gap-2 mb-1">
-      <span className="text-xl font-bold text-slate-700">{d.getDate()}</span>
-      <span className="text-sm font-medium text-slate-500">{rel}</span>
-      <span className="text-xs text-slate-400">· {monthDay}</span>
+      <span className="text-xl font-bold text-content">{d.getDate()}</span>
+      <span className="text-sm font-medium text-content-secondary">{rel}</span>
+      <span className="text-xs text-content-muted">· {monthDay}</span>
       {totalMinutes > 0 && (
-        <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-slate-400">
+        <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-content-muted">
           <Clock className="w-3.5 h-3.5" /> {formatMinutes(totalMinutes)}
         </span>
       )}
@@ -1787,7 +1787,7 @@ function NotePane({
           onChange={e => setTitle(e.target.value)}
           onBlur={() => { if (title !== note.title) onSaveNote(note.id, { title }); }}
           placeholder="Untitled list"
-          className="flex-1 text-2xl font-bold text-slate-800 bg-transparent outline-none placeholder:text-slate-300"
+          className="flex-1 text-2xl font-bold text-content bg-transparent outline-none placeholder:text-content-faint"
         />
         <div className="flex items-center gap-1 pt-2">
           {penNames.length > 0 && (
@@ -1799,18 +1799,18 @@ function NotePane({
           )}
           <button
             onClick={() => onSaveNote(note.id, { pinned: !note.pinned })}
-            className={`p-2 rounded-lg hover:bg-slate-100 ${note.pinned ? 'text-amber-500' : 'text-slate-400'}`}
+            className={`p-2 rounded-control hover:bg-surface-sunken ${note.pinned ? 'text-amber-500' : 'text-content-muted'}`}
             title={note.pinned ? 'Unpin' : 'Pin to top'}
           >
             {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
           </button>
-          <button onClick={() => onDuplicateNote(note)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-teal-600" title="Duplicate this list (copy its to-dos, reset completion)">
+          <button onClick={() => onDuplicateNote(note)} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken hover:text-teal-600" title="Duplicate this list (copy its to-dos, reset completion)">
             <CopyPlus className="w-4 h-4" />
           </button>
-          <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100" title="Archive">
+          <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken" title="Archive">
             <Archive className="w-4 h-4" />
           </button>
-          <button onClick={() => onDeleteNote(note.id)} className="p-2 rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-500" title="Delete list">
+          <button onClick={() => onDeleteNote(note.id)} className="p-2 rounded-control text-content-muted hover:bg-rose-50 hover:text-rose-500" title="Delete list">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
@@ -1819,26 +1819,26 @@ function NotePane({
       {journal ? (
         // Weekly-reset journal: one collapsible row per question.
         <div className="mb-3 space-y-1.5">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 px-0.5">Journal</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted px-0.5">Journal</p>
           {journal.map((s, i) => {
             const open = openJournal.has(s.key);
             return (
-              <div key={s.key} className="rounded-xl border border-slate-200 bg-white">
+              <div key={s.key} className="rounded-card border border-edge bg-surface">
                 <button onClick={() => toggleJournal(s.key)} className="w-full flex items-center gap-2 px-3 py-2 text-left">
-                  {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
-                  <span className="flex-1 text-sm font-semibold text-slate-700">{s.label}</span>
+                  {open ? <ChevronDown className="w-4 h-4 text-content-muted shrink-0" /> : <ChevronRight className="w-4 h-4 text-content-muted shrink-0" />}
+                  <span className="flex-1 text-sm font-semibold text-content">{s.label}</span>
                   {!open && s.text.trim() && (
-                    <span className="text-xs text-slate-300 truncate max-w-[45%]">{s.text.replace(/\s+/g, ' ')}</span>
+                    <span className="text-xs text-content-faint truncate max-w-[45%]">{s.text.replace(/\s+/g, ' ')}</span>
                   )}
                 </button>
                 {open && (
-                  <div className="px-3 pb-2 border-t border-slate-100 pt-2">
+                  <div className="px-3 pb-2 border-t border-edge-soft pt-2">
                     <textarea
                       value={s.text}
                       onChange={e => updateJournal(i, e.target.value)}
                       onBlur={saveJournal}
                       rows={3}
-                      className="w-full text-sm rounded-lg border border-slate-200 bg-white px-2 py-1.5 outline-none focus:border-violet-300 text-slate-600 resize-y"
+                      className="w-full text-sm rounded-control border border-edge bg-surface px-2 py-1.5 outline-none focus:border-violet-300 text-content-secondary resize-y"
                     />
                   </div>
                 )}
@@ -1851,12 +1851,12 @@ function NotePane({
         <div className="mb-2">
           <button
             onClick={() => setNotesOpen(o => !o)}
-            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600"
+            className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-content-muted hover:text-content-secondary"
           >
             {notesOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             Notes
             {!notesOpen && body.trim() && (
-              <span className="normal-case font-normal tracking-normal text-slate-300 truncate max-w-[18rem]">{body.trim().replace(/\s+/g, ' ')}</span>
+              <span className="normal-case font-normal tracking-normal text-content-faint truncate max-w-[18rem]">{body.trim().replace(/\s+/g, ' ')}</span>
             )}
           </button>
           {notesOpen && (
@@ -1866,7 +1866,7 @@ function NotePane({
               onBlur={() => { if (body !== note.body) onSaveNote(note.id, { body }); }}
               placeholder="Notes, links, anything you want to remember…"
               rows={2}
-              className="mt-1 w-full text-sm text-slate-600 bg-transparent outline-none resize-y placeholder:text-slate-400"
+              className="mt-1 w-full text-sm text-content-secondary bg-transparent outline-none resize-y placeholder:text-content-muted"
             />
           )}
         </div>
@@ -1887,7 +1887,7 @@ function NotePane({
           <button
             type="button"
             onClick={() => onSaveNote(note.id, { book_id: null })}
-            className="p-2 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 shrink-0"
+            className="p-2 rounded-control text-content-muted hover:bg-surface-sunken hover:text-content-secondary shrink-0"
             title="Unlink from book"
           >
             <Link2Off className="w-4 h-4" />
@@ -1896,7 +1896,7 @@ function NotePane({
       </div>
 
       {(listEst > 0 || listTracked > 0) && (
-        <div className="flex items-center gap-3 text-xs text-slate-400 mb-4">
+        <div className="flex items-center gap-3 text-xs text-content-muted mb-4">
           {listEst > 0 && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatMinutes(listEst)} planned</span>}
           {listTracked > 0 && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-teal-500" /> {formatMinutes(listTracked)} tracked</span>}
         </div>
@@ -1910,7 +1910,7 @@ function NotePane({
               key={f}
               onClick={() => setFilter(f)}
               className={`inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
-                filter === f ? 'bg-slate-800 text-white' : 'text-slate-500 hover:bg-slate-100'
+                filter === f ? 'bg-slate-800 text-white' : 'text-content-secondary hover:bg-surface-sunken'
               }`}
             >
               {f === 'important' && <Star className="w-3 h-3" fill={filter === f ? 'currentColor' : 'none'} />}
@@ -1919,15 +1919,15 @@ function NotePane({
             </button>
           ))}
         </div>
-        <div className="ml-auto flex items-center gap-1.5 bg-white border border-slate-200 rounded-lg px-2.5 py-1 w-48">
-          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <div className="ml-auto flex items-center gap-1.5 bg-surface border border-edge rounded-control px-2.5 py-1 w-48">
+          <Search className="w-3.5 h-3.5 text-content-muted shrink-0" />
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Search this list…"
-            className="flex-1 min-w-0 text-xs bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+            className="flex-1 min-w-0 text-xs bg-transparent outline-none placeholder:text-content-muted text-content"
           />
-          {search && <button onClick={() => setSearch('')} className="text-slate-300 hover:text-slate-500 shrink-0" title="Clear"><X className="w-3.5 h-3.5" /></button>}
+          {search && <button onClick={() => setSearch('')} className="text-content-faint hover:text-content-secondary shrink-0" title="Clear"><X className="w-3.5 h-3.5" /></button>}
         </div>
       </div>
 
@@ -1943,7 +1943,7 @@ function NotePane({
         </div>
         <button
           onClick={() => onAdd({ title: 'New section', note_id: note.id, kind: 'heading', sort_order: nextOrder })}
-          className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2"
+          className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-teal-600 border border-edge rounded-control px-2.5 py-2"
           title="Add a section heading"
         >
           <HeadingIcon className="w-3.5 h-3.5" /> Heading
@@ -1951,7 +1951,7 @@ function NotePane({
         {selectable.length > 0 && !selectMode && (
           <button
             onClick={() => setSelectMode(true)}
-            className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2"
+            className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-teal-600 border border-edge rounded-control px-2.5 py-2"
             title="Select multiple to-dos for bulk actions"
           >
             <Check className="w-3.5 h-3.5" /> Select
@@ -1979,7 +1979,7 @@ function NotePane({
             />
           </div>
           {selectable.length === 0 ? (
-            <p className="text-sm text-slate-400 mt-3">No to-dos to select yet.</p>
+            <p className="text-sm text-content-muted mt-3">No to-dos to select yet.</p>
           ) : (
             <ul className="mt-1 space-y-0.5">
               {selectable.map(t => (
@@ -1990,9 +1990,9 @@ function NotePane({
         </>
       ) : searchResults ? (
         searchResults.length === 0 ? (
-          <p className="text-sm text-slate-400 mt-3">Nothing in this list matches that search.</p>
+          <p className="text-sm text-content-muted mt-3">Nothing in this list matches that search.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-slate-100">
+          <ul className="mt-2 divide-y divide-edge-soft">
             {searchResults.map(t => (
               <TaskRow
                 key={t.id}
@@ -2015,9 +2015,9 @@ function NotePane({
         <>
       {filter === 'important' ? (
         flaggedOpen.length === 0 ? (
-          <p className="text-sm text-slate-400 mt-3">Nothing flagged. Star a to-do to mark it Important.</p>
+          <p className="text-sm text-content-muted mt-3">Nothing flagged. Star a to-do to mark it Important.</p>
         ) : (
-          <ul className="mt-2 divide-y divide-slate-100">
+          <ul className="mt-2 divide-y divide-edge-soft">
             {flaggedOpen.map(t => (
               <TaskRow
                 key={t.id}
@@ -2067,13 +2067,13 @@ function NotePane({
       )}
 
       {filter === 'all' && mainAll.length === 0 && (
-        <p className="text-sm text-slate-400 mt-2">Add a to-do or a section heading to start planning this out.</p>
+        <p className="text-sm text-content-muted mt-2">Add a to-do or a section heading to start planning this out.</p>
       )}
 
       {doneItems.length > 0 && (
         <div className="mt-6">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">Done</p>
-          <ul className="divide-y divide-slate-100">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-1">Done</p>
+          <ul className="divide-y divide-edge-soft">
             {doneItems.map(t => (
               <TaskRow key={t.id} task={t} today={today} showTimer onPatch={onPatch} onDelete={onDelete} />
             ))}
@@ -2118,7 +2118,7 @@ function SortableNoteItem({
     <button
       {...attributes}
       {...listeners}
-      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
+      className="text-content-faint hover:text-content-secondary cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
       title="Drag to reorder"
     >
       <GripVertical className="w-4 h-4" />
@@ -2142,7 +2142,7 @@ function SortableNoteItem({
     );
   }
   return (
-    <li ref={setNodeRef} style={style} className="border-b border-slate-100">
+    <li ref={setNodeRef} style={style} className="border-b border-edge-soft">
       <TaskRow
         task={task}
         today={today}
@@ -2189,7 +2189,7 @@ function HeadingRow({
       {dragHandle}
       <button
         onClick={onToggleCollapse}
-        className="text-slate-400 hover:text-slate-600 shrink-0"
+        className="text-content-muted hover:text-content-secondary shrink-0"
         title={collapsed ? 'Expand section' : 'Collapse section'}
       >
         {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -2201,21 +2201,21 @@ function HeadingRow({
         onBlur={commit}
         // Enter commits the heading and drops a fresh to-do underneath it.
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); onAddUnder(); } }}
-        className="flex-1 text-sm font-bold uppercase tracking-wide text-slate-600 bg-transparent outline-none border-b border-transparent focus:border-teal-400"
+        className="flex-1 text-sm font-bold uppercase tracking-wide text-content-secondary bg-transparent outline-none border-b border-transparent focus:border-teal-400"
       />
       {collapsed && childCount > 0 && (
-        <span className="text-xs text-slate-400 shrink-0">{childCount}</span>
+        <span className="text-xs text-content-muted shrink-0">{childCount}</span>
       )}
       <button
         onClick={onAddUnder}
-        className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+        className="text-content-faint hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
         title="Add a to-do under this heading"
       >
         <Plus className="w-4 h-4" />
       </button>
       <button
         onClick={() => onDelete(task.id)}
-        className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+        className="text-content-faint hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
         title="Delete heading"
       >
         <Trash2 className="w-4 h-4" />
@@ -2252,41 +2252,41 @@ function PenFilterSwitcher({
   }, [open]);
 
   const selected = value ? penNames.find(p => p.id === value) : undefined;
-  const dot = selected ? penNameClasses(selected.color).dot : 'bg-slate-300';
+  const dot = selected ? penNameClasses(selected.color).dot : 'bg-edge-strong';
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-700"
+        className="w-full inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-surface border border-edge rounded-control hover:bg-surface-hover text-content"
         title="Focus the planner on one pen name"
       >
         <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
         <span className="flex-1 text-left font-medium truncate">{selected?.name ?? 'All pen names'}</span>
-        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <ChevronDown className="w-3.5 h-3.5 text-content-muted shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+        <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-edge rounded-card shadow-lg z-50 py-1">
           <button
             onClick={() => { onChange(null); setOpen(false); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-surface-hover"
           >
-            <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
-            <span className="flex-1 font-medium text-slate-700">All pen names</span>
+            <span className="w-2 h-2 rounded-full bg-edge-strong shrink-0" />
+            <span className="flex-1 font-medium text-content">All pen names</span>
             {value === null && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
           </button>
-          <div className="my-1 border-t border-slate-100" />
+          <div className="my-1 border-t border-edge-soft" />
           {penNames.map(pn => {
             const c = penNameClasses(pn.color);
             return (
               <button
                 key={pn.id}
                 onClick={() => { onChange(pn.id); setOpen(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-surface-hover"
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
-                <span className="flex-1 font-medium text-slate-700 truncate">{pn.name}</span>
+                <span className="flex-1 font-medium text-content truncate">{pn.name}</span>
                 {pn.id === value && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
               </button>
             );
@@ -2320,43 +2320,43 @@ function NotePenNamePicker({
   }, [open]);
 
   const selected = value ? penNames.find(p => p.id === value) : undefined;
-  const dot = selected ? penNameClasses(selected.color).dot : 'bg-slate-300';
+  const dot = selected ? penNameClasses(selected.color).dot : 'bg-edge-strong';
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-1.5 px-2 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+        className="inline-flex items-center gap-1.5 px-2 py-2 rounded-control text-sm text-content-secondary hover:bg-surface-sunken hover:text-content"
         title="Assign a pen name to this list"
       >
         {selected
           ? <span className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
           : <UsersIcon className="w-4 h-4" />}
         <span className="max-w-[8rem] truncate">{selected?.name ?? 'No pen name'}</span>
-        <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        <ChevronDown className="w-3.5 h-3.5 text-content-muted shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1">
+        <div className="absolute right-0 top-full mt-1 w-56 bg-surface border border-edge rounded-card shadow-lg z-50 py-1">
           <button
             onClick={() => { onChange(null); setOpen(false); }}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-surface-hover"
           >
-            <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" />
-            <span className="flex-1 font-medium text-slate-700">No pen name</span>
+            <span className="w-2 h-2 rounded-full bg-edge-strong shrink-0" />
+            <span className="flex-1 font-medium text-content">No pen name</span>
             {value === null && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
           </button>
-          <div className="my-1 border-t border-slate-100" />
+          <div className="my-1 border-t border-edge-soft" />
           {penNames.map(pn => {
             const c = penNameClasses(pn.color);
             return (
               <button
                 key={pn.id}
                 onClick={() => { onChange(pn.id); setOpen(false); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-slate-50"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-surface-hover"
               >
                 <span className={`w-2 h-2 rounded-full shrink-0 ${c.dot}`} />
-                <span className="flex-1 font-medium text-slate-700 truncate">{pn.name}</span>
+                <span className="flex-1 font-medium text-content truncate">{pn.name}</span>
                 {pn.id === value && <Check className="w-4 h-4 text-emerald-600 shrink-0" />}
               </button>
             );
@@ -2379,25 +2379,25 @@ function SortableListItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: note.id });
   const style = { transform: CSS.Transform.toString(transform), transition };
   return (
-    <div ref={setNodeRef} style={style} className={`group flex items-center rounded-lg ${isDragging ? 'opacity-60 bg-white shadow-sm' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`group flex items-center rounded-control ${isDragging ? 'opacity-60 bg-surface shadow-sm' : ''}`}>
       <button
         {...attributes}
         {...listeners}
-        className="pl-1.5 py-2 text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
+        className="pl-1.5 py-2 text-content-faint hover:text-content-secondary cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
         title="Drag to reorder"
       >
         <GripVertical className="w-3.5 h-3.5" />
       </button>
       <button
         onClick={onChoose}
-        className={`flex-1 min-w-0 flex items-center gap-2 pr-3 py-2 rounded-lg text-sm transition-colors ${
-          active ? 'bg-white shadow-sm text-slate-900 font-medium' : 'text-slate-600 hover:bg-white/70'
+        className={`flex-1 min-w-0 flex items-center gap-2 pr-3 py-2 rounded-control text-sm transition-colors ${
+          active ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
         }`}
       >
-        {note.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+        {note.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-content-muted shrink-0" />}
         <span className="flex-1 text-left truncate">{note.title.trim() || 'Untitled list'}</span>
         {penName && <span className={`w-2 h-2 rounded-full shrink-0 ${penNameClasses(penName.color).dot}`} title={penName.name} />}
-        {open > 0 && <span className="text-xs text-slate-400 shrink-0">{open}</span>}
+        {open > 0 && <span className="text-xs text-content-muted shrink-0">{open}</span>}
       </button>
     </div>
   );
@@ -2420,14 +2420,14 @@ function QuickAdd({
     : { title: value.trim(), due: null as string | null };
   const submit = () => { if (value.trim()) onSubmit(parsed); };
   return (
-    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-      <Plus className="w-4 h-4 text-slate-400 shrink-0" />
+    <div className="flex items-center gap-2 bg-surface-hover border border-edge rounded-control px-3 py-2">
+      <Plus className="w-4 h-4 text-content-muted shrink-0" />
       <input
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); }}
         placeholder={placeholder}
-        className="flex-1 min-w-0 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+        className="flex-1 min-w-0 text-sm bg-transparent outline-none placeholder:text-content-muted text-content"
       />
       {parsed.due && (
         <span
@@ -2441,8 +2441,8 @@ function QuickAdd({
         onClick={submit}
         disabled={!value.trim()}
         title="Add (Enter)"
-        className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-slate-300 cursor-default'
+        className={`shrink-0 inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium transition-colors ${
+          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-content-faint cursor-default'
         }`}
       >
         <CornerDownLeft className="w-3.5 h-3.5" /> Add

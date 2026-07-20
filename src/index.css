@@ -16,10 +16,48 @@
   --color-brand-700: var(--color-brand-700);
   --color-brand-800: var(--color-brand-800);
   --color-brand-900: var(--color-brand-900);
+
+  /* Semantic surface/text/border tokens (see docs/COMMAND_CENTER_REDESIGN_DIRECTIVE.md
+     §2). Components must use these instead of literal white/slate classes so
+     themes can restyle every surface. Same var(--x) indirection trick as the
+     brand scale above: the utility resolves at runtime from :root / .theme-*. */
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-surface-sunken: var(--color-surface-sunken);
+  --color-edge: var(--color-edge);
+  --color-edge-soft: var(--color-edge-soft);
+  --color-edge-strong: var(--color-edge-strong);
+  --color-content: var(--color-content);
+  --color-content-secondary: var(--color-content-secondary);
+  --color-content-muted: var(--color-content-muted);
+  --color-content-faint: var(--color-content-faint);
+  --color-sidebar: var(--color-sidebar);
+  --color-sidebar-raised: var(--color-sidebar-raised);
+  --color-sidebar-content: var(--color-sidebar-content);
+  --color-sidebar-muted: var(--color-sidebar-muted);
+  --color-sidebar-edge: var(--color-sidebar-edge);
+  --color-status-idea-bg: var(--color-status-idea-bg);
+  --color-status-idea-fg: var(--color-status-idea-fg);
+  --color-status-drafting-bg: var(--color-status-drafting-bg);
+  --color-status-drafting-fg: var(--color-status-drafting-fg);
+  --color-status-editing-bg: var(--color-status-editing-bg);
+  --color-status-editing-fg: var(--color-status-editing-fg);
+  --color-status-preorder-bg: var(--color-status-preorder-bg);
+  --color-status-preorder-fg: var(--color-status-preorder-fg);
+  --color-status-published-bg: var(--color-status-published-bg);
+  --color-status-published-fg: var(--color-status-published-fg);
+  --color-status-paused-bg: var(--color-status-paused-bg);
+  --color-status-paused-fg: var(--color-status-paused-fg);
+
+  /* Squarer-by-default radii. rounded-card replaces rounded-xl/2xl,
+     rounded-control replaces rounded-lg/md. rounded-full stays literal. */
+  --radius-card: var(--radius-card);
+  --radius-control: var(--radius-control);
+  --shadow-card: var(--shadow-card);
 }
 
 :root {
-  /* Default Theme (Red) */
+  /* ============ Classic (default): today's light look, red accent ======== */
   --color-brand-50: #fef2f2;
   --color-brand-100: #fee2e2;
   --color-brand-200: #fecaca;
@@ -30,6 +68,93 @@
   --color-brand-700: #6b1515;
   --color-brand-800: #501010;
   --color-brand-900: #3b0d0d;
+
+  --color-surface: #ffffff;
+  --color-surface-hover: #f8fafc;   /* was slate-50 */
+  --color-surface-sunken: #f1f5f9;  /* was slate-100 */
+  --color-edge: #e2e8f0;            /* was slate-200 */
+  --color-edge-soft: #f1f5f9;       /* was slate-100 borders */
+  --color-edge-strong: #cbd5e1;     /* was slate-300 */
+  --color-content: #1e293b;         /* was slate-800/900/700 */
+  --color-content-secondary: #64748b; /* was slate-500/600 */
+  --color-content-muted: #94a3b8;   /* was slate-400 */
+  --color-content-faint: #cbd5e1;   /* was slate-300 icons/placeholders */
+
+  --color-sidebar: #0f172a;         /* was slate-900 */
+  --color-sidebar-raised: #1e293b;  /* was slate-800 */
+  --color-sidebar-content: #94a3b8; /* was slate-400 (slate-300 hover) */
+  --color-sidebar-muted: #64748b;   /* was slate-500 */
+  --color-sidebar-edge: #334155;    /* was slate-700 (opacity via /50 suffix) */
+
+  --color-status-idea-bg: #f1f5f9;      --color-status-idea-fg: #334155;
+  --color-status-drafting-bg: #fef3c7;  --color-status-drafting-fg: #92400e;
+  --color-status-editing-bg: #dbeafe;   --color-status-editing-fg: #1e40af;
+  --color-status-preorder-bg: #f3e8ff;  --color-status-preorder-fg: #6b21a8;
+  --color-status-published-bg: #d1fae5; --color-status-published-fg: #065f46;
+  --color-status-paused-bg: #ffe4e6;    --color-status-paused-fg: #9f1239;
+
+  --color-chart-1: #6366f1;
+  --color-chart-2: #10b981;
+  --color-chart-3: #f59e0b;
+  --color-chart-4: #ec4899;
+  --color-chart-5: #06b6d4;
+  --color-chart-6: #8b5cf6;
+
+  --radius-card: 6px;
+  --radius-control: 4px;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04);
+  --app-gradient: none;
+}
+
+/* ============ Midnight: Phase-0 proof that dark themes work ============== */
+.theme-midnight {
+  color-scheme: dark;
+
+  /* Accent shifts to a cool indigo; the 50–300 tints are *dark* tints since
+     they back pills/tiles that must sit on dark surfaces. */
+  --color-brand-50: #1e1f3a;
+  --color-brand-100: #272952;
+  --color-brand-200: #34377a;
+  --color-brand-300: #4649a8;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #7c86ff;
+  --color-brand-700: #97a1ff;
+  --color-brand-800: #b3baff;
+  --color-brand-900: #cdd2ff;
+
+  --color-surface: #171a21;
+  --color-surface-hover: #1e222c;
+  --color-surface-sunken: #101217;
+  --color-edge: #2a3040;
+  --color-edge-soft: #222736;
+  --color-edge-strong: #3b4357;
+  --color-content: #e2e8f0;
+  --color-content-secondary: #94a3b8;
+  --color-content-muted: #64748b;
+  --color-content-faint: #475569;
+
+  --color-sidebar: #0b0d12;
+  --color-sidebar-raised: #1a1f2b;
+  --color-sidebar-content: #8b93a7;
+  --color-sidebar-muted: #5b6372;
+  --color-sidebar-edge: #2a3040;
+
+  --color-status-idea-bg: #262c3a;      --color-status-idea-fg: #cbd5e1;
+  --color-status-drafting-bg: #3a2f10;  --color-status-drafting-fg: #fcd34d;
+  --color-status-editing-bg: #172a54;   --color-status-editing-fg: #93c5fd;
+  --color-status-preorder-bg: #331a54;  --color-status-preorder-fg: #d8b4fe;
+  --color-status-published-bg: #0c3527; --color-status-published-fg: #6ee7b7;
+  --color-status-paused-bg: #451524;    --color-status-paused-fg: #fda4af;
+
+  --color-chart-1: #818cf8;
+  --color-chart-2: #34d399;
+  --color-chart-3: #fbbf24;
+  --color-chart-4: #f472b6;
+  --color-chart-5: #22d3ee;
+  --color-chart-6: #a78bfa;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.5);
 }
 
 .theme-indigo {
@@ -86,12 +211,24 @@
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #f8f9fa;
-  color: #1f2937;
+  background-color: var(--color-surface-sunken);
+  background-image: var(--app-gradient);
+  background-attachment: fixed;
+  color: var(--color-content);
 }
 
 input[type=number]::-webkit-inner-spin-button {
   opacity: 1;
+}
+
+/* Recharts' default tooltip is hardcoded white; route it through the surface
+   tokens once here instead of per-chart contentStyle overrides. */
+.recharts-default-tooltip {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-edge) !important;
+}
+.recharts-default-tooltip .recharts-tooltip-label {
+  color: var(--color-content) !important;
 }
 
 /* Slim, unobtrusive scrollbars for sidebars and scroll panels (replaces the

@@ -15,10 +15,10 @@ export default function Modal({ open, onClose, title, children, maxWidth = 'max-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800">{title}</h3>
-          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100">
+      <div className={`relative bg-surface rounded-card shadow-2xl w-full ${maxWidth} max-h-[90vh] overflow-y-auto`}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-edge">
+          <h3 className="text-lg font-semibold text-content">{title}</h3>
+          <button onClick={onClose} className="p-1 text-content-muted hover:text-content-secondary rounded-control hover:bg-surface-sunken">
             <X className="w-5 h-5" />
           </button>
         </div>

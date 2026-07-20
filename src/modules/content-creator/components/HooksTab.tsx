@@ -202,20 +202,20 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
     }
   }
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-content-muted" /></div>;
   if (!user) return null;
 
   const visible = statusFilter === 'all' ? hooks : hooks.filter(h => h.status === statusFilter);
 
   return (
     <div className="space-y-5 max-w-4xl">
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
+      <div className="bg-surface rounded-card border border-edge p-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-              <Anchor className="w-4 h-4 text-slate-400" /> Manuscript scan
+            <h3 className="text-sm font-semibold text-content flex items-center gap-2">
+              <Anchor className="w-4 h-4 text-content-muted" /> Manuscript scan
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-content-secondary mt-0.5">
               {manuscript
                 ? `Scans "${manuscript.title}" chapter by chapter and builds your hook list. You start it; nothing runs on its own.`
                 : 'Link a manuscript to this book in the Writing module to enable scanning.'}
@@ -225,14 +225,14 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
             <button
               onClick={runScan}
               disabled={!manuscript}
-              className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
+              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
             >
               <Play className="w-4 h-4" /> {resumable ? 'Resume scan' : 'Scan manuscript'}
             </button>
           ) : (
             <button
               onClick={() => { cancelRef.current = true; }}
-              className="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 text-sm font-medium hover:bg-slate-50 flex items-center gap-2"
+              className="px-4 py-2 rounded-control border border-edge-strong text-content-secondary text-sm font-medium hover:bg-surface-hover flex items-center gap-2"
             >
               <Square className="w-4 h-4" /> Cancel
             </button>
@@ -240,7 +240,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
         </div>
         {progress && (
           <div className="mt-4">
-            <div className="flex justify-between text-xs text-slate-500 mb-1">
+            <div className="flex justify-between text-xs text-content-secondary mb-1">
               <span>
                 {progress.phase === 'chapters' ? `Reading chapter ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`
                   : progress.phase === 'ranking' ? 'Writing hooks from the strongest moments…'
@@ -248,7 +248,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
               </span>
               {progress.phase !== 'ranking' && <span>{Math.round((progress.done / progress.total) * 100)}%</span>}
             </div>
-            <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
               <div
                 className={`h-full rounded-full bg-pink-500 transition-all ${progress.phase === 'ranking' ? 'animate-pulse w-full' : ''}`}
                 style={progress.phase !== 'ranking' ? { width: `${(progress.done / progress.total) * 100}%` } : undefined}
@@ -258,11 +258,11 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
         )}
         {error && <p className="text-xs text-rose-600 mt-3">{error}</p>}
         {playbookEmpty && !scanning && (
-          <p className="text-xs text-slate-400 mt-3">
+          <p className="text-xs text-content-muted mt-3">
             Scans use the built-in hook strategy library automatically. Add your own patterns in the Playbook tab to extend it.
           </p>
         )}
-        <div className="mt-3 border-t border-slate-100 pt-3">
+        <div className="mt-3 border-t border-edge-soft pt-3">
           <ScanModelPickers disabled={scanning} />
         </div>
       </div>
@@ -279,12 +279,12 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
       />
 
       <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        <div className="flex gap-1 bg-surface-sunken rounded-control p-1">
           {(['all', 'candidate', 'approved', 'archived'] as const).map(s => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize ${statusFilter === s ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`px-3 py-1.5 rounded-control text-xs font-medium capitalize ${statusFilter === s ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'}`}
             >
               {s === 'all' ? `All (${hooks.length})` : `${s} (${hooks.filter(h => h.status === s).length})`}
             </button>
@@ -298,7 +298,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
                 await deleteCandidateHooks(user.id, book.id);
                 setHooks(prev => prev.filter(h => h.status !== 'candidate'));
               }}
-              className="text-xs text-slate-400 hover:text-rose-600"
+              className="text-xs text-content-muted hover:text-rose-600"
             >
               Clear candidates
             </button>
@@ -309,8 +309,8 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
       </div>
 
       {visible.length === 0 ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
-          <p className="text-slate-500 text-sm">
+        <div className="bg-surface rounded-card border border-dashed border-edge-strong p-10 text-center">
+          <p className="text-content-secondary text-sm">
             {hooks.length === 0 ? 'No hooks yet — run a scan or add one by hand.' : 'Nothing with this status.'}
           </p>
         </div>
@@ -438,17 +438,17 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
+    <div className="bg-surface rounded-card border border-edge p-5">
       <button onClick={() => setOpen(v => !v)} className="w-full flex items-center justify-between gap-3 text-left">
         <div>
-          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-            <Quote className="w-4 h-4 text-slate-400" /> Hook workshop
+          <h3 className="text-sm font-semibold text-content flex items-center gap-2">
+            <Quote className="w-4 h-4 text-content-muted" /> Hook workshop
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-content-secondary mt-0.5">
             Paste one quote or moment you love and get a different hook per playbook strategy — compare the framings side by side.
           </p>
         </div>
-        {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+        {open ? <ChevronDown className="w-4 h-4 text-content-muted shrink-0" /> : <ChevronRight className="w-4 h-4 text-content-muted shrink-0" />}
       </button>
 
       {open && (
@@ -458,19 +458,19 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
             value={quote}
             onChange={e => setQuote(e.target.value)}
             placeholder={'Paste the quote or short excerpt, verbatim from the book…\ne.g. "You are mine," he growled, hooking her knees and pulling her into him.'}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none"
+            className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
           />
           <div className="flex flex-wrap gap-2 items-center">
             <input
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Optional direction (e.g. lean possessive, he's a vampire boss)…"
-              className="flex-1 min-w-52 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none"
+              className="flex-1 min-w-52 rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
             />
             <button
               onClick={generate}
               disabled={busy || !quote.trim()}
-              className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
+              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {busy ? 'Writing…' : variations.length ? 'Re-roll variations' : 'Write variations'}
@@ -479,7 +479,7 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
               onClick={generatePremise}
               disabled={busy}
               title="Write premise-level hooks from the Catalog facts alone — no quote needed (the 'would you read a book about…' shape)"
-              className="px-4 py-2 rounded-lg border border-pink-200 text-pink-700 text-sm font-medium hover:bg-pink-50 disabled:opacity-40"
+              className="px-4 py-2 rounded-control border border-pink-200 text-pink-700 text-sm font-medium hover:bg-pink-50 disabled:opacity-40"
             >
               Premise hooks
             </button>
@@ -502,14 +502,14 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
                 const matches = scanForBannedWords(v.hook_text, bannedActive);
                 const saved = savedIdx.has(i);
                 return (
-                  <div key={i} className="rounded-lg border border-slate-200 p-3">
+                  <div key={i} className="rounded-control border border-edge p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 border border-pink-100 mb-1.5">
                           {v.strategy || 'Untitled strategy'}
                         </span>
-                        <p className="text-sm text-slate-800">{v.hook_text}</p>
-                        {v.rationale && <p className="text-xs text-slate-400 mt-1">{v.rationale}</p>}
+                        <p className="text-sm text-content">{v.hook_text}</p>
+                        {v.rationale && <p className="text-xs text-content-muted mt-1">{v.rationale}</p>}
                         {matches.length > 0 && (
                           <p className="text-[11px] text-amber-700 mt-1 flex items-center gap-1">
                             <ShieldAlert className="w-3.5 h-3.5" /> contains banned {matches.length === 1 ? 'word' : 'words'}: {matches.map(m => `"${m.found}"`).join(', ')} — fixes available after saving
@@ -528,7 +528,7 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
                   </div>
                 );
               })}
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-content-muted">
                 Saved variations join your hook list below with the {scene ? 'located scene' : 'pasted quote'} attached. Re-roll keeps the quote and writes a fresh set.
               </p>
             </div>
@@ -564,13 +564,13 @@ function AddHookButton({ userId, bookId, manuscriptId, onAdded }: {
     <div className="flex gap-2 items-center">
       <input
         autoFocus
-        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm w-72 focus:border-pink-500 outline-none"
+        className="rounded-control border border-edge-strong px-3 py-1.5 text-sm w-72 focus:border-pink-500 outline-none"
         placeholder="Type the hook…"
         value={text}
         onChange={e => setText(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') add(); if (e.key === 'Escape') setOpen(false); }}
       />
-      <button onClick={add} className="px-3 py-1.5 rounded-lg bg-pink-600 text-white text-sm hover:bg-pink-700">Save</button>
+      <button onClick={add} className="px-3 py-1.5 rounded-control bg-pink-600 text-white text-sm hover:bg-pink-700">Save</button>
     </div>
   );
 }
@@ -608,27 +608,27 @@ function ImportMomentsButton({ userId, bookId, manuscriptId, onAdded }: {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="text-sm text-slate-500 hover:text-slate-700">
+      <button onClick={() => setOpen(true)} className="text-sm text-content-secondary hover:text-content">
         Import moments
       </button>
     );
   }
   return (
-    <div className="w-full space-y-2 bg-white rounded-xl border border-slate-200 p-3">
+    <div className="w-full space-y-2 bg-surface rounded-card border border-edge p-3">
       <textarea
         rows={5}
         autoFocus
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder={'Paste your saved moments — one per paragraph (blank line between them).\nEach becomes a candidate, and I\'ll find its scene in the linked manuscript automatically.'}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none"
+        className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
       />
       <div className="flex gap-2 items-center">
         <button onClick={runImport} disabled={!!progress || !text.trim()}
-          className="px-3 py-1.5 rounded-lg bg-slate-800 text-white text-xs hover:bg-slate-700 disabled:opacity-50">
+          className="px-3 py-1.5 rounded-control bg-slate-800 text-white text-xs hover:bg-slate-700 disabled:opacity-50">
           {progress ?? 'Import'}
         </button>
-        <button onClick={() => { setOpen(false); setText(''); }} className="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
+        <button onClick={() => { setOpen(false); setText(''); }} className="text-xs text-content-secondary hover:text-content">Cancel</button>
       </div>
     </div>
   );
@@ -676,29 +676,29 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted, onWorkshop
   }
 
   const statusColors: Record<HookStatus, string> = {
-    candidate: 'border-slate-200',
+    candidate: 'border-edge',
     approved: 'border-emerald-300 bg-emerald-50/30',
-    archived: 'border-slate-100 opacity-60',
+    archived: 'border-edge-soft opacity-60',
   };
 
   return (
-    <div className={`bg-white rounded-xl border p-4 ${statusColors[hook.status]}`}>
+    <div className={`bg-surface rounded-card border p-4 ${statusColors[hook.status]}`}>
       {editing ? (
         <div className="space-y-2">
           <textarea
             rows={2}
             autoFocus
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none"
+            className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
             value={draft}
             onChange={e => setDraft(e.target.value)}
           />
           <div className="flex gap-2">
-            <button onClick={() => save(draft)} className="px-3 py-1.5 rounded-lg bg-pink-600 text-white text-xs hover:bg-pink-700">Save</button>
-            <button onClick={() => { setEditing(false); setDraft(hook.hook_text); }} className="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
+            <button onClick={() => save(draft)} className="px-3 py-1.5 rounded-control bg-pink-600 text-white text-xs hover:bg-pink-700">Save</button>
+            <button onClick={() => { setEditing(false); setDraft(hook.hook_text); }} className="text-xs text-content-secondary hover:text-content">Cancel</button>
           </div>
         </div>
       ) : (
-        <p className="text-sm text-slate-800 cursor-text" onDoubleClick={() => setEditing(true)} title="Double-click to edit">
+        <p className="text-sm text-content cursor-text" onDoubleClick={() => setEditing(true)} title="Double-click to edit">
           {hook.hook_text}
         </p>
       )}
@@ -721,8 +721,8 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted, onWorkshop
         </div>
       )}
 
-      {hook.rationale && <p className="text-xs text-slate-400 mt-1.5">{hook.rationale}</p>}
-      {hook.tags.length > 0 && <p className="text-[11px] text-slate-400 mt-1">{hook.tags.map(t => `#${t}`).join(' ')}</p>}
+      {hook.rationale && <p className="text-xs text-content-muted mt-1.5">{hook.rationale}</p>}
+      {hook.tags.length > 0 && <p className="text-[11px] text-content-muted mt-1">{hook.tags.map(t => `#${t}`).join(' ')}</p>}
 
       <div className="flex items-center gap-2 mt-3">
         {hook.status !== 'approved' ? (
@@ -734,22 +734,22 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted, onWorkshop
         <button
           onClick={async () => onChanged(await updateHook(hook.id, { favorite: !hook.favorite }))}
           title={hook.favorite ? 'Unfavorite' : 'Favorite'}
-          className={`p-1.5 rounded-md ${hook.favorite ? 'text-amber-500' : 'text-slate-300 hover:text-amber-500'}`}
+          className={`p-1.5 rounded-control ${hook.favorite ? 'text-amber-500' : 'text-content-faint hover:text-amber-500'}`}
         >
           <Star className={`w-4 h-4 ${hook.favorite ? 'fill-amber-400' : ''}`} />
         </button>
         {hook.status !== 'archived' && (
           <button onClick={async () => onChanged(await updateHook(hook.id, { status: 'archived' }))}
-            className="text-xs text-slate-400 hover:text-slate-600">Archive</button>
+            className="text-xs text-content-muted hover:text-content-secondary">Archive</button>
         )}
         <button onClick={() => onWorkshop(hook.scene_excerpt || hook.hook_text)}
           title="Send to the Hook workshop for strategy variations"
-          className="text-xs text-slate-400 hover:text-pink-600">Workshop</button>
+          className="text-xs text-content-muted hover:text-pink-600">Workshop</button>
         <select
           value={hook.test_result}
           onChange={async e => onChanged(await updateHook(hook.id, { test_result: e.target.value as HookTestResult }))}
           title="Mark how this hook performed in real ads/posts — the AI learns from these"
-          className={`text-[11px] border rounded-md px-1 py-0.5 bg-white ${hook.test_result === 'worked' ? 'border-emerald-300 text-emerald-700' : hook.test_result === 'failed' ? 'border-rose-300 text-rose-600' : 'border-slate-200 text-slate-400'}`}
+          className={`text-[11px] border rounded-control px-1 py-0.5 bg-surface ${hook.test_result === 'worked' ? 'border-emerald-300 text-emerald-700' : hook.test_result === 'failed' ? 'border-rose-300 text-rose-600' : 'border-edge text-content-muted'}`}
         >
           <option value="untested">untested</option>
           <option value="worked">✓ worked</option>
@@ -757,18 +757,18 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted, onWorkshop
         </select>
         <button
           onClick={async () => { if (!confirm('Delete this hook?')) return; await deleteHook(hook.id); onDeleted(); }}
-          className="p-1.5 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 ml-auto"
+          className="p-1.5 rounded-control text-content-faint hover:text-rose-600 hover:bg-rose-50 ml-auto"
         >
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
 
       {hook.scene_excerpt && (
-        <div className="mt-2 border-t border-slate-100 pt-2">
-          <button onClick={() => setSceneOpen(v => !v)} className="text-xs text-slate-500 hover:text-slate-700 flex items-center gap-1">
+        <div className="mt-2 border-t border-edge-soft pt-2">
+          <button onClick={() => setSceneOpen(v => !v)} className="text-xs text-content-secondary hover:text-content flex items-center gap-1">
             {sceneOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />} Scene
           </button>
-          {sceneOpen && <p className="text-xs text-slate-600 mt-1.5 whitespace-pre-wrap italic">{hook.scene_excerpt}</p>}
+          {sceneOpen && <p className="text-xs text-content-secondary mt-1.5 whitespace-pre-wrap italic">{hook.scene_excerpt}</p>}
         </div>
       )}
     </div>

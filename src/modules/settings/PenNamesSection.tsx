@@ -47,28 +47,28 @@ export default function PenNamesSection() {
   }
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
           <Users className="w-5 h-5 text-purple-600" />
-          <h2 className="text-lg font-semibold text-slate-800">Pen names</h2>
+          <h2 className="text-lg font-semibold text-content">Pen names</h2>
         </div>
         {!creating && (
           <button
             onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700"
           >
             <Plus className="w-4 h-4" /> New pen name
           </button>
         )}
       </div>
-      <p className="text-sm text-slate-500 mb-5">
+      <p className="text-sm text-content-secondary mb-5">
         Each pen name groups your books — useful when you write under more than one author persona.
         Filter the whole app by pen name from the picker in the top right.
       </p>
 
       {error && (
-        <div className="mb-4 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm text-rose-700">
+        <div className="mb-4 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-control p-3 text-sm text-rose-700">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <span>{error}</span>
         </div>
@@ -101,7 +101,7 @@ export default function PenNamesSection() {
           )
         ))}
         {penNames.length === 0 && !creating && (
-          <p className="text-sm text-slate-400 italic">No pen names yet. Add one to start grouping your books.</p>
+          <p className="text-sm text-content-muted italic">No pen names yet. Add one to start grouping your books.</p>
         )}
       </div>
     </section>
@@ -111,19 +111,19 @@ export default function PenNamesSection() {
 function PenNameRow({ penName, onEdit, onDelete }: { penName: PenName; onEdit: () => void; onDelete: () => void }) {
   const c = penNameClasses(penName.color);
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 border border-slate-200 rounded-xl">
+    <div className="flex items-center gap-3 px-3 py-2.5 border border-edge rounded-card">
       <span className={`w-2.5 h-2.5 rounded-full ${c.dot}`} />
-      <span className="font-medium text-slate-800 flex-1">{penName.name}</span>
+      <span className="font-medium text-content flex-1">{penName.name}</span>
       <button
         onClick={onEdit}
-        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+        className="p-1.5 text-content-muted hover:text-content hover:bg-surface-sunken rounded-control"
         aria-label="Edit"
       >
         <Edit2 className="w-3.5 h-3.5" />
       </button>
       <button
         onClick={onDelete}
-        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+        className="p-1.5 text-content-muted hover:text-rose-600 hover:bg-rose-50 rounded-control"
         aria-label="Delete"
       >
         <Trash2 className="w-3.5 h-3.5" />
@@ -157,7 +157,7 @@ function PenNameRowEdit({
   }
 
   return (
-    <form onSubmit={submit} className="border border-purple-300 bg-purple-50/40 rounded-xl p-3 space-y-2">
+    <form onSubmit={submit} className="border border-purple-300 bg-purple-50/40 rounded-card p-3 space-y-2">
       <div className="flex gap-2 items-center">
         <input
           autoFocus
@@ -165,12 +165,12 @@ function PenNameRowEdit({
           value={name}
           onChange={e => setName(e.target.value)}
           placeholder="e.g. your pen name"
-          className="flex-1 px-3 py-1.5 border border-slate-300 rounded-lg text-sm"
+          className="flex-1 px-3 py-1.5 border border-edge-strong rounded-control text-sm"
         />
         <button
           type="submit"
           disabled={!name.trim() || saving}
-          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg disabled:opacity-50"
+          className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-control disabled:opacity-50"
           aria-label="Save"
         >
           <Check className="w-4 h-4" />
@@ -178,7 +178,7 @@ function PenNameRowEdit({
         <button
           type="button"
           onClick={onCancel}
-          className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg"
+          className="p-2 text-content-muted hover:bg-surface-sunken rounded-control"
           aria-label="Cancel"
         >
           <X className="w-4 h-4" />

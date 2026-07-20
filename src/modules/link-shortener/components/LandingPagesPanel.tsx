@@ -114,56 +114,56 @@ export default function LandingPagesPanel() {
   return (
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold text-slate-800">Book landing pages</h2>
+        <h2 className="text-lg font-semibold text-content">Book landing pages</h2>
         <button
           onClick={() => setEditing('new')}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium"
         >
           <Plus className="w-4 h-4" /> New page
         </button>
       </div>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         A shareable page for one book — cover, blurb, and a stack of retailer buttons — at a clean URL on
         your domain. Paste the book's first retail link and we'll pull the cover and details for you.
       </p>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="flex items-center gap-2 text-sm text-content-muted">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading…
         </div>
       ) : pages.length === 0 ? (
-        <p className="text-sm text-slate-400">No landing pages yet. Create one to get started.</p>
+        <p className="text-sm text-content-muted">No landing pages yet. Create one to get started.</p>
       ) : (
         <div className="space-y-2">
           {pages.map((p) => (
-            <div key={p.id} className="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5">
+            <div key={p.id} className="flex items-center gap-3 border border-edge rounded-card px-3 py-2.5">
               {p.cover_image_url ? (
-                <img src={p.cover_image_url} alt="" className="w-9 h-12 object-cover rounded shrink-0 bg-slate-100" />
+                <img src={p.cover_image_url} alt="" className="w-9 h-12 object-cover rounded shrink-0 bg-surface-sunken" />
               ) : (
-                <div className="w-9 h-12 rounded shrink-0 bg-slate-100" />
+                <div className="w-9 h-12 rounded shrink-0 bg-surface-sunken" />
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">{p.title || `/${p.slug}`}</p>
-                <p className="text-xs text-slate-400 font-mono truncate">/{p.slug} · {p.buttons?.length ?? 0} buttons</p>
+                <p className="text-sm font-medium text-content truncate">{p.title || `/${p.slug}`}</p>
+                <p className="text-xs text-content-muted font-mono truncate">/{p.slug} · {p.buttons?.length ?? 0} buttons</p>
               </div>
               <a
                 href={buildShortUrl(p.slug)}
                 target="_blank"
                 rel="noreferrer"
-                className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-50"
+                className="p-1.5 text-content-muted hover:text-indigo-600 rounded-control hover:bg-surface-hover"
                 title="Open page"
               >
                 <ExternalLink className="w-4 h-4" />
               </a>
               <button
                 onClick={() => setEditing(p)}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                className="px-2.5 py-1.5 text-xs font-medium text-content-secondary border border-edge rounded-control hover:bg-surface-hover"
               >
                 Edit
               </button>
               <button
                 onClick={() => handleDelete(p)}
-                className="p-1.5 text-rose-500 border border-rose-200 rounded-lg hover:bg-rose-50"
+                className="p-1.5 text-rose-500 border border-rose-200 rounded-control hover:bg-rose-50"
                 title="Delete"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -341,26 +341,26 @@ function LandingPageEditor({
 
   return (
     <div className="max-w-2xl">
-      <button onClick={onCancel} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4">
+      <button onClick={onCancel} className="inline-flex items-center gap-1.5 text-sm text-content-secondary hover:text-content mb-4">
         <ArrowLeft className="w-4 h-4" /> Back to pages
       </button>
 
       <div className="space-y-5">
         {/* Auto-fill */}
-        <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4">
-          <label className="text-sm font-medium text-slate-700">Pull from a retail link</label>
-          <p className="text-xs text-slate-500 mb-2">Paste the book's first store link — we'll grab the cover, title, and blurb.</p>
+        <div className="rounded-card border border-indigo-200 bg-indigo-50/40 p-4">
+          <label className="text-sm font-medium text-content">Pull from a retail link</label>
+          <p className="text-xs text-content-secondary mb-2">Paste the book's first store link — we'll grab the cover, title, and blurb.</p>
           <div className="flex gap-2">
             <input
               value={draft.sourceUrl}
               onChange={(e) => set('sourceUrl', e.target.value)}
               placeholder="https://www.amazon.com/dp/…"
-              className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="flex-1 px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
             />
             <button
               onClick={handleFetch}
               disabled={fetching || !draft.sourceUrl.trim()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-control bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
             >
               {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               Fetch
@@ -373,7 +373,7 @@ function LandingPageEditor({
             value={draft.slug}
             onChange={(e) => set('slug', e.target.value.replace(/\s+/g, '-'))}
             placeholder="forbidden"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </Field>
 
@@ -382,7 +382,7 @@ function LandingPageEditor({
             value={draft.title}
             onChange={(e) => set('title', e.target.value)}
             placeholder="e.g. Vicious Beast"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </Field>
 
@@ -408,7 +408,7 @@ function LandingPageEditor({
           <select
             value={draft.pageTextMode}
             onChange={(e) => set('pageTextMode', e.target.value as BookTextMode)}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
           >
             <option value="description">Full description</option>
             <option value="headline">Headline only</option>
@@ -430,7 +430,7 @@ function LandingPageEditor({
         <Field label="Cover image" hint="Upload a full-resolution cover for a crisp page. (Auto-fetched covers can be low-res.)">
           <div className="flex items-start gap-3">
             <div className="flex-1 space-y-2">
-              <label className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer">
+              <label className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-control bg-surface border border-edge-strong text-content hover:bg-surface-hover cursor-pointer">
                 {coverBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                 {draft.coverUrl ? 'Replace cover' : 'Upload cover'}
                 <input type="file" accept="image/*" className="hidden" disabled={coverBusy} onChange={handleCoverUpload} />
@@ -439,11 +439,11 @@ function LandingPageEditor({
                 value={draft.coverUrl}
                 onChange={(e) => set('coverUrl', e.target.value)}
                 placeholder="…or paste an image URL"
-                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300"
               />
             </div>
             {draft.coverUrl.trim() && (
-              <img src={draft.coverUrl} alt="" className="w-16 h-24 object-cover rounded border border-slate-200 bg-slate-100 shrink-0" />
+              <img src={draft.coverUrl} alt="" className="w-16 h-24 object-cover rounded border border-edge bg-surface-sunken shrink-0" />
             )}
           </div>
         </Field>
@@ -451,13 +451,13 @@ function LandingPageEditor({
         {/* Buttons */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm font-medium text-slate-700">Retailer buttons</label>
+            <label className="text-sm font-medium text-content">Retailer buttons</label>
             <button onClick={addButton} className="inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline">
               <Plus className="w-3.5 h-3.5" /> Add button
             </button>
           </div>
           {draft.buttons.length === 0 ? (
-            <p className="text-xs text-slate-400">No buttons yet. Add one per store (Amazon, Apple Books, Kobo…).</p>
+            <p className="text-xs text-content-muted">No buttons yet. Add one per store (Amazon, Apple Books, Kobo…).</p>
           ) : (
             <div className="space-y-2">
               {draft.buttons.map((b, i) => {
@@ -465,7 +465,7 @@ function LandingPageEditor({
                 const selectVal = isKnown ? b.label : (b.label || customRows[i] ? '__other__' : '');
                 return (
                   <div key={i} className="flex items-center gap-2">
-                    <GripVertical className="w-4 h-4 text-slate-300 shrink-0" />
+                    <GripVertical className="w-4 h-4 text-content-faint shrink-0" />
                     <select
                       value={selectVal}
                       onChange={(e) => {
@@ -478,7 +478,7 @@ function LandingPageEditor({
                           updateButton(i, { label: v });
                         }
                       }}
-                      className="w-40 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      className="w-40 px-2.5 py-1.5 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-1 focus:ring-indigo-400"
                     >
                       <option value="">Choose retailer…</option>
                       {KNOWN_RETAILERS.map((r) => (
@@ -491,16 +491,16 @@ function LandingPageEditor({
                         value={b.label}
                         onChange={(e) => updateButton(i, { label: e.target.value })}
                         placeholder="Name"
-                        className="w-28 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                        className="w-28 px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-indigo-400"
                       />
                     )}
                     <input
                       value={b.url}
                       onChange={(e) => updateButton(i, { url: e.target.value })}
                       placeholder="https://…"
-                      className="flex-1 px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      className="flex-1 px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-indigo-400"
                     />
-                    <button onClick={() => removeButton(i)} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 shrink-0">
+                    <button onClick={() => removeButton(i)} className="p-1.5 text-content-muted hover:text-rose-600 rounded-control hover:bg-rose-50 shrink-0">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
@@ -517,14 +517,14 @@ function LandingPageEditor({
               value={draft.sampleUrl}
               onChange={(e) => set('sampleUrl', e.target.value)}
               placeholder="https://…"
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300"
             />
             <input
               value={draft.sampleLabel}
               onChange={(e) => set('sampleLabel', e.target.value)}
               placeholder="Read a sample"
               disabled={!draft.sampleUrl.trim()}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-50 disabled:text-slate-400"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-surface-hover disabled:text-content-muted"
             />
           </div>
         </Field>
@@ -532,18 +532,18 @@ function LandingPageEditor({
         {/* Reviews */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-sm font-medium text-slate-700">Reviews</label>
+            <label className="text-sm font-medium text-content">Reviews</label>
             <button onClick={addReview} className="inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline">
               <Plus className="w-3.5 h-3.5" /> Add review
             </button>
           </div>
-          <p className="text-xs text-slate-400 mb-2">Reader quotes shown below the blurb as social proof. Star rating, quote, and who said it.</p>
+          <p className="text-xs text-content-muted mb-2">Reader quotes shown below the blurb as social proof. Star rating, quote, and who said it.</p>
           {draft.reviews.length === 0 ? (
-            <p className="text-xs text-slate-400">No reviews yet.</p>
+            <p className="text-xs text-content-muted">No reviews yet.</p>
           ) : (
             <div className="space-y-3">
               {draft.reviews.map((r, i) => (
-                <div key={i} className="border border-slate-200 rounded-xl p-3 space-y-2">
+                <div key={i} className="border border-edge rounded-card p-3 space-y-2">
                   <div className="flex items-center justify-between gap-2">
                     <div className="inline-flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map((n) => (
@@ -555,14 +555,14 @@ function LandingPageEditor({
                           aria-label={`${n} star${n === 1 ? '' : 's'}`}
                         >
                           <Star
-                            className={`w-5 h-5 ${n <= r.stars ? 'text-amber-400 fill-amber-400' : 'text-slate-300'}`}
+                            className={`w-5 h-5 ${n <= r.stars ? 'text-amber-400 fill-amber-400' : 'text-content-faint'}`}
                           />
                         </button>
                       ))}
                     </div>
                     <button
                       onClick={() => removeReview(i)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50"
+                      className="p-1.5 text-content-muted hover:text-rose-600 rounded-control hover:bg-rose-50"
                       title="Remove review"
                     >
                       <X className="w-4 h-4" />
@@ -578,7 +578,7 @@ function LandingPageEditor({
                     value={r.attribution}
                     onChange={(e) => updateReview(i, { attribution: e.target.value })}
                     placeholder="Who said it (e.g. Goodreads, Sarah K., Publishers Weekly)"
-                    className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    className="w-full px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-indigo-400"
                   />
                 </div>
               ))}
@@ -595,7 +595,7 @@ function LandingPageEditor({
             <select
               value={draft.seriesPageId ?? ''}
               onChange={(e) => set('seriesPageId', e.target.value || null)}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
             >
               <option value="">Don't show other books</option>
               {seriesOptions.map((s) => (
@@ -606,7 +606,7 @@ function LandingPageEditor({
               value={draft.crossSellLabel}
               onChange={(e) => set('crossSellLabel', e.target.value as CrossSellLabel)}
               disabled={!draft.seriesPageId}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-slate-50 disabled:text-slate-400"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-surface-hover disabled:text-content-muted"
             >
               <option value="series">Read the complete series</option>
               <option value="world">More standalones in this world</option>
@@ -615,13 +615,13 @@ function LandingPageEditor({
             </select>
           </div>
           {seriesOptions.length === 0 && (
-            <p className="mt-1 text-xs text-slate-400">No series pages yet — create one in Series pages to use this.</p>
+            <p className="mt-1 text-xs text-content-muted">No series pages yet — create one in Series pages to use this.</p>
           )}
         </Field>
 
         {/* Theme */}
         <div>
-          <label className="text-sm font-medium text-slate-700 mb-2 block">Theme</label>
+          <label className="text-sm font-medium text-content mb-2 block">Theme</label>
           <div className="flex flex-wrap gap-2">
             {BIO_THEMES.map((th) => {
               const active = draft.theme === th.id;
@@ -631,13 +631,13 @@ function LandingPageEditor({
                   type="button"
                   onClick={() => set('theme', th.id)}
                   aria-label={th.name}
-                  className={`relative w-[78px] rounded-xl overflow-hidden border-2 transition ${active ? 'border-indigo-500' : 'border-transparent hover:border-slate-300'}`}
+                  className={`relative w-[78px] rounded-card overflow-hidden border-2 transition ${active ? 'border-indigo-500' : 'border-transparent hover:border-edge-strong'}`}
                 >
                   <div style={{ background: th.bg }} className="h-10 flex items-end justify-center px-2 pb-1.5">
                     <span style={{ background: th.surface }} className="block w-full h-2.5 rounded-sm shadow-sm" />
                   </div>
-                  <div className="flex items-center justify-between px-2 py-1 bg-white">
-                    <span className="text-[10px] font-medium text-slate-700">{th.name}</span>
+                  <div className="flex items-center justify-between px-2 py-1 bg-surface">
+                    <span className="text-[10px] font-medium text-content">{th.name}</span>
                     <span style={{ background: th.accent }} className="w-2 h-2 rounded-full" />
                   </div>
                   {active && (
@@ -650,33 +650,33 @@ function LandingPageEditor({
             })}
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <label className="text-xs font-medium text-slate-600">Accent color</label>
+            <label className="text-xs font-medium text-content-secondary">Accent color</label>
             <input
               type="color"
               value={draft.accentColor || bioThemeById(draft.theme).accent}
               onChange={(e) => set('accentColor', e.target.value)}
-              className="w-9 h-9 rounded-lg border border-slate-200 bg-white cursor-pointer p-0.5"
+              className="w-9 h-9 rounded-control border border-edge bg-surface cursor-pointer p-0.5"
             />
             {draft.accentColor && (
-              <button onClick={() => set('accentColor', null)} className="text-xs text-slate-500 hover:underline">
+              <button onClick={() => set('accentColor', null)} className="text-xs text-content-secondary hover:underline">
                 Use theme default
               </button>
             )}
           </div>
         </div>
 
-        {error && <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm">{error}</div>}
+        {error && <div className="px-3 py-2 rounded-control bg-rose-50 border border-rose-200 text-rose-700 text-sm">{error}</div>}
 
         <div className="flex items-center gap-2 pt-1">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {page ? 'Save changes' : 'Create page'}
           </button>
-          <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm hover:bg-slate-50">
+          <button onClick={onCancel} className="px-4 py-2 rounded-control border border-edge text-content-secondary text-sm hover:bg-surface-hover">
             Cancel
           </button>
         </div>
@@ -688,8 +688,8 @@ function LandingPageEditor({
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div>
-      <label className="text-sm font-medium text-slate-700">{label}</label>
-      {hint && <p className="text-xs text-slate-400 mb-1">{hint}</p>}
+      <label className="text-sm font-medium text-content">{label}</label>
+      {hint && <p className="text-xs text-content-muted mb-1">{hint}</p>}
       <div className={hint ? '' : 'mt-1'}>{children}</div>
     </div>
   );

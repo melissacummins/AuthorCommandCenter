@@ -68,9 +68,9 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
     <div className="max-w-2xl">
       <div className="flex items-center gap-3 mb-2">
         <Globe className="w-5 h-5 text-indigo-600" />
-        <h2 className="text-lg font-semibold text-slate-800">Your domain</h2>
+        <h2 className="text-lg font-semibold text-content">Your domain</h2>
       </div>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         Connect a domain you own (e.g. <span className="font-mono">links.yourbooks.com</span>) to
         serve your short links and bio page from your own brand. Until a domain is connected and
         verified, your links can't be shared publicly.
@@ -83,13 +83,13 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
           value={newDomain}
           onChange={(e) => setNewDomain(e.target.value)}
           placeholder="links.yourbooks.com"
-          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+          className="flex-1 px-3 py-2 border border-edge-strong rounded-control text-sm"
           autoComplete="off"
         />
         <button
           onClick={handleAdd}
           disabled={busy || !newDomain.trim()}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Add
@@ -98,8 +98,8 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
       {error && <p className="text-rose-600 text-sm mb-3">{error}</p>}
 
       {/* DNS guidance */}
-      <div className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-3 mb-6">
-        <p className="font-medium text-slate-700 mb-1">How to connect a domain</p>
+      <div className="text-xs text-content-secondary bg-surface-hover border border-edge rounded-control p-3 mb-6">
+        <p className="font-medium text-content mb-1">How to connect a domain</p>
         <ol className="list-decimal list-inside space-y-1">
           <li>Add the domain above.</li>
           <li>
@@ -115,17 +115,17 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
 
       {/* List */}
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-400">
+        <div className="flex items-center gap-2 text-sm text-content-muted">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading…
         </div>
       ) : domains.length === 0 ? (
-        <p className="text-sm text-slate-400">No domains connected yet.</p>
+        <p className="text-sm text-content-muted">No domains connected yet.</p>
       ) : (
         <div className="space-y-2">
           {domains.map((d) => (
-            <div key={d.id} className="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5">
+            <div key={d.id} className="flex items-center gap-3 border border-edge rounded-card px-3 py-2.5">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate font-mono">{d.domain}</p>
+                <p className="text-sm font-medium text-content truncate font-mono">{d.domain}</p>
                 {d.verified ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
                     <CheckCircle className="w-3.5 h-3.5" /> Verified{d.is_primary ? ' · primary' : ''}
@@ -138,7 +138,7 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
               </div>
               <button
                 onClick={() => handleDelete(d)}
-                className="p-1.5 text-rose-500 border border-rose-200 rounded-lg hover:bg-rose-50"
+                className="p-1.5 text-rose-500 border border-rose-200 rounded-control hover:bg-rose-50"
                 title="Remove domain"
               >
                 <Trash2 className="w-3.5 h-3.5" />

@@ -104,7 +104,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
     <Modal open={open} onClose={onClose} title={parent ? `Add channel variant under "${parent.label || parent.slug}"` : 'New short link'} maxWidth="max-w-xl">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Short slug</label>
+          <label className="block text-sm font-medium text-content mb-1">Short slug</label>
           <div className="flex items-center gap-2">
             <input
               value={slug}
@@ -113,21 +113,21 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
                 setSlugStatus('idle');
               }}
               onBlur={(e) => checkSlug(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-lg border border-slate-300 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="flex-1 px-3 py-2 rounded-control border border-edge-strong font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               placeholder="abc123"
             />
             <button
               type="button"
               onClick={rollSlug}
               disabled={busy}
-              className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+              className="px-3 py-2 rounded-control bg-surface-sunken hover:bg-edge text-content text-sm font-medium flex items-center gap-2 disabled:opacity-50"
               title="Generate a new random slug"
             >
               <Dice5 className="w-4 h-4" /> Roll
             </button>
           </div>
           <div className="mt-1 text-xs h-4">
-            {slugStatus === 'checking' && <span className="text-slate-500">Checking availability…</span>}
+            {slugStatus === 'checking' && <span className="text-content-secondary">Checking availability…</span>}
             {slugStatus === 'ok' && <span className="text-emerald-600">Slug available</span>}
             {slugStatus === 'taken' && <span className="text-red-600">Slug already taken</span>}
             {slugStatus === 'invalid' && <span className="text-red-600">3–40 chars: letters, numbers, - or _</span>}
@@ -135,32 +135,32 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Destination URL</label>
+          <label className="block text-sm font-medium text-content mb-1">Destination URL</label>
           <input
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             placeholder="https://your-book-page.com"
           />
-          <p className="mt-1 text-xs text-slate-500">You can change this later — the short URL stays the same.</p>
+          <p className="mt-1 text-xs text-content-secondary">You can change this later — the short URL stays the same.</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Internal label</label>
+            <label className="block text-sm font-medium text-content mb-1">Internal label</label>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               placeholder="Optional"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Folder</label>
+            <label className="block text-sm font-medium text-content mb-1">Folder</label>
             <select
               value={folderId ?? ''}
               onChange={(e) => setFolderId(e.target.value || null)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
             >
               <option value="">No folder</option>
               {folders.map((f) => (
@@ -172,29 +172,29 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
 
         {parent && (
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Channel</label>
+            <label className="block text-sm font-medium text-content mb-1">Channel</label>
             <input
               value={channel}
               onChange={(e) => setChannel(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               placeholder="Pinterest, Instagram, Facebook…"
             />
-            <p className="mt-1 text-xs text-slate-500">Click data for this slug will be tagged with this channel.</p>
+            <p className="mt-1 text-xs text-content-secondary">Click data for this slug will be tagged with this channel.</p>
           </div>
         )}
 
         {error && (
-          <div className="px-3 py-2 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">{error}</div>
+          <div className="px-3 py-2 rounded-control bg-red-50 text-red-700 text-sm border border-red-200">{error}</div>
         )}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-100 text-sm font-medium">
+          <button onClick={onClose} className="px-4 py-2 rounded-control text-content-secondary hover:bg-surface-sunken text-sm font-medium">
             Cancel
           </button>
           <button
             onClick={handleCreate}
             disabled={busy || slugStatus === 'taken' || slugStatus === 'invalid'}
-            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Create link

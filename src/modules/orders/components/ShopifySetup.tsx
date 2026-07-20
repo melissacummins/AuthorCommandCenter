@@ -100,7 +100,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
     <div className="space-y-6">
       {/* Connected Banner */}
       {isConnected && (
-        <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+        <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-card">
           <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-emerald-800">Connected to Shopify</p>
@@ -108,7 +108,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
           </div>
           <button
             onClick={() => setShowDisconnect(!showDisconnect)}
-            className="text-xs text-slate-500 hover:text-red-600 transition-colors"
+            className="text-xs text-content-secondary hover:text-red-600 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -117,7 +117,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
 
       {/* Credentials saved but not yet authorized */}
       {hasCredentials && !isConnected && (
-        <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+        <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-card">
           <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-amber-800">Credentials saved — authorization needed</p>
@@ -127,13 +127,13 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
       )}
 
       {showDisconnect && (
-        <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
+        <div className="p-4 bg-red-50 border border-red-200 rounded-card">
           <p className="text-sm text-red-700 mb-3">Are you sure? This will remove your Shopify credentials and disconnect the integration.</p>
           <div className="flex gap-2">
-            <button onClick={handleDisconnect} className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">
+            <button onClick={handleDisconnect} className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-control hover:bg-red-700">
               Disconnect
             </button>
-            <button onClick={() => setShowDisconnect(false)} className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">
+            <button onClick={() => setShowDisconnect(false)} className="px-3 py-1.5 text-sm border border-edge rounded-control hover:bg-surface-hover">
               Cancel
             </button>
           </div>
@@ -143,7 +143,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
       {/* Form */}
       <div className="space-y-4">
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+          <label className="flex items-center gap-2 text-sm font-medium text-content mb-1.5">
             <Store className="w-4 h-4" /> Store URL
           </label>
           <input
@@ -151,12 +151,12 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             value={storeUrl}
             onChange={(e) => setStoreUrl(e.target.value)}
             placeholder="your-store.myshopify.com"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
 
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+          <label className="flex items-center gap-2 text-sm font-medium text-content mb-1.5">
             <Key className="w-4 h-4" /> Client ID
           </label>
           <input
@@ -164,12 +164,12 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
             placeholder="Paste your Client ID from the Dev Dashboard"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
         </div>
 
         <div>
-          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-1.5">
+          <label className="flex items-center gap-2 text-sm font-medium text-content mb-1.5">
             <Key className="w-4 h-4" /> Client Secret
           </label>
           <input
@@ -177,9 +177,9 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             value={clientSecret}
             onChange={(e) => setClientSecret(e.target.value)}
             placeholder="Paste your Client Secret from the Dev Dashboard"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-content-muted mt-1">
             Both are found in your Shopify Dev Dashboard &rarr; Settings &rarr; Credentials
           </p>
         </div>
@@ -187,13 +187,13 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
 
       {/* Error/Success Messages */}
       {error && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-control">
           <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
       {success && (
-        <div className="flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+        <div className="flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-control">
           <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
           <p className="text-sm text-emerald-700">{success}</p>
         </div>
@@ -205,7 +205,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
           <button
             onClick={handleSaveAndAuthorize}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
             Save & Authorize with Shopify
@@ -216,14 +216,14 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             <button
               onClick={handleTest}
               disabled={testing}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
             >
               {testing && <Loader2 className="w-4 h-4 animate-spin" />}
               Test Connection
             </button>
             <button
               onClick={handleReauthorize}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
+              className="flex items-center gap-2 px-4 py-2 border border-edge text-content text-sm font-medium rounded-control hover:bg-surface-hover"
             >
               <ExternalLink className="w-4 h-4" /> Re-authorize
             </button>

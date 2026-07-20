@@ -105,7 +105,7 @@ export function TaskRow(props: TaskRowProps) {
         {dragHandle}
         <button
           onClick={() => onPatch(task.id, { done: !task.done })}
-          className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
+          className={`shrink-0 transition-colors ${task.done ? 'text-teal-600' : 'text-content-faint hover:text-teal-600'}`}
           title={task.done ? 'Mark not done' : 'Mark done'}
         >
           {task.done
@@ -124,12 +124,12 @@ export function TaskRow(props: TaskRowProps) {
               if (e.key === 'Escape') { setDraft(task.title); setEditing(false); }
             }}
             placeholder="To-do title…"
-            className="flex-1 min-w-0 text-sm bg-transparent outline-none border-b border-teal-400 text-slate-700"
+            className="flex-1 min-w-0 text-sm bg-transparent outline-none border-b border-teal-400 text-content"
           />
         ) : (
           <button
             onClick={() => { if (!task.done) { setDraft(task.title); setEditing(true); } }}
-            className={`flex-1 min-w-0 text-left text-sm break-words ${task.done ? 'text-slate-400 line-through cursor-default' : 'text-slate-700 cursor-text'}`}
+            className={`flex-1 min-w-0 text-left text-sm break-words ${task.done ? 'text-content-muted line-through cursor-default' : 'text-content cursor-text'}`}
             title={task.done ? undefined : 'Click to rename · chevron or ⋯ for details'}
           >
             {task.title || 'Untitled'}
@@ -148,15 +148,15 @@ export function TaskRow(props: TaskRowProps) {
               </span>
             )}
             {task.due_date && (
-              <span className={`text-[11px] font-medium ${overdue ? 'text-rose-500' : 'text-slate-400'}`}>
+              <span className={`text-[11px] font-medium ${overdue ? 'text-rose-500' : 'text-content-muted'}`}>
                 {formatDue(task.due_date, today)}
               </span>
             )}
             {task.estimate_minutes ? (
-              <span className="text-[11px] font-medium text-slate-400">{formatMinutes(task.estimate_minutes)}</span>
+              <span className="text-[11px] font-medium text-content-muted">{formatMinutes(task.estimate_minutes)}</span>
             ) : null}
             {enableRecurrence && task.recurrence && (
-              <Repeat className="w-3.5 h-3.5 text-slate-400" />
+              <Repeat className="w-3.5 h-3.5 text-content-muted" />
             )}
             {canFlag && task.flagged && (
               <Star className="w-3.5 h-3.5 text-amber-400" fill="currentColor" />
@@ -165,12 +165,12 @@ export function TaskRow(props: TaskRowProps) {
               <OrbitIcon className="w-3.5 h-3.5 text-violet-400" />
             )}
             {progress.total > 0 && (
-              <span className="text-[11px] font-medium text-slate-400 tabular-nums">{progress.done}/{progress.total}</span>
+              <span className="text-[11px] font-medium text-content-muted tabular-nums">{progress.done}/{progress.total}</span>
             )}
             {listName && (
               <button
                 onClick={onOpenList}
-                className="text-[11px] text-slate-400 hover:text-teal-600 truncate max-w-[8rem]"
+                className="text-[11px] text-content-muted hover:text-teal-600 truncate max-w-[8rem]"
                 title="Open list"
               >
                 {listName}
@@ -197,7 +197,7 @@ export function TaskRow(props: TaskRowProps) {
         {!task.done && (
           <button
             onClick={() => { setEditing(false); setExpanded(v => !v); }}
-            className="text-slate-300 hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+            className="text-content-faint hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
             title={expanded ? 'Close details' : 'Open details'}
           >
             {expanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
@@ -226,7 +226,7 @@ export function TaskRow(props: TaskRowProps) {
         {task.done && (
           <button
             onClick={() => onDelete(task.id)}
-            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+            className="text-content-faint hover:text-rose-500 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
@@ -256,7 +256,7 @@ export function TaskRow(props: TaskRowProps) {
       {!expanded && !task.done && hasNotes && (
         <button
           onClick={() => setExpanded(true)}
-          className="ml-7 mt-0.5 block text-left text-xs text-slate-400 hover:text-slate-600 truncate max-w-full"
+          className="ml-7 mt-0.5 block text-left text-xs text-content-muted hover:text-content-secondary truncate max-w-full"
         >
           {task.notes!.trim().split('\n')[0]}
         </button>
@@ -296,7 +296,7 @@ export function TaskActionsMenu({
 }) {
   return (
     <Popover
-      icon={<MoreHorizontal className="w-4 h-4 text-slate-300 hover:text-slate-600" />}
+      icon={<MoreHorizontal className="w-4 h-4 text-content-faint hover:text-content-secondary" />}
       title="More"
       triggerClassName="shrink-0 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity"
     >
@@ -418,7 +418,7 @@ function MenuBody({
             />
           : <TimeBlockItem onTimeBlock={t => { onTimeBlock(t); close(); }} />
       )}
-      <div className="my-1 border-t border-slate-100" />
+      <div className="my-1 border-t border-edge-soft" />
       <MenuItem icon={<Trash2 className="w-4 h-4" />} label="Delete" rose onClick={() => { onDelete(task.id); close(); }} />
     </div>
   );
@@ -436,11 +436,11 @@ function MenuItem({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${rose ? 'text-rose-600 hover:bg-rose-50' : 'text-slate-700'}`}
+      className={`flex w-full items-center gap-2.5 px-3 py-1.5 text-sm rounded hover:bg-surface-sunken ${rose ? 'text-rose-600 hover:bg-rose-50' : 'text-content'}`}
     >
-      <span className={rose ? 'text-rose-500' : 'text-slate-400'}>{icon}</span>
+      <span className={rose ? 'text-rose-500' : 'text-content-muted'}>{icon}</span>
       <span className="flex-1 text-left">{label}</span>
-      {chevron && <ChevronRight className="w-3.5 h-3.5 text-slate-300" />}
+      {chevron && <ChevronRight className="w-3.5 h-3.5 text-content-faint" />}
     </button>
   );
 }
@@ -448,7 +448,7 @@ function MenuItem({
 function SubPanel({ title, onBack, children }: { title: string; onBack: () => void; children: ReactNode }) {
   return (
     <div className="min-w-[12rem]">
-      <button onClick={onBack} className="flex w-full items-center gap-1.5 px-2.5 py-2 text-xs font-semibold text-slate-500 hover:text-slate-700 border-b border-slate-100">
+      <button onClick={onBack} className="flex w-full items-center gap-1.5 px-2.5 py-2 text-xs font-semibold text-content-secondary hover:text-content border-b border-edge-soft">
         <ChevronLeft className="w-3.5 h-3.5" /> {title}
       </button>
       {children}
@@ -461,12 +461,12 @@ function TimeBlockItem({ onTimeBlock }: { onTimeBlock: (time: string) => void })
   const [time, setTime] = useState('09:00');
   return (
     <div className="px-3 py-1.5 flex items-center gap-2">
-      <CalendarPlus className="w-4 h-4 text-slate-400 shrink-0" />
+      <CalendarPlus className="w-4 h-4 text-content-muted shrink-0" />
       <input
         type="time"
         value={time}
         onChange={e => setTime(e.target.value)}
-        className="text-sm border border-slate-200 rounded px-1.5 py-0.5 w-[6.5rem]"
+        className="text-sm border border-edge rounded px-1.5 py-0.5 w-[6.5rem]"
       />
       <button onClick={() => onTimeBlock(time)} className="text-xs font-medium text-white bg-sky-600 hover:bg-sky-700 rounded px-2 py-1">Block</button>
     </div>
@@ -492,12 +492,12 @@ export function SchedulePicker({
         autoFocus
         value={task.due_date ?? ''}
         onChange={e => { onPatch(task.id, { due_date: e.target.value || null, someday: false }); onDone(); }}
-        className="text-sm border border-slate-200 rounded px-2 py-1 w-full"
+        className="text-sm border border-edge rounded px-2 py-1 w-full"
       />
       {task.due_date && (
         <button
           onClick={() => { onPatch(task.id, { due_date: null, someday: false }); onDone(); }}
-          className="mt-1 block w-full text-left px-1 py-1 text-xs text-slate-400 hover:text-slate-600"
+          className="mt-1 block w-full text-left px-1 py-1 text-xs text-content-muted hover:text-content-secondary"
         >
           Clear (→ Anytime)
         </button>
@@ -519,14 +519,14 @@ export function EstimateOptions({
         <button
           key={p}
           onClick={() => { onPatch(task.id, { estimate_minutes: p }); onDone(); }}
-          className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.estimate_minutes === p ? 'text-teal-600 font-medium' : 'text-slate-700'}`}
+          className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken ${task.estimate_minutes === p ? 'text-teal-600 font-medium' : 'text-content'}`}
         >
           {formatMinutes(p)}
         </button>
       ))}
       <button
         onClick={() => { onPatch(task.id, { estimate_minutes: null }); onDone(); }}
-        className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400"
+        className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken text-content-muted"
       >
         No estimate
       </button>
@@ -549,20 +549,20 @@ function LogTimeOptions({
   const log = (m: number) => { if (m > 0) { onLogTime(m, day); onDone(); } };
   return (
     <div className="p-2 min-w-[12rem]">
-      <label className="block text-[11px] font-medium text-slate-400 mb-1">Day worked</label>
+      <label className="block text-[11px] font-medium text-content-muted mb-1">Day worked</label>
       <input
         type="date"
         value={day}
         max={today}
         onChange={e => setDay(e.target.value || today)}
-        className="text-sm border border-slate-200 rounded px-2 py-1 w-full mb-2"
+        className="text-sm border border-edge rounded px-2 py-1 w-full mb-2"
       />
       <div className="grid grid-cols-3 gap-1 mb-2">
         {ESTIMATE_PRESETS.map(p => (
           <button
             key={p}
             onClick={() => log(p)}
-            className="text-xs px-2 py-1 rounded border border-slate-200 text-slate-700 hover:bg-slate-100"
+            className="text-xs px-2 py-1 rounded border border-edge text-content hover:bg-surface-sunken"
           >
             {formatMinutes(p)}
           </button>
@@ -577,7 +577,7 @@ function LogTimeOptions({
           onChange={e => setCustom(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') log(parseInt(custom, 10) || 0); }}
           placeholder="min"
-          className="w-16 text-sm border border-slate-200 rounded px-2 py-1"
+          className="w-16 text-sm border border-edge rounded px-2 py-1"
         />
         <button
           onClick={() => log(parseInt(custom, 10) || 0)}
@@ -620,7 +620,7 @@ export function RepeatOptions({
         <button
           key={r}
           onClick={() => choose(r)}
-          className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 ${task.recurrence === r ? 'text-teal-600 font-medium' : 'text-slate-700'}`}
+          className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken ${task.recurrence === r ? 'text-teal-600 font-medium' : 'text-content'}`}
         >
           {recurrenceLabel(r)}
         </button>
@@ -628,19 +628,19 @@ export function RepeatOptions({
 
       {showCustom ? (
         <div className="px-3 py-1.5 flex items-center gap-1.5">
-          <span className="text-sm text-slate-500">Every</span>
+          <span className="text-sm text-content-secondary">Every</span>
           <input
             type="number"
             min="1"
             value={count}
             onChange={e => setCount(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') applyCustom(); }}
-            className="w-12 text-sm border border-slate-200 rounded px-1.5 py-0.5"
+            className="w-12 text-sm border border-edge rounded px-1.5 py-0.5"
           />
           <select
             value={unit}
             onChange={e => setUnit(e.target.value as RecurrenceUnit)}
-            className="text-sm border border-slate-200 rounded px-1 py-0.5"
+            className="text-sm border border-edge rounded px-1 py-0.5"
           >
             <option value="day">days</option>
             <option value="week">weeks</option>
@@ -651,7 +651,7 @@ export function RepeatOptions({
       ) : (
         <button
           onClick={() => setShowCustom(true)}
-          className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-700"
+          className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken text-content"
         >
           Custom…
         </button>
@@ -659,7 +659,7 @@ export function RepeatOptions({
 
       <button
         onClick={() => { onPatch(task.id, { recurrence: null }); onDone(); }}
-        className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 text-slate-400 border-t border-slate-100"
+        className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken text-content-muted border-t border-edge-soft"
       >
         Don’t repeat
       </button>
@@ -681,16 +681,16 @@ export function ListOptions({
         <button
           key={l.id}
           onClick={() => { onPatch(task.id, { note_id: l.id }); onDone(); }}
-          className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-slate-100 truncate ${task.note_id === l.id ? 'text-teal-600 font-medium' : 'text-slate-700'}`}
+          className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken truncate ${task.note_id === l.id ? 'text-teal-600 font-medium' : 'text-content'}`}
         >
           {l.title.trim() || 'Untitled list'}
         </button>
       ))}
       <button
         onClick={() => { onPatch(task.id, { note_id: null }); onDone(); }}
-        className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-slate-100 border-t border-slate-100 ${task.note_id ? 'text-slate-500' : 'text-teal-600 font-medium'}`}
+        className={`flex w-full items-center gap-2 px-3 py-1.5 text-sm rounded hover:bg-surface-sunken border-t border-edge-soft ${task.note_id ? 'text-content-secondary' : 'text-teal-600 font-medium'}`}
       >
-        <Inbox className="w-4 h-4 text-slate-400" /> Inbox (no list)
+        <Inbox className="w-4 h-4 text-content-muted" /> Inbox (no list)
       </button>
     </div>
   );
@@ -743,7 +743,7 @@ export function TaskDetail({
   function setChecklist(items: ChecklistItem[]) { onPatch(task.id, { checklist: items }); }
 
   return (
-    <div className="ml-7 mt-2 mb-1 rounded-xl border border-slate-200 bg-slate-50/70 p-3 space-y-3">
+    <div className="ml-7 mt-2 mb-1 rounded-card border border-edge bg-surface-hover/70 p-3 space-y-3">
       <div className="flex items-center gap-2">
         <input
           autoFocus={autoFocusTitle}
@@ -755,10 +755,10 @@ export function TaskDetail({
             if (e.key === 'Escape') { setTitle(task.title); onClose(); }
           }}
           placeholder="To-do title…"
-          className="flex-1 text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-teal-400 text-slate-800"
+          className="flex-1 text-sm font-medium bg-transparent outline-none border-b border-transparent focus:border-teal-400 text-content"
         />
         {showTimer && <TimerButton task={task} onPatch={onPatch} />}
-        <button onClick={onClose} className="text-xs font-medium text-slate-400 hover:text-teal-600 shrink-0" title="Close">
+        <button onClick={onClose} className="text-xs font-medium text-content-muted hover:text-teal-600 shrink-0" title="Close">
           Done
         </button>
       </div>
@@ -806,8 +806,8 @@ export function TaskDetail({
         {canFlag && (
           <button
             onClick={() => onPatch(task.id, { flagged: !task.flagged })}
-            className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg border px-2 py-1 transition-colors ${
-              task.flagged ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-slate-200 text-slate-500 hover:text-amber-500 hover:border-amber-200'
+            className={`inline-flex items-center gap-1 text-xs font-medium rounded-control border px-2 py-1 transition-colors ${
+              task.flagged ? 'border-amber-200 bg-amber-50 text-amber-600' : 'border-edge text-content-secondary hover:text-amber-500 hover:border-amber-200'
             }`}
             title={task.flagged ? 'Unflag' : 'Flag as Important'}
           >
@@ -839,8 +839,8 @@ function ChipPicker({
       align="left"
       title={label}
       icon={
-        <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-lg border px-2 py-1 transition-colors ${
-          active ? 'border-teal-200 bg-teal-50 text-teal-700' : 'border-slate-200 text-slate-500 hover:text-teal-600 hover:border-teal-200'
+        <span className={`inline-flex items-center gap-1 text-xs font-medium rounded-control border px-2 py-1 transition-colors ${
+          active ? 'border-teal-200 bg-teal-50 text-teal-700' : 'border-edge text-content-secondary hover:text-teal-600 hover:border-teal-200'
         }`}>
           {icon}{label}
         </span>
@@ -875,12 +875,12 @@ export function ChecklistEditor({
   }
 
   return (
-    <div className="pl-3 border-l-2 border-slate-200 space-y-1">
+    <div className="pl-3 border-l-2 border-edge space-y-1">
       {items.map(item => (
         <div key={item.id} className="flex items-center gap-2 group/ci">
           <button
             onClick={() => toggle(item.id)}
-            className={`shrink-0 ${item.done ? 'text-teal-600' : 'text-slate-300 hover:text-teal-600'}`}
+            className={`shrink-0 ${item.done ? 'text-teal-600' : 'text-content-faint hover:text-teal-600'}`}
           >
             {item.done
               ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-600 text-white"><Check className="w-2.5 h-2.5" /></span>
@@ -889,24 +889,24 @@ export function ChecklistEditor({
           <input
             value={item.title}
             onChange={e => rename(item.id, e.target.value)}
-            className={`flex-1 text-sm bg-transparent outline-none ${item.done ? 'text-slate-400 line-through' : 'text-slate-600'}`}
+            className={`flex-1 text-sm bg-transparent outline-none ${item.done ? 'text-content-muted line-through' : 'text-content-secondary'}`}
           />
           <button
             onClick={() => remove(item.id)}
-            className="text-slate-300 hover:text-rose-500 opacity-0 group-hover/ci:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+            className="text-content-faint hover:text-rose-500 opacity-0 group-hover/ci:opacity-100 touch:opacity-100 transition-opacity shrink-0"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ))}
       <div className="flex items-center gap-2">
-        <Plus className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+        <Plus className="w-3.5 h-3.5 text-content-faint shrink-0" />
         <input
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') add(); }}
           placeholder="Add a sub-step…"
-          className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-300 text-slate-600"
+          className="flex-1 text-sm bg-transparent outline-none placeholder:text-content-faint text-content-secondary"
         />
       </div>
     </div>
@@ -954,7 +954,7 @@ function Popover({
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-50 min-w-[8rem] max-h-[70vh] overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg py-0.5"
+            className="fixed z-50 min-w-[8rem] max-h-[70vh] overflow-y-auto bg-surface border border-edge rounded-control shadow-lg py-0.5"
             style={{ top: pos.top, bottom: pos.bottom, left: pos.left, transform: align === 'right' ? 'translateX(-100%)' : undefined }}
           >
             {children(() => setOpen(false))}

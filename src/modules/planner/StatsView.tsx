@@ -108,13 +108,13 @@ export default function StatsView({
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <BarChart3 className="w-6 h-6 text-indigo-500" />
-        <h2 className="text-2xl font-bold text-slate-800">Stats</h2>
-        <div className="ml-auto inline-flex rounded-lg border border-slate-200 overflow-hidden">
+        <h2 className="text-2xl font-bold text-content">Stats</h2>
+        <div className="ml-auto inline-flex rounded-control border border-edge overflow-hidden">
           {RANGES.map(r => (
             <button
               key={r}
               onClick={() => setDays(r)}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${days === r ? 'bg-teal-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${days === r ? 'bg-teal-600 text-white' : 'text-content-secondary hover:bg-surface-sunken'}`}
             >
               {r}d
             </button>
@@ -131,18 +131,18 @@ export default function StatsView({
       </div>
 
       {/* Main chart: completions or hours per day */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 mb-4">
+      <div className="rounded-card border border-edge bg-surface p-4 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">
             {metric === 'todos' ? 'To-dos completed' : 'Hours worked'} · last {days} days
-            {onOpenDay && <span className="ml-2 normal-case font-normal tracking-normal text-slate-300">— tap a bar to see that day</span>}
+            {onOpenDay && <span className="ml-2 normal-case font-normal tracking-normal text-content-faint">— tap a bar to see that day</span>}
           </p>
-          <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden text-xs">
+          <div className="inline-flex rounded-control border border-edge overflow-hidden text-xs">
             {(['todos', 'hours'] as const).map(m => (
               <button
                 key={m}
                 onClick={() => setMetric(m)}
-                className={`px-2.5 py-1 font-medium transition-colors ${metric === m ? 'bg-slate-700 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                className={`px-2.5 py-1 font-medium transition-colors ${metric === m ? 'bg-slate-700 text-white' : 'text-content-secondary hover:bg-surface-sunken'}`}
               >
                 {m === 'todos' ? 'To-dos' : 'Hours'}
               </button>
@@ -163,7 +163,7 @@ export default function StatsView({
               />
               <Tooltip
                 cursor={{ fill: 'rgba(20,184,166,0.08)' }}
-                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
+                contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid var(--color-edge)' }}
                 labelFormatter={d => new Date(d + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                 formatter={(v: number) => metric === 'todos'
                   ? [`${v} done`, '']
@@ -192,13 +192,13 @@ export default function StatsView({
           </ResponsiveContainer>
         </div>
         {metric === 'hours' && trackedTotal === 0 && (
-          <p className="text-xs text-slate-400 mt-2">No time tracked yet — start a timer on a to-do to fill this in.</p>
+          <p className="text-xs text-content-muted mt-2">No time tracked yet — start a timer on a to-do to fill this in.</p>
         )}
       </div>
 
       {/* Throughput & backlog */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-3">Throughput &amp; backlog · last {days} days</p>
+      <div className="rounded-card border border-edge bg-surface p-4">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-3">Throughput &amp; backlog · last {days} days</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3">
           <Mini label="Created" value={totals.created} />
           <Mini label="Completed" value={totals.done} />
@@ -215,26 +215,26 @@ export default function StatsView({
       </div>
 
       {/* Weekly timesheet — tracked time per to-do across one week. */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-4 mt-4">
+      <div className="rounded-card border border-edge bg-surface p-4 mt-4">
         <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Weekly timesheet</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Weekly timesheet</p>
           <div className="ml-auto flex items-center gap-1.5">
-            <button onClick={() => setTsWeek(w => addDaysISO(w, -7))} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100" title="Previous week"><ChevronLeft className="w-4 h-4" /></button>
-            <span className="text-xs font-medium text-slate-600 w-28 text-center">{weekLabel(tsWeek)}</span>
-            <button onClick={() => setTsWeek(w => addDaysISO(w, 7))} className="p-1 rounded-lg text-slate-400 hover:bg-slate-100" title="Next week"><ChevronRight className="w-4 h-4" /></button>
+            <button onClick={() => setTsWeek(w => addDaysISO(w, -7))} className="p-1 rounded-control text-content-muted hover:bg-surface-sunken" title="Previous week"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-xs font-medium text-content-secondary w-28 text-center">{weekLabel(tsWeek)}</span>
+            <button onClick={() => setTsWeek(w => addDaysISO(w, 7))} className="p-1 rounded-control text-content-muted hover:bg-surface-sunken" title="Next week"><ChevronRight className="w-4 h-4" /></button>
             {tsWeek !== weekStartISO(today) && (
               <button onClick={() => setTsWeek(weekStartISO(today))} className="text-xs font-medium text-teal-600 hover:text-teal-700 ml-1">This week</button>
             )}
           </div>
         </div>
         {timesheet.rows.length === 0 ? (
-          <p className="text-sm text-slate-400">No time tracked this week. Run a timer (or log time) on a to-do and it’ll show here.</p>
+          <p className="text-sm text-content-muted">No time tracked this week. Run a timer (or log time) on a to-do and it’ll show here.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="text-slate-400">
-                  <th className="text-left font-medium px-2 py-1.5 sticky left-0 bg-white">Task</th>
+                <tr className="text-content-muted">
+                  <th className="text-left font-medium px-2 py-1.5 sticky left-0 bg-surface">Task</th>
                   {tsDays.map(d => {
                     const dt = new Date(d + 'T00:00:00');
                     return (
@@ -251,35 +251,35 @@ export default function StatsView({
                       </th>
                     );
                   })}
-                  <th className="px-2 py-1.5 text-right font-semibold text-slate-500">Total</th>
+                  <th className="px-2 py-1.5 text-right font-semibold text-content-secondary">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {timesheet.rows.map(r => (
-                  <tr key={r.id} className="border-t border-slate-100">
-                    <td className="px-2 py-1.5 sticky left-0 bg-white">
+                  <tr key={r.id} className="border-t border-edge-soft">
+                    <td className="px-2 py-1.5 sticky left-0 bg-surface">
                       <button
                         onClick={() => { const t = tasksById[r.id]; if (t && onOpenTask) onOpenTask(t); }}
                         disabled={!(onOpenTask && tasksById[r.id])}
                         className={`text-left ${onOpenTask && tasksById[r.id] ? 'hover:text-teal-600 cursor-pointer' : ''}`}
                         title={onOpenTask && tasksById[r.id] ? 'Open this to-do' : undefined}
                       >
-                        <div className="text-slate-700 truncate max-w-[12rem]">{r.title}</div>
-                        {r.listName && <div className="text-[10px] text-slate-300 truncate max-w-[12rem]">{r.listName}</div>}
+                        <div className="text-content truncate max-w-[12rem]">{r.title}</div>
+                        {r.listName && <div className="text-[10px] text-content-faint truncate max-w-[12rem]">{r.listName}</div>}
                       </button>
                     </td>
                     {tsDays.map(d => (
-                      <td key={d} className={`px-2 py-1.5 text-right tabular-nums ${r.perDay[d] ? 'text-slate-600' : 'text-slate-300'}`}>
+                      <td key={d} className={`px-2 py-1.5 text-right tabular-nums ${r.perDay[d] ? 'text-content-secondary' : 'text-content-faint'}`}>
                         {r.perDay[d] ? formatMinutes(r.perDay[d]) : '—'}
                       </td>
                     ))}
-                    <td className="px-2 py-1.5 text-right font-semibold text-slate-700 tabular-nums">{formatMinutes(r.total)}</td>
+                    <td className="px-2 py-1.5 text-right font-semibold text-content tabular-nums">{formatMinutes(r.total)}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-slate-200 font-semibold text-slate-700">
-                  <td className="px-2 py-1.5 sticky left-0 bg-white">Total</td>
+                <tr className="border-t-2 border-edge font-semibold text-content">
+                  <td className="px-2 py-1.5 sticky left-0 bg-surface">Total</td>
                   {tsDays.map(d => <td key={d} className="px-2 py-1.5 text-right tabular-nums">{timesheet.dayTotals[d] ? formatMinutes(timesheet.dayTotals[d]) : '—'}</td>)}
                   <td className="px-2 py-1.5 text-right tabular-nums">{formatMinutes(timesheet.grand)}</td>
                 </tr>
@@ -294,21 +294,21 @@ export default function StatsView({
 
 function StatCard({ label, value, hint }: { label: string; value: number | string; hint?: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <div className="text-2xl font-bold text-slate-800 leading-none">{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-slate-400 mt-1">{label}</div>
-      {hint && <div className="text-[10px] text-slate-300 mt-0.5">{hint}</div>}
+    <div className="rounded-card border border-edge bg-surface p-4">
+      <div className="text-2xl font-bold text-content leading-none">{value}</div>
+      <div className="text-[11px] uppercase tracking-wide text-content-muted mt-1">{label}</div>
+      {hint && <div className="text-[10px] text-content-faint mt-0.5">{hint}</div>}
     </div>
   );
 }
 
 function Mini({ label, value, tone = 'slate', hint }: { label: string; value: number | string; tone?: 'slate' | 'rose' | 'emerald'; hint?: string }) {
-  const color = tone === 'rose' ? 'text-rose-600' : tone === 'emerald' ? 'text-emerald-600' : 'text-slate-800';
+  const color = tone === 'rose' ? 'text-rose-600' : tone === 'emerald' ? 'text-emerald-600' : 'text-content';
   return (
     <div>
       <div className={`text-xl font-bold leading-none ${color}`}>{value}</div>
-      <div className="text-[11px] uppercase tracking-wide text-slate-400 mt-1">{label}</div>
-      {hint && <div className="text-[10px] text-slate-300 mt-0.5">{hint}</div>}
+      <div className="text-[11px] uppercase tracking-wide text-content-muted mt-1">{label}</div>
+      {hint && <div className="text-[10px] text-content-faint mt-0.5">{hint}</div>}
     </div>
   );
 }

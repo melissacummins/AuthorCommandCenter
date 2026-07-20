@@ -166,11 +166,13 @@ export function detectTranslationSuffix(title: string): { baseTitle: string; lan
 }
 
 
+// Theme-aware: each status maps to --color-status-* variables defined per
+// theme in index.css, so pills stay readable on dark themes too.
 export const STATUS_COLORS: Record<BookStatus, string> = {
-  idea: 'bg-slate-100 text-slate-700',
-  drafting: 'bg-amber-100 text-amber-800',
-  editing: 'bg-blue-100 text-blue-800',
-  pre_order: 'bg-purple-100 text-purple-800',
-  published: 'bg-emerald-100 text-emerald-800',
-  paused: 'bg-rose-100 text-rose-800',
+  idea: 'bg-status-idea-bg text-status-idea-fg',
+  drafting: 'bg-status-drafting-bg text-status-drafting-fg',
+  editing: 'bg-status-editing-bg text-status-editing-fg',
+  pre_order: 'bg-status-preorder-bg text-status-preorder-fg',
+  published: 'bg-status-published-bg text-status-published-fg',
+  paused: 'bg-status-paused-bg text-status-paused-fg',
 };

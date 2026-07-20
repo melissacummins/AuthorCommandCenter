@@ -11,7 +11,7 @@ const PLATFORM_META: Record<SocialPlatform, { label: string; gradient: string; a
   pinterest: { label: 'Pinterest', gradient: 'from-red-500 to-rose-600',     accent: 'text-red-500'    },
   instagram: { label: 'Instagram', gradient: 'from-fuchsia-500 to-orange-500', accent: 'text-fuchsia-500' },
   facebook:  { label: 'Facebook',  gradient: 'from-blue-500 to-blue-700',    accent: 'text-blue-500'   },
-  threads:   { label: 'Threads',   gradient: 'from-slate-800 to-slate-950',  accent: 'text-slate-700'  },
+  threads:   { label: 'Threads',   gradient: 'from-slate-800 to-slate-950',  accent: 'text-content'  },
   tiktok:    { label: 'TikTok',    gradient: 'from-slate-900 to-pink-500',   accent: 'text-pink-500'   },
 };
 
@@ -226,14 +226,14 @@ export default function SocialMediaModule() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 flex items-start gap-3">
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-card p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
           <div className="flex-1 text-sm">{error}</div>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
         </div>
       )}
       {notice && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl p-4 flex items-start gap-3">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-card p-4 flex items-start gap-3">
           <div className="flex-1 text-sm">{notice}</div>
           <button onClick={() => setNotice(null)} className="text-emerald-400 hover:text-emerald-700"><X className="w-4 h-4" /></button>
         </div>
@@ -249,22 +249,22 @@ export default function SocialMediaModule() {
               const meta = PLATFORM_META[acct.platform];
               const syncing = syncingAccountId === acct.id;
               return (
-                <div key={acct.id} className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl pl-3 pr-2 py-2 shadow-sm">
-                  <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${meta.gradient} flex items-center justify-center shrink-0`}>
+                <div key={acct.id} className="flex items-center gap-3 bg-surface border border-edge rounded-card pl-3 pr-2 py-2 shadow-sm">
+                  <div className={`w-8 h-8 rounded-control bg-gradient-to-br ${meta.gradient} flex items-center justify-center shrink-0`}>
                     <Share2 className="w-4 h-4 text-white" />
                   </div>
                   <div className="text-sm leading-tight">
-                    <div className="font-medium text-slate-800">{meta.label}</div>
-                    <div className="text-slate-500 text-xs">
+                    <div className="font-medium text-content">{meta.label}</div>
+                    <div className="text-content-secondary text-xs">
                       {acct.username ? `@${acct.username}` : acct.external_account_id}
-                      <span className="mx-1.5 text-slate-300">•</span>
+                      <span className="mx-1.5 text-content-faint">•</span>
                       synced {relativeTime(acct.last_synced_at)}
                     </div>
                   </div>
                   <button
                     onClick={() => handleSync(acct)}
                     disabled={syncing}
-                    className="ml-2 inline-flex items-center gap-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+                    className="ml-2 inline-flex items-center gap-1.5 text-xs font-medium text-content-secondary hover:text-content bg-surface-sunken hover:bg-edge px-2.5 py-1.5 rounded-control transition-colors disabled:opacity-50"
                     title="Pull latest stats"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
@@ -272,7 +272,7 @@ export default function SocialMediaModule() {
                   </button>
                   <button
                     onClick={() => handleDisconnect(acct)}
-                    className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg"
+                    className="text-content-muted hover:text-red-500 p-1.5 rounded-control"
                     title="Disconnect this account"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -283,7 +283,7 @@ export default function SocialMediaModule() {
             <button
               onClick={handleConnectPinterest}
               disabled={connecting}
-              className="inline-flex items-center gap-2 text-sm font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-2.5 rounded-xl transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 text-sm font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-2.5 rounded-card transition-colors disabled:opacity-50"
             >
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               Connect another
@@ -291,7 +291,7 @@ export default function SocialMediaModule() {
           </section>
 
           {accounts.some((a) => a.last_sync_error) && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm flex items-start gap-2">
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-card p-3 text-sm flex items-start gap-2">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <div>
                 {accounts.filter((a) => a.last_sync_error).map((a) => (
@@ -315,21 +315,21 @@ export default function SocialMediaModule() {
 
           {/* Filters */}
           <section className="flex flex-wrap gap-2 items-center text-sm">
-            <span className="text-slate-500 text-xs uppercase tracking-wider mr-1">Filter</span>
+            <span className="text-content-secondary text-xs uppercase tracking-wider mr-1">Filter</span>
             <FilterPill active={platformFilter === 'all'} onClick={() => setPlatformFilter('all')}>All platforms</FilterPill>
             {(Array.from(new Set(accounts.map((a) => a.platform))) as SocialPlatform[]).map((p) => (
               <FilterPill key={p} active={platformFilter === p} onClick={() => setPlatformFilter(p)}>
                 {PLATFORM_META[p].label}
               </FilterPill>
             ))}
-            <span className="mx-2 h-4 w-px bg-slate-300" />
+            <span className="mx-2 h-4 w-px bg-edge-strong" />
             <FilterPill active={bookFilter === 'all'} onClick={() => setBookFilter('all')}>All posts</FilterPill>
             <FilterPill active={bookFilter === 'unlinked'} onClick={() => setBookFilter('unlinked')}>Not linked to a book</FilterPill>
             {books.length > 0 && (
               <select
                 value={bookFilter === 'all' || bookFilter === 'unlinked' ? '' : bookFilter}
                 onChange={(e) => setBookFilter(e.target.value || 'all')}
-                className="border border-slate-300 rounded-lg px-2 py-1 text-sm bg-white"
+                className="border border-edge-strong rounded-control px-2 py-1 text-sm bg-surface"
               >
                 <option value="">— filter by book —</option>
                 {books.map((b) => (
@@ -354,9 +354,9 @@ export default function SocialMediaModule() {
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-3">
-      <div className="text-[11px] uppercase tracking-wider text-slate-500">{label}</div>
-      <div className="text-xl font-semibold text-slate-800 mt-0.5">{value}</div>
+    <div className="bg-surface rounded-card border border-edge p-3">
+      <div className="text-[11px] uppercase tracking-wider text-content-secondary">{label}</div>
+      <div className="text-xl font-semibold text-content mt-0.5">{value}</div>
     </div>
   );
 }
@@ -366,7 +366,7 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
     <button
       onClick={onClick}
       className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-        active ? 'bg-violet-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+        active ? 'bg-violet-600 text-white' : 'bg-surface-sunken text-content-secondary hover:bg-edge'
       }`}
     >
       {children}
@@ -376,23 +376,23 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
 
 function EmptyState({ onConnect, connecting }: { onConnect: () => void; connecting: boolean }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-2xl shadow-lg shadow-violet-500/25 mb-6">
+    <div className="bg-surface rounded-card border border-edge p-10 text-center">
+      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-card shadow-lg shadow-violet-500/25 mb-6">
         <Share2 className="w-10 h-10 text-white" />
       </div>
-      <h2 className="text-2xl font-bold text-slate-800 mb-2">Social Media Stats</h2>
-      <p className="text-slate-500 max-w-lg mx-auto mb-8">
+      <h2 className="text-2xl font-bold text-content mb-2">Social Media Stats</h2>
+      <p className="text-content-secondary max-w-lg mx-auto mb-8">
         Connect your social accounts to pull per-post stats — impressions, saves, outbound clicks — and link each post to the book it's promoting. Free native APIs, no third-party fees.
       </p>
       <button
         onClick={onConnect}
         disabled={connecting}
-        className="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold px-5 py-3 rounded-xl shadow-lg shadow-rose-500/30 hover:shadow-rose-500/50 transition-shadow disabled:opacity-60"
+        className="inline-flex items-center gap-2 bg-gradient-to-r from-red-500 to-rose-600 text-white font-semibold px-5 py-3 rounded-card shadow-lg shadow-rose-500/30 hover:shadow-rose-500/50 transition-shadow disabled:opacity-60"
       >
         {connecting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Share2 className="w-5 h-5" />}
         Connect Pinterest
       </button>
-      <p className="text-xs text-slate-400 mt-6 max-w-md mx-auto">
+      <p className="text-xs text-content-muted mt-6 max-w-md mx-auto">
         Instagram, Facebook, Threads, and TikTok are next. Each needs a one-time Developer App registration on the platform's side — see the PR description for setup steps.
       </p>
     </div>
@@ -412,17 +412,17 @@ function PostsTable({
 }) {
   if (posts.length === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-slate-500">
+      <div className="bg-surface rounded-card border border-edge p-10 text-center text-content-secondary">
         No posts yet — hit Sync to pull them in.
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+    <div className="bg-surface rounded-card border border-edge overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+          <thead className="bg-surface-hover text-content-secondary text-xs uppercase tracking-wider">
             <tr>
               <th className="text-left font-medium px-4 py-3">Post</th>
               <th className="text-left font-medium px-3 py-3">Posted</th>
@@ -433,40 +433,40 @@ function PostsTable({
               <th className="text-right font-medium px-4 py-3"></th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-edge-soft">
             {posts.map((p) => {
               const meta = PLATFORM_META[p.platform];
               const linkedBook = p.book_id ? booksById[p.book_id] : null;
               return (
-                <tr key={p.id} className="hover:bg-slate-50">
+                <tr key={p.id} className="hover:bg-surface-hover">
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-3">
                       {p.thumbnail_url ? (
                         <img
                           src={p.thumbnail_url}
                           alt=""
-                          className="w-12 h-12 rounded-lg object-cover bg-slate-100 shrink-0"
+                          className="w-12 h-12 rounded-control object-cover bg-surface-sunken shrink-0"
                           loading="lazy"
                         />
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-slate-100 shrink-0" />
+                        <div className="w-12 h-12 rounded-control bg-surface-sunken shrink-0" />
                       )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 mb-0.5">
                           <span className={`text-[10px] font-semibold uppercase tracking-wider ${meta.accent}`}>{meta.label}</span>
                         </div>
-                        <div className="text-slate-700 line-clamp-2 leading-snug">
-                          {p.caption ?? <span className="italic text-slate-400">(no caption)</span>}
+                        <div className="text-content line-clamp-2 leading-snug">
+                          {p.caption ?? <span className="italic text-content-muted">(no caption)</span>}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-3 whitespace-nowrap text-slate-600">
+                  <td className="px-3 py-3 whitespace-nowrap text-content-secondary">
                     {p.posted_at ? new Date(p.posted_at).toLocaleDateString() : '—'}
                   </td>
-                  <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{fmtNum(p.impressions)}</td>
-                  <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{fmtNum(p.saves)}</td>
-                  <td className="px-3 py-3 text-right font-medium tabular-nums text-slate-700">{fmtNum(p.outbound_clicks)}</td>
+                  <td className="px-3 py-3 text-right font-medium tabular-nums text-content">{fmtNum(p.impressions)}</td>
+                  <td className="px-3 py-3 text-right font-medium tabular-nums text-content">{fmtNum(p.saves)}</td>
+                  <td className="px-3 py-3 text-right font-medium tabular-nums text-content">{fmtNum(p.outbound_clicks)}</td>
                   <td className="px-3 py-3">
                     <BookPicker
                       value={p.book_id}
@@ -481,7 +481,7 @@ function PostsTable({
                         href={p.permalink}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-slate-400 hover:text-slate-700 text-xs"
+                        className="inline-flex items-center gap-1 text-content-muted hover:text-content text-xs"
                         title="Open on Pinterest"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -510,14 +510,14 @@ function BookPicker({
   onChange: (bookId: string | null) => void;
 }) {
   if (books.length === 0) {
-    return <span className="text-slate-400 text-xs italic">Add books in Catalog to link</span>;
+    return <span className="text-content-muted text-xs italic">Add books in Catalog to link</span>;
   }
   return (
     <div className="flex items-center gap-2">
       <select
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || null)}
-        className="border border-slate-200 rounded-lg px-2 py-1 text-xs bg-white hover:border-slate-300 max-w-[180px]"
+        className="border border-edge rounded-control px-2 py-1 text-xs bg-surface hover:border-edge-strong max-w-[180px]"
       >
         <option value="">— not linked —</option>
         {books.map((b) => (
@@ -530,7 +530,7 @@ function BookPicker({
         </span>
       )}
       {!linkedBook && value === null && (
-        <span title="Not linked"><LinkIcon className="w-3 h-3 text-slate-300" /></span>
+        <span title="Not linked"><LinkIcon className="w-3 h-3 text-content-faint" /></span>
       )}
     </div>
   );

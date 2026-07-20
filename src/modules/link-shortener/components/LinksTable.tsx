@@ -139,19 +139,19 @@ export default function LinksTable({
         </DropDown>
 
         <div className="relative flex-1 min-w-[200px] max-w-md ml-auto">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by short link or URL"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 px-6 py-16 text-center">
-          <div className="text-sm text-slate-500">
+        <div className="bg-surface rounded-card border border-edge px-6 py-16 text-center">
+          <div className="text-sm text-content-secondary">
             {query
               ? 'No links match your search.'
               : selectedFolderId === 'unassigned'
@@ -204,7 +204,7 @@ function DropDown({ label, icon, open, onToggle, children }: DropDownProps) {
     <div className="relative">
       <button
         onClick={onToggle}
-        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-control bg-surface border border-edge text-content hover:bg-surface-hover"
       >
         {icon}
         {label}
@@ -212,7 +212,7 @@ function DropDown({ label, icon, open, onToggle, children }: DropDownProps) {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={onToggle} />
-          <div className="absolute left-0 top-10 z-40 min-w-[180px] bg-white rounded-xl border border-slate-200 shadow-lg py-1 text-sm">
+          <div className="absolute left-0 top-10 z-40 min-w-[180px] bg-surface rounded-card border border-edge shadow-lg py-1 text-sm">
             {children}
           </div>
         </>
@@ -231,7 +231,7 @@ function DropOption({ active, onClick, children }: DropOptionProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-3 py-1.5 ${active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-700 hover:bg-slate-50'}`}
+      className={`w-full text-left px-3 py-1.5 ${active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-content hover:bg-surface-hover'}`}
     >
       {children}
     </button>

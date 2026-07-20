@@ -219,7 +219,7 @@ function ChapterEditor({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1 mb-2 pb-2 border-b border-slate-100">
+      <div className="flex flex-wrap items-center gap-1 mb-2 pb-2 border-b border-edge-soft">
         <ToolbarButton active={editor.isActive('bold')} onClick={() => editor.chain().focus().toggleBold().run()} label="Bold">
           <Bold className="w-4 h-4" />
         </ToolbarButton>
@@ -253,22 +253,22 @@ function ChapterEditor({
 
         <div className="flex-1" />
 
-        <button onClick={manualSnapshot} title="Save a labeled snapshot" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-lime-600 px-2 py-1.5 rounded-md hover:bg-slate-50">
+        <button onClick={manualSnapshot} title="Save a labeled snapshot" className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-lime-600 px-2 py-1.5 rounded-control hover:bg-surface-hover">
           <Camera className="w-3.5 h-3.5" /> Snapshot
         </button>
-        <button onClick={requestSplit} title="Split into a new chapter at the cursor" className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-lime-600 px-2 py-1.5 rounded-md hover:bg-slate-50">
+        <button onClick={requestSplit} title="Split into a new chapter at the cursor" className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-lime-600 px-2 py-1.5 rounded-control hover:bg-surface-hover">
           <Scissors className="w-3.5 h-3.5" /> Split here
         </button>
-        <span className="text-xs text-slate-400 w-14 text-right">
+        <span className="text-xs text-content-muted w-14 text-right">
           {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : ''}
         </span>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-slate-100">
+      <div className="flex flex-wrap items-center gap-2 mb-3 pb-3 border-b border-edge-soft">
         <button
           onClick={runContinue}
           disabled={!!aiPanel?.loading}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-md disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control disabled:opacity-50"
         >
           <Wand2 className="w-3.5 h-3.5" /> Continue writing
         </button>
@@ -277,7 +277,7 @@ function ChapterEditor({
           value=""
           onChange={e => { const v = e.target.value as SelectionAction | ''; if (v) runSelectionAction(v); }}
           title={hasSelection ? 'AI actions for the selected text' : 'Select some text first'}
-          className="px-2 py-1.5 text-xs border border-slate-300 rounded-md text-slate-600 bg-white disabled:opacity-50"
+          className="px-2 py-1.5 text-xs border border-edge-strong rounded-control text-content-secondary bg-surface disabled:opacity-50"
         >
           <option value="" disabled>
             {hasSelection ? 'AI: rewrite selection…' : 'Select text for AI'}
@@ -286,7 +286,7 @@ function ChapterEditor({
             <option key={k} value={k}>{SELECTION_LABELS[k]}</option>
           ))}
         </select>
-        {!hasSelection && <MousePointerClick className="w-3.5 h-3.5 text-slate-300" />}
+        {!hasSelection && <MousePointerClick className="w-3.5 h-3.5 text-content-faint" />}
         <div className="flex-1" />
         <AiSettingsPanel />
       </div>
@@ -294,25 +294,25 @@ function ChapterEditor({
       {splitHint && <p className="text-xs text-amber-600 mb-3">{splitHint}</p>}
 
       {aiPanel && (
-        <div className="mb-4 rounded-xl border border-lime-200 bg-lime-50/50 p-4">
+        <div className="mb-4 rounded-card border border-lime-200 bg-lime-50/50 p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-xs font-medium text-lime-800 flex items-center gap-1.5">
               <Wand2 className="w-3.5 h-3.5" />
               {aiPanel.action === 'continue' ? 'AI continuation' : `AI: ${SELECTION_LABELS[aiPanel.action]}`}
             </p>
-            <button onClick={() => setAiPanel(null)} className="text-slate-400 hover:text-slate-600">
+            <button onClick={() => setAiPanel(null)} className="text-content-muted hover:text-content-secondary">
               <X className="w-4 h-4" />
             </button>
           </div>
 
           {aiPanel.loading ? (
-            <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
+            <div className="flex items-center gap-2 text-sm text-content-secondary py-4">
               <Loader2 className="w-4 h-4 animate-spin" /> Thinking…
             </div>
           ) : aiPanel.error ? (
             <p className="text-sm text-rose-600">{aiPanel.error}</p>
           ) : (
-            <p className="font-serif text-[15px] leading-relaxed text-slate-700 whitespace-pre-wrap mb-3">{aiPanel.response}</p>
+            <p className="font-serif text-[15px] leading-relaxed text-content whitespace-pre-wrap mb-3">{aiPanel.response}</p>
           )}
 
           {!aiPanel.loading && (
@@ -334,7 +334,7 @@ function ChapterEditor({
               <ActionButton onClick={retry} secondary icon={<RotateCcw className="w-3.5 h-3.5" />}>
                 Retry
               </ActionButton>
-              <button onClick={() => setAiPanel(null)} className="text-xs text-slate-500 hover:text-slate-700 px-2 py-1.5">
+              <button onClick={() => setAiPanel(null)} className="text-xs text-content-secondary hover:text-content px-2 py-1.5">
                 Discard
               </button>
             </div>
@@ -345,7 +345,7 @@ function ChapterEditor({
       <EditorContent
         editor={editor}
         onClick={() => editor.chain().focus('end').run()}
-        className="font-serif text-[17px] leading-relaxed text-slate-700 [&_.ProseMirror]:min-h-[65vh] [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:mb-4 [&_.ProseMirror]:cursor-text"
+        className="font-serif text-[17px] leading-relaxed text-content [&_.ProseMirror]:min-h-[65vh] [&_.ProseMirror]:outline-none [&_.ProseMirror_p]:mb-4 [&_.ProseMirror]:cursor-text"
       />
     </div>
   );
@@ -367,7 +367,7 @@ function ToolbarButton({
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`p-1.5 rounded-md ${active ? 'bg-lime-100 text-lime-700' : 'text-slate-500 hover:bg-slate-100'}`}
+      className={`p-1.5 rounded-control ${active ? 'bg-lime-100 text-lime-700' : 'text-content-secondary hover:bg-surface-sunken'}`}
     >
       {children}
     </button>
@@ -387,8 +387,8 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg disabled:opacity-50 ${
-        secondary ? 'border border-slate-300 text-slate-600 hover:bg-white' : 'bg-lime-600 text-white hover:bg-lime-700'
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control disabled:opacity-50 ${
+        secondary ? 'border border-edge-strong text-content-secondary hover:bg-surface' : 'bg-lime-600 text-white hover:bg-lime-700'
       }`}
     >
       {icon} {children}

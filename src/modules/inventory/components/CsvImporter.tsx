@@ -190,12 +190,12 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" onClick={close}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="p-5 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800">
+      <div className="bg-surface rounded-card shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="p-5 border-b border-edge">
+          <h3 className="text-lg font-semibold text-content">
             Import {kind === 'book-specs' ? 'Book Specs' : 'Printer Quotes'} from CSV
           </h3>
-          <p className="text-xs text-slate-500 mt-1">
+          <p className="text-xs text-content-secondary mt-1">
             {kind === 'book-specs'
               ? 'Expected columns: Title, Format, Size, Lamination, Paper GSM, Special Add-ons, B/W Pages, Color Pages, Notes.'
               : 'Expected columns: Printer Name, For copy (book title), Quote for One Copy, Shipping, Past Order Count, Notes.'}
@@ -209,7 +209,7 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
                 value={csv}
                 onChange={e => setCsv(e.target.value)}
                 placeholder="Paste CSV contents here…"
-                className="w-full h-64 px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:border-blue-400"
+                className="w-full h-64 px-3 py-2 border border-edge rounded-control text-xs font-mono focus:outline-none focus:border-blue-400"
               />
               {error && (
                 <div className="flex items-start gap-2 text-sm text-red-600">
@@ -231,11 +231,11 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
                   </span>
                 )}
               </div>
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="border border-edge rounded-control overflow-hidden">
                 <div className="overflow-y-auto max-h-72">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-50 sticky top-0">
-                      <tr className="text-left text-slate-500 uppercase tracking-wider">
+                    <thead className="bg-surface-hover sticky top-0">
+                      <tr className="text-left text-content-secondary uppercase tracking-wider">
                         {kind === 'printer-quotes' && <th className="py-2 px-2 font-medium">Printer</th>}
                         <th className="py-2 px-2 font-medium">CSV Title</th>
                         <th className="py-2 px-2 font-medium">→ Product</th>
@@ -255,7 +255,7 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
                     </thead>
                     <tbody>
                       {parsed.map(r => (
-                        <tr key={r.rowIndex} className={`border-t border-slate-100 ${r.productId ? '' : 'bg-amber-50/40 text-slate-400'}`}>
+                        <tr key={r.rowIndex} className={`border-t border-edge-soft ${r.productId ? '' : 'bg-amber-50/40 text-content-muted'}`}>
                           {kind === 'printer-quotes' && <td className="py-1.5 px-2">{r.printer || '—'}</td>}
                           <td className="py-1.5 px-2">{r.productKey}</td>
                           <td className="py-1.5 px-2">{r.productName || <span className="text-amber-700">no match</span>}</td>
@@ -288,29 +288,29 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
           {result && (
             <div className="text-center py-8">
               <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-              <p className="text-slate-800 font-medium">Imported {result.imported} row{result.imported === 1 ? '' : 's'}.</p>
+              <p className="text-content font-medium">Imported {result.imported} row{result.imported === 1 ? '' : 's'}.</p>
               {result.failed > 0 && <p className="text-amber-600 text-sm mt-1">{result.failed} failed — check the console.</p>}
             </div>
           )}
         </div>
 
-        <div className="p-5 border-t border-slate-200 flex justify-end gap-3">
+        <div className="p-5 border-t border-edge flex justify-end gap-3">
           {!parsed && (
             <>
-              <button onClick={close} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
-              <button onClick={handleParse} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Parse</button>
+              <button onClick={close} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Cancel</button>
+              <button onClick={handleParse} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700">Parse</button>
             </>
           )}
           {parsed && !result && (
             <>
-              <button onClick={() => { setParsed(null); setError(null); }} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Back</button>
-              <button onClick={handleImport} disabled={importing || !matchSummary?.matched} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={() => { setParsed(null); setError(null); }} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Back</button>
+              <button onClick={handleImport} disabled={importing || !matchSummary?.matched} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50">
                 {importing ? 'Importing…' : `Import ${matchSummary?.matched ?? 0} matched row${matchSummary?.matched === 1 ? '' : 's'}`}
               </button>
             </>
           )}
           {result && (
-            <button onClick={close} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700">Done</button>
+            <button onClick={close} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700">Done</button>
           )}
         </div>
       </div>

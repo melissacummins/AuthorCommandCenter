@@ -50,13 +50,13 @@ export default function PurchaseOrders({ products, onInventoryChanged }: Props) 
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-content-secondary">
             {pendingGroups.length} pending order{pendingGroups.length !== 1 ? 's' : ''}
           </p>
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-control hover:bg-blue-700"
         >
           <Plus className="w-4 h-4" /> New Purchase Order
         </button>
@@ -65,7 +65,7 @@ export default function PurchaseOrders({ products, onInventoryChanged }: Props) 
       {/* Pending Orders */}
       {pendingGroups.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Pending</h3>
+          <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-wider">Pending</h3>
           {pendingGroups.map(group => (
             <POCard
               key={group.key}
@@ -81,7 +81,7 @@ export default function PurchaseOrders({ products, onInventoryChanged }: Props) 
       {/* Arrived Orders */}
       {arrivedGroups.length > 0 && (
         <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Arrived</h3>
+          <h3 className="text-sm font-semibold text-content-secondary uppercase tracking-wider">Arrived</h3>
           {arrivedGroups.map(group => (
             <POCard
               key={group.key}
@@ -96,13 +96,13 @@ export default function PurchaseOrders({ products, onInventoryChanged }: Props) 
 
       {/* Empty state */}
       {orders.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
-          <Truck className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-slate-700 mb-1">No purchase orders</h3>
-          <p className="text-sm text-slate-400 mb-4">Create a purchase order to track incoming stock.</p>
+        <div className="text-center py-16 bg-surface rounded-card border border-edge">
+          <Truck className="w-12 h-12 text-content-faint mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-content mb-1">No purchase orders</h3>
+          <p className="text-sm text-content-muted mb-4">Create a purchase order to track incoming stock.</p>
           <button
             onClick={() => setShowAdd(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-control hover:bg-blue-700"
           >
             <Plus className="w-4 h-4" /> New Purchase Order
           </button>
@@ -190,9 +190,9 @@ function POCard({ group, products, onConfirm, onDelete }: {
   const totalReceived = group.items.reduce((s, i) => s + (i.actual_quantity || 0), 0);
 
   return (
-    <div className={`bg-white rounded-xl border ${allArrived ? 'border-emerald-200' : 'border-slate-200'} overflow-hidden`}>
+    <div className={`bg-surface rounded-card border ${allArrived ? 'border-emerald-200' : 'border-edge'} overflow-hidden`}>
       {/* Header */}
-      <div className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 ${allArrived ? 'bg-emerald-50' : 'bg-slate-50'} border-b border-slate-100`}>
+      <div className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 ${allArrived ? 'bg-emerald-50' : 'bg-surface-hover'} border-b border-edge-soft`}>
         <div className="flex items-center gap-3">
           {allArrived ? (
             <CheckCircle className="w-5 h-5 text-emerald-500" />
@@ -202,16 +202,16 @@ function POCard({ group, products, onConfirm, onDelete }: {
           <div>
             <div className="flex items-center gap-2">
               {group.vendor && (
-                <span className="font-semibold text-slate-800 text-sm">{group.vendor}</span>
+                <span className="font-semibold text-content text-sm">{group.vendor}</span>
               )}
-              <span className="text-xs text-slate-500">Invoice #{group.invoiceNumber}</span>
+              <span className="text-xs text-content-secondary">Invoice #{group.invoiceNumber}</span>
             </div>
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-content-muted">
               {totalOrdered} ordered{allArrived && `, ${totalReceived} received`}
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-4 text-xs text-slate-500">
+        <div className="flex items-center gap-4 text-xs text-content-secondary">
           <span>Ordered: {group.orderDate}</span>
           {group.expectedDispatch && <span>Dispatch: {group.expectedDispatch}</span>}
           {group.expectedArrival && <span>Arrival: {group.expectedArrival}</span>}
@@ -219,30 +219,30 @@ function POCard({ group, products, onConfirm, onDelete }: {
       </div>
 
       {/* Line items */}
-      <div className="divide-y divide-slate-100">
+      <div className="divide-y divide-edge-soft">
         {group.items.map(item => {
           const sdProduct = item.scratch_dent_product_id ? products.find(p => p.id === item.scratch_dent_product_id) : null;
           return (
             <div key={item.id} className="px-5 py-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <Package className="w-4 h-4 text-slate-400" />
-                  <p className="text-sm font-medium text-slate-800">{item.product_name}</p>
+                  <Package className="w-4 h-4 text-content-muted" />
+                  <p className="text-sm font-medium text-content">{item.product_name}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-sm font-semibold text-slate-800">
+                    <p className="text-sm font-semibold text-content">
                       {item.status === 'arrived' ? (
-                        <>{item.actual_quantity} <span className="text-xs font-normal text-slate-400">of {item.quantity} ordered</span></>
+                        <>{item.actual_quantity} <span className="text-xs font-normal text-content-muted">of {item.quantity} ordered</span></>
                       ) : (
-                        <>{item.quantity} <span className="text-xs font-normal text-slate-400">ordered</span></>
+                        <>{item.quantity} <span className="text-xs font-normal text-content-muted">ordered</span></>
                       )}
                     </p>
                   </div>
                   {item.status === 'pending' ? (
                     <button
                       onClick={() => onConfirm(item)}
-                      className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+                      className="px-3 py-1.5 text-xs font-medium bg-emerald-600 text-white rounded-control hover:bg-emerald-700"
                     >
                       Confirm Arrival
                     </button>
@@ -250,29 +250,29 @@ function POCard({ group, products, onConfirm, onDelete }: {
                     <button
                       onClick={() => onConfirm(item)}
                       title="Edit arrival — good qty, scratch & dent, notes"
-                      className="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200"
+                      className="px-3 py-1.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-control hover:bg-emerald-200"
                     >
                       Received (edit)
                     </button>
                   )}
-                  <button onClick={() => onDelete(item.id)} className="p-1 text-slate-300 hover:text-red-500">
+                  <button onClick={() => onDelete(item.id)} className="p-1 text-content-faint hover:text-red-500">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
               {/* Additional info: scratch & dent split + notes */}
               {item.status === 'arrived' && (item.scratch_dent_quantity > 0 || item.notes) && (
-                <div className="mt-2 ml-7 text-xs text-slate-500 space-y-0.5">
+                <div className="mt-2 ml-7 text-xs text-content-secondary space-y-0.5">
                   {item.scratch_dent_quantity > 0 && sdProduct && (
                     <p>
                       <span className="font-medium text-amber-700">{item.scratch_dent_quantity} scratch & dent</span>
-                      <span className="text-slate-400"> &rarr; added to </span>
-                      <span className="text-slate-600">{sdProduct.name}</span>
+                      <span className="text-content-muted"> &rarr; added to </span>
+                      <span className="text-content-secondary">{sdProduct.name}</span>
                     </p>
                   )}
                   {item.notes && (
                     <p className="flex items-start gap-1.5">
-                      <FileText className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                      <FileText className="w-3 h-3 text-content-muted shrink-0 mt-0.5" />
                       <span>{item.notes}</span>
                     </p>
                   )}
@@ -368,64 +368,64 @@ function AddPOForm({ products, onClose, onCreated }: {
       {/* Vendor & Invoice */}
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Vendor *</label>
+          <label className="block text-xs text-content-secondary mb-1">Vendor *</label>
           {showNewVendor ? (
             <div className="flex gap-2">
               <input type="text" value={newVendorName} onChange={e => setNewVendorName(e.target.value)}
                 placeholder="Vendor name"
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendor(); } }}
                 autoFocus
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
-              <button type="button" onClick={handleAddVendor} className="px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700">Add</button>
-              <button type="button" onClick={() => setShowNewVendor(false)} className="px-2 py-2 text-slate-400 hover:text-slate-600">
+                className="flex-1 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+              <button type="button" onClick={handleAddVendor} className="px-3 py-2 bg-blue-600 text-white text-sm rounded-control hover:bg-blue-700">Add</button>
+              <button type="button" onClick={() => setShowNewVendor(false)} className="px-2 py-2 text-content-muted hover:text-content-secondary">
                 <X className="w-4 h-4" />
               </button>
             </div>
           ) : (
             <div className="flex gap-2">
               <select value={vendor} onChange={e => setVendor(e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400">
+                className="flex-1 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400">
                 <option value="">Select vendor...</option>
                 {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
               </select>
               <button type="button" onClick={() => setShowNewVendor(true)}
-                className="px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Add new vendor">
+                className="px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-control" title="Add new vendor">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
           )}
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Invoice #</label>
+          <label className="block text-xs text-content-secondary mb-1">Invoice #</label>
           <input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)}
             placeholder="From vendor"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
         </div>
       </div>
 
       {/* Dates */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Order Date *</label>
+          <label className="block text-xs text-content-secondary mb-1">Order Date *</label>
           <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Expected Dispatch</label>
+          <label className="block text-xs text-content-secondary mb-1">Expected Dispatch</label>
           <input type="date" value={expectedDispatch} onChange={e => setExpectedDispatch(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Expected Arrival</label>
+          <label className="block text-xs text-content-secondary mb-1">Expected Arrival</label>
           <input type="date" value={expectedArrival} onChange={e => setExpectedArrival(e.target.value)}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
         </div>
       </div>
 
       {/* Line Items */}
-      <div className="border-t border-slate-200 pt-4">
+      <div className="border-t border-edge pt-4">
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-slate-700">Products</p>
+          <p className="text-sm font-medium text-content">Products</p>
           <button type="button" onClick={addLine} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium">
             <Plus className="w-3 h-3" /> Add Product
           </button>
@@ -434,24 +434,24 @@ function AddPOForm({ products, onClose, onCreated }: {
           {items.map((item, idx) => (
             <div key={idx} className="flex items-end gap-3">
               <div className="flex-1">
-                {idx === 0 && <label className="block text-xs text-slate-400 mb-1">Product</label>}
+                {idx === 0 && <label className="block text-xs text-content-muted mb-1">Product</label>}
                 <select
                   value={item.product_id}
                   onChange={e => updateLine(idx, 'product_id', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
                 >
                   <option value="">Select product...</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
                 </select>
               </div>
               <div className="w-24">
-                {idx === 0 && <label className="block text-xs text-slate-400 mb-1">Qty</label>}
+                {idx === 0 && <label className="block text-xs text-content-muted mb-1">Qty</label>}
                 <input type="number" min={1} value={item.quantity}
                   onChange={e => updateLine(idx, 'quantity', Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
               </div>
               {items.length > 1 && (
-                <button type="button" onClick={() => removeLine(idx)} className="p-2 text-slate-300 hover:text-red-500 mb-0.5">
+                <button type="button" onClick={() => removeLine(idx)} className="p-2 text-content-faint hover:text-red-500 mb-0.5">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -461,16 +461,16 @@ function AddPOForm({ products, onClose, onCreated }: {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-control">
           <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
           <p className="text-sm text-red-700">{error}</p>
         </div>
       )}
 
-      <div className="flex justify-end gap-3 pt-2 border-t border-slate-200">
-        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+      <div className="flex justify-end gap-3 pt-2 border-t border-edge">
+        <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Cancel</button>
         <button type="submit" disabled={saving}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50">
           {saving ? 'Creating...' : 'Create Purchase Order'}
         </button>
       </div>
@@ -582,9 +582,9 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
 
   return (
     <div className="space-y-4">
-      <div className="p-4 bg-slate-50 rounded-lg">
-        <p className="text-sm font-medium text-slate-800">{po.product_name}</p>
-        <p className="text-xs text-slate-500 mt-1">
+      <div className="p-4 bg-surface-hover rounded-control">
+        <p className="text-sm font-medium text-content">{po.product_name}</p>
+        <p className="text-xs text-content-secondary mt-1">
           Ordered: {po.quantity} units{isEdit && ` · Previously received: ${po.actual_quantity ?? 0} (${previousGood ?? 0} good + ${po.scratch_dent_quantity ?? 0} S&D · ${po.added_to_inventory ?? 0} to inventory)`}
         </p>
         {isEdit && (
@@ -597,31 +597,31 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
       {/* Quantity Split */}
       <div className="grid grid-cols-3 gap-4">
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Good Qty Received</label>
+          <label className="block text-xs text-content-secondary mb-1">Good Qty Received</label>
           <input type="number" min={0} value={goodQty}
             onChange={e => handleGoodQtyChange(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Scratch & Dent</label>
+          <label className="block text-xs text-content-secondary mb-1">Scratch & Dent</label>
           <input type="number" min={0} value={sdQty}
             onChange={e => handleSdChange(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
         </div>
         <div>
-          <label className="block text-xs text-slate-500 mb-1">Add to Inventory</label>
+          <label className="block text-xs text-content-secondary mb-1">Add to Inventory</label>
           <input type="number" min={0} value={addToInv}
             onChange={e => setAddToInv(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-indigo-300 bg-indigo-50/50 rounded-lg text-sm focus:outline-none focus:border-indigo-500" />
-          <p className="text-xs text-slate-400 mt-1">
+            className="w-full px-3 py-2 border border-indigo-300 bg-indigo-50/50 rounded-control text-sm focus:outline-none focus:border-indigo-500" />
+          <p className="text-xs text-content-muted mt-1">
             Set to 0 for component-only orders (e.g., stickers arriving before buttons)
           </p>
         </div>
       </div>
 
       {/* Total summary */}
-      <div className="text-xs text-slate-500">
-        Total received: <strong className="text-slate-700">{total}</strong>
+      <div className="text-xs text-content-secondary">
+        Total received: <strong className="text-content">{total}</strong>
         {diff !== 0 && (
           <span className={diff < 0 ? 'text-amber-600 ml-2' : 'text-emerald-600 ml-2'}>
             ({diff < 0 ? `${Math.abs(diff)} fewer than ordered` : `${diff} more than ordered`})
@@ -636,26 +636,26 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
 
       {/* Scratch & Dent product picker */}
       {sdQty > 0 && (
-        <div className="border-t border-slate-200 pt-4 space-y-3">
+        <div className="border-t border-edge pt-4 space-y-3">
           <div>
-            <label className="block text-xs text-slate-500 mb-1">
-              Scratch & Dent Product {hasDefault && <span className="text-slate-400">(default saved)</span>}
+            <label className="block text-xs text-content-secondary mb-1">
+              Scratch & Dent Product {hasDefault && <span className="text-content-muted">(default saved)</span>}
             </label>
             <select
               value={sdProductId}
               onChange={e => setSdProductId(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
             >
               <option value="">Select the S&D product...</option>
               {sdOptions.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
             </select>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-content-muted mt-1">
               {sdProduct ? `${sdQty} units will be added to "${sdProduct.name}"` : 'Pick the product that represents the damaged/scratch & dent version'}
             </p>
           </div>
 
           {sdProductId && sdProductId !== defaultSdProductId && (
-            <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-content-secondary cursor-pointer">
               <input type="checkbox" checked={saveAsDefault}
                 onChange={e => setSaveAsDefault(e.target.checked)}
                 className="rounded" />
@@ -667,21 +667,21 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
 
       {/* Notes */}
       <div>
-        <label className="block text-xs text-slate-500 mb-1">Notes</label>
+        <label className="block text-xs text-content-secondary mb-1">Notes</label>
         <textarea
           value={notes}
           onChange={e => setNotes(e.target.value)}
           rows={2}
           placeholder="e.g., Vendor shipped 54 of item 1 but only 49 of item 3"
-          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 resize-none"
+          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400 resize-none"
         />
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-content-muted mt-1">
           Notes will appear on the product's detail view so you can reference them later.
         </p>
       </div>
 
       {/* Summary */}
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 space-y-1">
+      <div className="p-3 bg-blue-50 border border-blue-200 rounded-control text-sm text-blue-700 space-y-1">
         {addToInv > 0 ? (
           <p>&bull; <strong>{addToInv}</strong> units will be added to <strong>{po.product_name}</strong> inventory</p>
         ) : (
@@ -696,7 +696,7 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-control">
           <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
           <p className="text-sm text-red-700">{error}</p>
         </div>
@@ -704,24 +704,24 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
 
       <div className="flex items-center gap-3 pt-2">
         {navigable.length > 1 && (
-          <p className="text-xs text-slate-500 mr-auto">
+          <p className="text-xs text-content-secondary mr-auto">
             Item {currentIdx + 1} of {navigable.length}
           </p>
         )}
-        <button onClick={onClose} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Cancel</button>
+        <button onClick={onClose} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Cancel</button>
         {prevPending && (
           <button onClick={handleGoToPrev} disabled={saving || total === 0}
-            className="px-3 py-2 text-sm text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+            className="px-3 py-2 text-sm text-content border border-edge rounded-control hover:bg-surface-hover disabled:opacity-50">
             ← Save & Prev
           </button>
         )}
         <button onClick={handleConfirm} disabled={saving || total === 0}
-          className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50">
+          className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-control hover:bg-emerald-700 disabled:opacity-50">
           {saving && !nextPending ? (isEdit ? 'Saving…' : 'Confirming…') : isEdit ? 'Save' : 'Confirm & Add to Inventory'}
         </button>
         {nextPending && (
           <button onClick={handleConfirmAndNext} disabled={saving || total === 0}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50">
             {saving ? 'Saving…' : (isEdit ? 'Save & Next →' : 'Confirm & Next →')}
           </button>
         )}

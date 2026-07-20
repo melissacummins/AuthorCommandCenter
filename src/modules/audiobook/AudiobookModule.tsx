@@ -175,28 +175,28 @@ function AudiobookInner({ userId }: { userId: string }) {
   return (
     <div className="max-w-4xl mx-auto p-6 lg:p-8">
       <div className="flex items-center gap-3 mb-5">
-        <button onClick={backToList} className="text-slate-400 hover:text-slate-700"><ArrowLeft className="w-5 h-5" /></button>
+        <button onClick={backToList} className="text-content-muted hover:text-content"><ArrowLeft className="w-5 h-5" /></button>
         <input
           value={project.title}
           onChange={e => setProject(prev => (prev ? { ...prev, title: e.target.value } : prev))}
           onBlur={e => patch({ title: e.target.value.trim() || 'Untitled audiobook' })}
-          className="text-xl font-bold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-200 focus:border-violet-400 outline-none flex-1 min-w-0"
+          className="text-xl font-bold text-content bg-transparent border-b border-transparent hover:border-edge focus:border-violet-400 outline-none flex-1 min-w-0"
         />
       </div>
 
-      <div className="flex gap-1 mb-6 border-b border-slate-200">
+      <div className="flex gap-1 mb-6 border-b border-edge">
         {STEPS.map(s => {
           const active = step === s.id;
           return (
             <button key={s.id} onClick={() => setStep(s.id)}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${active ? 'border-violet-600 text-violet-700' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${active ? 'border-violet-600 text-violet-700' : 'border-transparent text-content-secondary hover:text-content'}`}>
               <s.Icon className="w-4 h-4" /> <span className="hidden sm:inline">{s.label}</span>
             </button>
           );
         })}
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6">
+      <div className="bg-surface rounded-card border border-edge p-5 sm:p-6">
         {step === 'chapters' && (
           <ChaptersStep project={project} chapters={chapters} onChange={patch} onAccept={acceptChapters}
             books={books} onAttachBook={id => patch({ book_id: id })} />

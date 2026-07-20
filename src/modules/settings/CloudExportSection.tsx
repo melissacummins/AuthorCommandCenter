@@ -11,12 +11,12 @@ import {
 // this section only shows status and runs the consent popups.
 export default function CloudExportSection() {
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-2">
         <CloudUpload className="w-5 h-5 text-sky-600" />
-        <h2 className="text-lg font-semibold text-slate-800">Cloud Export</h2>
+        <h2 className="text-lg font-semibold text-content">Cloud Export</h2>
       </div>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         Connect Google Drive or Dropbox and the Content Creator's export buttons can send
         finished slides, screenshots, and videos straight to a{' '}
         <strong>"{CLOUD_FOLDER_NAME}"</strong> folder in your account. Google Drive access is
@@ -92,26 +92,26 @@ function ServiceRow({ service, fetchStatus, onConnect, onDisconnect, disconnectN
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 px-4 py-3">
+    <div className="flex flex-wrap items-center gap-3 rounded-card border border-edge px-4 py-3">
       <div className="flex-1 min-w-40">
-        <p className="text-sm font-medium text-slate-800">{SERVICE_LABELS[service]}</p>
+        <p className="text-sm font-medium text-content">{SERVICE_LABELS[service]}</p>
         {status === null ? (
-          <p className="text-xs text-slate-400">Checking…</p>
+          <p className="text-xs text-content-muted">Checking…</p>
         ) : status.connected ? (
           <p className="text-xs text-emerald-600">Connected{status.email ? ` as ${status.email}` : ''}</p>
         ) : (
-          <p className="text-xs text-slate-400">Not connected</p>
+          <p className="text-xs text-content-muted">Not connected</p>
         )}
         {error && <p className="text-xs text-rose-600 mt-1">{error}</p>}
       </div>
       {status?.connected ? (
         <button onClick={handleDisconnect} disabled={busy}
-          className="px-3 py-2 rounded-lg border border-slate-300 text-slate-600 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 flex items-center gap-1.5">
+          className="px-3 py-2 rounded-control border border-edge-strong text-content-secondary text-xs font-medium hover:bg-surface-hover disabled:opacity-50 flex items-center gap-1.5">
           {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Disconnect
         </button>
       ) : (
         <button onClick={handleConnect} disabled={busy || status === null}
-          className="px-3 py-2 rounded-lg bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-1.5">
+          className="px-3 py-2 rounded-control bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-1.5">
           {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Connect
         </button>
       )}

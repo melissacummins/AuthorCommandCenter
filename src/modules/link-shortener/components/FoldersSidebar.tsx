@@ -82,20 +82,20 @@ export default function FoldersSidebar({ folders, links, selectedFolderId, onSel
         <NavItem
           active={selectedFolderId === 'unassigned'}
           onClick={() => onSelect('unassigned')}
-          icon={<Folder className="w-4 h-4 text-slate-400" />}
+          icon={<Folder className="w-4 h-4 text-content-muted" />}
           label="Unassigned"
           count={unassignedCount}
         />
       </div>
 
       <div className="mt-5 mb-2 px-2 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Folders</span>
+        <span className="text-xs font-semibold uppercase tracking-wide text-content-muted">Folders</span>
         <button
           onClick={() => {
             setCreating(true);
             setEditingId(null);
           }}
-          className="text-slate-400 hover:text-indigo-600 p-1 rounded"
+          className="text-content-muted hover:text-indigo-600 p-1 rounded"
           title="New folder"
         >
           <FolderPlus className="w-4 h-4" />
@@ -145,7 +145,7 @@ export default function FoldersSidebar({ folders, links, selectedFolderId, onSel
           />
         )}
         {folders.length === 0 && !creating && (
-          <p className="text-xs text-slate-400 px-2 py-2">No folders yet. Create one to organize links.</p>
+          <p className="text-xs text-content-muted px-2 py-2">No folders yet. Create one to organize links.</p>
         )}
       </div>
     </aside>
@@ -164,13 +164,13 @@ function NavItem({ active, onClick, icon, label, count }: NavItemProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition-colors ${
-        active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-100'
+      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-control text-sm transition-colors ${
+        active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-content-secondary hover:bg-surface-sunken'
       }`}
     >
       {icon}
       <span className="flex-1 text-left truncate">{label}</span>
-      <span className="text-xs text-slate-400 tabular-nums">{count}</span>
+      <span className="text-xs text-content-muted tabular-nums">{count}</span>
     </button>
   );
 }
@@ -190,20 +190,20 @@ function FolderRow({ folder, count, active, onClick, onEdit, onDelete }: FolderR
     <div className="relative group">
       <button
         onClick={onClick}
-        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-sm transition-colors ${
-          active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-slate-600 hover:bg-slate-100'
+        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-control text-sm transition-colors ${
+          active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-content-secondary hover:bg-surface-sunken'
         }`}
       >
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: folder.color }} />
         <span className="flex-1 text-left truncate">{folder.name}</span>
-        <span className="text-xs text-slate-400 tabular-nums">{count}</span>
+        <span className="text-xs text-content-muted tabular-nums">{count}</span>
       </button>
       <button
         onClick={(e) => {
           e.stopPropagation();
           setMenuOpen((v) => !v);
         }}
-        className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-700 rounded"
+        className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 text-content-muted hover:text-content rounded"
         title="Folder actions"
       >
         <MoreHorizontal className="w-3.5 h-3.5" />
@@ -211,8 +211,8 @@ function FolderRow({ folder, count, active, onClick, onEdit, onDelete }: FolderR
       {menuOpen && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-          <div className="absolute right-0 top-7 z-40 w-32 bg-white rounded-lg border border-slate-200 shadow-lg py-1 text-sm">
-            <button onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-slate-700 hover:bg-slate-50">
+          <div className="absolute right-0 top-7 z-40 w-32 bg-surface rounded-control border border-edge shadow-lg py-1 text-sm">
+            <button onClick={() => { setMenuOpen(false); onEdit(); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-content hover:bg-surface-hover">
               <Pencil className="w-3.5 h-3.5" /> Rename
             </button>
             <button onClick={() => { setMenuOpen(false); onDelete(); }} className="w-full text-left flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50">
@@ -238,7 +238,7 @@ interface EditRowProps {
 
 function EditRow({ name, color, onName, onColor, onSave, onCancel, busy, placeholder }: EditRowProps) {
   return (
-    <div className="px-2 py-2 rounded-lg bg-slate-50 border border-slate-200 space-y-2">
+    <div className="px-2 py-2 rounded-control bg-surface-hover border border-edge space-y-2">
       <input
         autoFocus
         value={name}
@@ -248,7 +248,7 @@ function EditRow({ name, color, onName, onColor, onSave, onCancel, busy, placeho
           if (e.key === 'Escape') onCancel();
         }}
         placeholder={placeholder ?? 'Folder name'}
-        className="w-full px-2 py-1 text-sm rounded border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        className="w-full px-2 py-1 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-indigo-300"
       />
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
@@ -262,7 +262,7 @@ function EditRow({ name, color, onName, onColor, onSave, onCancel, busy, placeho
           ))}
         </div>
         <div className="flex gap-1">
-          <button onClick={onCancel} className="p-1 text-slate-400 hover:text-slate-600 rounded">
+          <button onClick={onCancel} className="p-1 text-content-muted hover:text-content-secondary rounded">
             <X className="w-3.5 h-3.5" />
           </button>
           <button onClick={onSave} disabled={busy} className="p-1 text-emerald-600 hover:text-emerald-700 rounded disabled:opacity-50">

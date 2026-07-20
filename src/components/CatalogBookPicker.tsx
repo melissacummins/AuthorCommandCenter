@@ -145,12 +145,12 @@ export default function CatalogBookPicker({
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center gap-2 px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm hover:border-slate-400"
+        className="w-full flex items-center gap-2 px-3 py-2 border border-edge-strong rounded-control bg-surface text-sm hover:border-edge-strong"
       >
-        <BookOpen className="w-4 h-4 text-slate-400 shrink-0" />
+        <BookOpen className="w-4 h-4 text-content-muted shrink-0" />
         {selected ? (
           <span className="flex-1 truncate text-left">
-            <span className="font-medium text-slate-800">{selected.title}</span>
+            <span className="font-medium text-content">{selected.title}</span>
             {selectedPen && (
               <span className={`ml-2 text-xs px-1.5 py-0.5 rounded-full ${penNameClasses(selectedPen.color).bg} ${penNameClasses(selectedPen.color).text}`}>
                 {selectedPen.name}
@@ -158,32 +158,32 @@ export default function CatalogBookPicker({
             )}
           </span>
         ) : (
-          <span className="flex-1 text-left text-slate-400">{placeholder}</span>
+          <span className="flex-1 text-left text-content-muted">{placeholder}</span>
         )}
-        <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+        <ChevronDown className="w-4 h-4 text-content-muted shrink-0" />
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50">
-          <div className="p-2 border-b border-slate-100">
+        <div className="absolute left-0 right-0 top-full mt-1 bg-surface border border-edge rounded-card shadow-lg z-50">
+          <div className="p-2 border-b border-edge-soft">
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-2 top-1/2 -translate-y-1/2 text-content-muted" />
               <input
                 autoFocus
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search Catalog…"
-                className="w-full pl-8 pr-2 py-1.5 border border-slate-200 rounded-lg text-sm"
+                className="w-full pl-8 pr-2 py-1.5 border border-edge rounded-control text-sm"
               />
             </div>
           </div>
 
           <div className="max-h-64 overflow-y-auto">
             {loading ? (
-              <div className="p-3 text-sm text-slate-500">Loading…</div>
+              <div className="p-3 text-sm text-content-secondary">Loading…</div>
             ) : filtered.length === 0 ? (
-              <div className="p-3 text-sm text-slate-500">
+              <div className="p-3 text-sm text-content-secondary">
                 {books.length === 0
                   ? 'No books in Catalog yet.'
                   : filterByPenName && selectedPenNameId
@@ -201,12 +201,12 @@ export default function CatalogBookPicker({
                       onChange(book.id, book);
                       setOpen(false);
                     }}
-                    className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm flex items-center gap-2"
+                    className="w-full text-left px-3 py-2 hover:bg-surface-hover text-sm flex items-center gap-2"
                   >
                     <span className="flex-1 truncate">
-                      <span className="font-medium text-slate-800">{book.title}</span>
+                      <span className="font-medium text-content">{book.title}</span>
                       {book.series && (
-                        <span className="text-xs text-slate-500 ml-2">{book.series}</span>
+                        <span className="text-xs text-content-secondary ml-2">{book.series}</span>
                       )}
                     </span>
                     {pn && (
@@ -220,7 +220,7 @@ export default function CatalogBookPicker({
             )}
           </div>
 
-          <div className="border-t border-slate-100 p-2">
+          <div className="border-t border-edge-soft p-2">
             {creating ? (
               <div className="flex gap-1.5">
                 <input
@@ -229,14 +229,14 @@ export default function CatalogBookPicker({
                   value={newTitle}
                   onChange={e => setNewTitle(e.target.value)}
                   placeholder="New book title"
-                  className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm"
+                  className="flex-1 px-2 py-1.5 border border-edge rounded-control text-sm"
                   onKeyDown={e => { if (e.key === 'Enter') handleCreate(); }}
                 />
                 <button
                   type="button"
                   onClick={handleCreate}
                   disabled={!newTitle.trim() || saving}
-                  className="px-3 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                  className="px-3 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
                 >
                   {saving ? '…' : 'Add'}
                 </button>
@@ -245,7 +245,7 @@ export default function CatalogBookPicker({
               <button
                 type="button"
                 onClick={() => setCreating(true)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-control"
               >
                 <Plus className="w-3.5 h-3.5" /> Add a new book to Catalog
               </button>

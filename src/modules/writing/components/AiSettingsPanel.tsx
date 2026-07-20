@@ -62,21 +62,21 @@ export default function AiSettingsPanel({ onChange }: { onChange?: (settings: Ai
       <button
         onClick={() => setOpen(v => !v)}
         title="AI settings"
-        className={`p-1.5 rounded-md hover:bg-slate-50 ${open ? 'text-lime-600 bg-slate-50' : 'text-slate-400 hover:text-lime-600'}`}
+        className={`p-1.5 rounded-control hover:bg-surface-hover ${open ? 'text-lime-600 bg-surface-hover' : 'text-content-muted hover:text-lime-600'}`}
       >
         <Settings2 className="w-4 h-4" />
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-80 max-h-[70vh] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-lg p-4 space-y-3 text-xs">
+        <div className="absolute right-0 top-full mt-1 z-50 w-80 max-h-[70vh] overflow-y-auto bg-surface border border-edge rounded-card shadow-lg p-4 space-y-3 text-xs">
           <div>
-            <label className="block font-medium text-slate-600 mb-1">Provider</label>
-            <div className="inline-flex rounded-lg border border-slate-200 overflow-hidden w-full">
+            <label className="block font-medium text-content-secondary mb-1">Provider</label>
+            <div className="inline-flex rounded-control border border-edge overflow-hidden w-full">
               {(Object.keys(PROVIDER_LABELS) as AiProvider[]).map(p => (
                 <button
                   key={p}
                   onClick={() => update({ provider: p, model: '' })}
-                  className={`flex-1 px-2 py-1.5 font-medium ${settings.provider === p ? 'bg-lime-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                  className={`flex-1 px-2 py-1.5 font-medium ${settings.provider === p ? 'bg-lime-600 text-white' : 'bg-surface text-content-secondary hover:bg-surface-hover'}`}
                 >
                   {PROVIDER_LABELS[p]}
                 </button>
@@ -85,9 +85,9 @@ export default function AiSettingsPanel({ onChange }: { onChange?: (settings: Ai
           </div>
 
           <div>
-            <label className="block font-medium text-slate-600 mb-1">Model</label>
+            <label className="block font-medium text-content-secondary mb-1">Model</label>
             {loadingModels ? (
-              <p className="text-slate-400 flex items-center gap-1 py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading models…</p>
+              <p className="text-content-muted flex items-center gap-1 py-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading models…</p>
             ) : modelError ? (
               <p className="text-rose-600">{modelError}</p>
             ) : (
@@ -108,17 +108,17 @@ export default function AiSettingsPanel({ onChange }: { onChange?: (settings: Ai
           <KnobField label="Repetition penalty" support={knobs.repetitionPenalty} value={settings.repetitionPenalty} onChange={v => update({ repetitionPenalty: v })} min={0} max={2} step={0.1} />
 
           <div className={knobs.reasoning.enabled ? '' : 'opacity-50'}>
-            <label className="block font-medium text-slate-600 mb-1">Reasoning effort</label>
+            <label className="block font-medium text-content-secondary mb-1">Reasoning effort</label>
             <select
               disabled={!knobs.reasoning.enabled}
               value={settings.reasoningEffort ?? ''}
               onChange={e => update({ reasoningEffort: (e.target.value || undefined) as ReasoningEffort | undefined })}
-              className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-slate-600 bg-white disabled:opacity-50"
+              className="w-full px-2 py-1.5 border border-edge rounded-control text-content-secondary bg-surface disabled:opacity-50"
             >
               <option value="">Off (provider default)</option>
               {REASONING_LEVELS.map(l => <option key={l} value={l}>{l}</option>)}
             </select>
-            {!knobs.reasoning.enabled && knobs.reasoning.reason && <p className="text-slate-400 mt-0.5">{knobs.reasoning.reason}</p>}
+            {!knobs.reasoning.enabled && knobs.reasoning.reason && <p className="text-content-muted mt-0.5">{knobs.reasoning.reason}</p>}
           </div>
 
           <div>
@@ -129,9 +129,9 @@ export default function AiSettingsPanel({ onChange }: { onChange?: (settings: Ai
                 checked={!!settings.cachingEnabled}
                 onChange={e => update({ cachingEnabled: e.target.checked })}
               />
-              <span className="font-medium text-slate-600">Enable caching</span>
+              <span className="font-medium text-content-secondary">Enable caching</span>
             </label>
-            {!knobs.caching.enabled && knobs.caching.reason && <p className="text-slate-400 mt-0.5">{knobs.caching.reason}</p>}
+            {!knobs.caching.enabled && knobs.caching.reason && <p className="text-content-muted mt-0.5">{knobs.caching.reason}</p>}
           </div>
         </div>
       )}
@@ -151,7 +151,7 @@ function NumberField({
 }) {
   return (
     <div>
-      <label className="block font-medium text-slate-600 mb-1">{label}</label>
+      <label className="block font-medium text-content-secondary mb-1">{label}</label>
       <input
         type="number"
         min={min}
@@ -160,7 +160,7 @@ function NumberField({
         value={value ?? ''}
         placeholder="default"
         onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-slate-600"
+        className="w-full px-2 py-1.5 border border-edge rounded-control text-content-secondary"
       />
     </div>
   );
@@ -179,7 +179,7 @@ function KnobField({
 }) {
   return (
     <div className={support.enabled ? '' : 'opacity-50'}>
-      <label className="block font-medium text-slate-600 mb-1">{label}</label>
+      <label className="block font-medium text-content-secondary mb-1">{label}</label>
       <input
         type="number"
         min={min}
@@ -189,9 +189,9 @@ function KnobField({
         value={value ?? ''}
         placeholder="default"
         onChange={e => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-        className="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-slate-600 disabled:bg-slate-50"
+        className="w-full px-2 py-1.5 border border-edge rounded-control text-content-secondary disabled:bg-surface-hover"
       />
-      {!support.enabled && support.reason && <p className="text-slate-400 mt-0.5">{support.reason}</p>}
+      {!support.enabled && support.reason && <p className="text-content-muted mt-0.5">{support.reason}</p>}
     </div>
   );
 }

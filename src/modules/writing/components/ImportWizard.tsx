@@ -94,23 +94,23 @@ export default function ImportWizard({
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-xs font-medium text-slate-500 mb-1">Title</label>
+        <label className="block text-xs font-medium text-content-secondary mb-1">Title</label>
         <input
           value={title}
           onChange={e => setTitle(e.target.value)}
           placeholder="Manuscript title"
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+          className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-medium text-slate-500 mb-1">Link to a book (optional)</label>
+        <label className="block text-xs font-medium text-content-secondary mb-1">Link to a book (optional)</label>
         <CatalogBookPicker value={bookId} onChange={(id: string, _book: Book) => setBookId(id)} />
       </div>
 
       {drafts === null && (
         <div className="flex flex-wrap items-center gap-2.5">
-          <label className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-lg bg-lime-600 hover:bg-lime-700 cursor-pointer disabled:opacity-50">
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-control bg-lime-600 hover:bg-lime-700 cursor-pointer disabled:opacity-50">
             {busy === 'file' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             Import a file
             <input
@@ -124,11 +124,11 @@ export default function ImportWizard({
           <button
             onClick={startBlank}
             disabled={!!busy}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-control border border-edge-strong text-content hover:bg-surface-hover disabled:opacity-50"
           >
             <PenLine className="w-4 h-4" /> Start blank
           </button>
-          <span className="text-xs text-slate-400">.docx and .txt/.md today — PDF import coming soon</span>
+          <span className="text-xs text-content-muted">.docx and .txt/.md today — PDF import coming soon</span>
         </div>
       )}
 
@@ -139,14 +139,14 @@ export default function ImportWizard({
       {drafts !== null && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-700 flex items-center gap-1.5">
+            <p className="text-sm font-medium text-content flex items-center gap-1.5">
               <ScanLine className="w-4 h-4 text-lime-500" />
               {drafts.length} chapter{drafts.length === 1 ? '' : 's'} detected — review & accept
             </p>
             <button
               onClick={create}
               disabled={busy === 'save' || !drafts.length || !title.trim()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-control bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50"
             >
               {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Create manuscript
@@ -155,38 +155,38 @@ export default function ImportWizard({
 
           <div className="space-y-1.5">
             {drafts.map((d, i) => (
-              <div key={i} className="flex items-start gap-2 p-2.5 rounded-lg border border-slate-100">
-                <span className="text-xs text-slate-400 w-6 mt-2">{i + 1}</span>
+              <div key={i} className="flex items-start gap-2 p-2.5 rounded-control border border-edge-soft">
+                <span className="text-xs text-content-muted w-6 mt-2">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <input
                     value={d.title}
                     onChange={e => editTitle(i, e.target.value)}
-                    className="w-full px-2 py-1 text-sm font-medium border border-slate-200 rounded-md mb-1"
+                    className="w-full px-2 py-1 text-sm font-medium border border-edge rounded-control mb-1"
                   />
-                  <p className="text-xs text-slate-400 truncate flex items-center gap-1">
+                  <p className="text-xs text-content-muted truncate flex items-center gap-1">
                     <FileText className="w-3 h-3 shrink-0" />
                     {countWords(d.content_html).toLocaleString()} words
                   </p>
                 </div>
                 {i > 0 && (
-                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-slate-300 hover:text-lime-600 mt-1">
+                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-content-faint hover:text-lime-600 mt-1">
                     <ArrowUpToLine className="w-4 h-4" />
                   </button>
                 )}
-                <button onClick={() => remove(i)} title="Delete chapter" className="text-slate-300 hover:text-rose-600 mt-1">
+                <button onClick={() => remove(i)} title="Delete chapter" className="text-content-faint hover:text-rose-600 mt-1">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             ))}
           </div>
-          <button onClick={() => setDrafts(null)} disabled={!!busy} className="text-xs text-slate-500 hover:underline">
+          <button onClick={() => setDrafts(null)} disabled={!!busy} className="text-xs text-content-secondary hover:underline">
             Start over
           </button>
         </div>
       )}
 
-      <div className="pt-2 border-t border-slate-100">
-        <button onClick={onCancel} className="text-sm text-slate-500 hover:text-slate-700">
+      <div className="pt-2 border-t border-edge-soft">
+        <button onClick={onCancel} className="text-sm text-content-secondary hover:text-content">
           Cancel
         </button>
       </div>

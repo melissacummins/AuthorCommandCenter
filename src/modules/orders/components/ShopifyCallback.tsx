@@ -40,29 +40,29 @@ export default function ShopifyCallback() {
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <div className="bg-white rounded-2xl border border-slate-200 p-8 max-w-md w-full text-center">
+      <div className="bg-surface rounded-card border border-edge p-8 max-w-md w-full text-center">
         {status === 'loading' && (
           <>
             <Loader2 className="w-12 h-12 text-indigo-500 animate-spin mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-slate-800 mb-2">Connecting to Shopify</h2>
-            <p className="text-sm text-slate-500">{message}</p>
+            <h2 className="text-lg font-semibold text-content mb-2">Connecting to Shopify</h2>
+            <p className="text-sm text-content-secondary">{message}</p>
           </>
         )}
         {status === 'success' && (
           <>
             <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-slate-800 mb-2">Connected!</h2>
-            <p className="text-sm text-slate-500">{message}</p>
+            <h2 className="text-lg font-semibold text-content mb-2">Connected!</h2>
+            <p className="text-sm text-content-secondary">{message}</p>
           </>
         )}
         {status === 'error' && (
           <>
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-            <h2 className="text-lg font-semibold text-slate-800 mb-2">Connection Failed</h2>
+            <h2 className="text-lg font-semibold text-content mb-2">Connection Failed</h2>
             <p className="text-sm text-red-600 mb-4">{message}</p>
             <button
               onClick={() => navigate('/settings')}
-              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+              className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700"
             >
               Back to Settings
             </button>

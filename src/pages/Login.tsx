@@ -40,23 +40,23 @@ export default function Login() {
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mb-4 shadow-lg shadow-amber-500/25">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-card mb-4 shadow-lg shadow-amber-500/25">
             <BookOpen className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-3xl font-bold text-white">Author Command Center</h1>
-          <p className="text-slate-400 mt-2">Your publishing business, unified</p>
+          <p className="text-content-muted mt-2">Your publishing business, unified</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-xl font-semibold text-slate-800 mb-6">
+        <div className="bg-surface rounded-card shadow-2xl p-8">
+          <h2 className="text-xl font-semibold text-content mb-6">
             {isSignUp ? 'Create Account' : 'Welcome Back'}
           </h2>
 
           {/* Google Sign In */}
           <button
             onClick={signInWithGoogle}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-slate-200 rounded-xl hover:bg-slate-50 transition-colors font-medium text-slate-700"
+            className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-edge rounded-card hover:bg-surface-hover transition-colors font-medium text-content"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"/>
@@ -69,61 +69,61 @@ export default function Login() {
 
           {/* Divider */}
           <div className="flex items-center my-6">
-            <div className="flex-1 border-t border-slate-200"></div>
-            <span className="px-4 text-sm text-slate-400">or</span>
-            <div className="flex-1 border-t border-slate-200"></div>
+            <div className="flex-1 border-t border-edge"></div>
+            <span className="px-4 text-sm text-content-muted">or</span>
+            <div className="flex-1 border-t border-edge"></div>
           </div>
 
           {/* Email Form */}
           <form onSubmit={handleEmailSubmit} className="space-y-4">
             {isSignUp && (
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-content-muted" />
                 <input
                   type="text"
                   placeholder="Full Name"
                   value={fullName}
                   onChange={e => setFullName(e.target.value)}
-                  className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none transition-colors"
+                  className="w-full pl-11 pr-4 py-3 border-2 border-edge rounded-card focus:border-amber-500 focus:outline-none transition-colors"
                   required
                 />
               </div>
             )}
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-content-muted" />
               <input
                 type="email"
                 placeholder="Email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none transition-colors"
+                className="w-full pl-11 pr-4 py-3 border-2 border-edge rounded-card focus:border-amber-500 focus:outline-none transition-colors"
                 required
               />
             </div>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-content-muted" />
               <input
                 type="password"
                 placeholder="Password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                className="w-full pl-11 pr-4 py-3 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:outline-none transition-colors"
+                className="w-full pl-11 pr-4 py-3 border-2 border-edge rounded-card focus:border-amber-500 focus:outline-none transition-colors"
                 required
                 minLength={6}
               />
             </div>
 
             {error && (
-              <p className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-lg">{error}</p>
+              <p className="text-red-600 text-sm bg-red-50 px-4 py-2 rounded-control">{error}</p>
             )}
             {success && (
-              <p className="text-green-600 text-sm bg-green-50 px-4 py-2 rounded-lg">{success}</p>
+              <p className="text-green-600 text-sm bg-green-50 px-4 py-2 rounded-control">{success}</p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold rounded-xl hover:from-amber-600 hover:to-amber-700 transition-all disabled:opacity-50 shadow-lg shadow-amber-500/25"
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-semibold rounded-card hover:from-amber-600 hover:to-amber-700 transition-all disabled:opacity-50 shadow-lg shadow-amber-500/25"
             >
               {loading ? 'Please wait...' : isSignUp ? 'Create Account' : 'Sign In'}
               <ArrowRight className="w-4 h-4" />
@@ -131,7 +131,7 @@ export default function Login() {
           </form>
 
           {/* Toggle */}
-          <p className="text-center text-sm text-slate-500 mt-6">
+          <p className="text-center text-sm text-content-secondary mt-6">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               onClick={() => { setIsSignUp(!isSignUp); setError(null); setSuccess(null); }}

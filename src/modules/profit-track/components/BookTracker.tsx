@@ -93,8 +93,8 @@ const BookRow: React.FC<BookRowProps> = ({
 
     return (
         <>
-          <tr className={`hover:bg-gray-50 ${isChild ? 'bg-gray-50/50' : 'bg-white'}`}>
-              <td className={`px-4 py-2 sticky left-0 z-10 shadow-sm border-r border-gray-100 ${isChild ? 'bg-gray-50' : 'bg-white'}`}>
+          <tr className={`hover:bg-gray-50 ${isChild ? 'bg-gray-50/50' : 'bg-surface'}`}>
+              <td className={`px-4 py-2 sticky left-0 z-10 shadow-sm border-r border-gray-100 ${isChild ? 'bg-gray-50' : 'bg-surface'}`}>
                   <div className={`flex items-center ${isChild ? 'pl-6' : ''}`}>
                       {hasChildren && !isChild && (
                            <button onClick={() => onToggleExpand(book.id)} className="mr-2 text-gray-400 hover:text-blue-500 focus:outline-none">
@@ -436,21 +436,21 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
       <div className="flex flex-wrap gap-4 mb-6">
         <button 
            onClick={() => setActiveTab('daily')}
-           className={`px-5 py-2.5 rounded-lg font-medium flex items-center transition-colors ${activeTab === 'daily' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+           className={`px-5 py-2.5 rounded-control font-medium flex items-center transition-colors ${activeTab === 'daily' ? 'bg-blue-600 text-white shadow-md' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
         >
            <Calendar className="w-4 h-4 mr-2" />
            Daily Entry
         </button>
         <button 
            onClick={() => setActiveTab('stats')}
-           className={`px-5 py-2.5 rounded-lg font-medium flex items-center transition-colors ${activeTab === 'stats' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+           className={`px-5 py-2.5 rounded-control font-medium flex items-center transition-colors ${activeTab === 'stats' ? 'bg-blue-600 text-white shadow-md' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
         >
            <Calculator className="w-4 h-4 mr-2" />
            Profitability & ROI
         </button>
         <button 
            onClick={() => setActiveTab('manage')}
-           className={`px-5 py-2.5 rounded-lg font-medium flex items-center transition-colors ${activeTab === 'manage' ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+           className={`px-5 py-2.5 rounded-control font-medium flex items-center transition-colors ${activeTab === 'manage' ? 'bg-blue-600 text-white shadow-md' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
         >
            <Book className="w-4 h-4 mr-2" />
            Manage Books & Bundles
@@ -459,7 +459,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
 
       {/* --- DAILY ENTRY VIEW --- */}
       {activeTab === 'daily' && (
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-6 border-b border-gray-100">
                  <div>
                     <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Select Date</label>
@@ -467,7 +467,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                        type="date" 
                        value={selectedDate}
                        onChange={(e) => setSelectedDate(e.target.value)}
-                       className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                       className="px-4 py-2 border border-gray-300 rounded-control focus:ring-2 focus:ring-blue-500"
                     />
                  </div>
                  <div className="mt-4 sm:mt-0 flex flex-col items-end">
@@ -488,7 +488,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                         {saveMessage && <span className="text-green-600 text-sm font-medium animate-pulse">{saveMessage}</span>}
                         <button 
                             onClick={handleSaveDaily}
-                            className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-bold shadow-sm"
+                            className="flex items-center px-6 py-2 bg-green-600 text-white rounded-control hover:bg-green-700 font-bold shadow-sm"
                         >
                             <Save className="w-4 h-4 mr-2" />
                             Save Entries
@@ -528,7 +528,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                             )}
                             {bundles.map(b => (
                                 <tr key={b.id} className="hover:bg-gray-50">
-                                    <td className="px-4 py-2 sticky left-0 bg-white hover:bg-gray-50 z-10 shadow-sm border-r border-gray-100">
+                                    <td className="px-4 py-2 sticky left-0 bg-surface hover:bg-gray-50 z-10 shadow-sm border-r border-gray-100">
                                         <div className="text-sm font-medium text-gray-900 truncate w-44" title={b.title}>{b.title}</div>
                                         <div className="text-xs text-gray-500">{b.includedBookIds.length} books</div>
                                     </td>
@@ -572,7 +572,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
       {/* --- STATS VIEW --- */}
       {activeTab === 'stats' && (
           <div className="space-y-6">
-              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+              <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                       <div className="flex-1">
                           <h3 className="text-lg font-bold text-gray-900">Profitability Analysis</h3>
@@ -582,7 +582,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                            <select 
                              value={selectedAnalysisId}
                              onChange={(e) => setSelectedAnalysisId(e.target.value)}
-                             className="border border-gray-300 rounded-md px-3 py-1.5 text-sm min-w-[200px]"
+                             className="border border-gray-300 rounded-control px-3 py-1.5 text-sm min-w-[200px]"
                            >
                               <option value="">-- View Summary Table --</option>
                               <optgroup label="Bundles (Raw Data)">
@@ -606,7 +606,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                            <select 
                              value={dateRange}
                              onChange={(e) => setDateRange(e.target.value as any)}
-                             className="border border-gray-300 rounded-md px-3 py-1.5 text-sm"
+                             className="border border-gray-300 rounded-control px-3 py-1.5 text-sm"
                            >
                               <option value="7d">Last 7 Days</option>
                               <option value="30d">Last 30 Days</option>
@@ -623,16 +623,16 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                           <div className="h-80 w-full">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <ComposedChart data={dailyTrendData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-edge)" />
                                         <XAxis 
                                             dataKey="date" 
-                                            stroke="#9CA3AF" 
+                                            stroke="var(--color-content-muted)" 
                                             fontSize={12} 
                                             tickLine={false} 
                                             axisLine={false} 
                                             tickFormatter={(val) => new Date(val).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
                                         />
-                                        <YAxis yAxisId="left" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                                        <YAxis yAxisId="left" stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
                                         <YAxis yAxisId="right" orientation="right" stroke="#60A5FA" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `${val}x`} />
                                         <Tooltip 
                                             labelFormatter={(label) => new Date(label).toLocaleDateString(undefined, {weekday:'short', year:'numeric', month:'short', day:'numeric'})}
@@ -652,7 +652,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                           {/* Breakdown Table */}
                           <div>
                               <h4 className="text-sm font-bold text-gray-700 uppercase tracking-wider mb-3">Daily Breakdown</h4>
-                              <div className="overflow-x-auto border rounded-lg">
+                              <div className="overflow-x-auto border rounded-control">
                                   <table className="min-w-full divide-y divide-gray-200">
                                       <thead className="bg-gray-50">
                                           <tr>
@@ -663,7 +663,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                                               <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">ROAS</th>
                                           </tr>
                                       </thead>
-                                      <tbody className="bg-white divide-y divide-gray-200">
+                                      <tbody className="bg-surface divide-y divide-gray-200">
                                           {[...dailyTrendData].reverse().map(row => (
                                               <tr key={row.date} className="hover:bg-gray-50">
                                                   <td className="px-6 py-3 text-sm text-gray-900 font-medium">
@@ -700,7 +700,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ROAS</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="bg-surface divide-y divide-gray-200">
                                 {aggregatedStats.filter(s => !s.isBundle).map(stat => (
                                     <tr key={stat.id} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{stat.name}</td>
@@ -719,7 +719,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                                 )}
                             </tbody>
                         </table>
-                        <p className="mt-4 text-xs text-gray-500 bg-blue-50 p-3 rounded-md">
+                        <p className="mt-4 text-xs text-gray-500 bg-blue-50 p-3 rounded-control">
                             * Note: Bundle revenue and ad spend entered in the Daily Entry tab is automatically split evenly and added to the individual books in this table.
                         </p>
                       </div>
@@ -732,7 +732,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
       {activeTab === 'manage' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
              {/* Form */}
-             <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+             <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100 h-fit">
                 <h3 className="text-lg font-bold text-gray-900 mb-4">Add Product</h3>
                 <div className="space-y-4">
                     <div>
@@ -741,7 +741,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                             type="text" 
                             value={newTitle}
                             onChange={(e) => setNewTitle(e.target.value)}
-                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                            className="w-full px-3 py-2 border border-gray-300 rounded-control focus:ring-2 focus:ring-blue-500"
                             placeholder="e.g. Dark Desires"
                         />
                     </div>
@@ -754,7 +754,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                                     type="text" 
                                     value={newSeries}
                                     onChange={(e) => setNewSeries(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-control focus:ring-2 focus:ring-blue-500"
                                     placeholder="e.g. The Vampire War"
                                 />
                             </div>
@@ -772,13 +772,13 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                                 </div>
                                 
                                 {isTranslation && (
-                                    <div className="bg-blue-50 p-3 rounded-md space-y-3 border border-blue-100 animate-fade-in">
+                                    <div className="bg-blue-50 p-3 rounded-control space-y-3 border border-blue-100 animate-fade-in">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Original Book</label>
                                             <select
                                                 value={selectedParentId}
                                                 onChange={(e) => setSelectedParentId(e.target.value)}
-                                                className="w-full px-3 py-2 border border-blue-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-3 py-2 border border-blue-200 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="">-- Select Original --</option>
                                                 {rootBooks.map(b => (
@@ -793,7 +793,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                                                 value={translationLanguage}
                                                 onChange={(e) => setTranslationLanguage(e.target.value)}
                                                 placeholder="e.g. German"
-                                                className="w-full px-3 py-2 border border-blue-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                                                className="w-full px-3 py-2 border border-blue-200 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                                             />
                                         </div>
                                     </div>
@@ -816,7 +816,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                     )}
 
                     {isBundle && (
-                        <div className="bg-gray-50 p-3 rounded-md border border-gray-200">
+                        <div className="bg-gray-50 p-3 rounded-control border border-gray-200">
                             <label className="block text-xs font-bold text-gray-500 uppercase mb-2">Select Books in Bundle</label>
                             <div className="max-h-40 overflow-y-auto space-y-1">
                                 {singleBooks.length === 0 && <p className="text-sm text-gray-400">Add individual books first.</p>}
@@ -838,7 +838,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                     <button 
                         onClick={handleAddProduct}
                         disabled={!newTitle || (isBundle && selectedBooksForBundle.size === 0) || (isTranslation && (!selectedParentId || !translationLanguage))}
-                        className="w-full flex justify-center items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                        className="w-full flex justify-center items-center px-4 py-2 bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50"
                     >
                         <Plus className="w-4 h-4 mr-2" />
                         Create {isBundle ? 'Bundle' : (isTranslation ? 'Translation' : 'Book')}
@@ -848,7 +848,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
 
              {/* List */}
              <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                         <Book className="w-5 h-5 mr-2 text-indigo-500" />
                         Individual Books
@@ -858,7 +858,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                         {rootBooks.map(b => {
                             const children = getTranslations(b.id);
                             return (
-                                <div key={b.id} className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                                <div key={b.id} className="bg-gray-50 rounded-control border border-gray-200 overflow-hidden">
                                     <div className="flex justify-between items-center p-3">
                                         <div>
                                             <p className="font-medium text-gray-900">{b.title}</p>
@@ -872,7 +872,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                                     {children.length > 0 && (
                                         <div className="bg-gray-100/50 border-t border-gray-200 p-2 space-y-1">
                                             {children.map(child => (
-                                                <div key={child.id} className="flex justify-between items-center pl-4 pr-2 py-1.5 rounded hover:bg-white/50">
+                                                <div key={child.id} className="flex justify-between items-center pl-4 pr-2 py-1.5 rounded hover:bg-surface/50">
                                                     <div className="flex items-center text-sm text-gray-600">
                                                         <CornerDownRight className="w-3 h-3 text-gray-400 mr-2" />
                                                         <span>{child.title}</span>
@@ -889,7 +889,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
                     <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
                         <Layers className="w-5 h-5 mr-2 text-purple-500" />
                         Bundles
@@ -897,7 +897,7 @@ export const BookTracker: React.FC<BookTrackerProps> = ({ books, onUpdateBooks, 
                     {bundles.length === 0 && <p className="text-gray-500 italic">No bundles added yet.</p>}
                     <div className="space-y-3">
                         {bundles.map(b => (
-                            <div key={b.id} className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+                            <div key={b.id} className="p-3 bg-purple-50 rounded-control border border-purple-100">
                                 <div className="flex justify-between items-start">
                                     <h4 className="font-medium text-purple-900">{b.title}</h4>
                                     <button onClick={() => handleDeleteBook(b.id)} className="text-purple-300 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>

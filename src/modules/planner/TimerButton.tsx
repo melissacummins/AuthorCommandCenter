@@ -28,7 +28,7 @@ export function TimerButton({
   // Completed to-dos just show their tracked time (no controls).
   if (task.done) {
     return base > 0
-      ? <span className="text-xs font-medium text-slate-400 shrink-0">{formatMinutes(base)}</span>
+      ? <span className="text-xs font-medium text-content-muted shrink-0">{formatMinutes(base)}</span>
       : null;
   }
 
@@ -44,7 +44,7 @@ export function TimerButton({
       onClick={toggle}
       title={running ? 'Stop timer' : base > 0 ? `Resume timer · ${formatMinutes(base)} tracked` : 'Start timer'}
       className={`inline-flex items-center gap-1 text-xs font-medium shrink-0 ${
-        running ? 'text-rose-600' : base > 0 ? 'text-slate-500 hover:text-teal-600' : 'text-slate-300 hover:text-teal-600'
+        running ? 'text-rose-600' : base > 0 ? 'text-content-secondary hover:text-teal-600' : 'text-content-faint hover:text-teal-600'
       }`}
     >
       {running
@@ -93,11 +93,11 @@ export function RunningTimerBar({
       <button onClick={onOpen} className="flex-1 min-w-0 text-left truncate text-sm font-medium hover:underline" title="Open this to-do">
         {task.title || 'Untitled'}
       </button>
-      <span className="tabular-nums text-sm text-slate-200 shrink-0">{formatStopwatch(ms)}</span>
+      <span className="tabular-nums text-sm text-[#cbd5e1] shrink-0">{formatStopwatch(ms)}</span>
       {!inToday && (
         <button
           onClick={onAddToday}
-          className="shrink-0 inline-flex items-center gap-1 text-slate-200 hover:text-white text-xs font-medium px-1.5"
+          className="shrink-0 inline-flex items-center gap-1 text-[#cbd5e1] hover:text-white text-xs font-medium px-1.5"
           title="Add to today"
         >
           <Plus className="w-3.5 h-3.5" /> Today

@@ -150,25 +150,25 @@ export default function SyncToCatalogPanel({
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl max-w-xl w-full max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 shrink-0">
-          <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+      <div className="bg-surface rounded-card shadow-xl max-w-xl w-full max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-edge-soft shrink-0">
+          <h3 className="font-semibold text-content flex items-center gap-2">
             <Library className="w-4 h-4 text-lime-500" /> Sync to Catalog
           </h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="text-content-muted hover:text-content-secondary">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {loadingBook ? (
-            <p className="text-sm text-slate-400">Loading linked book…</p>
+            <p className="text-sm text-content-muted">Loading linked book…</p>
           ) : !book ? (
-            <p className="text-sm text-slate-500">Link this manuscript to a Catalog book first — from the manuscript header — to use this.</p>
+            <p className="text-sm text-content-secondary">Link this manuscript to a Catalog book first — from the manuscript header — to use this.</p>
           ) : (
             <>
-              <p className="text-sm text-slate-500">
-                Analyzes the manuscript text and suggests themes, tropes, and a blurb for <span className="font-medium text-slate-700">{book.title}</span>.
+              <p className="text-sm text-content-secondary">
+                Analyzes the manuscript text and suggests themes, tropes, and a blurb for <span className="font-medium text-content">{book.title}</span>.
                 Nothing is saved until you accept it below.
               </p>
 
@@ -176,7 +176,7 @@ export default function SyncToCatalogPanel({
                 <button
                   onClick={analyze}
                   disabled={analyzing}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-lg disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control disabled:opacity-50"
                 >
                   {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   {analyzing ? 'Analyzing…' : 'Analyze for Catalog'}
@@ -193,10 +193,10 @@ export default function SyncToCatalogPanel({
                 <div className="space-y-5">
                   {analysis.themes.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-slate-500 mb-1.5">Themes (for reference — no Catalog field to save into)</p>
+                      <p className="text-xs font-medium text-content-secondary mb-1.5">Themes (for reference — no Catalog field to save into)</p>
                       <div className="flex flex-wrap gap-1.5">
                         {analysis.themes.map(t => (
-                          <span key={t} className="text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-600">{t}</span>
+                          <span key={t} className="text-xs px-2 py-1 rounded-full bg-surface-sunken text-content-secondary">{t}</span>
                         ))}
                       </div>
                     </div>
@@ -204,23 +204,23 @@ export default function SyncToCatalogPanel({
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-medium text-slate-500">Tropes</p>
+                      <p className="text-xs font-medium text-content-secondary">Tropes</p>
                       <button
                         onClick={applyTropes}
                         disabled={selectedTropes.size === 0 || savingTropes}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-md px-2 py-1 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control px-2 py-1 disabled:opacity-50"
                       >
                         {savingTropes ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                         Add {selectedTropes.size || ''} to book
                       </button>
                     </div>
                     {newTropes.length === 0 ? (
-                      <p className="text-xs text-slate-400">No new tropes suggested{book.tropes?.length ? ' — the book already has these covered.' : '.'}</p>
+                      <p className="text-xs text-content-muted">No new tropes suggested{book.tropes?.length ? ' — the book already has these covered.' : '.'}</p>
                     ) : (
                       <div className="flex flex-wrap gap-1.5">
                         {newTropes.map(t => (
                           <label key={t} className={`text-xs px-2 py-1 rounded-full border cursor-pointer ${
-                            selectedTropes.has(t) ? 'bg-lime-100 border-lime-300 text-lime-800' : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                            selectedTropes.has(t) ? 'bg-lime-100 border-lime-300 text-lime-800' : 'border-edge text-content-secondary hover:bg-surface-hover'
                           }`}>
                             <input type="checkbox" className="hidden" checked={selectedTropes.has(t)} onChange={() => toggleTrope(t)} />
                             {t}
@@ -232,28 +232,28 @@ export default function SyncToCatalogPanel({
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <p className="text-xs font-medium text-slate-500">Blurb</p>
+                      <p className="text-xs font-medium text-content-secondary">Blurb</p>
                       <button
                         onClick={applyBlurb}
                         disabled={!blurbDraft.trim() || savingBlurb}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-md px-2 py-1 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control px-2 py-1 disabled:opacity-50"
                       >
                         {savingBlurb ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                         Use this blurb
                       </button>
                     </div>
                     {book.blurb && (
-                      <p className="text-xs text-slate-400 mb-1.5 italic">Current: {book.blurb.slice(0, 140)}{book.blurb.length > 140 ? '…' : ''}</p>
+                      <p className="text-xs text-content-muted mb-1.5 italic">Current: {book.blurb.slice(0, 140)}{book.blurb.length > 140 ? '…' : ''}</p>
                     )}
                     <textarea
                       value={blurbDraft}
                       onChange={e => setBlurbDraft(e.target.value)}
                       rows={4}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                      className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm"
                     />
                   </div>
 
-                  <button onClick={analyze} disabled={analyzing} className="text-xs text-slate-500 hover:underline disabled:opacity-50">
+                  <button onClick={analyze} disabled={analyzing} className="text-xs text-content-secondary hover:underline disabled:opacity-50">
                     {analyzing ? 'Re-analyzing…' : 'Re-analyze'}
                   </button>
                 </div>
@@ -265,7 +265,7 @@ export default function SyncToCatalogPanel({
         </div>
 
         {book && (
-          <div className="px-5 py-3 border-t border-slate-100 shrink-0 flex justify-end">
+          <div className="px-5 py-3 border-t border-edge-soft shrink-0 flex justify-end">
             <AiSettingsPanel />
           </div>
         )}

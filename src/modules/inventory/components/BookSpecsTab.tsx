@@ -202,15 +202,15 @@ export default function BookSpecsTab() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-slate-800">Book Specifications</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="text-xl font-semibold text-content">Book Specifications</h2>
+          <p className="text-sm text-content-secondary mt-1">
             Physical specs per book — pull these up when you're getting a fresh quote. Add the books you want to track below.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-edge text-content rounded-control hover:bg-surface-hover"
           >
             <Upload className="w-4 h-4" /> Import CSV
           </button>
@@ -218,20 +218,20 @@ export default function BookSpecsTab() {
           <button
             onClick={() => setShowAddPicker(s => !s)}
             disabled={candidateProducts.length === 0}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50"
           >
             <Plus className="w-4 h-4" /> Add Book
           </button>
           {showAddPicker && candidateProducts.length > 0 && (
-            <div className="absolute right-0 mt-1 z-10 bg-white border border-slate-200 rounded-lg shadow-lg max-h-72 overflow-y-auto min-w-[280px]">
+            <div className="absolute right-0 mt-1 z-10 bg-surface border border-edge rounded-control shadow-lg max-h-72 overflow-y-auto min-w-[280px]">
               {candidateProducts.map(p => (
                 <button
                   key={p.id}
                   onClick={() => addBook(p.id)}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-slate-50 last:border-b-0"
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-edge-soft last:border-b-0"
                 >
-                  <div className="text-slate-800">{p.name}</div>
-                  <div className="text-[11px] text-slate-400">{p.category}</div>
+                  <div className="text-content">{p.name}</div>
+                  <div className="text-[11px] text-content-muted">{p.category}</div>
                 </button>
               ))}
             </div>
@@ -273,20 +273,20 @@ export default function BookSpecsTab() {
       />
 
       {!hasLoaded ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-surface rounded-card border border-edge p-12 text-center">
           <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
       ) : trackedBooks.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 italic">
+        <div className="bg-surface rounded-card border border-edge p-12 text-center text-content-muted italic">
           No books tracked yet. Click "Add Book" to pick one from your products.
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-surface rounded-card border border-edge overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500 tracking-wider">
-                  <th className="text-left py-2.5 px-3 font-medium sticky left-0 bg-slate-50 min-w-[260px]">Book</th>
+                <tr className="bg-surface-hover border-b border-edge text-[11px] uppercase text-content-secondary tracking-wider">
+                  <th className="text-left py-2.5 px-3 font-medium sticky left-0 bg-surface-hover min-w-[260px]">Book</th>
                   <th className="text-left py-2.5 px-3 font-medium">Format</th>
                   <th className="text-left py-2.5 px-3 font-medium">Size</th>
                   <th className="text-left py-2.5 px-3 font-medium">Lamination</th>
@@ -302,10 +302,10 @@ export default function BookSpecsTab() {
                 {trackedBooks.map(p => {
                   const row = rows[p.id] ?? EMPTY_ROW;
                   return (
-                    <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/40 group">
-                      <td className="py-2 px-3 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50/40 min-w-[260px]">
+                    <tr key={p.id} className="border-b border-edge-soft hover:bg-surface-hover/40 group">
+                      <td className="py-2 px-3 font-medium text-content sticky left-0 bg-surface group-hover:bg-surface-hover/40 min-w-[260px]">
                         <div>{p.name}</div>
-                        <div className="text-[11px] text-slate-400 font-normal">{p.category}{p.sku ? ` · ${p.sku}` : ''}</div>
+                        <div className="text-[11px] text-content-muted font-normal">{p.category}{p.sku ? ` · ${p.sku}` : ''}</div>
                       </td>
                       <SelectCell value={row.format} options={FORMAT_OPTIONS} onChange={v => updateLocal(p.id, 'format', v)} onSave={v => saveField(p, 'format', v)} saving={savingCell === `${p.id}:format`} />
                       <SelectCell value={row.trim_size} options={SIZE_OPTIONS} onChange={v => updateLocal(p.id, 'trim_size', v)} onSave={v => saveField(p, 'trim_size', v)} saving={savingCell === `${p.id}:trim_size`} />
@@ -361,7 +361,7 @@ function SelectCell({ value, options, onChange, onSave, saving }: { value: strin
       <select
         value={value}
         onChange={handleChange}
-        className={`min-w-[120px] w-full px-2 py-1.5 border border-transparent hover:border-slate-200 focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm bg-white focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`min-w-[120px] w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm bg-surface focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
       >
         <option value="">—</option>
         {isCustom && <option value={value}>{value}</option>}
@@ -381,7 +381,7 @@ function TextCell({ value, placeholder, onChange, onSave, saving, wide }: { valu
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
         onBlur={() => onSave(value)}
-        className={`${wide ? 'min-w-[180px]' : 'min-w-[110px]'} w-full px-2 py-1.5 border border-transparent hover:border-slate-200 focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`${wide ? 'min-w-[180px]' : 'min-w-[110px]'} w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
       />
     </td>
   );
@@ -397,7 +397,7 @@ function NumCell({ value, onChange, onSave, saving }: { value: number; onChange:
         placeholder="0"
         onChange={e => onChange(Number(e.target.value))}
         onBlur={() => onSave(value)}
-        className={`w-20 px-2 py-1.5 border border-transparent hover:border-slate-200 focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`w-20 px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
       />
     </td>
   );

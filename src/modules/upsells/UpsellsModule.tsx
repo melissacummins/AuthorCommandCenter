@@ -133,19 +133,19 @@ export default function UpsellsModule() {
   if (!settings?.access_token) {
     return (
       <div className="p-6 lg:p-8 max-w-3xl mx-auto space-y-6">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
+        <div className="bg-surface rounded-card border border-edge p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-sky-500 to-sky-600 rounded-xl shadow-lg shadow-sky-500/25">
+            <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-sky-500 to-sky-600 rounded-card shadow-lg shadow-sky-500/25">
               <Gift className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-800">Upsells & Add-Ons</h2>
-              <p className="text-sm text-slate-500">Connect Shopify to manage add-on offers on your product pages.</p>
+              <h2 className="text-xl font-bold text-content">Upsells & Add-Ons</h2>
+              <p className="text-sm text-content-secondary">Connect Shopify to manage add-on offers on your product pages.</p>
             </div>
           </div>
           <Link
             to="/settings"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700"
           >
             <Store className="w-4 h-4" /> Connect Shopify in Settings
           </Link>
@@ -162,15 +162,15 @@ export default function UpsellsModule() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Upsells & Add-Ons</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h2 className="text-2xl font-bold text-content">Upsells & Add-Ons</h2>
+          <p className="text-sm text-content-secondary mt-0.5">
             Your own SellEasy — add-on offers stored on your products, immune to image changes.
           </p>
         </div>
         <button
           onClick={() => { setEditing(null); setEditorOpen(true); }}
           disabled={catalogLoading}
-          className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700 disabled:opacity-50"
         >
           {catalogLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           {catalogLoading ? 'Loading products…' : 'New offer'}
@@ -178,13 +178,13 @@ export default function UpsellsModule() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-slate-200/70 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 mb-6 bg-edge/70 rounded-card p-1 w-fit">
         {([['offers', 'Offers', Gift], ['design', 'Design', Paintbrush], ['setup', 'Theme Setup', Code2]] as const).map(([key, label, Icon]) => (
           <button
             key={key}
             onClick={() => setTab(key)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === key ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+              tab === key ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             <Icon className="w-4 h-4" /> {label}
@@ -193,14 +193,14 @@ export default function UpsellsModule() {
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl mb-6">
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-card mb-6">
           <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
           <div className="flex-1">
             <p className="text-sm text-red-700">{error}</p>
             {needsReauth && (
               <button
                 onClick={handleReauthorize}
-                className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700"
+                className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded-control hover:bg-red-700"
               >
                 <ExternalLink className="w-3.5 h-3.5" /> Re-authorize with Shopify
               </button>
@@ -217,12 +217,12 @@ export default function UpsellsModule() {
       {tab === 'offers' && (
         <>
           {offers.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-sky-500 to-sky-600 rounded-2xl shadow-lg shadow-sky-500/25 mb-5">
+            <div className="bg-surface rounded-card border border-edge p-10 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-sky-500 to-sky-600 rounded-card shadow-lg shadow-sky-500/25 mb-5">
                 <Gift className="w-8 h-8 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800 mb-1">No offers yet</h3>
-              <p className="text-sm text-slate-500 max-w-md mx-auto mb-5">
+              <h3 className="text-lg font-semibold text-content mb-1">No offers yet</h3>
+              <p className="text-sm text-content-secondary max-w-md mx-auto mb-5">
                 Create your first offer: pick a product, choose the add-ons that show under it,
                 and save. Then do the one-time theme setup so the widget appears on your store.
               </p>
@@ -230,13 +230,13 @@ export default function UpsellsModule() {
                 <button
                   onClick={() => { setEditing(null); setEditorOpen(true); }}
                   disabled={catalogLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700 disabled:opacity-50"
                 >
                   <Plus className="w-4 h-4" /> Create an offer
                 </button>
                 <button
                   onClick={() => setTab('setup')}
-                  className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
+                  className="flex items-center gap-2 px-4 py-2 border border-edge text-content text-sm font-medium rounded-control hover:bg-surface-hover"
                 >
                   <Code2 className="w-4 h-4" /> Theme setup
                 </button>
@@ -247,19 +247,19 @@ export default function UpsellsModule() {
               {/* Search / sort / filter toolbar */}
               <div className="flex flex-wrap items-center gap-2">
                 <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
                   <input
                     type="search"
                     value={query}
                     onChange={e => setQuery(e.target.value)}
                     placeholder="Search offers by product or add-on…"
-                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400"
+                    className="w-full pl-9 pr-3 py-2 bg-surface border border-edge rounded-card text-sm text-content placeholder:text-content-muted focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-400"
                   />
                 </div>
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as SortBy)}
-                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  className="px-3 py-2 bg-surface border border-edge rounded-card text-sm text-content focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                   title="Sort offers"
                 >
                   <option value="az">Title A–Z</option>
@@ -270,7 +270,7 @@ export default function UpsellsModule() {
                 <select
                   value={filter}
                   onChange={e => setFilter(e.target.value as Filter)}
-                  className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500/30"
+                  className="px-3 py-2 bg-surface border border-edge rounded-card text-sm text-content focus:outline-none focus:ring-2 focus:ring-sky-500/30"
                   title="Filter offers"
                 >
                   <option value="all">All offers</option>
@@ -281,12 +281,12 @@ export default function UpsellsModule() {
                 </select>
               </div>
               {(q || filter !== 'all') && (
-                <p className="text-xs text-slate-400 px-1">
+                <p className="text-xs text-content-muted px-1">
                   Showing {visibleOffers.length} of {offers.length} offers
                 </p>
               )}
               {visibleOffers.length === 0 && (
-                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-sm text-slate-500">
+                <div className="bg-surface rounded-card border border-edge p-8 text-center text-sm text-content-secondary">
                   No offers match{q ? <> &ldquo;{query.trim()}&rdquo;</> : ' this filter'}.
                 </div>
               )}
@@ -294,13 +294,13 @@ export default function UpsellsModule() {
                 const busy = busyOffer === offer.id;
                 const s = stats[offer.shopify_product_id];
                 return (
-                  <div key={offer.id} className={`bg-white rounded-2xl border border-slate-200 p-4 ${offer.enabled ? '' : 'opacity-60'}`}>
+                  <div key={offer.id} className={`bg-surface rounded-card border border-edge p-4 ${offer.enabled ? '' : 'opacity-60'}`}>
                     <div className="flex items-center gap-4">
                       {offer.product_image
-                        ? <img src={offer.product_image} alt="" className="w-14 h-14 rounded-xl object-cover shrink-0" />
-                        : <div className="w-14 h-14 rounded-xl bg-slate-200 shrink-0" />}
+                        ? <img src={offer.product_image} alt="" className="w-14 h-14 rounded-card object-cover shrink-0" />
+                        : <div className="w-14 h-14 rounded-card bg-edge shrink-0" />}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-slate-800 truncate">{offer.product_title}</p>
+                        <p className="font-semibold text-content truncate">{offer.product_title}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           {offer.addons.map(a => (
                             <span key={a.variant_id} className="px-2 py-0.5 bg-sky-50 border border-sky-200 text-sky-700 rounded-full text-xs">
@@ -318,10 +318,10 @@ export default function UpsellsModule() {
                       </div>
 
                       {/* Stats */}
-                      <div className="hidden sm:flex items-center gap-4 shrink-0 text-xs text-slate-500">
-                        <span className="flex items-center gap-1" title="Widget views"><Eye className="w-3.5 h-3.5 text-slate-400" /> {s?.views ?? 0}</span>
-                        <span className="flex items-center gap-1" title="Add-on clicks"><MousePointerClick className="w-3.5 h-3.5 text-slate-400" /> {s?.clicks ?? 0}</span>
-                        <span className="flex items-center gap-1" title="Orders with an add-on"><ShoppingCart className="w-3.5 h-3.5 text-slate-400" /> {s?.conversions ?? 0}</span>
+                      <div className="hidden sm:flex items-center gap-4 shrink-0 text-xs text-content-secondary">
+                        <span className="flex items-center gap-1" title="Widget views"><Eye className="w-3.5 h-3.5 text-content-muted" /> {s?.views ?? 0}</span>
+                        <span className="flex items-center gap-1" title="Add-on clicks"><MousePointerClick className="w-3.5 h-3.5 text-content-muted" /> {s?.clicks ?? 0}</span>
+                        <span className="flex items-center gap-1" title="Orders with an add-on"><ShoppingCart className="w-3.5 h-3.5 text-content-muted" /> {s?.conversions ?? 0}</span>
                         <span className="font-semibold text-emerald-600" title="Add-on revenue">${(s?.value ?? 0).toFixed(2)}</span>
                       </div>
 
@@ -330,20 +330,20 @@ export default function UpsellsModule() {
                         onClick={() => handleToggle(offer)}
                         disabled={busy}
                         title={offer.enabled ? 'Live on your store — click to pause' : 'Paused — click to go live'}
-                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${offer.enabled ? 'bg-emerald-500' : 'bg-slate-300'} disabled:opacity-50`}
+                        className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${offer.enabled ? 'bg-emerald-500' : 'bg-edge-strong'} disabled:opacity-50`}
                       >
-                        <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${offer.enabled ? 'left-[22px]' : 'left-0.5'}`} />
+                        <span className={`absolute top-0.5 w-5 h-5 bg-surface rounded-full shadow transition-all ${offer.enabled ? 'left-[22px]' : 'left-0.5'}`} />
                       </button>
 
                       <div className="flex items-center gap-1 shrink-0">
                         {busy ? (
-                          <Loader2 className="w-4 h-4 text-slate-400 animate-spin mx-2" />
+                          <Loader2 className="w-4 h-4 text-content-muted animate-spin mx-2" />
                         ) : confirmDelete === offer.id ? (
                           <>
-                            <button onClick={() => handleDelete(offer)} className="px-2.5 py-1.5 bg-red-600 text-white text-xs font-medium rounded-lg hover:bg-red-700">
+                            <button onClick={() => handleDelete(offer)} className="px-2.5 py-1.5 bg-red-600 text-white text-xs font-medium rounded-control hover:bg-red-700">
                               Delete
                             </button>
-                            <button onClick={() => setConfirmDelete(null)} className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-700">
+                            <button onClick={() => setConfirmDelete(null)} className="px-2.5 py-1.5 text-xs text-content-secondary hover:text-content">
                               Cancel
                             </button>
                           </>
@@ -352,14 +352,14 @@ export default function UpsellsModule() {
                             <button
                               onClick={() => { setEditing(offer); setEditorOpen(true); }}
                               disabled={catalogLoading}
-                              className="p-2 text-slate-400 hover:text-sky-600 rounded-lg hover:bg-sky-50 disabled:opacity-40"
+                              className="p-2 text-content-muted hover:text-sky-600 rounded-control hover:bg-sky-50 disabled:opacity-40"
                               title="Edit"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setConfirmDelete(offer.id)}
-                              className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
+                              className="p-2 text-content-muted hover:text-red-600 rounded-control hover:bg-red-50"
                               title="Delete"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -369,7 +369,7 @@ export default function UpsellsModule() {
                       </div>
                     </div>
                     {offer.synced_at && (
-                      <p className="flex items-center gap-1.5 text-xs text-slate-400 mt-3">
+                      <p className="flex items-center gap-1.5 text-xs text-content-muted mt-3">
                         <RefreshCw className="w-3 h-3" />
                         Synced to Shopify {new Date(offer.synced_at).toLocaleString()}
                       </p>
@@ -377,7 +377,7 @@ export default function UpsellsModule() {
                   </div>
                 );
               })}
-              <p className="text-xs text-slate-400 px-1">
+              <p className="text-xs text-content-muted px-1">
                 Views and clicks are reported by the widget on your store. Conversions and revenue
                 are counted from your synced Shopify orders (Inventory &rarr; Shopify sync), so run
                 a sync to see the latest.

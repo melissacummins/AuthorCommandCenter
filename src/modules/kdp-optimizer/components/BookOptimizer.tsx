@@ -23,7 +23,7 @@ const COLOR_BG: Record<ScoreColor, string> = {
   Green: 'bg-emerald-100 text-emerald-800',
   Yellow: 'bg-amber-100 text-amber-800',
   Red: 'bg-rose-100 text-rose-800',
-  Gray: 'bg-slate-100 text-slate-600',
+  Gray: 'bg-surface-sunken text-content-secondary',
 };
 
 const fmtNum = (n: number) => n.toLocaleString();
@@ -165,36 +165,36 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-2">
+          <button onClick={onBack} className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content mb-2">
             <ArrowLeft className="w-4 h-4" /> Back to KDP books
           </button>
           <div className="flex items-center gap-2 flex-wrap">
-            <h2 className="text-2xl font-bold text-slate-800">{effective.title || '(untitled)'}</h2>
+            <h2 className="text-2xl font-bold text-content">{effective.title || '(untitled)'}</h2>
             {linkedPenName && <PenNameChip name={linkedPenName.name} color={linkedPenName.color} />}
           </div>
-          <div className="text-sm text-slate-500 flex flex-wrap items-center gap-2">
+          <div className="text-sm text-content-secondary flex flex-wrap items-center gap-2">
             {effective.subtitle && <span>{effective.subtitle}</span>}
             {effective.subtitle && effective.series && <span>•</span>}
-            {effective.series && <span className="text-slate-400">{effective.series}</span>}
+            {effective.series && <span className="text-content-muted">{effective.series}</span>}
           </div>
         </div>
         <button
           onClick={save}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg shadow-sm shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control shadow-sm shrink-0"
         >
           <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
         </button>
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+        <div className="p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
       )}
 
       {/* Book metadata */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+      <div className="bg-surface rounded-card border border-edge p-4 grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Linked Catalog book</label>
+          <label className="block text-xs font-medium text-content mb-1">Linked Catalog book</label>
           <CatalogBookPicker
             value={draft.book_id ?? null}
             onChange={(id, book) => setDraft(d => ({
@@ -213,18 +213,18 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-700 mb-1">Amazon categories</label>
+          <label className="block text-xs font-medium text-content mb-1">Amazon categories</label>
           <input
             value={draft.amazon_categories}
             onChange={e => setDraft(d => ({ ...d, amazon_categories: e.target.value }))}
             placeholder="Paranormal Romance, Werewolves & Shifters"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm"
           />
         </div>
       </div>
 
       {/* Metadata indexing banner */}
-      <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-md text-sm text-indigo-800 flex items-start gap-2">
+      <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-control text-sm text-indigo-800 flex items-start gap-2">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
           <span className="font-semibold">Metadata indexing:</span> words from your Title, Subtitle,
@@ -241,18 +241,18 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
       </div>
 
       {/* Assigned tropes */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4">
+      <div className="bg-surface rounded-card border border-edge p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="text-sm">
-            <span className="font-semibold text-slate-800">Assigned tropes</span>
-            <span className="text-slate-500 ml-1">({assignedTropes.length})</span>
+            <span className="font-semibold text-content">Assigned tropes</span>
+            <span className="text-content-secondary ml-1">({assignedTropes.length})</span>
           </div>
           <button onClick={() => setShowAssignTropes(v => !v)} className="text-sm text-indigo-600 hover:text-indigo-800">
             {showAssignTropes ? 'Done' : 'Edit tropes'}
           </button>
         </div>
         {assignedTropes.length === 0 && !showAssignTropes ? (
-          <p className="text-sm text-slate-500">No tropes assigned. Edit tropes to choose which ones apply to this book.</p>
+          <p className="text-sm text-content-secondary">No tropes assigned. Edit tropes to choose which ones apply to this book.</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {assignedTropes.map(t => (
@@ -263,9 +263,9 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
           </div>
         )}
         {showAssignTropes && (
-          <div className="mt-4 max-h-64 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-1 border-t border-slate-100 pt-3">
+          <div className="mt-4 max-h-64 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-1 border-t border-edge-soft pt-3">
             {tropes.map(t => (
-              <label key={t.id} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-50 rounded text-sm">
+              <label key={t.id} className="flex items-center gap-2 px-2 py-1 hover:bg-surface-hover rounded text-sm">
                 <input type="checkbox" checked={assignedSet.has(t.id)} onChange={() => toggleTrope(t.id)} />
                 <span className="truncate">{t.name}</span>
               </label>
@@ -276,38 +276,38 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* LEFT: Available Keywords */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100 bg-slate-50">
+        <div className="lg:col-span-2 bg-surface rounded-card border border-edge overflow-hidden">
+          <div className="p-4 border-b border-edge-soft bg-surface-hover">
             <div className="flex items-center justify-between gap-2 mb-2">
-              <h3 className="font-semibold text-slate-700">Available keywords</h3>
-              <span className="text-xs text-slate-500">
+              <h3 className="font-semibold text-content">Available keywords</h3>
+              <span className="text-xs text-content-secondary">
                 Found: {filteredPool.length} (Deduped) of {uniquePool.length}
               </span>
             </div>
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-content-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={filterText}
                 onChange={e => setFilterText(e.target.value)}
                 placeholder="Filter keywords"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-md border border-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-1 focus:ring-indigo-500"
               />
             </div>
             {assignedTropes.length > 0 && (
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-content-secondary">
                 Sources: {assignedTropes.map(t => t.name).join(', ')}
               </p>
             )}
           </div>
 
           {assignedTropes.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">
+            <div className="p-8 text-center text-sm text-content-secondary">
               Assign at least one trope to see its keywords here.
             </div>
           ) : (
             <div className="overflow-auto max-h-[640px]">
               <table className="w-full text-sm text-left">
-                <thead className="bg-slate-50 text-slate-500 font-medium sticky top-0 z-10 shadow-sm">
+                <thead className="bg-surface-hover text-content-secondary font-medium sticky top-0 z-10 shadow-sm">
                   <tr>
                     <th className="px-3 py-2 w-8"></th>
                     <th className="px-3 py-2 whitespace-nowrap">Keyword</th>
@@ -319,7 +319,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
                     <th className="px-3 py-2 whitespace-nowrap">Avg Monthly</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-edge-soft">
                   {filteredPool.map(kw => {
                     const isSelected = selectedSet.has(kw.id);
                     const coverage = analyzeKeywordCoverage(kw.text, effectiveCovered);
@@ -327,13 +327,13 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
                       <tr
                         key={kw.id}
                         onClick={() => toggleKeyword(kw.id)}
-                        className={`cursor-pointer transition ${isSelected ? 'bg-indigo-50' : 'hover:bg-slate-50'}`}
+                        className={`cursor-pointer transition ${isSelected ? 'bg-indigo-50' : 'hover:bg-surface-hover'}`}
                       >
                         <td className="px-3 py-2">
                           {isSelected ? (
                             <CheckSquare className="w-4 h-4 text-indigo-600" />
                           ) : (
-                            <Square className="w-4 h-4 text-slate-300" />
+                            <Square className="w-4 h-4 text-content-faint" />
                           )}
                         </td>
                         <td className="px-3 py-2 font-medium whitespace-nowrap">
@@ -346,8 +346,8 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
                                 key={idx}
                                 className={
                                   isCovered
-                                    ? 'text-slate-400 line-through decoration-slate-400 decoration-1 mr-1'
-                                    : 'text-slate-900 mr-1'
+                                    ? 'text-content-muted line-through decoration-slate-400 decoration-1 mr-1'
+                                    : 'text-content mr-1'
                                 }
                               >
                                 {word}
@@ -355,23 +355,23 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
                             );
                           })}
                           {coverage.isFullyCovered && !isSelected && (
-                            <span className="ml-2 text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
+                            <span className="ml-2 text-[10px] bg-surface-sunken text-content-secondary px-1.5 py-0.5 rounded border border-edge">
                               Covered
                             </span>
                           )}
                         </td>
                         <td className="px-3 py-2"><Chip text={fmtNum(kw.search_volume)} color={kw.search_volume_color as ScoreColor} /></td>
                         <td className="px-3 py-2"><Chip text={String(kw.competitive_score)} color={kw.competitive_score_color as ScoreColor} /></td>
-                        <td className="px-3 py-2 text-slate-600">{fmtNum(kw.competitors)}</td>
-                        <td className="px-3 py-2 text-slate-600">{fmtNum(kw.avg_pages)}</td>
-                        <td className="px-3 py-2 text-slate-600">{fmtCurrency(kw.avg_price)}</td>
-                        <td className="px-3 py-2 text-slate-600">{fmtCurrency(kw.avg_monthly_earnings)}</td>
+                        <td className="px-3 py-2 text-content-secondary">{fmtNum(kw.competitors)}</td>
+                        <td className="px-3 py-2 text-content-secondary">{fmtNum(kw.avg_pages)}</td>
+                        <td className="px-3 py-2 text-content-secondary">{fmtCurrency(kw.avg_price)}</td>
+                        <td className="px-3 py-2 text-content-secondary">{fmtCurrency(kw.avg_monthly_earnings)}</td>
                       </tr>
                     );
                   })}
                   {filteredPool.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="p-8 text-center text-slate-400">
+                      <td colSpan={8} className="p-8 text-center text-content-muted">
                         No keywords found. Check your filters or assign more tropes.
                       </td>
                     </tr>
@@ -384,7 +384,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
 
         {/* RIGHT: Optimization */}
         <div className="space-y-4 lg:sticky lg:top-4 self-start">
-          <div className="bg-indigo-900 text-white p-5 rounded-2xl shadow-sm">
+          <div className="bg-indigo-900 text-white p-5 rounded-card shadow-sm">
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
               <TrendingUp className="w-5 h-5" /> Optimization stats
             </h3>
@@ -405,7 +405,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
           </div>
 
           <div>
-            <h3 className="font-semibold text-slate-700 mb-3">
+            <h3 className="font-semibold text-content mb-3">
               Amazon keyword boxes ({Math.min(optimizedBoxes.length, 7)}/7)
             </h3>
             <div className="space-y-3">
@@ -414,7 +414,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
               ))}
             </div>
             {optimizedBoxes.length > 7 && (
-              <div className="mt-3 p-3 bg-rose-50 text-rose-700 rounded-md text-sm flex items-start gap-2 border border-rose-200">
+              <div className="mt-3 p-3 bg-rose-50 text-rose-700 rounded-control text-sm flex items-start gap-2 border border-rose-200">
                 <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                 You have enough unique words to fill {optimizedBoxes.length} boxes. The extras are hidden.
               </div>
@@ -444,7 +444,7 @@ function KeywordBox({ index, content }: { index: number; content: string }) {
   }
   return (
     <div>
-      <div className="flex justify-between text-xs text-slate-500 mb-1">
+      <div className="flex justify-between text-xs text-content-secondary mb-1">
         <span className="font-medium">Box {index}</span>
         <span className={isOver ? 'text-rose-500 font-bold' : len === 50 ? 'text-emerald-600' : ''}>
           {len} / 50
@@ -455,15 +455,15 @@ function KeywordBox({ index, content }: { index: number; content: string }) {
           readOnly
           value={content}
           placeholder="Empty"
-          className={`w-full p-3 pr-10 rounded-md font-mono text-sm text-slate-800 border ${
-            isEmpty ? 'bg-slate-50 border-slate-200' : 'bg-white border-indigo-200'
+          className={`w-full p-3 pr-10 rounded-control font-mono text-sm text-content border ${
+            isEmpty ? 'bg-surface-hover border-edge' : 'bg-surface border-indigo-200'
           } ${isOver ? 'border-rose-500' : ''}`}
         />
         {!isEmpty && (
           <button
             onClick={copy}
             title="Copy"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 hover:text-indigo-600"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-content-faint hover:text-indigo-600"
           >
             <Copy className="w-4 h-4" />
           </button>

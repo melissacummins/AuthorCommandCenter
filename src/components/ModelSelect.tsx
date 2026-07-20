@@ -76,7 +76,7 @@ export default function ModelSelect({ provider, model, models, onChange, classNa
       <select
         value={model}
         onChange={e => onChange(e.target.value)}
-        className={className ?? 'w-full px-2 py-1.5 border border-slate-200 rounded-lg text-slate-600 bg-white text-xs'}
+        className={className ?? 'w-full px-2 py-1.5 border border-edge rounded-control text-content-secondary bg-surface text-xs'}
       >
         {(!model || !currentInList) && (
           <option value={model}>{model || '— pick a model —'}</option>
@@ -99,7 +99,7 @@ export default function ModelSelect({ provider, model, models, onChange, classNa
         onClick={toggleFavorite}
         disabled={!model}
         title={currentIsFav ? 'Remove from favorites' : 'Add to favorites'}
-        className={`p-1.5 rounded-md shrink-0 transition-colors ${currentIsFav ? 'text-amber-500 hover:text-amber-600' : 'text-slate-300 hover:text-amber-500'} disabled:opacity-40`}
+        className={`p-1.5 rounded-control shrink-0 transition-colors ${currentIsFav ? 'text-amber-500 hover:text-amber-600' : 'text-content-faint hover:text-amber-500'} disabled:opacity-40`}
       >
         <Star className={`w-4 h-4 ${currentIsFav ? 'fill-amber-400' : ''}`} />
       </button>

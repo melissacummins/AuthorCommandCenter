@@ -87,7 +87,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
       <FirebaseImport />
 
-      <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100">
+      <div className="bg-surface p-8 rounded-card shadow-sm border border-gray-100">
         <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
           <RefreshCw className="w-6 h-6 mr-2 text-gray-700" />
           Data Management
@@ -102,7 +102,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </p>
             <button 
               onClick={handleDownload}
-              className="flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+              className="flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-control hover:bg-blue-100 transition-colors font-medium"
             >
               <Download className="w-4 h-4 mr-2" />
               Download Backup (.json)
@@ -125,7 +125,7 @@ export const Settings: React.FC<SettingsProps> = ({
                />
                <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors font-medium shadow-sm"
+                  className="flex items-center px-4 py-2 bg-surface text-gray-700 border border-gray-300 rounded-control hover:bg-gray-50 transition-colors font-medium shadow-sm"
                >
                   <Upload className="w-4 h-4 mr-2" />
                   Select File to Restore
@@ -144,7 +144,7 @@ export const Settings: React.FC<SettingsProps> = ({
             </p>
             <button 
               onClick={handleClear}
-              className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+              className="px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-control hover:bg-red-100 transition-colors font-medium text-sm"
             >
               Clear All Data
             </button>

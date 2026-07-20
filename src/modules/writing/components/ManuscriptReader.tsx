@@ -282,13 +282,13 @@ export default function ManuscriptReader({
   }
 
   if (loading) {
-    return <div className="text-center py-16 text-slate-500 text-sm">Loading manuscript…</div>;
+    return <div className="text-center py-16 text-content-secondary text-sm">Loading manuscript…</div>;
   }
   if (!manuscript) {
     return (
       <div className="text-center py-16">
         <p className="text-sm text-rose-600 mb-3">{error ?? 'Manuscript not found.'}</p>
-        <button onClick={onBack} className="text-sm text-slate-500 hover:underline">Back to manuscripts</button>
+        <button onClick={onBack} className="text-sm text-content-secondary hover:underline">Back to manuscripts</button>
       </div>
     );
   }
@@ -298,21 +298,21 @@ export default function ManuscriptReader({
   return (
     <div className="px-4 lg:px-6 py-4">
       {error && (
-        <div className="mb-3 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+        <div className="mb-3 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
       )}
 
       {/* Compact header row (§8.1) */}
       <div className="flex items-center gap-2 mb-3">
-        <button onClick={onBack} title="Back to manuscripts" className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 shrink-0">
+        <button onClick={onBack} title="Back to manuscripts" className="p-1.5 text-content-muted hover:text-content rounded-control hover:bg-surface-sunken shrink-0">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <input
           defaultValue={manuscript.title}
           onBlur={e => saveTitle(e.target.value)}
           disabled={savingTitle}
-          className="text-lg font-bold text-slate-800 flex-1 min-w-0 px-1 -mx-1 rounded-md border border-transparent hover:border-slate-200 focus:border-lime-400 outline-none bg-transparent"
+          className="text-lg font-bold text-content flex-1 min-w-0 px-1 -mx-1 rounded-control border border-transparent hover:border-edge focus:border-lime-400 outline-none bg-transparent"
         />
-        <span className="text-xs text-slate-400 shrink-0 hidden sm:inline">{manuscript.word_count.toLocaleString()} words</span>
+        <span className="text-xs text-content-muted shrink-0 hidden sm:inline">{manuscript.word_count.toLocaleString()} words</span>
         <select
           value={manuscript.status}
           onChange={e => changeStatus(e.target.value as ManuscriptStatus)}
@@ -327,7 +327,7 @@ export default function ManuscriptReader({
             onClick={() => setExportMenuOpen(exportMenuOpen === 'manuscript' ? null : 'manuscript')}
             disabled={exporting || chapters.length === 0}
             title="Export manuscript"
-            className="p-1.5 text-slate-400 hover:text-lime-600 rounded-lg hover:bg-slate-100 disabled:opacity-40"
+            className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-sunken disabled:opacity-40"
           >
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           </button>
@@ -338,7 +338,7 @@ export default function ManuscriptReader({
         <button
           onClick={toggleChat}
           title="Manuscript chat"
-          className={`p-1.5 rounded-lg hover:bg-slate-100 shrink-0 ${chatOpen ? 'text-lime-600 bg-slate-100' : 'text-slate-400 hover:text-lime-600'}`}
+          className={`p-1.5 rounded-control hover:bg-surface-sunken shrink-0 ${chatOpen ? 'text-lime-600 bg-surface-sunken' : 'text-content-muted hover:text-lime-600'}`}
         >
           <MessageSquare className="w-4 h-4" />
         </button>
@@ -346,18 +346,18 @@ export default function ManuscriptReader({
           <button
             onClick={() => setSyncOpen(true)}
             title="Analyze manuscript for Catalog"
-            className="p-1.5 text-slate-400 hover:text-lime-600 rounded-lg hover:bg-slate-100 shrink-0"
+            className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-sunken shrink-0"
           >
             <Sparkles className="w-4 h-4" />
           </button>
         )}
-        <button onClick={handleDeleteManuscript} title="Delete manuscript" className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 shrink-0">
+        <button onClick={handleDeleteManuscript} title="Delete manuscript" className="p-1.5 text-content-muted hover:text-rose-600 rounded-control hover:bg-rose-50 shrink-0">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
 
       {/* Write | Analytics tabs (§8.1) */}
-      <div className="flex items-center gap-1 border-b border-slate-200 mb-4">
+      <div className="flex items-center gap-1 border-b border-edge mb-4">
         <TabButton active={tab === 'write'} onClick={() => setTab('write')}>Write</TabButton>
         <TabButton active={tab === 'analytics'} onClick={() => setTab('analytics')}>Analytics</TabButton>
       </div>
@@ -370,12 +370,12 @@ export default function ManuscriptReader({
           onChangeBook={changeBook}
         />
       ) : chapters.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-          <BookOpen className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-sm text-slate-500 mb-4">This manuscript has no chapters yet.</p>
+        <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
+          <BookOpen className="w-8 h-8 text-content-faint mx-auto mb-2" />
+          <p className="text-sm text-content-secondary mb-4">This manuscript has no chapters yet.</p>
           <button
             onClick={handleAddChapter}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-lg"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control"
           >
             <Plus className="w-4 h-4" /> Add a chapter
           </button>
@@ -384,8 +384,8 @@ export default function ManuscriptReader({
         <div className="flex gap-4 items-start h-[75vh]">
           {/* Collapsible chapter sidebar (§8.1) */}
           {sidebarCollapsed ? (
-            <div className="w-10 shrink-0 h-full flex flex-col items-center gap-2 bg-white rounded-2xl border border-slate-200 py-3">
-              <button onClick={toggleSidebar} title="Expand chapter list" className="p-1.5 text-slate-400 hover:text-lime-600 rounded-md hover:bg-slate-50">
+            <div className="w-10 shrink-0 h-full flex flex-col items-center gap-2 bg-surface rounded-card border border-edge py-3">
+              <button onClick={toggleSidebar} title="Expand chapter list" className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-hover">
                 <ChevronsRight className="w-4 h-4" />
               </button>
               <div className="flex-1 overflow-y-auto w-full flex flex-col items-center gap-1">
@@ -394,8 +394,8 @@ export default function ManuscriptReader({
                     key={c.id}
                     onClick={() => { setActiveChapterId(c.id); setIsEditing(true); }}
                     title={c.title || `Chapter ${i + 1}`}
-                    className={`w-6 h-6 text-[10px] rounded-md font-medium shrink-0 ${
-                      c.id === activeChapterId ? 'bg-lime-600 text-white' : 'text-slate-400 hover:bg-slate-100'
+                    className={`w-6 h-6 text-[10px] rounded-control font-medium shrink-0 ${
+                      c.id === activeChapterId ? 'bg-lime-600 text-white' : 'text-content-muted hover:bg-surface-sunken'
                     }`}
                   >
                     {i + 1}
@@ -404,11 +404,11 @@ export default function ManuscriptReader({
               </div>
             </div>
           ) : (
-            <div className="w-[260px] shrink-0 h-full flex flex-col bg-white rounded-2xl border border-slate-200 p-2">
+            <div className="w-[260px] shrink-0 h-full flex flex-col bg-surface rounded-card border border-edge p-2">
               <button
                 onClick={toggleSidebar}
                 title="Collapse chapter list"
-                className="self-end p-1 text-slate-300 hover:text-lime-600 mb-1"
+                className="self-end p-1 text-content-faint hover:text-lime-600 mb-1"
               >
                 <ChevronsLeft className="w-4 h-4" />
               </button>
@@ -434,23 +434,23 @@ export default function ManuscriptReader({
               </DndContext>
               <button
                 onClick={handleAddChapter}
-                className="w-full mt-2 shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-500 hover:text-lime-600 border border-dashed border-slate-300 hover:border-lime-300 rounded-lg"
+                className="w-full mt-2 shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-content-secondary hover:text-lime-600 border border-dashed border-edge-strong hover:border-lime-300 rounded-control"
               >
                 <Plus className="w-3.5 h-3.5" /> Add chapter
               </button>
             </div>
           )}
 
-          <div className="flex-1 min-w-0 h-full bg-white rounded-2xl border border-slate-200 p-6 lg:p-10 overflow-y-auto">
+          <div className="flex-1 min-w-0 h-full bg-surface rounded-card border border-edge p-6 lg:p-10 overflow-y-auto">
             {activeChapter ? (
               <div className="min-h-[70vh]">
                 <div className="flex items-center justify-between gap-3 mb-4">
-                  <h2 className="font-serif text-2xl text-slate-800">{activeChapter.title || 'Untitled chapter'}</h2>
+                  <h2 className="font-serif text-2xl text-content">{activeChapter.title || 'Untitled chapter'}</h2>
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button
                       onClick={() => setRevisionsFor(activeChapter)}
                       title="Version history"
-                      className="p-1.5 text-slate-400 hover:text-lime-600 rounded-md hover:bg-slate-50"
+                      className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-hover"
                     >
                       <History className="w-4 h-4" />
                     </button>
@@ -458,7 +458,7 @@ export default function ManuscriptReader({
                       <button
                         onClick={() => setExportMenuOpen(exportMenuOpen === activeChapter.id ? null : activeChapter.id)}
                         title="Export this chapter"
-                        className="p-1.5 text-slate-400 hover:text-lime-600 rounded-md hover:bg-slate-50"
+                        className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-hover"
                       >
                         <ArrowDownToLine className="w-4 h-4" />
                       </button>
@@ -468,8 +468,8 @@ export default function ManuscriptReader({
                     </div>
                     <button
                       onClick={() => setIsEditing(v => !v)}
-                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg ${
-                        isEditing ? 'bg-lime-600 text-white hover:bg-lime-700' : 'border border-slate-300 text-slate-700 hover:bg-slate-50'
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control ${
+                        isEditing ? 'bg-lime-600 text-white hover:bg-lime-700' : 'border border-edge-strong text-content hover:bg-surface-hover'
                       }`}
                     >
                       <PenLine className="w-3.5 h-3.5" /> {isEditing ? 'Reading view' : 'Edit'}
@@ -481,15 +481,15 @@ export default function ManuscriptReader({
                   <ChapterEditor ref={editorRef} chapter={activeChapter} onSaved={handleChapterSaved} onSplit={handleSplit} />
                 ) : activeChapter.content_html ? (
                   <div
-                    className="font-serif text-[17px] leading-relaxed text-slate-700 [&_p]:mb-4"
+                    className="font-serif text-[17px] leading-relaxed text-content [&_p]:mb-4"
                     dangerouslySetInnerHTML={{ __html: activeChapter.content_html }}
                   />
                 ) : (
-                  <p className="text-sm text-slate-400 flex items-center gap-1.5"><FileText className="w-4 h-4" /> This chapter is empty.</p>
+                  <p className="text-sm text-content-muted flex items-center gap-1.5"><FileText className="w-4 h-4" /> This chapter is empty.</p>
                 )}
               </div>
             ) : (
-              <p className="text-sm text-slate-400">Select a chapter.</p>
+              <p className="text-sm text-content-muted">Select a chapter.</p>
             )}
           </div>
 
@@ -529,7 +529,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-        active ? 'border-lime-500 text-lime-700' : 'border-transparent text-slate-500 hover:text-slate-700'
+        active ? 'border-lime-500 text-lime-700' : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
       {children}
@@ -541,12 +541,12 @@ function ExportDropdown({ onPick, onClose }: { onPick: (format: ExportFormat) =>
   return (
     <>
       <div className="fixed inset-0 z-40" onClick={onClose} />
-      <div className="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg py-1 w-44">
+      <div className="absolute right-0 top-full mt-1 z-50 bg-surface border border-edge rounded-control shadow-lg py-1 w-44">
         {EXPORT_FORMATS.map(f => (
           <button
             key={f.value}
             onClick={() => onPick(f.value)}
-            className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            className="w-full text-left px-3 py-2 text-sm text-content hover:bg-surface-hover"
           >
             {f.label}
           </button>
@@ -576,21 +576,21 @@ function SortableChapterRow({
     <div
       ref={setNodeRef}
       style={style}
-      className={`group flex items-start gap-1.5 px-2 py-2 rounded-lg border text-sm ${
-        active ? 'border-lime-300 bg-lime-50' : 'border-transparent hover:bg-slate-50'
+      className={`group flex items-start gap-1.5 px-2 py-2 rounded-control border text-sm ${
+        active ? 'border-lime-300 bg-lime-50' : 'border-transparent hover:bg-surface-hover'
       }`}
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-slate-300 hover:text-slate-500 p-1 shrink-0 mt-0.5"
+        className="cursor-grab active:cursor-grabbing text-content-faint hover:text-content-secondary p-1 shrink-0 mt-0.5"
         aria-label="Drag to reorder"
       >
         <GripVertical className="w-3.5 h-3.5" />
       </button>
       <button onClick={onSelect} className="flex-1 min-w-0 text-left">
         <div className="flex items-center gap-2">
-          <span className="text-xs text-slate-400 w-4 shrink-0">{index + 1}</span>
+          <span className="text-xs text-content-muted w-4 shrink-0">{index + 1}</span>
           {renaming ? (
             <input
               autoFocus
@@ -598,26 +598,26 @@ function SortableChapterRow({
               onClick={e => e.stopPropagation()}
               onBlur={e => onSaveRename(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-              className="flex-1 min-w-0 px-1 py-0.5 text-sm border border-slate-300 rounded-md"
+              className="flex-1 min-w-0 px-1 py-0.5 text-sm border border-edge-strong rounded-control"
             />
           ) : (
-            <span className={`flex-1 truncate font-medium ${active ? 'text-lime-900' : 'text-slate-600'}`}>
+            <span className={`flex-1 truncate font-medium ${active ? 'text-lime-900' : 'text-content-secondary'}`}>
               {chapter.title || 'Untitled chapter'}
             </span>
           )}
         </div>
-        <p className="text-xs text-slate-400 pl-6">{chapter.word_count.toLocaleString()} words</p>
+        <p className="text-xs text-content-muted pl-6">{chapter.word_count.toLocaleString()} words</p>
       </button>
       <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-        <button onClick={onStartRename} title="Rename" className="p-1 text-slate-300 hover:text-lime-600">
+        <button onClick={onStartRename} title="Rename" className="p-1 text-content-faint hover:text-lime-600">
           <Pencil className="w-3.5 h-3.5" />
         </button>
         {onMergeNext && (
-          <button onClick={onMergeNext} title="Merge with next chapter" className="p-1 text-slate-300 hover:text-lime-600">
+          <button onClick={onMergeNext} title="Merge with next chapter" className="p-1 text-content-faint hover:text-lime-600">
             <Merge className="w-3.5 h-3.5" />
           </button>
         )}
-        <button onClick={onDelete} title="Delete chapter" className="p-1 text-slate-300 hover:text-rose-600">
+        <button onClick={onDelete} title="Delete chapter" className="p-1 text-content-faint hover:text-rose-600">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>

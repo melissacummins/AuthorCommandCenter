@@ -55,51 +55,51 @@ export default function InventoryModule() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1 overflow-x-auto max-w-full [&_button]:whitespace-nowrap [&_button]:shrink-0">
+        <div className="flex gap-1 bg-surface-sunken rounded-control p-1 overflow-x-auto max-w-full [&_button]:whitespace-nowrap [&_button]:shrink-0">
           <button
             onClick={() => setTab('dashboard')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'dashboard' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+              tab === 'dashboard' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             <LayoutDashboard className="w-4 h-4" /> Dashboard
           </button>
           <button
             onClick={() => setTab('products')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'products' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+              tab === 'products' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             <List className="w-4 h-4" /> Products
           </button>
           <button
             onClick={() => setTab('book-specs')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'book-specs' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+              tab === 'book-specs' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             <BookOpen className="w-4 h-4" /> Book Specs
           </button>
           <button
             onClick={() => setTab('printer-quotes')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'printer-quotes' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+              tab === 'printer-quotes' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             <FileSpreadsheet className="w-4 h-4" /> Printer Quotes
           </button>
           <button
             onClick={() => setTab('purchase-orders')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'purchase-orders' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+              tab === 'purchase-orders' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             <Truck className="w-4 h-4" /> Purchase Orders
           </button>
           <button
             onClick={() => setTab('orders')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              tab === 'orders' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+            className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+              tab === 'orders' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             <ShoppingCart className="w-4 h-4" /> Shopify
@@ -110,7 +110,7 @@ export default function InventoryModule() {
           {tab === 'orders' && shopifySettings?.access_token && (
             <Link
               to="/settings"
-              className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
+              className="flex items-center gap-2 px-4 py-2 border border-edge text-content text-sm font-medium rounded-control hover:bg-surface-hover"
             >
               <Settings className="w-4 h-4" /> Shopify Settings
             </Link>
@@ -118,7 +118,7 @@ export default function InventoryModule() {
           {(tab === 'dashboard' || tab === 'products') && (
             <button
               onClick={() => setShowAddProduct(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-control hover:bg-blue-700 shadow-sm"
             >
               <Plus className="w-4 h-4" /> Add Product
             </button>
@@ -195,15 +195,15 @@ function OrdersTab({ shopifySettings, shopifyLoading, refetchShopify, refetchPro
   if (!shopifySettings || !shopifySettings.access_token) {
     return (
       <div className="max-w-3xl">
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <h3 className="font-semibold text-slate-800 mb-1">Connect Your Shopify Store</h3>
-          <p className="text-sm text-slate-500 mb-6">
+        <div className="bg-surface rounded-card border border-edge p-6">
+          <h3 className="font-semibold text-content mb-1">Connect Your Shopify Store</h3>
+          <p className="text-sm text-content-secondary mb-6">
             Pull orders directly from Shopify by fulfillment location and automatically update your
             inventory. The Shopify connection is managed in Settings and shared by all modules.
           </p>
           <Link
             to="/settings"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700"
           >
             <Store className="w-4 h-4" /> Connect Shopify in Settings
           </Link>

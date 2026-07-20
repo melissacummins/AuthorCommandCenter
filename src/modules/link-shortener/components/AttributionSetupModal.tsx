@@ -86,62 +86,62 @@ export default function AttributionSetupModal({ open, onClose }: Props) {
   return (
     <Modal open={open} onClose={onClose} title="Conversion tracking setup" maxWidth="max-w-2xl">
       {loading ? (
-        <div className="py-8 flex items-center justify-center text-slate-400">
+        <div className="py-8 flex items-center justify-center text-content-muted">
           <Loader2 className="w-5 h-5 animate-spin" />
         </div>
       ) : (
         <div className="space-y-6">
           <section className="space-y-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+            <div className="flex items-center gap-2 text-sm font-semibold text-content">
               <ShoppingBag className="w-4 h-4" /> Shopify webhook
             </div>
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-content-secondary">
               In your Shopify admin: <strong>Settings → Notifications → Webhooks</strong>. Create a webhook for <em>Order paid</em>, format JSON, paste this URL:
             </p>
             <FieldCopy value={webhookUrl} keyName="url" copied={copied} onCopy={copy} />
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-content-secondary">
               Shopify will display a <strong>Webhook signing secret</strong>. Paste it here so we can verify each incoming event:
             </p>
             <input
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               placeholder="shpss_..."
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </section>
 
           <section className="space-y-3">
-            <div className="text-sm font-semibold text-slate-700">Theme snippet (most accurate attribution)</div>
-            <p className="text-sm text-slate-600">
+            <div className="text-sm font-semibold text-content">Theme snippet (most accurate attribution)</div>
+            <p className="text-sm text-content-secondary">
               For best attribution, add this to your Shopify theme so the click_id rides through to the order. In Shopify admin:{' '}
-              <strong>Online Store → Themes → ⋯ → Edit code</strong>, open <code className="bg-slate-100 px-1 rounded">theme.liquid</code>, and paste this just before <code className="bg-slate-100 px-1 rounded">&lt;/head&gt;</code>:
+              <strong>Online Store → Themes → ⋯ → Edit code</strong>, open <code className="bg-surface-sunken px-1 rounded">theme.liquid</code>, and paste this just before <code className="bg-surface-sunken px-1 rounded">&lt;/head&gt;</code>:
             </p>
             <FieldCopy value={themeSnippet} keyName="snippet" copied={copied} onCopy={copy} multiline />
           </section>
 
           <section className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">URL parameter name</label>
+              <label className="block text-xs font-medium text-content-secondary mb-1">URL parameter name</label>
               <input
                 value={param}
                 onChange={(e) => setParam(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
-              <p className="mt-1 text-xs text-slate-500">Default: <code>click_id</code>. Appears as <code>?click_id=…</code> on destination URLs.</p>
+              <p className="mt-1 text-xs text-content-secondary">Default: <code>click_id</code>. Appears as <code>?click_id=…</code> on destination URLs.</p>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-600 mb-1">Fallback window (minutes)</label>
+              <label className="block text-xs font-medium text-content-secondary mb-1">Fallback window (minutes)</label>
               <input
                 type="number"
                 value={windowMin}
                 onChange={(e) => setWindowMin(Number(e.target.value) || 4320)}
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
               />
-              <p className="mt-1 text-xs text-slate-500">If no click_id, match orders to clicks within this window. Default 4320 (3 days).</p>
+              <p className="mt-1 text-xs text-content-secondary">If no click_id, match orders to clicks within this window. Default 4320 (3 days).</p>
             </div>
           </section>
 
-          {error && <div className="px-3 py-2 rounded-lg bg-red-50 text-red-700 text-sm border border-red-200">{error}</div>}
+          {error && <div className="px-3 py-2 rounded-control bg-red-50 text-red-700 text-sm border border-red-200">{error}</div>}
 
           <div className="flex items-center justify-between">
             <a
@@ -154,11 +154,11 @@ export default function AttributionSetupModal({ open, onClose }: Props) {
             </a>
             <div className="flex items-center gap-3">
               {savedAt && <span className="text-xs text-emerald-600">Saved!</span>}
-              <button onClick={onClose} className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-100 rounded-lg">Close</button>
+              <button onClick={onClose} className="px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Close</button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg disabled:opacity-50 inline-flex items-center gap-2"
+                className="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-control disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 Save settings
@@ -184,18 +184,18 @@ function FieldCopy({
           readOnly
           value={value}
           rows={8}
-          className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 bg-slate-50 text-xs font-mono text-slate-700"
+          className="w-full px-3 py-2 pr-10 rounded-control border border-edge bg-surface-hover text-xs font-mono text-content"
         />
       ) : (
         <input
           readOnly
           value={value}
-          className="w-full px-3 py-2 pr-10 rounded-lg border border-slate-200 bg-slate-50 text-sm font-mono text-slate-700"
+          className="w-full px-3 py-2 pr-10 rounded-control border border-edge bg-surface-hover text-sm font-mono text-content"
         />
       )}
       <button
         onClick={() => onCopy(value, keyName)}
-        className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-indigo-600 bg-white rounded-md border border-slate-200"
+        className="absolute top-2 right-2 p-1.5 text-content-muted hover:text-indigo-600 bg-surface rounded-control border border-edge"
         title="Copy"
       >
         {copied === keyName ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}

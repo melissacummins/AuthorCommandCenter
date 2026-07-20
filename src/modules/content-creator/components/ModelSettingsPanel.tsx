@@ -57,11 +57,11 @@ export default function ModelSettingsPanel({ onSaved }: { onSaved?: () => void }
     }
   }
 
-  if (loading) return <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-slate-400" /></div>;
+  if (loading) return <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-content-muted" /></div>;
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-content-secondary">
         Which model runs each task. Defaults are just starting points — if a model is ever retired, re-point it here; nothing else changes. ★ a model to pin it to the top everywhere.
       </p>
       {ALL_TASKS.map(task => {
@@ -72,13 +72,13 @@ export default function ModelSettingsPanel({ onSaved }: { onSaved?: () => void }
         return (
           <div key={task} className="grid gap-2 sm:grid-cols-[220px_130px_1fr] sm:items-center">
             <div>
-              <p className="text-sm font-medium text-slate-700">{TASK_LABELS[task].name}</p>
-              <p className="text-[11px] text-slate-400">{TASK_LABELS[task].hint}</p>
+              <p className="text-sm font-medium text-content">{TASK_LABELS[task].name}</p>
+              <p className="text-[11px] text-content-muted">{TASK_LABELS[task].hint}</p>
             </div>
             <select
               value={provider}
               onChange={e => update(task, e.target.value, '')}
-              className="px-2 py-1.5 border border-slate-200 rounded-lg text-slate-600 bg-white text-xs"
+              className="px-2 py-1.5 border border-edge rounded-control text-content-secondary bg-surface text-xs"
             >
               {(Object.keys(PROVIDER_LABELS) as AiProvider[]).map(p => (
                 <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -87,7 +87,7 @@ export default function ModelSettingsPanel({ onSaved }: { onSaved?: () => void }
             {err ? (
               <p className="text-xs text-rose-600">{err}</p>
             ) : !list ? (
-              <p className="text-xs text-slate-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading models…</p>
+              <p className="text-xs text-content-muted flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading models…</p>
             ) : (
               <ModelSelect
                 provider={provider}

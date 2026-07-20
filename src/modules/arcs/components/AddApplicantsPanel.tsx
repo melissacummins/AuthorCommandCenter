@@ -148,25 +148,25 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
   }, [decisions]);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-surface rounded-card border border-edge p-5">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h3 className="font-semibold text-slate-800 flex items-center gap-2">
+        <h3 className="font-semibold text-content flex items-center gap-2">
           <UserPlus className="w-4 h-4" /> Add new applicants
         </h3>
         {stage !== 'upload' && (
-          <button onClick={reset} className="text-xs text-slate-500 hover:text-slate-800">
+          <button onClick={reset} className="text-xs text-content-secondary hover:text-content">
             Start over
           </button>
         )}
       </div>
-      <p className="text-sm text-slate-500 mb-4">
+      <p className="text-sm text-content-secondary mb-4">
         Upload a CSV from your applicant form (Tally, Google Form, Notion, etc.). Each row
         becomes either a new reader, or a merge into an existing one — you'll review every
         decision before anything is written.
       </p>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700 flex items-start gap-2">
+        <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700 flex items-start gap-2">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
         </div>
       )}
@@ -175,13 +175,13 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-content mb-1">
                 Book they're applying for
               </label>
               <select
                 value={book}
                 onChange={e => { setBook(e.target.value); setCustomBook(''); }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
+                className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm bg-surface"
               >
                 <option value="">— Pick from Catalog —</option>
                 {catalogBooks
@@ -192,31 +192,31 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">
+              <label className="block text-xs font-medium text-content mb-1">
                 …or type a title
               </label>
               <input
                 value={customBook}
                 onChange={e => { setCustomBook(e.target.value); if (e.target.value) setBook(''); }}
                 placeholder="e.g. My Vicious Beast"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">
+            <label className="block text-xs font-medium text-content mb-1">
               Status for everyone in this CSV
             </label>
             <select
               value={batchStatus}
               onChange={e => setBatchStatus(e.target.value as ArcStatus)}
-              className="w-full md:w-1/2 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white"
+              className="w-full md:w-1/2 rounded-control border border-edge-strong px-3 py-2 text-sm bg-surface"
             >
               {STATUS_ORDER.map(s => (
                 <option key={s} value={s}>{STATUS_LABELS[s]}</option>
               ))}
             </select>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-content-secondary mt-1">
               Default <strong>New</strong> — auto-advances to Awaiting ARC once the book is on
               their record. Pick <strong>Didn't download</strong>, <strong>Didn't review</strong>,
               etc. to tag the whole batch. Existing readers already tagged with one of those
@@ -235,11 +235,11 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy || !effectiveBook}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
           >
             <Upload className="w-4 h-4" /> {busy ? 'Parsing…' : 'Choose applicant CSV'}
           </button>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-content-secondary">
             We'll look for headers like <code>Name</code>, <code>Email</code>, <code>Instagram</code>,
             etc. (case-insensitive). Other columns are ignored.
           </p>
@@ -253,13 +253,13 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
               <strong>{previews.length}</strong> applicants for{' '}
               <span className="text-indigo-700 font-medium">{effectiveBook}</span>
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-content-secondary">
               {counts.create} new · {counts.merge} merging · {counts.skip} skipping
             </div>
             <button
               onClick={apply}
               disabled={busy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
             >
               {busy ? 'Applying…' : 'Apply decisions'}
               <ArrowRight className="w-4 h-4" />
@@ -267,7 +267,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
           </div>
 
           {Object.keys(detected).length > 0 && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-content-secondary">
               Mapped columns:{' '}
               {Object.entries(detected).map(([k, v]) => (
                 <span key={k} className="inline-block mr-2">
@@ -277,17 +277,17 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
             </p>
           )}
 
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
+          <div className="border border-edge rounded-card overflow-hidden">
             <div className="overflow-auto max-h-[640px]">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 sticky top-0 z-10">
+                <thead className="bg-surface-hover sticky top-0 z-10">
                   <tr>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600">Applicant</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600">Match candidates</th>
-                    <th className="px-3 py-2 text-left font-medium text-slate-600 w-56">Decision</th>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary">Applicant</th>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary">Match candidates</th>
+                    <th className="px-3 py-2 text-left font-medium text-content-secondary w-56">Decision</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-edge-soft">
                   {previews.map(p => {
                     const decision = decisions.get(p.applicant.rowIndex);
                     const value =
@@ -297,21 +297,21 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
                     return (
                       <tr key={p.applicant.rowIndex}>
                         <td className="px-3 py-2 align-top">
-                          <div className="font-medium text-slate-800">
-                            {p.applicant.name || <span className="text-slate-400 italic">(no name in CSV)</span>}
+                          <div className="font-medium text-content">
+                            {p.applicant.name || <span className="text-content-muted italic">(no name in CSV)</span>}
                           </div>
-                          {p.applicant.email && <div className="text-xs text-slate-500">{p.applicant.email}</div>}
+                          {p.applicant.email && <div className="text-xs text-content-secondary">{p.applicant.email}</div>}
                         </td>
                         <td className="px-3 py-2 align-top">
                           {p.candidates.length === 0 ? (
-                            <span className="text-xs text-slate-400">No matches — looks new</span>
+                            <span className="text-xs text-content-muted">No matches — looks new</span>
                           ) : (
                             <ul className="space-y-1">
                               {p.candidates.map(c => (
                                 <li key={c.readerId} className="text-xs">
-                                  <span className="font-medium text-slate-800">{c.readerName}</span>
-                                  {c.readerEmail && <span className="text-slate-500"> · {c.readerEmail}</span>}
-                                  <span className="ml-2 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                  <span className="font-medium text-content">{c.readerName}</span>
+                                  {c.readerEmail && <span className="text-content-secondary"> · {c.readerEmail}</span>}
+                                  <span className="ml-2 px-1.5 py-0.5 rounded bg-surface-sunken text-content-secondary">
                                     {REASON_LABELS[c.reason]} · {Math.round(c.confidence * 100)}%
                                   </span>
                                 </li>
@@ -323,7 +323,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
                           <select
                             value={value}
                             onChange={e => setDecision(p.applicant.rowIndex, e.target.value)}
-                            className="w-full rounded-lg border border-slate-300 px-2 py-1 text-xs bg-white"
+                            className="w-full rounded-control border border-edge-strong px-2 py-1 text-xs bg-surface"
                           >
                             <option value="create">Create new reader</option>
                             {p.candidates.map(c => (
@@ -345,7 +345,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
       )}
 
       {stage === 'done' && summary && (
-        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+        <div className="p-3 rounded-control bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
           <div className="flex items-center gap-2 font-medium mb-1">
             <CheckCircle2 className="w-4 h-4" /> Applied
           </div>
@@ -364,7 +364,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
           </ul>
           <button
             onClick={reset}
-            className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-white border border-indigo-200 hover:bg-indigo-50 rounded-lg"
+            className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-surface border border-indigo-200 hover:bg-indigo-50 rounded-control"
           >
             <Users className="w-4 h-4" /> Import another batch
           </button>

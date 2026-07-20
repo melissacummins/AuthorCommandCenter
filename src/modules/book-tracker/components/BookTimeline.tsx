@@ -12,7 +12,7 @@ export default function BookTimeline({ book, updates }: Props) {
   const sorted = [...updates].sort((a, b) => (a.sort_key < b.sort_key ? -1 : 1));
   if (sorted.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+      <div className="rounded-card border border-dashed border-edge-strong p-6 text-center text-sm text-content-secondary">
         No quarterly updates yet. Log one to start the timeline.
       </div>
     );
@@ -28,17 +28,17 @@ export default function BookTimeline({ book, updates }: Props) {
   const devCostPct = (book.dev_cost / maxValue) * 100;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-surface rounded-card border border-edge p-5">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="font-semibold text-slate-800">Payoff timeline</h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <h3 className="font-semibold text-content">Payoff timeline</h3>
+          <p className="text-xs text-content-secondary mt-0.5">
             Cumulative profit per quarter vs. dev cost (${book.dev_cost.toFixed(2)})
           </p>
         </div>
         <div className="text-right">
-          <div className="text-xs text-slate-500">Cumulative</div>
-          <div className="font-semibold text-slate-800">${running.toFixed(2)}</div>
+          <div className="text-xs text-content-secondary">Cumulative</div>
+          <div className="font-semibold text-content">${running.toFixed(2)}</div>
         </div>
       </div>
 
@@ -49,7 +49,7 @@ export default function BookTimeline({ book, updates }: Props) {
           style={{ bottom: `calc(${devCostPct}% + 28px)` }}
           title={`Dev cost target: $${book.dev_cost.toFixed(2)}`}
         >
-          <span className="absolute -top-2 right-0 text-[10px] font-medium text-amber-600 bg-white px-1 rounded">
+          <span className="absolute -top-2 right-0 text-[10px] font-medium text-amber-600 bg-surface px-1 rounded">
             dev cost
           </span>
         </div>
@@ -62,7 +62,7 @@ export default function BookTimeline({ book, updates }: Props) {
               <div key={p.id ?? i} className="flex-1 flex flex-col items-center gap-1 group min-w-0">
                 <div className="relative w-full" style={{ height: `${pct}%`, minHeight: 2 }}>
                   <div
-                    className={`absolute inset-0 rounded-t-md transition-colors ${
+                    className={`absolute inset-0 rounded-t-control transition-colors ${
                       paid
                         ? 'bg-gradient-to-t from-emerald-500 to-emerald-400'
                         : 'bg-gradient-to-t from-purple-500 to-purple-400'
@@ -77,7 +77,7 @@ export default function BookTimeline({ book, updates }: Props) {
           })}
         </div>
 
-        <div className="flex gap-1.5 mt-1 text-[10px] text-slate-500">
+        <div className="flex gap-1.5 mt-1 text-[10px] text-content-secondary">
           {points.map((p, i) => (
             <div key={i} className="flex-1 text-center truncate min-w-0" title={p.quarter_label}>
               {p.quarter_label}
@@ -87,7 +87,7 @@ export default function BookTimeline({ book, updates }: Props) {
       </div>
 
       {book.payoff_quarter && (
-        <div className="mt-4 flex items-center gap-2 text-sm bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-emerald-800">
+        <div className="mt-4 flex items-center gap-2 text-sm bg-emerald-50 border border-emerald-200 rounded-control px-3 py-2 text-emerald-800">
           <span className="font-medium">Paid off:</span>
           <span>{book.payoff_quarter}</span>
           {book.months_to_payoff !== null && (

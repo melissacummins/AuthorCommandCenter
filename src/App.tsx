@@ -54,10 +54,10 @@ function ProtectedRoutes() {
 
   if (loading || (user && accessLoading)) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-100">
+      <div className="flex items-center justify-center min-h-screen bg-surface-sunken">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500">Loading...</p>
+          <p className="text-content-secondary">Loading...</p>
         </div>
       </div>
     );
