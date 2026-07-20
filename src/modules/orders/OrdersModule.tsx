@@ -22,22 +22,22 @@ export default function OrdersModule() {
     return (
       <div className="p-6 lg:p-8 max-w-3xl mx-auto">
         <div className="mb-6">
-          <h2 className="text-2xl font-bold text-slate-800">Shopify Orders</h2>
-          <p className="text-slate-500 mt-1">
+          <h2 className="text-2xl font-bold text-content">Shopify Orders</h2>
+          <p className="text-content-secondary mt-1">
             Connect your Shopify store to automatically pull orders and match them to your products by SKU.
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 p-6">
-          <h3 className="font-semibold text-slate-800 mb-1">Connect Your Store</h3>
-          <p className="text-sm text-slate-500 mb-6">
+        <div className="bg-surface rounded-card border border-edge p-6">
+          <h3 className="font-semibold text-content mb-1">Connect Your Store</h3>
+          <p className="text-sm text-content-secondary mb-6">
             Enter your Shopify store URL and Admin API access token to get started.
           </p>
           <ShopifySetup settings={null} onSaved={refetch} />
         </div>
 
         {/* Setup Instructions */}
-        <div className="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6">
+        <div className="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-card p-6">
           <h3 className="font-semibold text-indigo-800 mb-3">How to get your API credentials</h3>
           <ol className="space-y-2 text-sm text-indigo-700">
             <li className="flex gap-2">
@@ -68,14 +68,14 @@ export default function OrdersModule() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Shopify Orders</h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h2 className="text-2xl font-bold text-content">Shopify Orders</h2>
+          <p className="text-sm text-content-secondary mt-0.5">
             Pull orders by fulfillment location and match to products by SKU
           </p>
         </div>
         <button
           onClick={() => setShowSettings(true)}
-          className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
+          className="flex items-center gap-2 px-4 py-2 border border-edge text-content text-sm font-medium rounded-control hover:bg-surface-hover"
         >
           <Settings className="w-4 h-4" /> Shopify Settings
         </button>

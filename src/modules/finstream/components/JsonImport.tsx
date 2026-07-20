@@ -145,12 +145,12 @@ export default function JsonImport({ onComplete }: Props) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-content-secondary">
         Upload a JSON file from your old app. Supported data: transactions, category rules, subscriptions, cash flow notes, and history entries.
       </p>
 
-      <div className="bg-slate-50 rounded-lg p-4 text-xs text-slate-500">
-        <p className="font-medium text-slate-600 mb-1">Expected JSON format:</p>
+      <div className="bg-surface-hover rounded-control p-4 text-xs text-content-secondary">
+        <p className="font-medium text-content-secondary mb-1">Expected JSON format:</p>
         <pre className="overflow-x-auto">{`{
   "transactions": [{ "date": "2024-01-15", "description": "...", "amount": 9.99, "category": "Software", "type": "expense" }],
   "categoryRules": [{ "matchString": "AMAZON", "targetCategory": "Supplies", "type": "expense" }],
@@ -159,20 +159,20 @@ export default function JsonImport({ onComplete }: Props) {
         <p className="mt-2">Both camelCase and snake_case field names are accepted.</p>
       </div>
 
-      <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
-        importing ? 'border-slate-200 bg-slate-50 opacity-50' : 'border-cyan-300 hover:bg-cyan-50 hover:border-cyan-400'
+      <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-card cursor-pointer transition-colors ${
+        importing ? 'border-edge bg-surface-hover opacity-50' : 'border-cyan-300 hover:bg-cyan-50 hover:border-cyan-400'
       }`}>
         {importing ? <Loader2 className="w-5 h-5 text-cyan-500 animate-spin" /> : <FileJson className="w-5 h-5 text-cyan-500" />}
-        <span className="text-sm font-medium text-slate-700">
+        <span className="text-sm font-medium text-content">
           {importing ? 'Importing...' : 'Choose JSON file'}
         </span>
         <input type="file" accept=".json" onChange={handleFile} className="hidden" disabled={importing} />
       </label>
 
       {progress.length > 0 && (
-        <div className="bg-slate-50 rounded-lg p-3 space-y-1">
+        <div className="bg-surface-hover rounded-control p-3 space-y-1">
           {progress.map((msg, i) => (
-            <p key={i} className="text-xs text-slate-600 flex items-center gap-1.5">
+            <p key={i} className="text-xs text-content-secondary flex items-center gap-1.5">
               {i === progress.length - 1 && done ? (
                 <CheckCircle className="w-3 h-3 text-emerald-500 shrink-0" />
               ) : (
@@ -185,7 +185,7 @@ export default function JsonImport({ onComplete }: Props) {
       )}
 
       {error && (
-        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-control">
           <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
           <p className="text-sm text-red-700">{error}</p>
         </div>

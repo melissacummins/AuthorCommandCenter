@@ -142,42 +142,42 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
       <div className="space-y-5">
         {/* Trigger product */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Shows on product page</label>
+          <label className="block text-sm font-medium text-content mb-1.5">Shows on product page</label>
           {triggerProductId ? (
-            <div className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-surface-hover border border-edge rounded-card">
               {triggerImage
-                ? <img src={triggerImage} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                : <div className="w-10 h-10 rounded-lg bg-slate-200" />}
-              <span className="text-sm font-medium text-slate-800 flex-1">{triggerTitle}</span>
+                ? <img src={triggerImage} alt="" className="w-10 h-10 rounded-control object-cover" />
+                : <div className="w-10 h-10 rounded-control bg-edge" />}
+              <span className="text-sm font-medium text-content flex-1">{triggerTitle}</span>
               {!existing && (
-                <button onClick={() => { setTrigger(null); setTriggerQuery(''); }} className="text-xs text-slate-500 hover:text-red-600">
+                <button onClick={() => { setTrigger(null); setTriggerQuery(''); }} className="text-xs text-content-secondary hover:text-red-600">
                   Change
                 </button>
               )}
             </div>
           ) : (
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-content-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={triggerQuery}
                 onChange={e => setTriggerQuery(e.target.value)}
                 placeholder="Search your products…"
-                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="w-full pl-9 pr-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
                 autoFocus
               />
               {triggerMatches.length > 0 && (
-                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
+                <div className="absolute z-10 mt-1 w-full bg-surface border border-edge rounded-card shadow-lg overflow-hidden">
                   {triggerMatches.map(p => (
                     <button
                       key={p.id}
                       onClick={() => { setTrigger(p); setTriggerQuery(''); }}
-                      className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-slate-50"
+                      className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-surface-hover"
                     >
                       {p.image?.src
                         ? <img src={p.image.src} alt="" className="w-8 h-8 rounded object-cover" />
-                        : <div className="w-8 h-8 rounded bg-slate-200" />}
-                      <span className="text-sm text-slate-700">{p.title}</span>
+                        : <div className="w-8 h-8 rounded bg-edge" />}
+                      <span className="text-sm text-content">{p.title}</span>
                     </button>
                   ))}
                 </div>
@@ -188,49 +188,49 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
 
         {/* Heading */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Widget heading</label>
+          <label className="block text-sm font-medium text-content mb-1.5">Widget heading</label>
           <input
             type="text"
             value={heading}
             onChange={e => setHeading(e.target.value)}
             placeholder="Add to your order"
-            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
           />
         </div>
 
         {/* Add-ons */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Add-ons</label>
+          <label className="block text-sm font-medium text-content mb-1.5">Add-ons</label>
 
           {addons.length > 0 && (
             <div className="space-y-2 mb-3">
               {addons.map((a, i) => (
-                <div key={a.variant_id} className="flex items-center gap-3 p-3 border border-slate-200 rounded-xl">
+                <div key={a.variant_id} className="flex items-center gap-3 p-3 border border-edge rounded-card">
                   {a.image
-                    ? <img src={a.image} alt="" className="w-10 h-10 rounded-lg object-cover" />
-                    : <div className="w-10 h-10 rounded-lg bg-slate-200" />}
+                    ? <img src={a.image} alt="" className="w-10 h-10 rounded-control object-cover" />
+                    : <div className="w-10 h-10 rounded-control bg-edge" />}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-800 truncate">
+                    <p className="text-sm font-medium text-content truncate">
                       {a.title}{a.variant_title ? ` — ${a.variant_title}` : ''}
-                      <span className="text-slate-400 font-normal ml-2">{formatPrice(a.price)}</span>
+                      <span className="text-content-muted font-normal ml-2">{formatPrice(a.price)}</span>
                     </p>
                     <input
                       type="text"
                       value={a.label}
                       onChange={e => setAddons(prev => prev.map((x, xi) => xi === i ? { ...x, label: e.target.value } : x))}
                       placeholder={`Shown as: ${a.title}`}
-                      className="mt-1 w-full px-2 py-1 border border-slate-200 rounded text-xs text-slate-600 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="mt-1 w-full px-2 py-1 border border-edge rounded text-xs text-content-secondary focus:outline-none focus:ring-1 focus:ring-sky-500"
                     />
                   </div>
                   <div className="flex flex-col gap-0.5">
-                    <button onClick={() => move(i, -1)} disabled={i === 0} className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30">
+                    <button onClick={() => move(i, -1)} disabled={i === 0} className="p-0.5 text-content-muted hover:text-content disabled:opacity-30">
                       <ChevronUp className="w-4 h-4" />
                     </button>
-                    <button onClick={() => move(i, 1)} disabled={i === addons.length - 1} className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-30">
+                    <button onClick={() => move(i, 1)} disabled={i === addons.length - 1} className="p-0.5 text-content-muted hover:text-content disabled:opacity-30">
                       <ChevronDown className="w-4 h-4" />
                     </button>
                   </div>
-                  <button onClick={() => setAddons(prev => prev.filter((_, xi) => xi !== i))} className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50">
+                  <button onClick={() => setAddons(prev => prev.filter((_, xi) => xi !== i))} className="p-1.5 text-content-muted hover:text-red-600 rounded-control hover:bg-red-50">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -239,16 +239,16 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
           )}
 
           <div className="relative">
-            <Plus className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Plus className="w-4 h-4 text-content-muted absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={addonQuery}
               onChange={e => { setAddonQuery(e.target.value); setExpandedProduct(null); }}
               placeholder="Search a product to add as an add-on…"
-              className="w-full pl-9 pr-3 py-2 border border-dashed border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+              className="w-full pl-9 pr-3 py-2 border border-dashed border-edge-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
             />
             {addonMatches.length > 0 && (
-              <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-72 overflow-y-auto">
+              <div className="absolute z-10 mt-1 w-full bg-surface border border-edge rounded-card shadow-lg overflow-hidden max-h-72 overflow-y-auto">
                 {addonMatches.map(p => {
                   const usedVariants = new Set(addons.map(a => a.variant_id));
                   const free = p.variants.filter(v => !usedVariants.has(v.id));
@@ -256,13 +256,13 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                     <div key={p.id}>
                       <button
                         onClick={() => pickAddonProduct(p)}
-                        className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-slate-50"
+                        className="flex items-center gap-3 w-full px-3 py-2 text-left hover:bg-surface-hover"
                       >
                         {p.image?.src
                           ? <img src={p.image.src} alt="" className="w-8 h-8 rounded object-cover" />
-                          : <div className="w-8 h-8 rounded bg-slate-200" />}
-                        <span className="text-sm text-slate-700 flex-1">{p.title}</span>
-                        {free.length > 1 && <span className="text-xs text-slate-400">{free.length} variants</span>}
+                          : <div className="w-8 h-8 rounded bg-edge" />}
+                        <span className="text-sm text-content flex-1">{p.title}</span>
+                        {free.length > 1 && <span className="text-xs text-content-muted">{free.length} variants</span>}
                       </button>
                       {expandedProduct === p.id && free.map(v => (
                         <button
@@ -270,8 +270,8 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                           onClick={() => addAddon(p, v)}
                           className="flex items-center gap-2 w-full pl-14 pr-3 py-1.5 text-left hover:bg-sky-50"
                         >
-                          <span className="text-xs text-slate-600 flex-1">{v.title}</span>
-                          <span className="text-xs text-slate-400">{formatPrice(v.price)}</span>
+                          <span className="text-xs text-content-secondary flex-1">{v.title}</span>
+                          <span className="text-xs text-content-muted">{formatPrice(v.price)}</span>
                         </button>
                       ))}
                     </div>
@@ -283,7 +283,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
         </div>
 
         {/* Discount */}
-        <div className="border border-slate-200 rounded-xl p-4">
+        <div className="border border-edge rounded-card p-4">
           <label className="flex items-center gap-2.5 cursor-pointer">
             <input
               type="checkbox"
@@ -292,9 +292,9 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
               className="w-4 h-4 accent-sky-600"
             />
             <BadgePercent className="w-4 h-4 text-sky-600" />
-            <span className="text-sm font-medium text-slate-700">Discount on add-ons</span>
+            <span className="text-sm font-medium text-content">Discount on add-ons</span>
           </label>
-          <p className="text-xs text-slate-400 mt-1 ml-6">
+          <p className="text-xs text-content-muted mt-1 ml-6">
             A discount code scoped to just these add-ons is created in Shopify and applied
             automatically when a reader checks one — they never have to type it.
           </p>
@@ -303,18 +303,18 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
             <div className="mt-4 space-y-4 ml-6">
               <div className="flex flex-wrap gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Type</label>
+                  <label className="block text-xs font-medium text-content-secondary mb-1">Type</label>
                   <select
                     value={discountType}
                     onChange={e => setDiscountType(e.target.value as DiscountType)}
-                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="fixed">Fixed value ($)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Value</label>
+                  <label className="block text-xs font-medium text-content-secondary mb-1">Value</label>
                   <input
                     type="number"
                     min="0"
@@ -322,23 +322,23 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                     value={discountValue}
                     onChange={e => setDiscountValue(e.target.value)}
                     placeholder={discountType === 'percentage' ? '15' : '5.00'}
-                    className="w-28 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-28 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Discount text (shown in the widget)</label>
+                <label className="block text-xs font-medium text-content-secondary mb-1">Discount text (shown in the widget)</label>
                 <input
                   type="text"
                   value={discountText}
                   onChange={e => setDiscountText(e.target.value)}
                   placeholder="Save when you bundle"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
-              <label className="flex items-start gap-2 text-sm text-slate-600 cursor-pointer">
+              <label className="flex items-start gap-2 text-sm text-content-secondary cursor-pointer">
                 <input
                   type="checkbox"
                   checked={includesTrigger}
@@ -347,7 +347,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                 />
                 <span>
                   Bundle-style: discount also applies to the main product
-                  <span className="block text-xs text-slate-400">
+                  <span className="block text-xs text-content-muted">
                     Like a "frequently bought together" deal — everything in the cart from this offer
                     gets the discount, add-ons are pre-checked, and the widget's total reflects it.
                   </span>
@@ -355,14 +355,14 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
               </label>
 
               <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1.5">Can combine with</label>
+                <label className="block text-xs font-medium text-content-secondary mb-1.5">Can combine with</label>
                 <div className="flex flex-wrap gap-4">
                   {([
                     ['Other product discounts', combinesProduct, setCombinesProduct],
                     ['Order discounts', combinesOrder, setCombinesOrder],
                     ['Shipping discounts', combinesShipping, setCombinesShipping],
                   ] as const).map(([label, value, setter]) => (
-                    <label key={label} className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                    <label key={label} className="flex items-center gap-2 text-sm text-content-secondary cursor-pointer">
                       <input
                         type="checkbox"
                         checked={value}
@@ -376,8 +376,8 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
               </div>
 
               {existing?.discount_code && (
-                <p className="text-xs text-slate-400">
-                  Current code: <code className="bg-slate-100 px-1.5 py-0.5 rounded">{existing.discount_code}</code> — recreated automatically on every save.
+                <p className="text-xs text-content-muted">
+                  Current code: <code className="bg-surface-sunken px-1.5 py-0.5 rounded">{existing.discount_code}</code> — recreated automatically on every save.
                 </p>
               )}
             </div>
@@ -385,20 +385,20 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
         </div>
 
         {error && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-control">
             <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
             <p className="text-sm text-red-700">{error}</p>
           </div>
         )}
 
         <div className="flex justify-end gap-3 pt-1">
-          <button onClick={onClose} className="px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 text-slate-700">
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-edge rounded-control hover:bg-surface-hover text-content">
             Cancel
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700 disabled:opacity-50"
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {saving ? 'Saving to Shopify…' : 'Save offer'}

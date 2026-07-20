@@ -51,32 +51,32 @@ export function AiSuggestPanel({
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:pt-24 bg-black/30" onClick={onClose}>
-      <div className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-100">
+      <div className="w-full max-w-lg bg-surface rounded-card shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-edge-soft">
           <Sparkles className="w-4 h-4 text-violet-600 shrink-0" />
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-slate-800 truncate">{title}</h3>
-            <p className="text-xs text-slate-400 truncate">{intro}</p>
+            <h3 className="text-sm font-semibold text-content truncate">{title}</h3>
+            <p className="text-xs text-content-muted truncate">{intro}</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 shrink-0"><X className="w-4 h-4" /></button>
+          <button onClick={onClose} className="text-content-muted hover:text-content-secondary shrink-0"><X className="w-4 h-4" /></button>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-slate-500">
+          <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-content-secondary">
             <Loader2 className="w-4 h-4 text-violet-600 animate-spin" /> Thinking…
           </div>
         ) : error ? (
           <div className="px-4 py-6">
             <p className="text-sm text-rose-600">{error}</p>
             <div className="mt-4 text-right">
-              <button onClick={onClose} className="text-sm font-medium text-slate-500 hover:text-slate-700 rounded-lg px-3 py-1.5">Close</button>
+              <button onClick={onClose} className="text-sm font-medium text-content-secondary hover:text-content rounded-control px-3 py-1.5">Close</button>
             </div>
           </div>
         ) : result ? (
           <>
-            {result.summary && <p className="px-4 pt-3 text-sm text-slate-600">{result.summary}</p>}
+            {result.summary && <p className="px-4 pt-3 text-sm text-content-secondary">{result.summary}</p>}
             {rows.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400">No suggestions this time.</p>
+              <p className="px-4 py-8 text-center text-sm text-content-muted">No suggestions this time.</p>
             ) : (
               <ul className="max-h-[50vh] overflow-y-auto px-2 py-2 space-y-0.5">
                 {rows.map(s => {
@@ -84,21 +84,21 @@ export function AiSuggestPanel({
                   const on = checked.has(s.id);
                   return (
                     <li key={s.id}>
-                      <label className="flex items-start gap-2.5 px-2 py-2 rounded-lg hover:bg-slate-50 cursor-pointer">
+                      <label className="flex items-start gap-2.5 px-2 py-2 rounded-control hover:bg-surface-hover cursor-pointer">
                         <input
                           type="checkbox"
                           checked={on}
                           onChange={() => toggle(s.id)}
-                          className="mt-0.5 w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500 shrink-0"
+                          className="mt-0.5 w-4 h-4 rounded border-edge-strong text-violet-600 focus:ring-violet-500 shrink-0"
                         />
                         <span className="flex-1 min-w-0">
                           <span className="flex items-center gap-2">
-                            <span className="flex-1 text-sm text-slate-700 truncate">{task.title || 'Untitled'}</span>
+                            <span className="flex-1 text-sm text-content truncate">{task.title || 'Untitled'}</span>
                             {showDates && s.date && (
                               <span className="text-xs font-medium text-violet-600 shrink-0">{shortDate(s.date)}</span>
                             )}
                           </span>
-                          {s.reason && <span className="block text-xs text-slate-400 mt-0.5">{s.reason}</span>}
+                          {s.reason && <span className="block text-xs text-content-muted mt-0.5">{s.reason}</span>}
                         </span>
                       </label>
                     </li>
@@ -107,13 +107,13 @@ export function AiSuggestPanel({
               </ul>
             )}
             {rows.length > 0 && (
-              <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-slate-100">
-                <button onClick={onClose} className="text-sm font-medium text-slate-500 hover:text-slate-700 rounded-lg px-3 py-1.5">Cancel</button>
+              <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-edge-soft">
+                <button onClick={onClose} className="text-sm font-medium text-content-secondary hover:text-content rounded-control px-3 py-1.5">Cancel</button>
                 <button
                   onClick={apply}
                   disabled={applyCount === 0}
-                  className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-sm font-medium ${
-                    applyCount > 0 ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-slate-100 text-slate-300 cursor-default'
+                  className={`inline-flex items-center gap-1 rounded-control px-3 py-1.5 text-sm font-medium ${
+                    applyCount > 0 ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-surface-sunken text-content-faint cursor-default'
                   }`}
                 >
                   Apply {applyCount}

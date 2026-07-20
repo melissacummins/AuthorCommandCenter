@@ -30,7 +30,7 @@ export default function FinStreamModule() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        <div className="flex gap-1 bg-surface-sunken rounded-control p-1">
           <TabButton active={tab === 'dashboard'} onClick={() => setTab('dashboard')} icon={LayoutDashboard} label="Dashboard" />
           <TabButton active={tab === 'transactions'} onClick={() => setTab('transactions')} icon={List} label="Transactions" />
           <TabButton active={tab === 'rules'} onClick={() => setTab('rules')} icon={Tag} label="Rules" />
@@ -38,7 +38,7 @@ export default function FinStreamModule() {
         </div>
         <button
           onClick={() => setShowImport(true)}
-          className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50"
+          className="flex items-center gap-2 px-4 py-2 border border-edge text-content text-sm font-medium rounded-control hover:bg-surface-hover"
         >
           <Download className="w-4 h-4" /> Import from JSON
         </button>
@@ -65,8 +65,8 @@ function TabButton({ active, onClick, icon: Icon, label }: {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+      className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+        active ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
       }`}
     >
       <Icon className="w-4 h-4" /> {label}

@@ -7,7 +7,7 @@ export const TAG_COLORS = ['slate', 'red', 'orange', 'amber', 'green', 'teal', '
 export type TagColor = typeof TAG_COLORS[number];
 
 const COLOR_CLASSES: Record<TagColor, { chip: string; swatch: string }> = {
-  slate:  { chip: 'bg-slate-100 text-slate-700 border-slate-200',   swatch: 'bg-slate-400' },
+  slate:  { chip: 'bg-surface-sunken text-content border-edge',   swatch: 'bg-content-muted' },
   red:    { chip: 'bg-red-100 text-red-700 border-red-200',         swatch: 'bg-red-400' },
   orange: { chip: 'bg-orange-100 text-orange-700 border-orange-200', swatch: 'bg-orange-400' },
   amber:  { chip: 'bg-amber-100 text-amber-700 border-amber-200',   swatch: 'bg-amber-400' },
@@ -111,7 +111,7 @@ export default function TagMultiSelect({ value, onChange, allTags, colorMap, onS
   return (
     <div ref={containerRef} className="relative">
       <div
-        className="flex flex-wrap items-center gap-1 min-h-[34px] px-1.5 py-1 border border-transparent hover:border-slate-200 focus-within:border-blue-400 rounded cursor-text"
+        className="flex flex-wrap items-center gap-1 min-h-[34px] px-1.5 py-1 border border-transparent hover:border-edge focus-within:border-blue-400 rounded cursor-text"
         onClick={() => setOpen(true)}
       >
         {tags.map(t => {
@@ -148,14 +148,14 @@ export default function TagMultiSelect({ value, onChange, allTags, colorMap, onS
 
       {/* Suggestions dropdown */}
       {open && (suggestions.length > 0 || showCreate) && (
-        <div className="absolute left-0 right-0 mt-1 z-20 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute left-0 right-0 mt-1 z-20 bg-surface border border-edge rounded-control shadow-lg max-h-60 overflow-y-auto">
           {suggestions.map(t => {
             const color = colorFor(t, colorMap);
             return (
               <button
                 key={t}
                 onClick={() => addTag(t)}
-                className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-sm hover:bg-slate-50"
+                className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-sm hover:bg-surface-hover"
               >
                 <span className={`inline-block px-1.5 py-0.5 text-[11px] rounded-full border ${COLOR_CLASSES[color].chip}`}>{t}</span>
               </button>
@@ -164,9 +164,9 @@ export default function TagMultiSelect({ value, onChange, allTags, colorMap, onS
           {showCreate && (
             <button
               onClick={() => addTag(inputTrimmed)}
-              className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-sm hover:bg-slate-50 border-t border-slate-100"
+              className="flex items-center gap-2 w-full text-left px-2 py-1.5 text-sm hover:bg-surface-hover border-t border-edge-soft"
             >
-              <span className="text-slate-500 text-xs">Create</span>
+              <span className="text-content-secondary text-xs">Create</span>
               <span className={`inline-block px-1.5 py-0.5 text-[11px] rounded-full border ${COLOR_CLASSES[defaultColorFor(inputTrimmed)].chip}`}>{inputTrimmed}</span>
             </button>
           )}
@@ -175,8 +175,8 @@ export default function TagMultiSelect({ value, onChange, allTags, colorMap, onS
 
       {/* Color picker popover */}
       {pickerFor && (
-        <div ref={pickerRef} className="absolute z-30 bg-white border border-slate-200 rounded-lg shadow-lg p-2 mt-1">
-          <p className="text-[10px] uppercase text-slate-400 mb-1 px-1">Color for "{pickerFor}"</p>
+        <div ref={pickerRef} className="absolute z-30 bg-surface border border-edge rounded-control shadow-lg p-2 mt-1">
+          <p className="text-[10px] uppercase text-content-muted mb-1 px-1">Color for "{pickerFor}"</p>
           <div className="flex flex-wrap gap-1 max-w-[200px]">
             {TAG_COLORS.map(c => (
               <button

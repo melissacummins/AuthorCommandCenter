@@ -50,20 +50,20 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
     <div className="space-y-6 animate-fade-in">
       
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-        <div className="flex bg-gray-100 p-1 rounded-lg mb-4 sm:mb-0">
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-surface p-4 rounded-card shadow-sm border border-gray-100">
+        <div className="flex bg-gray-100 p-1 rounded-control mb-4 sm:mb-0">
           <button
             onClick={() => setActiveTab('monthly')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'monthly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            className={`px-4 py-2 text-sm font-medium rounded-control transition-all ${
+              activeTab === 'monthly' ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Month by Month
           </button>
           <button
             onClick={() => setActiveTab('yearly')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-all ${
-              activeTab === 'yearly' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            className={`px-4 py-2 text-sm font-medium rounded-control transition-all ${
+              activeTab === 'yearly' ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             Yearly Overview
@@ -75,7 +75,7 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-lg leading-tight focus:outline-none focus:bg-white focus:border-blue-500"
+              className="appearance-none bg-surface border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-control leading-tight focus:outline-none focus:bg-surface focus:border-blue-500"
             >
               <option value="All">All Years</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -107,14 +107,14 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
 
       {activeTab === 'monthly' && (
         <>
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-gray-800 mb-6">Financial Overview</h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={filteredMonthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="monthKey" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-edge)" />
+                  <XAxis dataKey="monthKey" stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)}
                     labelFormatter={(label) => {
@@ -130,7 +130,7 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-surface rounded-card shadow-sm border border-gray-100 overflow-hidden">
              <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -143,7 +143,7 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Page Reads</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-surface divide-y divide-gray-200">
                   {filteredMonthlyData.map((row) => (
                     <tr key={row.monthKey} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
@@ -177,14 +177,14 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
 
       {activeTab === 'yearly' && (
         <div className="grid grid-cols-1 gap-6">
-           <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+           <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
             <h3 className="text-lg font-bold text-gray-800 mb-6">Yearly Growth</h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[...yearlyData].reverse()} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis dataKey="year" stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#9CA3AF" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-edge)" />
+                  <XAxis dataKey="year" stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--color-content-muted)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(val) => `$${val}`} />
                   <Tooltip formatter={(value: number) => formatCurrency(value)} />
                   <Legend />
                   <Bar dataKey="totalRevenue" name="Revenue" fill="#4F46E5" radius={[4, 4, 0, 0]} />
@@ -194,7 +194,7 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-surface rounded-card shadow-sm border border-gray-100 overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -207,7 +207,7 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Page Reads</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-gray-200">
                 {yearlyData.map((row) => (
                   <tr key={row.year} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-lg font-bold text-gray-900">

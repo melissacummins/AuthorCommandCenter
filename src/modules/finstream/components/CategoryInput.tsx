@@ -32,16 +32,16 @@ export default function CategoryInput({ value, onChange, categories, placeholder
         }}
         placeholder={placeholder}
         autoFocus={autoFocus}
-        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-cyan-400"
+        className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400"
       />
       {showSuggestions && (
-        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+        <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-surface border border-edge rounded-control shadow-lg max-h-40 overflow-y-auto">
           {filtered.slice(0, 8).map(cat => (
             <button
               key={cat}
               type="button"
               onMouseDown={e => { e.preventDefault(); onChange(cat); setFocused(false); }}
-              className="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-cyan-50 hover:text-cyan-700"
+              className="w-full text-left px-3 py-2 text-sm text-content hover:bg-cyan-50 hover:text-cyan-700"
             >
               {cat}
             </button>

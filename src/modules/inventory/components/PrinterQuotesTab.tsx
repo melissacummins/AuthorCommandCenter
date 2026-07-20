@@ -240,17 +240,17 @@ export default function PrinterQuotesTab() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-slate-800">Printer Quotes</h2>
-          <p className="text-sm text-slate-500 mt-1">Pick a printer, then fill in quote prices per book to compare against your current vendor.</p>
+          <h2 className="text-xl font-semibold text-content">Printer Quotes</h2>
+          <p className="text-sm text-content-secondary mt-1">Pick a printer, then fill in quote prices per book to compare against your current vendor.</p>
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-slate-600">
+          <label className="flex items-center gap-2 text-sm text-content-secondary">
             <input type="checkbox" checked={includeSD} onChange={e => setIncludeSD(e.target.checked)} className="rounded" />
             Include S&amp;D variants
           </label>
           <button
             onClick={() => setShowImport(true)}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-slate-200 text-slate-700 rounded-lg hover:bg-slate-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm border border-edge text-content rounded-control hover:bg-surface-hover"
           >
             <Upload className="w-4 h-4" /> Import CSV
           </button>
@@ -287,25 +287,25 @@ export default function PrinterQuotesTab() {
 
       {/* Rankings */}
       {hasLoaded && rankings.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4">
+        <div className="bg-surface rounded-card border border-edge p-4 mb-4">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
             <div>
-              <h3 className="text-sm font-semibold text-slate-800">Printer Rankings</h3>
-              <p className="text-[11px] text-slate-500">Ranked by average True Cost / Good Book across the books you've quoted. Click a row to load it below.</p>
+              <h3 className="text-sm font-semibold text-content">Printer Rankings</h3>
+              <p className="text-[11px] text-content-secondary">Ranked by average True Cost / Good Book across the books you've quoted. Click a row to load it below.</p>
             </div>
             <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 text-xs text-slate-600">
+              <label className="flex items-center gap-1.5 text-xs text-content-secondary">
                 Target margin
                 <input
                   type="number"
                   value={targetMargin}
                   onChange={e => setTargetMargin(Number(e.target.value) || 0)}
-                  className="w-14 px-1.5 py-1 border border-slate-200 rounded text-xs text-right focus:outline-none focus:border-blue-400"
+                  className="w-14 px-1.5 py-1 border border-edge rounded text-xs text-right focus:outline-none focus:border-blue-400"
                 />
                 %
               </label>
               {rejectedCount > 0 && (
-                <label className="flex items-center gap-1.5 text-xs text-slate-600">
+                <label className="flex items-center gap-1.5 text-xs text-content-secondary">
                   <input type="checkbox" checked={showRejected} onChange={e => setShowRejected(e.target.checked)} className="rounded" />
                   Show rejected ({rejectedCount})
                 </label>
@@ -315,7 +315,7 @@ export default function PrinterQuotesTab() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[11px] uppercase text-slate-500 tracking-wider border-b border-slate-100">
+                <tr className="text-[11px] uppercase text-content-secondary tracking-wider border-b border-edge-soft">
                   <th className="text-left py-2 px-2 font-medium">#</th>
                   <th className="text-left py-2 px-2 font-medium">Printer</th>
                   <th className="text-left py-2 px-2 font-medium">Status</th>
@@ -333,10 +333,10 @@ export default function PrinterQuotesTab() {
                     <tr
                       key={r.printer}
                       onClick={() => setSelectedPrinter(r.printer)}
-                      className={`border-b border-slate-50 cursor-pointer hover:bg-slate-50/60 ${isSelected ? 'bg-blue-50/40' : ''}`}
+                      className={`border-b border-edge-soft cursor-pointer hover:bg-surface-hover/60 ${isSelected ? 'bg-blue-50/40' : ''}`}
                     >
-                      <td className="py-1.5 px-2 text-slate-400 text-xs">{i + 1}</td>
-                      <td className="py-1.5 px-2 font-medium text-slate-800">{r.printer}</td>
+                      <td className="py-1.5 px-2 text-content-muted text-xs">{i + 1}</td>
+                      <td className="py-1.5 px-2 font-medium text-content">{r.printer}</td>
                       <td className="py-1.5 px-2" onClick={e => e.stopPropagation()}>
                         <select
                           value={r.status}
@@ -346,13 +346,13 @@ export default function PrinterQuotesTab() {
                           {STATUS_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                         </select>
                       </td>
-                      <td className="py-1.5 px-2 text-right text-slate-600">{r.bookCount}</td>
-                      <td className="py-1.5 px-2 text-right font-medium text-slate-800">{formatCurrency(r.avgTrueCost)}</td>
-                      <td className={`py-1.5 px-2 text-right font-medium ${r.avgMarginPercent >= targetMargin ? 'text-emerald-600' : 'text-slate-600'}`}>
+                      <td className="py-1.5 px-2 text-right text-content-secondary">{r.bookCount}</td>
+                      <td className="py-1.5 px-2 text-right font-medium text-content">{formatCurrency(r.avgTrueCost)}</td>
+                      <td className={`py-1.5 px-2 text-right font-medium ${r.avgMarginPercent >= targetMargin ? 'text-emerald-600' : 'text-content-secondary'}`}>
                         {r.avgMarginPercent.toFixed(1)}%
                       </td>
-                      <td className="py-1.5 px-2 text-right text-slate-600">{r.booksHittingTarget}/{r.bookCount}</td>
-                      <td className="py-1.5 px-2 text-right text-slate-600">{r.booksCheaperThanCurrent}/{r.bookCount}</td>
+                      <td className="py-1.5 px-2 text-right text-content-secondary">{r.booksHittingTarget}/{r.bookCount}</td>
+                      <td className="py-1.5 px-2 text-right text-content-secondary">{r.booksCheaperThanCurrent}/{r.bookCount}</td>
                     </tr>
                   );
                 })}
@@ -363,12 +363,12 @@ export default function PrinterQuotesTab() {
       )}
 
       {/* Printer Selector */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4 flex flex-wrap items-center gap-3">
-        <label className="text-sm font-medium text-slate-700">Printer</label>
+      <div className="bg-surface rounded-card border border-edge p-4 mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm font-medium text-content">Printer</label>
         <select
           value={selectedPrinter}
           onChange={e => setSelectedPrinter(e.target.value)}
-          className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-blue-400 min-w-[200px]"
+          className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400 min-w-[200px]"
         >
           <option value="">Select a printer…</option>
           {printers.filter(p => showRejected || statusFor(p) !== 'rejected').map(p => <option key={p} value={p}>{p}</option>)}
@@ -384,14 +384,14 @@ export default function PrinterQuotesTab() {
         )}
         <button
           onClick={addPrinter}
-          className="flex items-center gap-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="flex items-center gap-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700"
         >
           <Plus className="w-4 h-4" /> Add Printer
         </button>
         {selectedPrinter && (
           <button
             onClick={handleDeletePrinter}
-            className="ml-auto flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-lg"
+            className="ml-auto flex items-center gap-1 px-3 py-2 text-sm text-red-500 hover:bg-red-50 rounded-control"
             title={`Delete all quotes for ${selectedPrinter}`}
           >
             <Trash2 className="w-4 h-4" /> Delete printer
@@ -401,16 +401,16 @@ export default function PrinterQuotesTab() {
 
       {/* Per-book quote table */}
       {!hasLoaded ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
+        <div className="bg-surface rounded-card border border-edge p-12 text-center">
           <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
       ) : selectedPrinter ? (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="bg-surface rounded-card border border-edge overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] uppercase text-slate-500 tracking-wider">
-                  <th className="text-left py-2.5 px-3 font-medium sticky left-0 bg-slate-50">Book</th>
+                <tr className="bg-surface-hover border-b border-edge text-[11px] uppercase text-content-secondary tracking-wider">
+                  <th className="text-left py-2.5 px-3 font-medium sticky left-0 bg-surface-hover">Book</th>
                   <th className="text-right py-2.5 px-3 font-medium" title="Your current production_cost + shipping_cost">Current Cost</th>
                   <th className="text-right py-2.5 px-3 font-medium">Quote / Copy</th>
                   <th className="text-right py-2.5 px-3 font-medium">Shipping</th>
@@ -428,18 +428,18 @@ export default function PrinterQuotesTab() {
                   const current = calculateTrueCostForQuote(p, p.production_cost, p.shipping_cost);
                   const diff = result.trueCost - current.trueCost;
                   const diffColor = row.unit_cost === 0
-                    ? 'text-slate-300'
-                    : diff < 0 ? 'text-emerald-600' : diff > 0 ? 'text-amber-600' : 'text-slate-500';
+                    ? 'text-content-faint'
+                    : diff < 0 ? 'text-emerald-600' : diff > 0 ? 'text-amber-600' : 'text-content-secondary';
                   const marginColor = result.netMarginPercent >= 50 ? 'text-emerald-600' : result.netMarginPercent >= 30 ? 'text-amber-600' : 'text-red-500';
                   const hasQuote = !!quotes.find(q => q.printer === selectedPrinter && q.product_id === p.id);
                   return (
-                    <tr key={p.id} className="border-b border-slate-50 hover:bg-slate-50/40 group">
-                      <td className="py-2 px-3 font-medium text-slate-800 sticky left-0 bg-white group-hover:bg-slate-50/40">{p.name}</td>
-                      <td className="py-2 px-3 text-right text-slate-500">{formatCurrency(p.production_cost + p.shipping_cost)}</td>
+                    <tr key={p.id} className="border-b border-edge-soft hover:bg-surface-hover/40 group">
+                      <td className="py-2 px-3 font-medium text-content sticky left-0 bg-surface group-hover:bg-surface-hover/40">{p.name}</td>
+                      <td className="py-2 px-3 text-right text-content-secondary">{formatCurrency(p.production_cost + p.shipping_cost)}</td>
                       <QuoteNumCell value={row.unit_cost} onChange={v => updateLocal(p.id, 'unit_cost', v)} onSave={v => saveField(p.id, 'unit_cost', v)} saving={savingCell === `${p.id}:unit_cost`} highlight />
                       <QuoteNumCell value={row.shipping_estimate} onChange={v => updateLocal(p.id, 'shipping_estimate', v)} onSave={v => saveField(p.id, 'shipping_estimate', v)} saving={savingCell === `${p.id}:shipping_estimate`} />
-                      <td className="py-2 px-3 text-right font-medium text-slate-800">{row.unit_cost > 0 ? formatCurrency(result.trueCost) : '—'}</td>
-                      <td className={`py-2 px-3 text-right font-medium ${row.unit_cost > 0 ? marginColor : 'text-slate-300'}`}>
+                      <td className="py-2 px-3 text-right font-medium text-content">{row.unit_cost > 0 ? formatCurrency(result.trueCost) : '—'}</td>
+                      <td className={`py-2 px-3 text-right font-medium ${row.unit_cost > 0 ? marginColor : 'text-content-faint'}`}>
                         {row.unit_cost > 0 ? `${result.netMarginPercent.toFixed(1)}%` : '—'}
                       </td>
                       <td className={`py-2 px-3 text-right font-medium ${diffColor}`}>{row.unit_cost > 0 ? `${diff > 0 ? '+' : ''}${formatCurrency(diff)}` : '—'}</td>
@@ -455,14 +455,14 @@ export default function PrinterQuotesTab() {
                   );
                 })}
                 {books.length === 0 && (
-                  <tr><td colSpan={9} className="py-12 text-center text-slate-400 italic">No books to show.</td></tr>
+                  <tr><td colSpan={9} className="py-12 text-center text-content-muted italic">No books to show.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 p-12 text-center text-slate-400 italic">
+        <div className="bg-surface rounded-card border border-edge p-12 text-center text-content-muted italic">
           Pick a printer above (or add a new one) to start comparing quotes.
         </div>
       )}
@@ -481,7 +481,7 @@ function QuoteNumCell({ value, onChange, onSave, saving, highlight }: { value: n
         placeholder="0.00"
         onChange={e => onChange(Number(e.target.value))}
         onBlur={() => onSave(value)}
-        className={`w-24 px-2 py-1.5 border border-transparent hover:border-slate-200 focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${highlight ? 'font-medium' : ''} ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`w-24 px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${highlight ? 'font-medium' : ''} ${saving ? 'bg-blue-50/40' : ''}`}
       />
     </td>
   );
@@ -496,7 +496,7 @@ function QuoteTextCell({ value, onChange, onSave, saving }: { value: string; onC
         placeholder=""
         onChange={e => onChange(e.target.value)}
         onBlur={() => onSave(value)}
-        className={`min-w-[180px] w-full px-2 py-1.5 border border-transparent hover:border-slate-200 focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`min-w-[180px] w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
       />
     </td>
   );

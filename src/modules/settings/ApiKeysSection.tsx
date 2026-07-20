@@ -81,11 +81,11 @@ const PROVIDERS: Provider[] = [
 function InfoTip({ text, href, label }: { text: string; href: string; label: string }) {
   return (
     <span className="relative group shrink-0">
-      <Info className="w-4 h-4 text-slate-300 hover:text-slate-500 cursor-help" />
-      <span className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-6 z-20 w-72 rounded-lg border border-slate-200 bg-white p-3 text-xs leading-relaxed text-slate-600 shadow-lg">
+      <Info className="w-4 h-4 text-content-faint hover:text-content-secondary cursor-help" />
+      <span className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-6 z-20 w-72 rounded-control border border-edge bg-surface p-3 text-xs leading-relaxed text-content-secondary shadow-lg">
         {text}{' '}
         <a href={href} target="_blank" rel="noreferrer" className="text-violet-600 hover:underline whitespace-nowrap">{label} →</a>
-        <span className="block mt-1.5 text-slate-400">Encrypted server-side; never shown again after you save it.</span>
+        <span className="block mt-1.5 text-content-muted">Encrypted server-side; never shown again after you save it.</span>
       </span>
     </span>
   );
@@ -136,21 +136,21 @@ function KeyRow({ p }: { p: Provider }) {
   const connected = !!status?.has_key;
 
   return (
-    <div className="border-t border-slate-100 py-3 first:border-t-0">
+    <div className="border-t border-edge-soft py-3 first:border-t-0">
       <div className="flex items-center gap-3 flex-wrap">
         <p.Icon className={`w-4 h-4 shrink-0 ${p.iconColor}`} />
-        <span className="text-sm font-medium text-slate-700 w-28 shrink-0">{p.name}</span>
+        <span className="text-sm font-medium text-content w-28 shrink-0">{p.name}</span>
 
         {loading ? (
-          <span className="text-sm text-slate-400">Checking…</span>
+          <span className="text-sm text-content-muted">Checking…</span>
         ) : connected ? (
-          <span className="flex items-center gap-1.5 text-sm text-slate-500">
+          <span className="flex items-center gap-1.5 text-sm text-content-secondary">
             <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-            ••• <span className="font-mono text-slate-600">{status?.hint}</span>
+            ••• <span className="font-mono text-content-secondary">{status?.hint}</span>
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 text-sm text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-slate-300 shrink-0" /> Not connected
+          <span className="flex items-center gap-1.5 text-sm text-content-muted">
+            <span className="w-2 h-2 rounded-full bg-edge-strong shrink-0" /> Not connected
           </span>
         )}
 
@@ -159,13 +159,13 @@ function KeyRow({ p }: { p: Provider }) {
             <>
               {p.onTest && (
                 <button onClick={runTest} disabled={test === 'run'}
-                  className="text-xs font-medium text-slate-500 hover:text-violet-600 disabled:opacity-50 inline-flex items-center gap-1">
+                  className="text-xs font-medium text-content-secondary hover:text-violet-600 disabled:opacity-50 inline-flex items-center gap-1">
                   {test === 'run' ? <Loader2 className="w-3 h-3 animate-spin" /> : test === 'ok' ? <Check className="w-3 h-3 text-emerald-600" /> : null}
                   {test === 'ok' ? 'Working' : test === 'run' ? 'Testing…' : 'Test'}
                 </button>
               )}
               <button onClick={remove} disabled={busy}
-                className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-rose-600 disabled:opacity-50">
+                className="inline-flex items-center gap-1 text-xs font-medium text-content-muted hover:text-rose-600 disabled:opacity-50">
                 <Trash2 className="w-3.5 h-3.5" /> Remove
               </button>
             </>
@@ -176,10 +176,10 @@ function KeyRow({ p }: { p: Provider }) {
                 type="password" value={raw} onChange={e => setRaw(e.target.value)}
                 placeholder={p.placeholder} autoComplete="off"
                 onKeyDown={e => { if (e.key === 'Enter' && raw.trim().length >= p.minLength) save(); }}
-                className="w-44 sm:w-56 px-2.5 py-1.5 border border-slate-300 rounded-lg text-sm font-mono"
+                className="w-44 sm:w-56 px-2.5 py-1.5 border border-edge-strong rounded-control text-sm font-mono"
               />
               <button onClick={save} disabled={busy || raw.trim().length < p.minLength}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white font-medium rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white font-medium rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
                 {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Save
               </button>
             </>
@@ -197,12 +197,12 @@ function KeyRow({ p }: { p: Provider }) {
 // modules because they're OAuth flows with extra setup UI.
 export default function ApiKeysSection() {
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-1.5">
         <KeyRound className="w-5 h-5 text-violet-600" />
-        <h2 className="text-lg font-semibold text-slate-800">API Keys</h2>
+        <h2 className="text-lg font-semibold text-content">API Keys</h2>
       </div>
-      <p className="text-sm text-slate-500 mb-3">
+      <p className="text-sm text-content-secondary mb-3">
         Your own keys for the integrations that need them. Each is stored encrypted server-side and billed to your own account. Hover the ⓘ for what each one unlocks.
       </p>
       <div>

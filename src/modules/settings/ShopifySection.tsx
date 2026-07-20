@@ -23,12 +23,12 @@ export default function ShopifySection() {
   useEffect(() => { load(); }, []);
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-2">
         <Store className="w-5 h-5 text-emerald-600" />
-        <h2 className="text-lg font-semibold text-slate-800">Shopify Connection</h2>
+        <h2 className="text-lg font-semibold text-content">Shopify Connection</h2>
       </div>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         One connection powers every Shopify feature — order sync and inventory in Inventory,
         offers in Upsells, and future modules. If a module ever reports a missing permission,
         come back here and click <strong>Re-authorize</strong> once.
@@ -51,7 +51,7 @@ export default function ShopifySection() {
           </button>
 
           {showHelp && (
-            <div className="mt-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-2xl p-6">
+            <div className="mt-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-card p-6">
               <ol className="space-y-2 text-sm text-indigo-700">
                 <li className="flex gap-2">
                   <span className="font-bold text-indigo-500 shrink-0">1.</span>

@@ -64,25 +64,25 @@ export default function ContentCreatorModule() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+        <h1 className="text-2xl font-bold text-content flex items-center gap-2">
           <Clapperboard className="w-6 h-6 text-pink-500" /> Content Creator
         </h1>
-        <p className="text-slate-500 mt-1">
+        <p className="text-content-secondary mt-1">
           Scan your manuscript for hooks, then turn them into slideshows, Kindle screenshots, and videos.
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4 mb-6">
+      <div className="bg-surface rounded-card border border-edge p-4 mb-6">
         <div className="grid gap-4 lg:grid-cols-[minmax(280px,380px)_1fr] items-start">
           <div>
-            <label className="block text-sm font-medium text-slate-600 mb-1">Book</label>
+            <label className="block text-sm font-medium text-content-secondary mb-1">Book</label>
             <CatalogBookPicker value={bookId} onChange={handleBookChange} />
           </div>
           {book && <BookFacts book={book} manuscript={manuscript} manuscriptLoading={manuscriptLoading} />}
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1 bg-slate-100 rounded-lg p-1 mb-6 w-fit">
+      <div className="flex flex-wrap gap-1 bg-surface-sunken rounded-control p-1 mb-6 w-fit">
         <TabButton active={tab === 'hooks'} onClick={() => setTab('hooks')}>
           <Anchor className="w-4 h-4" /> Hooks
         </TabButton>
@@ -167,26 +167,26 @@ function BookFacts({ book, manuscript, manuscriptLoading }: {
   manuscriptLoading: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-600 lg:pt-7">
+    <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-content-secondary lg:pt-7">
       {book.series && (
-        <span><span className="text-slate-400">Series:</span> {book.series}{book.series_position ? ` #${book.series_position}` : ''}</span>
+        <span><span className="text-content-muted">Series:</span> {book.series}{book.series_position ? ` #${book.series_position}` : ''}</span>
       )}
       {book.subgenre && (
-        <span><span className="text-slate-400">Subgenre:</span> {book.subgenre}</span>
+        <span><span className="text-content-muted">Subgenre:</span> {book.subgenre}</span>
       )}
       {book.heat_level && (
         <span className="flex items-center gap-1">
-          <span className="text-slate-400">Heat:</span>
+          <span className="text-content-muted">Heat:</span>
           {Array.from({ length: book.heat_level }, (_, i) => (
             <Flame key={i} className="w-3.5 h-3.5 text-orange-500 fill-orange-400" />
           ))}
         </span>
       )}
       {book.tropes.length > 0 && (
-        <span><span className="text-slate-400">Tropes:</span> {book.tropes.slice(0, 4).join(', ')}{book.tropes.length > 4 ? '…' : ''}</span>
+        <span><span className="text-content-muted">Tropes:</span> {book.tropes.slice(0, 4).join(', ')}{book.tropes.length > 4 ? '…' : ''}</span>
       )}
       <span>
-        <span className="text-slate-400">Manuscript:</span>{' '}
+        <span className="text-content-muted">Manuscript:</span>{' '}
         {manuscriptLoading ? 'checking…' : manuscript
           ? `${manuscript.title} (${manuscript.status})`
           : 'none linked — link one in Writing to enable scanning'}
@@ -198,10 +198,10 @@ function BookFacts({ book, manuscript, manuscriptLoading }: {
 
 function ComingNext({ title, body }: { title: string; body: string }) {
   return (
-    <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center max-w-2xl mx-auto">
-      <h2 className="text-lg font-semibold text-slate-700 mb-2">{title}</h2>
-      <p className="text-slate-500">{body}</p>
-      <p className="text-xs text-slate-400 mt-4">Coming in the next update.</p>
+    <div className="bg-surface rounded-card border border-dashed border-edge-strong p-10 text-center max-w-2xl mx-auto">
+      <h2 className="text-lg font-semibold text-content mb-2">{title}</h2>
+      <p className="text-content-secondary">{body}</p>
+      <p className="text-xs text-content-muted mt-4">Coming in the next update.</p>
     </div>
   );
 }
@@ -210,8 +210,8 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+      className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+        active ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
       }`}
     >
       {children}

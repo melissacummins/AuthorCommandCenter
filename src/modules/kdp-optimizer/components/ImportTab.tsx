@@ -78,9 +78,9 @@ export default function ImportTab({ userId, onImported }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-1">Import KDP Optimizer data</h3>
-        <p className="text-sm text-slate-500 mb-4">
+      <div className="bg-surface rounded-card border border-edge p-5">
+        <h3 className="font-semibold text-content mb-1">Import KDP Optimizer data</h3>
+        <p className="text-sm text-content-secondary mb-4">
           Paste the JSON export from your old KDP Optimizer below. Re-imports
           dedupe on the original IDs, so it's safe to run again to refresh
           search-volume metrics. Books match to your Catalog by exact title.
@@ -91,14 +91,14 @@ export default function ImportTab({ userId, onImported }: Props) {
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder='{ "books": [...], "tropes": [...], "keywords": [...] }'
-          className="w-full font-mono text-xs rounded-lg border border-slate-300 px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+          className="w-full font-mono text-xs rounded-control border border-edge-strong px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
         />
 
         <div className="flex items-center gap-2 mt-3">
           <button
             type="button"
             onClick={validate}
-            className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg"
+            className="px-4 py-2 text-sm font-medium text-content bg-surface border border-edge-strong hover:bg-surface-hover rounded-control"
           >
             Validate
           </button>
@@ -106,7 +106,7 @@ export default function ImportTab({ userId, onImported }: Props) {
             type="button"
             onClick={runImport}
             disabled={!parsed || importing}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 rounded-lg"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
           >
             <Upload className="w-4 h-4" />
             {importing ? 'Importing…' : 'Import'}
@@ -114,13 +114,13 @@ export default function ImportTab({ userId, onImported }: Props) {
         </div>
 
         {error && (
-          <div className="mt-3 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700 flex items-start gap-2">
+          <div className="mt-3 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> {error}
           </div>
         )}
 
         {parsed && !summary && (
-          <div className="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700">
+          <div className="mt-3 p-3 rounded-control bg-surface-hover border border-edge text-sm text-content">
             Ready to import — <strong>{parsed.counts.tropes}</strong> tropes,{' '}
             <strong>{parsed.counts.keywords}</strong> keywords,{' '}
             <strong>{parsed.counts.books}</strong> books.
@@ -128,7 +128,7 @@ export default function ImportTab({ userId, onImported }: Props) {
         )}
 
         {summary && (
-          <div className="mt-3 p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+          <div className="mt-3 p-3 rounded-control bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
             <div className="flex items-center gap-2 font-medium mb-1">
               <CheckCircle2 className="w-4 h-4" /> Import complete
             </div>

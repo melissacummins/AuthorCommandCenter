@@ -149,8 +149,8 @@ export default function AnalyticsDashboard({ links, clicks, bioViews = [], range
         <StatCard icon={<BarChart3 className="w-5 h-5" />} label="Top link" value={totals.topLink ? `/${totals.topLink.slug}` : '—'} sub={totals.topLink ? `${formatNumber(totals.topLink.non_bot_click_count ?? 0)} clicks` : ''} />
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+      <div className="bg-surface rounded-card border border-edge p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-content mb-4 flex items-center gap-2">
           <Layout className="w-4 h-4 text-indigo-500" /> Bio page
         </h3>
         <div className="grid grid-cols-3 gap-4">
@@ -158,20 +158,20 @@ export default function AnalyticsDashboard({ links, clicks, bioViews = [], range
           <BioMetric icon={<MousePointerClick className="w-4 h-4" />} label="Clicks on bio links" value={formatNumber(bio.bioClicks)} />
           <BioMetric icon={<BarChart3 className="w-4 h-4" />} label="Click-through rate" value={`${bio.ctr}%`} />
         </div>
-        <p className="text-xs text-slate-400 mt-3">
+        <p className="text-xs text-content-muted mt-3">
           Views are real (non-bot) loads of your public bio page over the last {rangeDays} days. CTR is clicks on bio-listed links ÷ views.
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-700 mb-4">Clicks over time</h3>
+      <div className="bg-surface rounded-card border border-edge p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-content mb-4">Clicks over time</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={seriesByDay}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
-              <YAxis allowDecimals={false} stroke="#94a3b8" fontSize={12} />
-              <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #e2e8f0' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-edge)" />
+              <XAxis dataKey="date" stroke="var(--color-content-muted)" fontSize={12} />
+              <YAxis allowDecimals={false} stroke="var(--color-content-muted)" fontSize={12} />
+              <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid var(--color-edge)' }} />
               <Line type="monotone" dataKey="count" stroke="#6366f1" strokeWidth={2.5} dot={{ r: 3 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
@@ -215,25 +215,25 @@ export default function AnalyticsDashboard({ links, clicks, bioViews = [], range
 
 function StatCard({ icon, label, value, sub }: { icon: ReactNode; label: string; value: string; sub?: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
-      <div className="flex items-center gap-2 text-slate-500 text-xs font-medium uppercase tracking-wide">
+    <div className="bg-surface rounded-card border border-edge p-4 shadow-sm">
+      <div className="flex items-center gap-2 text-content-secondary text-xs font-medium uppercase tracking-wide">
         <span className="text-indigo-500">{icon}</span>
         {label}
       </div>
-      <div className="mt-2 text-2xl font-semibold text-slate-800 truncate">{value}</div>
-      {sub && <div className="text-xs text-slate-400 mt-0.5">{sub}</div>}
+      <div className="mt-2 text-2xl font-semibold text-content truncate">{value}</div>
+      {sub && <div className="text-xs text-content-muted mt-0.5">{sub}</div>}
     </div>
   );
 }
 
 function BioMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-slate-50 border border-slate-100 p-3">
-      <div className="flex items-center gap-1.5 text-slate-500 text-[11px] font-medium uppercase tracking-wide">
+    <div className="rounded-card bg-surface-hover border border-edge-soft p-3">
+      <div className="flex items-center gap-1.5 text-content-secondary text-[11px] font-medium uppercase tracking-wide">
         <span className="text-indigo-500">{icon}</span>
         {label}
       </div>
-      <div className="mt-1.5 text-xl font-semibold text-slate-800">{value}</div>
+      <div className="mt-1.5 text-xl font-semibold text-content">{value}</div>
     </div>
   );
 }
@@ -249,8 +249,8 @@ function TabbedCard({ tabs }: TabbedCardProps) {
   const total = top.reduce((sum, i) => sum + i.count, 0);
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col">
-      <div className="flex items-center gap-1 px-2 pt-2 border-b border-slate-100">
+    <div className="bg-surface rounded-card border border-edge shadow-sm flex flex-col">
+      <div className="flex items-center gap-1 px-2 pt-2 border-b border-edge-soft">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -258,7 +258,7 @@ function TabbedCard({ tabs }: TabbedCardProps) {
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition ${
               tab.key === activeKey
                 ? 'border-indigo-500 text-indigo-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
+                : 'border-transparent text-content-secondary hover:text-content'
             }`}
           >
             {tab.label}
@@ -267,21 +267,21 @@ function TabbedCard({ tabs }: TabbedCardProps) {
       </div>
       <div className="p-5">
         {!active || top.length === 0 ? (
-          <p className="text-sm text-slate-400 py-8 text-center">{active?.emptyText ?? 'No data yet.'}</p>
+          <p className="text-sm text-content-muted py-8 text-center">{active?.emptyText ?? 'No data yet.'}</p>
         ) : (
           <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
             {top.map((item) => {
               const pct = total ? Math.round((item.count / total) * 100) : 0;
               return (
                 <div key={item.key} className="flex items-center gap-3 text-sm">
-                  <div className="w-44 truncate text-slate-700" title={item.label}>{item.label}</div>
-                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-44 truncate text-content" title={item.label}>{item.label}</div>
+                  <div className="flex-1 h-2 bg-surface-sunken rounded-full overflow-hidden">
                     <div
                       className="h-full bg-indigo-500 rounded-full transition-all"
                       style={{ width: `${Math.max(pct, 2)}%` }}
                     />
                   </div>
-                  <div className="w-12 text-right text-slate-500 tabular-nums text-xs">
+                  <div className="w-12 text-right text-content-secondary tabular-nums text-xs">
                     {formatNumber(item.count)}
                   </div>
                 </div>

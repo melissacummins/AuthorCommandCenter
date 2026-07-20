@@ -275,31 +275,31 @@ export default function MyDayView({
       {/* Title + Google connection */}
       <div className="flex items-center gap-3 mb-5">
         <Sun className="w-6 h-6 text-amber-500" />
-        <h2 className="text-2xl font-bold text-slate-800">My Day</h2>
+        <h2 className="text-2xl font-bold text-content">My Day</h2>
         {/* AI planning assists — let Claude shape today or spread the load. */}
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => runAi('day')}
-            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1.5"
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
             title="Let Claude suggest a realistic set of to-dos for today"
           >
             <Sparkles className="w-3.5 h-3.5" /> Suggest my day
           </button>
           <button
             onClick={() => runAi('triage')}
-            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-lg px-2.5 py-1.5"
+            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
             title="Let Claude spread your overdue and unscheduled to-dos across the next few days"
           >
             <Sparkles className="w-3.5 h-3.5" /> Catch up
           </button>
           {/* What the two AI assists do — hover to learn without clicking. */}
           <span className="relative group">
-            <Info className="w-4 h-4 text-slate-300 hover:text-violet-500 cursor-help" />
-            <span className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-7 z-30 w-72 rounded-lg border border-slate-200 bg-white p-3 text-left text-xs leading-relaxed text-slate-600 shadow-lg">
-              <span className="flex items-center gap-1 font-semibold text-slate-700 mb-1.5"><Sparkles className="w-3.5 h-3.5 text-violet-500" /> AI planning help</span>
-              <span className="block"><span className="font-medium text-slate-700">Suggest my day</span> — picks a realistic set of to-dos to tackle today, sized to your daily capacity and Working Phase.</span>
-              <span className="block mt-1.5"><span className="font-medium text-slate-700">Catch up</span> — when you're behind, spreads your overdue and unscheduled to-dos gently across the next few days.</span>
-              <span className="block mt-1.5 text-slate-400">Uses your Claude key (Settings → API Keys). You review every suggestion before anything changes.</span>
+            <Info className="w-4 h-4 text-content-faint hover:text-violet-500 cursor-help" />
+            <span className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-7 z-30 w-72 rounded-control border border-edge bg-surface p-3 text-left text-xs leading-relaxed text-content-secondary shadow-lg">
+              <span className="flex items-center gap-1 font-semibold text-content mb-1.5"><Sparkles className="w-3.5 h-3.5 text-violet-500" /> AI planning help</span>
+              <span className="block"><span className="font-medium text-content">Suggest my day</span> — picks a realistic set of to-dos to tackle today, sized to your daily capacity and Working Phase.</span>
+              <span className="block mt-1.5"><span className="font-medium text-content">Catch up</span> — when you're behind, spreads your overdue and unscheduled to-dos gently across the next few days.</span>
+              <span className="block mt-1.5 text-content-muted">Uses your Claude key (Settings → API Keys). You review every suggestion before anything changes.</span>
             </span>
           </span>
           <ConnectControls gc={gc} />
@@ -322,7 +322,7 @@ export default function MyDayView({
       />
 
       {gc.error && (
-        <div className="mb-4 flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">
+        <div className="mb-4 flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-control px-3 py-2">
           <span className="flex-1">{gc.error}</span>
           <button onClick={() => gc.setError(null)}><X className="w-4 h-4" /></button>
         </div>
@@ -354,9 +354,9 @@ export default function MyDayView({
       <div className="mb-4">
         <div className="relative">
           <button onClick={() => setShowMonth(s => !s)} className="block w-full text-center group" title="Pick a day">
-            <div className="text-base font-medium text-slate-500">{sel.toLocaleDateString(undefined, { weekday: 'long' })}</div>
-            <div className="text-6xl font-bold text-slate-800 leading-none my-1 group-hover:text-teal-600 transition-colors">{sel.getDate()}</div>
-            <div className="text-sm text-slate-400">
+            <div className="text-base font-medium text-content-secondary">{sel.toLocaleDateString(undefined, { weekday: 'long' })}</div>
+            <div className="text-6xl font-bold text-content leading-none my-1 group-hover:text-teal-600 transition-colors">{sel.getDate()}</div>
+            <div className="text-sm text-content-muted">
               {sel.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
               {selected === today && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-teal-600">Today</span>}
             </div>
@@ -365,7 +365,7 @@ export default function MyDayView({
             <>
               {/* Click-anywhere-else backdrop closes the picker. */}
               <div className="fixed inset-0 z-40" onClick={() => setShowMonth(false)} />
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-72 rounded-2xl shadow-xl">
+              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-72 rounded-card shadow-xl">
                 <MonthGrid selected={selected} today={today} activeDays={activeDays} onSelect={goToDay} />
               </div>
             </>
@@ -373,17 +373,17 @@ export default function MyDayView({
         </div>
 
         <div className="flex items-center justify-center gap-6 mt-3">
-          <button onClick={() => shiftDay(-1)} className="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-teal-600">
+          <button onClick={() => shiftDay(-1)} className="flex items-center gap-1 text-sm font-medium text-content-secondary hover:text-teal-600">
             <ChevronLeft className="w-4 h-4" /> Previous
           </button>
           <button
             onClick={() => setShowMonth(s => !s)}
-            className={`p-2 rounded-lg transition-colors ${showMonth ? 'bg-teal-50 text-teal-600' : 'text-slate-400 hover:bg-slate-100 hover:text-teal-600'}`}
+            className={`p-2 rounded-control transition-colors ${showMonth ? 'bg-teal-50 text-teal-600' : 'text-content-muted hover:bg-surface-sunken hover:text-teal-600'}`}
             title={showMonth ? 'Back to the day' : 'Pick a day from the month'}
           >
             <CalendarDays className="w-5 h-5" />
           </button>
-          <button onClick={() => shiftDay(1)} className="flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-teal-600">
+          <button onClick={() => shiftDay(1)} className="flex items-center gap-1 text-sm font-medium text-content-secondary hover:text-teal-600">
             Next <ChevronRight className="w-4 h-4" />
           </button>
         </div>
@@ -404,7 +404,7 @@ export default function MyDayView({
           />
           {goal != null && goal > 0 && <GoalBar done={completedCount} goal={goal} />}
           {workedMinutes > 0 && (
-            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-slate-400">
+            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-content-muted">
               <Clock className="w-3 h-3" /> {formatMinutes(workedMinutes)} worked {selected === today ? 'today' : 'this day'}
             </div>
           )}
@@ -422,7 +422,7 @@ export default function MyDayView({
         <div className="space-y-4 min-w-0">
           {gc.connected && <GoogleEventsCard events={events} />}
           {overdue.length > 0 && (
-            <div className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4">
+            <div className="rounded-card border border-rose-200 bg-rose-50/60 p-4">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-500 mb-1 flex items-center gap-1">
                 <AlertCircle className="w-3.5 h-3.5" /> Overdue
               </p>
@@ -473,7 +473,7 @@ export default function MyDayView({
             <QuickAddTask onAdd={title => handlers.onAddTask({ title, due_date: selected })} />
             <button
               onClick={() => handlers.onCreateBlock(selected)}
-              className="flex items-center gap-1 text-xs font-medium text-slate-500 hover:text-teal-600 border border-slate-200 rounded-lg px-2.5 py-2 shrink-0"
+              className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-teal-600 border border-edge rounded-control px-2.5 py-2 shrink-0"
               title="Add a named time block"
             >
               <Plus className="w-3.5 h-3.5" /> Block
@@ -514,10 +514,10 @@ function CapacityBar({
   return (
     <div className="mt-2">
       <div className="flex items-center gap-2 text-xs mb-1">
-        <span className={`font-medium ${over ? 'text-rose-600' : 'text-slate-500'}`}>
+        <span className={`font-medium ${over ? 'text-rose-600' : 'text-content-secondary'}`}>
           {formatMinutes(planned) || '0m'} planned
         </span>
-        <span className="text-slate-400">of</span>
+        <span className="text-content-muted">of</span>
         {editing ? (
           <span className="inline-flex items-center gap-1">
             <input
@@ -529,18 +529,18 @@ function CapacityBar({
               onChange={e => setHours(e.target.value)}
               onBlur={commit}
               onKeyDown={e => { if (e.key === 'Enter') commit(); }}
-              className="w-14 text-xs border border-slate-200 rounded px-1.5 py-0.5"
+              className="w-14 text-xs border border-edge rounded px-1.5 py-0.5"
             />
-            <span className="text-slate-400">h target</span>
+            <span className="text-content-muted">h target</span>
           </span>
         ) : (
-          <button onClick={() => { setHours((baseTarget / 60).toString()); setEditing(true); }} className="font-medium text-slate-500 hover:text-teal-600 underline decoration-dotted">
+          <button onClick={() => { setHours((baseTarget / 60).toString()); setEditing(true); }} className="font-medium text-content-secondary hover:text-teal-600 underline decoration-dotted">
             {formatMinutes(target)} target
           </button>
         )}
         {over && <span className="ml-auto text-rose-600 font-medium">Over by {formatMinutes(planned - target)}</span>}
       </div>
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+      <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
         <div className={`h-full rounded-full transition-all ${over ? 'bg-rose-500' : pct > 80 ? 'bg-amber-500' : 'bg-teal-500'}`} style={{ width: `${pct}%` }} />
       </div>
       {reduced && (
@@ -563,12 +563,12 @@ function GoalBar({ done, goal }: { done: number; goal: number }) {
   return (
     <div className="mt-2">
       <div className="flex items-center gap-2 text-xs mb-1">
-        <span className={`font-medium ${hit ? 'text-emerald-600' : 'text-slate-500'}`}>
+        <span className={`font-medium ${hit ? 'text-emerald-600' : 'text-content-secondary'}`}>
           {done} of {goal} done
         </span>
         {hit && <span className="ml-auto text-emerald-600 font-medium">🎉 Goal met — nice work!</span>}
       </div>
-      <div className="h-2 rounded-full bg-slate-100 overflow-hidden">
+      <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
         <div className={`h-full rounded-full transition-all ${hit ? 'bg-emerald-500' : 'bg-indigo-400'}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -594,7 +594,7 @@ function BlockReview({
   const [open, setOpen] = useState(false);
   const count = reviewBlocks.reduce((n, x) => n + x.open.length, 0);
   return (
-    <div className="mb-4 rounded-2xl border border-violet-200 bg-violet-50/60 overflow-hidden">
+    <div className="mb-4 rounded-card border border-violet-200 bg-violet-50/60 overflow-hidden">
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center gap-2 px-4 py-3 text-left">
         <History className="w-4 h-4 text-violet-500 shrink-0" />
         <span className="text-sm font-semibold text-violet-800">
@@ -628,31 +628,31 @@ function BlockReviewCard({
   const share = countedCount > 0 ? Math.round(dur / countedCount) : 0;
   const dayLabel = new Date(block.day + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-3">
+    <div className="rounded-card border border-edge bg-surface p-3">
       <div className="flex items-baseline gap-2 mb-2">
-        <span className="text-sm font-semibold text-slate-700">{block.title || 'Time block'}</span>
-        <span className="text-xs text-slate-400">
+        <span className="text-sm font-semibold text-content">{block.title || 'Time block'}</span>
+        <span className="text-xs text-content-muted">
           {dayLabel} · {formatClock(block.start_minute)}–{formatClock(block.end_minute)} · {formatMinutes(dur)}
         </span>
       </div>
       {doneCount > 0 && (
-        <p className="text-xs text-slate-400 mb-1.5">{doneCount} already checked off{countedCount > 0 && <> · {formatMinutes(share)} each</>}</p>
+        <p className="text-xs text-content-muted mb-1.5">{doneCount} already checked off{countedCount > 0 && <> · {formatMinutes(share)} each</>}</p>
       )}
       <ul className="space-y-1.5">
         {open.map(t => (
           <li key={t.id} className="flex items-center gap-2">
-            <span className="flex-1 min-w-0 text-sm text-slate-700 break-words">{t.title || 'Untitled'}</span>
-            <div className="shrink-0 inline-flex rounded-lg border border-slate-200 overflow-hidden text-xs font-medium">
+            <span className="flex-1 min-w-0 text-sm text-content break-words">{t.title || 'Untitled'}</span>
+            <div className="shrink-0 inline-flex rounded-control border border-edge overflow-hidden text-xs font-medium">
               <button
                 onClick={() => setWorked(w => ({ ...w, [t.id]: true }))}
-                className={`px-2.5 py-1 transition-colors ${worked[t.id] ? 'bg-violet-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                className={`px-2.5 py-1 transition-colors ${worked[t.id] ? 'bg-violet-600 text-white' : 'text-content-secondary hover:bg-surface-sunken'}`}
                 title="I worked on it — log the time, keep it open"
               >
                 Worked
               </button>
               <button
                 onClick={() => setWorked(w => ({ ...w, [t.id]: false }))}
-                className={`px-2.5 py-1 transition-colors ${!worked[t.id] ? 'bg-slate-600 text-white' : 'text-slate-500 hover:bg-slate-100'}`}
+                className={`px-2.5 py-1 transition-colors ${!worked[t.id] ? 'bg-slate-600 text-white' : 'text-content-secondary hover:bg-surface-sunken'}`}
                 title="I didn't — leave it untracked and move it to today"
               >
                 Didn’t
@@ -664,11 +664,11 @@ function BlockReviewCard({
       <div className="mt-2.5 flex items-center gap-2">
         <button
           onClick={() => onResolve(block.id, worked)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg px-3 py-1.5"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-control px-3 py-1.5"
         >
           <Check className="w-4 h-4" /> Save
         </button>
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-content-muted">
           {countedCount > 0
             ? <>Logs {formatMinutes(share)} to each of {countedCount}; open ones carry to today.</>
             : <>Nothing logged; all move to today.</>}
@@ -686,13 +686,13 @@ function BlockReviewCard({
 function PhaseBanner({ phase, target, planned, daysIn }: { phase: PhaseInfo; target: number; planned: number; daysIn: number }) {
   const over = planned > target && target > 0;
   return (
-    <div className={`rounded-2xl border p-4 ${over ? 'border-rose-200 bg-rose-50/60' : 'border-slate-200 bg-slate-50/70'}`}>
+    <div className={`rounded-card border p-4 ${over ? 'border-rose-200 bg-rose-50/60' : 'border-edge bg-surface-hover/70'}`}>
       <div className="flex items-center gap-2">
         <span className={`w-2.5 h-2.5 rounded-full ${phase.dot} shrink-0`} />
         <span className={`text-sm font-semibold ${phase.accent}`}>You're in {phase.label}</span>
-        <span className="ml-auto text-xs font-medium text-slate-500">suggests {formatMinutes(target)} · day {daysIn + 1}</span>
+        <span className="ml-auto text-xs font-medium text-content-secondary">suggests {formatMinutes(target)} · day {daysIn + 1}</span>
       </div>
-      <p className="text-xs text-slate-500 mt-1">{phase.tagline}</p>
+      <p className="text-xs text-content-secondary mt-1">{phase.tagline}</p>
       {over ? (
         <p className="text-xs text-rose-600 mt-2 font-medium">
           Today's plan is {formatMinutes(planned)} — more than {phase.label} can hold. What can move or wait?
@@ -735,7 +735,7 @@ function BlockCard({
     : 'Anytime';
 
   return (
-    <div ref={setNodeRef} className={`rounded-2xl border bg-white p-4 transition-colors ${isOver ? 'border-teal-400 ring-2 ring-teal-100' : 'border-slate-200'}`}>
+    <div ref={setNodeRef} className={`rounded-card border bg-surface p-4 transition-colors ${isOver ? 'border-teal-400 ring-2 ring-teal-100' : 'border-edge'}`}>
       <div className="flex items-center gap-2 mb-2">
         <Clock className="w-4 h-4 text-teal-600 shrink-0" />
         <input
@@ -745,13 +745,13 @@ function BlockCard({
           onBlur={() => { if (title !== block.title) handlers.onUpdateBlock(block.id, { title }); }}
           onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
           placeholder="Name this block…"
-          className="flex-1 text-sm font-semibold text-slate-800 bg-transparent outline-none placeholder:text-slate-300"
+          className="flex-1 text-sm font-semibold text-content bg-transparent outline-none placeholder:text-content-faint"
         />
-        {minutes > 0 && <span className="text-xs font-medium text-slate-400">{formatMinutes(minutes)}</span>}
+        {minutes > 0 && <span className="text-xs font-medium text-content-muted">{formatMinutes(minutes)}</span>}
         {tasks.length > 0 && (
           <button
             onClick={() => handlers.onLogBlockWorked(block, tasks)}
-            className="inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-teal-600 shrink-0"
+            className="inline-flex items-center gap-1 text-xs font-medium text-content-muted hover:text-teal-600 shrink-0"
             title="Log this block’s time as actually worked — adds it to your Logbook & Stats without a timer"
           >
             <History className="w-3.5 h-3.5" /> Log as worked
@@ -762,30 +762,30 @@ function BlockCard({
             synced <Link2Off className="w-3.5 h-3.5" />
           </button>
         ) : gcConnected && timed && block.end_minute != null ? (
-          <button onClick={() => handlers.onSyncBlock(block, open)} className="text-slate-300 hover:text-sky-600" title="Add this block to Google Calendar">
+          <button onClick={() => handlers.onSyncBlock(block, open)} className="text-content-faint hover:text-sky-600" title="Add this block to Google Calendar">
             <CalendarPlus className="w-4 h-4" />
           </button>
         ) : null}
-        <button onClick={() => handlers.onDeleteBlock(block.id)} className="text-slate-300 hover:text-rose-500" title="Delete block (its to-dos stay on the day)">
+        <button onClick={() => handlers.onDeleteBlock(block.id)} className="text-content-faint hover:text-rose-500" title="Delete block (its to-dos stay on the day)">
           <Trash2 className="w-4 h-4" />
         </button>
       </div>
 
       {/* Time range editor */}
-      <div className="flex items-center gap-2 mb-2 ml-6 text-xs text-slate-400">
-        <span className="text-slate-500 font-medium">{range}</span>
+      <div className="flex items-center gap-2 mb-2 ml-6 text-xs text-content-muted">
+        <span className="text-content-secondary font-medium">{range}</span>
         <input
           type="time"
           value={minutesToTime(block.start_minute)}
           onChange={e => handlers.onUpdateBlock(block.id, { start_minute: timeToMinutes(e.target.value) })}
-          className="border border-slate-200 rounded px-1.5 py-0.5"
+          className="border border-edge rounded px-1.5 py-0.5"
         />
         <span>to</span>
         <input
           type="time"
           value={minutesToTime(block.end_minute)}
           onChange={e => handlers.onUpdateBlock(block.id, { end_minute: timeToMinutes(e.target.value) })}
-          className="border border-slate-200 rounded px-1.5 py-0.5"
+          className="border border-edge rounded px-1.5 py-0.5"
         />
       </div>
 
@@ -793,7 +793,7 @@ function BlockCard({
         {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} onLogTime={handlers.onLogTime} />)}
         {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={handlers.onPatchTask} onDelete={handlers.onDeleteTask} onLogTime={handlers.onLogTime} />)}
       </ul>
-      {tasks.length === 0 && <p className="ml-6 text-xs text-slate-400">Drop a to-do here, or add one below.</p>}
+      {tasks.length === 0 && <p className="ml-6 text-xs text-content-muted">Drop a to-do here, or add one below.</p>}
 
       <div className="ml-6 mt-1">
         <input
@@ -806,7 +806,7 @@ function BlockCard({
             }
           }}
           placeholder="+ add a to-do to this block"
-          className="w-full text-sm bg-transparent outline-none placeholder:text-slate-300 text-slate-700 py-1"
+          className="w-full text-sm bg-transparent outline-none placeholder:text-content-faint text-content py-1"
         />
       </div>
     </div>
@@ -835,20 +835,20 @@ function LooseZone({
   if (tasks.length === 0 && !hasBlocks) {
     // Nothing scheduled and no blocks: still render as a drop target prompt.
     return (
-      <div ref={setNodeRef} className={`rounded-2xl border border-dashed p-6 text-center text-sm text-slate-400 transition-colors ${isOver ? 'border-teal-400 bg-teal-50/40' : 'border-slate-200'}`}>
-        <Inbox className="w-5 h-5 mx-auto mb-1 text-slate-300" />
+      <div ref={setNodeRef} className={`rounded-card border border-dashed p-6 text-center text-sm text-content-muted transition-colors ${isOver ? 'border-teal-400 bg-teal-50/40' : 'border-edge'}`}>
+        <Inbox className="w-5 h-5 mx-auto mb-1 text-content-faint" />
         Nothing scheduled yet — add a to-do or a time block.
       </div>
     );
   }
   return (
-    <div ref={setNodeRef} className={`rounded-2xl border bg-white p-4 transition-colors ${isOver ? 'border-teal-400 ring-2 ring-teal-100' : 'border-slate-200'}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1">{hasBlocks ? 'Not in a block' : 'Scheduled today'}</p>
+    <div ref={setNodeRef} className={`rounded-card border bg-surface p-4 transition-colors ${isOver ? 'border-teal-400 ring-2 ring-teal-100' : 'border-edge'}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-1">{hasBlocks ? 'Not in a block' : 'Scheduled today'}</p>
       <ul className="space-y-0.5">
         {open.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} onLogTime={onLogTime} />)}
         {done.map(t => <DraggableTaskRow key={t.id} task={t} today={today} lists={lists} orbitEnabled={orbitEnabled} onPatch={onPatch} onDelete={onDelete} onLogTime={onLogTime} />)}
       </ul>
-      {open.length === 0 && done.length === 0 && <p className="text-xs text-slate-400">Drag a to-do here to pull it out of its block.</p>}
+      {open.length === 0 && done.length === 0 && <p className="text-xs text-content-muted">Drag a to-do here to pull it out of its block.</p>}
     </div>
   );
 }
@@ -881,7 +881,7 @@ function DraggableTaskRow({
     <button
       {...attributes}
       {...listeners}
-      className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
+      className="text-content-faint hover:text-content-secondary cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0 touch-none"
       title="Drag between blocks"
     >
       <GripVertical className="w-4 h-4" />
@@ -924,21 +924,21 @@ function DraggableTaskRow({
 
 function GoogleEventsCard({ events }: { events: GCalEvent[] }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1">
+    <div className="rounded-card border border-edge bg-surface p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-2 flex items-center gap-1">
         <CalendarDays className="w-3.5 h-3.5 text-sky-500" /> On your calendar
       </p>
       {events.length === 0 ? (
-        <p className="text-sm text-slate-400">No events.</p>
+        <p className="text-sm text-content-muted">No events.</p>
       ) : (
         <ul className="space-y-1">
           {events.map(ev => (
             <li key={ev.id} className="flex items-center gap-2 text-sm">
-              <span className="text-xs font-medium text-slate-400 w-16 shrink-0">
+              <span className="text-xs font-medium text-content-muted w-16 shrink-0">
                 {ev.start?.date ? 'All day' : ev.start?.dateTime ? new Date(ev.start.dateTime).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : ''}
               </span>
-              <span className="flex-1 text-slate-600 truncate">{ev.summary || '(no title)'}</span>
-              {ev.htmlLink && <a href={ev.htmlLink} target="_blank" rel="noreferrer" className="text-slate-300 hover:text-sky-500"><ExternalLink className="w-3.5 h-3.5" /></a>}
+              <span className="flex-1 text-content-secondary truncate">{ev.summary || '(no title)'}</span>
+              {ev.htmlLink && <a href={ev.htmlLink} target="_blank" rel="noreferrer" className="text-content-faint hover:text-sky-500"><ExternalLink className="w-3.5 h-3.5" /></a>}
             </li>
           ))}
         </ul>
@@ -989,14 +989,14 @@ function MonthGrid({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+    <div className="rounded-card border border-edge bg-surface p-3">
       <div className="flex items-center justify-between mb-2">
-        <button onClick={() => shift(-1)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><ChevronLeft className="w-4 h-4" /></button>
-        <span className="text-sm font-semibold text-slate-700">{monthName}</span>
-        <button onClick={() => shift(1)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100"><ChevronRight className="w-4 h-4" /></button>
+        <button onClick={() => shift(-1)} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken"><ChevronLeft className="w-4 h-4" /></button>
+        <span className="text-sm font-semibold text-content">{monthName}</span>
+        <button onClick={() => shift(1)} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken"><ChevronRight className="w-4 h-4" /></button>
       </div>
       <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEKDAYS.map(w => <div key={w} className="text-center text-[10px] font-semibold uppercase text-slate-400">{w}</div>)}
+        {WEEKDAYS.map(w => <div key={w} className="text-center text-[10px] font-semibold uppercase text-content-muted">{w}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1">
         {cells.map(d => {
@@ -1009,11 +1009,11 @@ function MonthGrid({
             <button
               key={iso}
               onClick={() => onSelect(iso)}
-              className={`relative aspect-square rounded-lg text-sm flex items-center justify-center transition-colors
-                ${isSel ? 'bg-teal-600 text-white font-semibold' : isToday ? 'bg-teal-50 text-teal-700 font-semibold' : inMonth ? 'text-slate-700 hover:bg-slate-100' : 'text-slate-300 hover:bg-slate-50'}`}
+              className={`relative aspect-square rounded-control text-sm flex items-center justify-center transition-colors
+                ${isSel ? 'bg-teal-600 text-white font-semibold' : isToday ? 'bg-teal-50 text-teal-700 font-semibold' : inMonth ? 'text-content hover:bg-surface-sunken' : 'text-content-faint hover:bg-surface-hover'}`}
             >
               {d.getDate()}
-              {has && <span className={`absolute bottom-1 w-1 h-1 rounded-full ${isSel ? 'bg-white' : 'bg-teal-500'}`} />}
+              {has && <span className={`absolute bottom-1 w-1 h-1 rounded-full ${isSel ? 'bg-surface' : 'bg-teal-500'}`} />}
             </button>
           );
         })}
@@ -1049,26 +1049,26 @@ function TaskSearch({
 
   return (
     <div className="relative mb-4">
-      <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-full px-4 py-2">
-        <Search className="w-4 h-4 text-slate-400 shrink-0" />
+      <div className="flex items-center gap-2 bg-surface-hover border border-edge rounded-full px-4 py-2">
+        <Search className="w-4 h-4 text-content-muted shrink-0" />
         <input
           value={q}
           onChange={e => setQ(e.target.value)}
           placeholder="Search tasks…"
-          className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+          className="flex-1 text-sm bg-transparent outline-none placeholder:text-content-muted text-content"
         />
-        {q && <button onClick={() => setQ('')} className="text-slate-300 hover:text-slate-500"><X className="w-4 h-4" /></button>}
+        {q && <button onClick={() => setQ('')} className="text-content-faint hover:text-content-secondary"><X className="w-4 h-4" /></button>}
       </div>
       {q.trim() && (
-        <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-80 overflow-y-auto">
+        <div className="absolute left-0 right-0 top-full mt-1 z-40 bg-surface border border-edge rounded-card shadow-xl max-h-80 overflow-y-auto">
           {results.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-slate-400">No matching tasks.</p>
+            <p className="px-4 py-3 text-sm text-content-muted">No matching tasks.</p>
           ) : (
             <ul className="py-1">
               {results.map(t => {
                 const day = taskDay(t);
                 return (
-                  <li key={t.id} className="group flex items-center gap-2 px-3 py-1.5 hover:bg-slate-50">
+                  <li key={t.id} className="group flex items-center gap-2 px-3 py-1.5 hover:bg-surface-hover">
                     <button
                       onClick={() => onPatch(t.id, { done: !t.done })}
                       className="shrink-0 transition-colors"
@@ -1076,16 +1076,16 @@ function TaskSearch({
                     >
                       {t.done
                         ? <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-teal-600 text-white"><Check className="w-3 h-3" /></span>
-                        : <Circle className="w-4 h-4 text-slate-300 hover:text-teal-600" />}
+                        : <Circle className="w-4 h-4 text-content-faint hover:text-teal-600" />}
                     </button>
                     <button
                       onClick={() => { onOpen(t); setQ(''); }}
-                      className={`flex-1 min-w-0 text-left text-sm truncate ${t.done ? 'text-slate-400 line-through' : 'text-slate-700 hover:text-teal-600'}`}
+                      className={`flex-1 min-w-0 text-left text-sm truncate ${t.done ? 'text-content-muted line-through' : 'text-content hover:text-teal-600'}`}
                       title="Open this to-do"
                     >
                       {t.title || 'Untitled'}
                     </button>
-                    {day && <span className="text-xs text-slate-400 shrink-0">{new Date(day + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                    {day && <span className="text-xs text-content-muted shrink-0">{new Date(day + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
                     <TaskActionsMenu
                       task={t}
                       today={today}
@@ -1112,21 +1112,21 @@ function QuickAddTask({ onAdd }: { onAdd: (title: string) => void }) {
   const [value, setValue] = useState('');
   function submit() { if (value.trim()) { onAdd(value.trim()); setValue(''); } }
   return (
-    <div className="flex-1 flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-      <Plus className="w-4 h-4 text-slate-400 shrink-0" />
+    <div className="flex-1 flex items-center gap-2 bg-surface-hover border border-edge rounded-control px-3 py-2">
+      <Plus className="w-4 h-4 text-content-muted shrink-0" />
       <input
         value={value}
         onChange={e => setValue(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); }}
         placeholder="Add a to-do to this day…"
-        className="flex-1 text-sm bg-transparent outline-none placeholder:text-slate-400 text-slate-700"
+        className="flex-1 text-sm bg-transparent outline-none placeholder:text-content-muted text-content"
       />
       <button
         onClick={submit}
         disabled={!value.trim()}
         title="Add (Enter)"
-        className={`shrink-0 inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
-          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-slate-300 cursor-default'
+        className={`shrink-0 inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium transition-colors ${
+          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-content-faint cursor-default'
         }`}
       >
         <CornerDownLeft className="w-3.5 h-3.5" /> Add
@@ -1139,29 +1139,29 @@ function ConnectControls({ gc }: { gc: UseGoogleCalendar }) {
   if (!gc.configured) return null;
   if (!gc.connected) {
     return (
-      <button onClick={gc.connect} disabled={gc.busy} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-lg px-3 py-1.5 disabled:opacity-60">
+      <button onClick={gc.connect} disabled={gc.busy} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-sky-600 hover:bg-sky-700 rounded-control px-3 py-1.5 disabled:opacity-60">
         <CalendarDays className="w-4 h-4" /> {gc.busy ? 'Connecting…' : 'Connect Google Calendar'}
       </button>
     );
   }
   return (
     <div className="flex items-center gap-2">
-      <select value={gc.calendarId} onChange={e => gc.chooseCalendar(e.target.value)} className="text-sm border border-slate-200 rounded-lg px-2 py-1.5 max-w-[12rem]">
+      <select value={gc.calendarId} onChange={e => gc.chooseCalendar(e.target.value)} className="text-sm border border-edge rounded-control px-2 py-1.5 max-w-[12rem]">
         {gc.calendars.map(c => <option key={c.id} value={c.id}>{c.summary}</option>)}
       </select>
-      <button onClick={gc.disconnect} className="text-xs text-slate-400 hover:text-rose-500">Disconnect</button>
+      <button onClick={gc.disconnect} className="text-xs text-content-muted hover:text-rose-500">Disconnect</button>
     </div>
   );
 }
 
 function NotConfiguredCard() {
   return (
-    <div className="mb-6 bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-2xl p-5">
+    <div className="mb-6 bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-card p-5">
       <h3 className="font-semibold text-sky-800 mb-1 flex items-center gap-2"><CalendarDays className="w-4 h-4" /> Connect your Google Calendar</h3>
       <p className="text-sm text-sky-700 leading-relaxed">
         My Day works fully without it — connecting Google Calendar just layers your existing events
         alongside your plan and lets you push a time block out as a calendar event (with a reminder).
-        It needs a one-time sign-in key (a free OAuth client ID) as <code className="bg-white/60 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code>.
+        It needs a one-time sign-in key (a free OAuth client ID) as <code className="bg-surface/60 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code>.
       </p>
     </div>
   );

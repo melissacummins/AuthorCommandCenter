@@ -40,7 +40,7 @@ export default function ThemeSetupTab() {
   return (
     <div className="space-y-6">
       {/* Recommended: publish as a theme snippet, blocks hold one line */}
-      <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-2xl p-6">
+      <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-card p-6">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-4 h-4 text-sky-600" />
           <h3 className="font-semibold text-sky-800">Recommended: one-click updates</h3>
@@ -54,7 +54,7 @@ export default function ThemeSetupTab() {
           <button
             onClick={handlePublish}
             disabled={publishing}
-            className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-lg hover:bg-sky-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700 disabled:opacity-50"
           >
             {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
             {publishing ? 'Publishing…' : 'Publish widget to live theme'}
@@ -75,10 +75,10 @@ export default function ThemeSetupTab() {
             Liquid block (replacing the old pasted code):</span></li>
         </ol>
         <div className="flex items-center gap-2 mt-2 ml-6">
-          <code className="px-3 py-1.5 bg-white border border-sky-200 rounded-lg text-sm text-slate-800">{RENDER_LINE}</code>
+          <code className="px-3 py-1.5 bg-surface border border-sky-200 rounded-control text-sm text-content">{RENDER_LINE}</code>
           <button
             onClick={() => copyText(RENDER_LINE, setCopiedLine)}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-edge rounded-control text-xs font-medium text-content hover:bg-surface-hover"
           >
             {copiedLine ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
             {copiedLine ? 'Copied!' : 'Copy'}
@@ -93,22 +93,22 @@ export default function ThemeSetupTab() {
       {/* Manual fallback */}
       <button
         onClick={() => setShowManual(v => !v)}
-        className="text-sm text-slate-500 hover:text-slate-700 underline"
+        className="text-sm text-content-secondary hover:text-content underline"
       >
         {showManual ? 'Hide' : 'Show'} the manual copy-paste method
       </button>
 
       {showManual && (
         <>
-          <div className="bg-white border border-slate-200 rounded-2xl p-6">
-            <h3 className="font-semibold text-slate-800 mb-3">Manual install (paste the full code)</h3>
-            <ol className="space-y-3 text-sm text-slate-700">
+          <div className="bg-surface border border-edge rounded-card p-6">
+            <h3 className="font-semibold text-content mb-3">Manual install (paste the full code)</h3>
+            <ol className="space-y-3 text-sm text-content">
               {INSTALL_STEPS.map((step, i) => (
                 <li key={i} className="flex gap-3">
                   <span className="font-bold text-sky-500 shrink-0">{i + 1}.</span>
                   <div>
                     <p className="font-medium">{step.title}</p>
-                    <p className="text-slate-500">{step.detail}</p>
+                    <p className="text-content-secondary">{step.detail}</p>
                   </div>
                 </li>
               ))}
@@ -118,19 +118,19 @@ export default function ThemeSetupTab() {
           <div className="relative">
             <button
               onClick={() => copyText(snippet, setCopied)}
-              className="absolute right-3 top-3 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-white/90 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 hover:bg-white shadow-sm"
+              className="absolute right-3 top-3 z-10 flex items-center gap-1.5 px-3 py-1.5 bg-surface/90 border border-edge rounded-control text-xs font-medium text-content hover:bg-surface shadow-sm"
             >
               {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
               {copied ? 'Copied!' : 'Copy snippet'}
             </button>
-            <pre className="bg-slate-900 text-slate-200 text-xs rounded-2xl p-5 overflow-x-auto max-h-[28rem] nice-scrollbar">
+            <pre className="bg-slate-900 text-[#cbd5e1] text-xs rounded-card p-5 overflow-x-auto max-h-[28rem] nice-scrollbar">
               <code>{snippet}</code>
             </pre>
           </div>
         </>
       )}
 
-      <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+      <div className="flex items-start gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-card">
         <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
         <div className="text-sm text-emerald-800">
           <p className="font-medium mb-1">Why this can't break like SellEasy did</p>

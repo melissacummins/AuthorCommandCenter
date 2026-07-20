@@ -111,15 +111,15 @@ export default function SettingsModule() {
   return (
     <div className="p-6 lg:p-8 max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">Settings</h1>
-        <p className="text-slate-500 text-sm mt-1">
+        <h1 className="text-2xl font-bold text-content">Settings</h1>
+        <p className="text-content-secondary text-sm mt-1">
           Manage your Command Center account and data.
         </p>
       </div>
 
       {/* Stale-backup warning */}
       {daysAgo !== null && daysAgo > 14 && (
-        <div className="mb-6 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl p-4">
+        <div className="mb-6 flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-card p-4">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
           <div className="text-sm text-amber-800">
             <p className="font-medium">
@@ -144,24 +144,24 @@ export default function SettingsModule() {
 
       <ApiKeysSection />
 
-      <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+      <section className="bg-surface rounded-card border border-edge p-6 mb-6">
         <div className="flex items-center gap-3 mb-2">
           <ShieldCheck className="w-5 h-5 text-emerald-600" />
-          <h2 className="text-lg font-semibold text-slate-800">Backup & Restore</h2>
+          <h2 className="text-lg font-semibold text-content">Backup & Restore</h2>
         </div>
-        <p className="text-sm text-slate-500 mb-6">
+        <p className="text-sm text-content-secondary mb-6">
           Download a single JSON file containing everything in your Command Center — Inventory, Profit, Book Tracker, Ad Alchemy, FinStream, KDP, and more. You can restore from this file at any time.
         </p>
 
         {/* Status banner */}
         {status.kind !== 'idle' && (
           <div
-            className={`mb-6 flex items-start gap-3 rounded-xl p-4 text-sm ${
+            className={`mb-6 flex items-start gap-3 rounded-card p-4 text-sm ${
               status.kind === 'ok'
                 ? 'bg-emerald-50 border border-emerald-200 text-emerald-800'
                 : status.kind === 'error'
                   ? 'bg-red-50 border border-red-200 text-red-800'
-                  : 'bg-slate-50 border border-slate-200 text-slate-700'
+                  : 'bg-surface-hover border border-edge text-content'
             }`}
           >
             {status.kind === 'busy' && (
@@ -179,9 +179,9 @@ export default function SettingsModule() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Backup */}
-          <div className="border border-slate-200 rounded-xl p-5">
-            <h3 className="font-medium text-slate-800 mb-1">Download backup</h3>
-            <p className="text-xs text-slate-500 mb-4">
+          <div className="border border-edge rounded-card p-5">
+            <h3 className="font-medium text-content mb-1">Download backup</h3>
+            <p className="text-xs text-content-secondary mb-4">
               {lastBackup
                 ? `Last downloaded ${lastBackup.toLocaleDateString()} on this browser.`
                 : 'No backup downloaded yet from this browser.'}
@@ -189,7 +189,7 @@ export default function SettingsModule() {
             <button
               onClick={handleDownload}
               disabled={isBusy}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-control hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
             >
               <Download className="w-4 h-4" />
               Download backup
@@ -197,8 +197,8 @@ export default function SettingsModule() {
           </div>
 
           {/* Restore */}
-          <div className="border border-slate-200 rounded-xl p-5">
-            <h3 className="font-medium text-slate-800 mb-1">Restore from file</h3>
+          <div className="border border-edge rounded-card p-5">
+            <h3 className="font-medium text-content mb-1">Restore from file</h3>
             <p className="text-xs text-red-600 mb-4">
               Overwrites all current data — there is no undo.
             </p>
@@ -212,7 +212,7 @@ export default function SettingsModule() {
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={isBusy}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 border border-edge-strong text-content text-sm font-medium rounded-control hover:bg-surface-hover disabled:opacity-50"
             >
               <Upload className="w-4 h-4" />
               Choose backup file…

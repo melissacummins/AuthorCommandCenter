@@ -32,25 +32,25 @@ export default function BookView({ book, penName, onBack, onEdit, onBookUpdated 
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-white">
+        <button onClick={onBack} className="p-2 rounded-control text-content-muted hover:text-content hover:bg-surface">
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold text-slate-800 truncate">{book.title}</h2>
+          <h2 className="text-xl font-bold text-content truncate">{book.title}</h2>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className={`text-[11px] px-2 py-0.5 rounded-full ${STATUS_COLORS[book.status]}`}>{STATUS_LABELS[book.status]}</span>
             {penName && <PenNameChip name={penName.name} color={penName.color} size="sm" />}
-            {book.series && <span className="text-xs text-slate-500">{book.series}{book.series_position ? ` #${book.series_position}` : ''}</span>}
+            {book.series && <span className="text-xs text-content-secondary">{book.series}{book.series_position ? ` #${book.series_position}` : ''}</span>}
           </div>
         </div>
         <button onClick={onEdit}
-          className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 flex items-center gap-1.5">
+          className="px-3 py-2 rounded-control bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 flex items-center gap-1.5">
           <Pencil className="w-3.5 h-3.5" /> Edit
         </button>
       </div>
 
       <div className="flex gap-4">
-        <div className="w-28 h-40 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center shrink-0 overflow-hidden border border-slate-200">
+        <div className="w-28 h-40 rounded-control bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center shrink-0 overflow-hidden border border-edge">
           {book.cover_url ? <img src={book.cover_url} alt="" className="w-full h-full object-cover" /> : <BookOpen className="w-8 h-8 text-indigo-400" />}
         </div>
         <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm content-start">
@@ -95,8 +95,8 @@ export default function BookView({ book, penName, onBack, onEdit, onBookUpdated 
         <Section title={`Review excerpts (${book.reviews.length})`}>
           <div className="space-y-2">
             {book.reviews.map((r, i) => (
-              <blockquote key={i} className="text-sm text-slate-600 border-l-2 border-amber-300 pl-3">
-                “{r.quote}” <span className="text-xs text-slate-400">— {r.source}{r.rating ? ` (${r.rating}★)` : ''}</span>
+              <blockquote key={i} className="text-sm text-content-secondary border-l-2 border-amber-300 pl-3">
+                “{r.quote}” <span className="text-xs text-content-muted">— {r.source}{r.rating ? ` (${r.rating}★)` : ''}</span>
               </blockquote>
             ))}
           </div>
@@ -116,10 +116,10 @@ export default function BookView({ book, penName, onBack, onEdit, onBookUpdated 
 
 function Section({ title, defaultOpen, children }: { title: string; defaultOpen?: boolean; children: React.ReactNode }) {
   return (
-    <details open={defaultOpen} className="bg-white rounded-2xl border border-slate-200 group">
-      <summary className="px-5 py-3.5 cursor-pointer select-none text-sm font-semibold text-slate-800 uppercase tracking-wide list-none flex items-center justify-between">
+    <details open={defaultOpen} className="bg-surface rounded-card border border-edge group">
+      <summary className="px-5 py-3.5 cursor-pointer select-none text-sm font-semibold text-content uppercase tracking-wide list-none flex items-center justify-between">
         {title}
-        <span className="text-slate-300 group-open:rotate-90 transition-transform">›</span>
+        <span className="text-content-faint group-open:rotate-90 transition-transform">›</span>
       </summary>
       <div className="px-5 pb-5 space-y-3">{children}</div>
     </details>
@@ -129,8 +129,8 @@ function Section({ title, defaultOpen, children }: { title: string; defaultOpen?
 function Fact({ label, value, mono }: { label: string; value: string | null; mono?: boolean }) {
   return (
     <p className="min-w-0">
-      <span className="text-slate-400">{label}:</span>{' '}
-      <span className={`text-slate-700 ${mono ? 'font-mono text-xs' : ''}`}>{value || '—'}</span>
+      <span className="text-content-muted">{label}:</span>{' '}
+      <span className={`text-content ${mono ? 'font-mono text-xs' : ''}`}>{value || '—'}</span>
     </p>
   );
 }
@@ -138,10 +138,10 @@ function Fact({ label, value, mono }: { label: string; value: string | null; mon
 function HeatFact({ level }: { level: number | null }) {
   return (
     <p className="flex items-center gap-1">
-      <span className="text-slate-400 text-sm">Heat:</span>
+      <span className="text-content-muted text-sm">Heat:</span>
       {level
         ? Array.from({ length: level }, (_, i) => <Flame key={i} className="w-3.5 h-3.5 text-orange-500 fill-orange-400" />)
-        : <span className="text-slate-700 text-sm">—</span>}
+        : <span className="text-content text-sm">—</span>}
     </p>
   );
 }
@@ -149,23 +149,23 @@ function HeatFact({ level }: { level: number | null }) {
 function Field({ label, value, multiline, copyable }: { label: string; value: string | null; multiline?: boolean; copyable?: boolean }) {
   const [copied, setCopied] = useState(false);
   if (!value) {
-    return label ? <p className="text-sm"><span className="text-slate-400">{label}:</span> <span className="text-slate-300">—</span></p> : null;
+    return label ? <p className="text-sm"><span className="text-content-muted">{label}:</span> <span className="text-content-faint">—</span></p> : null;
   }
   return (
     <div>
       <div className="flex items-center gap-2 mb-1">
-        {label && <span className="text-xs font-medium text-slate-400 uppercase tracking-wide">{label}</span>}
+        {label && <span className="text-xs font-medium text-content-muted uppercase tracking-wide">{label}</span>}
         {copyable && (
           <button
             onClick={() => { navigator.clipboard.writeText(value); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
-            className="p-1 rounded text-slate-300 hover:text-slate-600"
+            className="p-1 rounded text-content-faint hover:text-content-secondary"
             title="Copy"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
           </button>
         )}
       </div>
-      <p className={`text-sm text-slate-700 ${multiline ? 'whitespace-pre-wrap' : ''}`}>{value}</p>
+      <p className={`text-sm text-content ${multiline ? 'whitespace-pre-wrap' : ''}`}>{value}</p>
     </div>
   );
 }
@@ -266,36 +266,36 @@ function AutofillPanel({ book, onApply }: { book: Book; onApply: (patch: BookUpd
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5">
+    <div className="bg-surface rounded-card border border-edge p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-content flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-pink-500" /> Fill from manuscript
           </h3>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="text-xs text-content-secondary mt-0.5">
             Scans "{manuscript.title}" and proposes tropes, heat, subgenre, warnings, keywords, and a draft blurb. Nothing is written until you accept it.
           </p>
         </div>
         {!progress && !proposals && (
           <button onClick={analyze}
-            className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 flex items-center gap-2">
+            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 flex items-center gap-2">
             <Wand2 className="w-4 h-4" /> Analyze manuscript
           </button>
         )}
       </div>
 
-      {progress && <p className="text-xs text-slate-500 mt-3 flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> {progress}</p>}
+      {progress && <p className="text-xs text-content-secondary mt-3 flex items-center gap-2"><Loader2 className="w-3.5 h-3.5 animate-spin" /> {progress}</p>}
       {error && <p className="text-xs text-rose-600 mt-3">{error}</p>}
 
       {proposals && (
         <div className="mt-4 space-y-2">
           {(proposals.comp_authors ?? []).length > 0 && (
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-content-secondary">
               <span className="font-medium">Comp authors (for your ads/notes):</span> {(proposals.comp_authors ?? []).join(', ')}
             </p>
           )}
           {rows.map(r => (
-            <label key={r.key} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${r.skip ? 'opacity-50 pointer-events-none border-slate-100' : accepted.has(r.key) ? 'border-pink-300 bg-pink-50/40' : 'border-slate-200'}`}>
+            <label key={r.key} className={`flex items-start gap-3 p-3 rounded-control border cursor-pointer ${r.skip ? 'opacity-50 pointer-events-none border-edge-soft' : accepted.has(r.key) ? 'border-pink-300 bg-pink-50/40' : 'border-edge'}`}>
               <input
                 type="checkbox"
                 className="mt-1"
@@ -304,18 +304,18 @@ function AutofillPanel({ book, onApply }: { book: Book; onApply: (patch: BookUpd
                 onChange={() => setAccepted(prev => { const s = new Set(prev); if (s.has(r.key)) s.delete(r.key); else s.add(r.key); return s; })}
               />
               <span className="min-w-0 text-xs">
-                <span className="block font-medium text-slate-700">{r.label}</span>
-                <span className="block text-slate-400 mt-0.5">Current: {r.current.slice(0, 140)}</span>
-                <span className="block text-slate-700 mt-0.5 whitespace-pre-wrap">Proposed: {r.proposed.slice(0, 600)}</span>
+                <span className="block font-medium text-content">{r.label}</span>
+                <span className="block text-content-muted mt-0.5">Current: {r.current.slice(0, 140)}</span>
+                <span className="block text-content mt-0.5 whitespace-pre-wrap">Proposed: {r.proposed.slice(0, 600)}</span>
               </span>
             </label>
           ))}
           <div className="flex items-center gap-3 pt-1">
             <button onClick={applyAccepted} disabled={applying || accepted.size === 0}
-              className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
               {applying && <Loader2 className="w-4 h-4 animate-spin" />} Apply {accepted.size} accepted
             </button>
-            <button onClick={() => setProposals(null)} className="text-sm text-slate-500 hover:text-slate-700">Discard</button>
+            <button onClick={() => setProposals(null)} className="text-sm text-content-secondary hover:text-content">Discard</button>
           </div>
         </div>
       )}

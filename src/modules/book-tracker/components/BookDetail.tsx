@@ -69,7 +69,7 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
+        className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content mb-4"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Book Tracker
       </button>
@@ -87,13 +87,13 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
               {book.status === 'paid_off' ? 'Paid off' : 'Active'}
             </span>
             {penName && <PenNameChip name={penName.name} color={penName.color} />}
-            <span className="text-sm text-slate-500">Launched: {launchLabel}</span>
+            <span className="text-sm text-content-secondary">Launched: {launchLabel}</span>
           </div>
-          <h1 className="text-2xl font-bold text-slate-800">{displayTitle(book)}</h1>
+          <h1 className="text-2xl font-bold text-content">{displayTitle(book)}</h1>
         </div>
         <button
           onClick={onEdit}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-content border border-edge-strong rounded-control hover:bg-surface-hover"
         >
           <Edit2 className="w-4 h-4" /> Edit
         </button>
@@ -111,37 +111,37 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
+        <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="text-sm text-slate-500">Loading timeline…</div>
+        <div className="text-sm text-content-secondary">Loading timeline…</div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <div className="lg:col-span-2 space-y-4">
             <BookTimeline book={book} updates={updates} />
             {book.cost_breakdown && book.cost_breakdown.length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h3 className="font-semibold text-slate-800 mb-3">Cost breakdown</h3>
+              <div className="bg-surface rounded-card border border-edge p-5">
+                <h3 className="font-semibold text-content mb-3">Cost breakdown</h3>
                 <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-sm">
                   {book.cost_breakdown.map((c, i) => (
                     <div key={i} className="contents">
-                      <div className="text-slate-700">{c.category}</div>
-                      <div className="text-slate-900 font-medium tabular-nums">${Number(c.amount).toFixed(2)}</div>
+                      <div className="text-content">{c.category}</div>
+                      <div className="text-content font-medium tabular-nums">${Number(c.amount).toFixed(2)}</div>
                     </div>
                   ))}
-                  <div className="col-span-2 border-t border-slate-200 my-1" />
-                  <div className="text-slate-700 font-medium">Total</div>
-                  <div className="text-slate-900 font-semibold tabular-nums">${book.dev_cost.toFixed(2)}</div>
+                  <div className="col-span-2 border-t border-edge my-1" />
+                  <div className="text-content font-medium">Total</div>
+                  <div className="text-content font-semibold tabular-nums">${book.dev_cost.toFixed(2)}</div>
                 </div>
               </div>
             )}
             {book.notes && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-5">
-                <h3 className="font-semibold text-slate-800 mb-2">Notes</h3>
-                <p className="text-sm text-slate-600 whitespace-pre-wrap">{book.notes}</p>
+              <div className="bg-surface rounded-card border border-edge p-5">
+                <h3 className="font-semibold text-content mb-2">Notes</h3>
+                <p className="text-sm text-content-secondary whitespace-pre-wrap">{book.notes}</p>
               </div>
             )}
           </div>
@@ -166,10 +166,10 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
       ? 'text-emerald-700'
       : accent === 'negative'
         ? 'text-rose-700'
-        : 'text-slate-800';
+        : 'text-content';
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4">
-      <div className="text-xs text-slate-500 uppercase tracking-wide">{label}</div>
+    <div className="bg-surface border border-edge rounded-card p-4">
+      <div className="text-xs text-content-secondary uppercase tracking-wide">{label}</div>
       <div className={`text-xl font-bold mt-1 ${color}`}>{value}</div>
     </div>
   );

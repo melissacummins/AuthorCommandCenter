@@ -59,11 +59,11 @@ export default function WritingModule() {
       <div className="p-6 lg:p-8 max-w-3xl mx-auto">
         <button
           onClick={() => setView({ mode: 'list' })}
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
+          className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> Back to manuscripts
         </button>
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">New manuscript</h1>
+        <h1 className="text-2xl font-bold text-content mb-6">New manuscript</h1>
         <ImportWizard
           onCancel={() => setView({ mode: 'list' })}
           onCreated={m => { reload(); setView({ mode: 'read', manuscriptId: m.id }); }}
@@ -89,27 +89,27 @@ export default function WritingModule() {
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-content flex items-center gap-2">
             <PenTool className="w-6 h-6 text-lime-500" /> Writing
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">
+          <p className="text-content-secondary mt-1 text-sm">
             Import a manuscript, chapter by chapter, so the rest of the Command Center can use it.
           </p>
         </div>
         <button
           onClick={() => setView({ mode: 'import' })}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-lg shadow-sm shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" /> New manuscript
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+        <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
       )}
 
       {loading ? (
-        <div className="text-center py-16 text-slate-500 text-sm">Loading manuscripts…</div>
+        <div className="text-center py-16 text-content-secondary text-sm">Loading manuscripts…</div>
       ) : filtered.length === 0 ? (
         <EmptyState onAdd={() => setView({ mode: 'import' })} hasAny={manuscripts.length > 0} />
       ) : (
@@ -139,7 +139,7 @@ function ManuscriptCard({
   return (
     <button
       onClick={onClick}
-      className="text-left bg-white rounded-2xl border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all p-5"
+      className="text-left bg-surface rounded-card border border-edge hover:shadow-md hover:border-edge-strong transition-all p-5"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
         {book && <p className="text-xs text-lime-600 font-medium truncate">{book.title}</p>}
@@ -147,22 +147,22 @@ function ManuscriptCard({
           {STATUS_LABELS[manuscript.status]}
         </span>
       </div>
-      <h3 className="font-semibold text-slate-800 leading-tight break-words mb-2">{manuscript.title}</h3>
-      <p className="text-xs text-slate-400">{manuscript.word_count.toLocaleString()} words · updated {updated}</p>
+      <h3 className="font-semibold text-content leading-tight break-words mb-2">{manuscript.title}</h3>
+      <p className="text-xs text-content-muted">{manuscript.word_count.toLocaleString()} words · updated {updated}</p>
     </button>
   );
 }
 
 function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
   return (
-    <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-lime-500 to-lime-600 rounded-2xl shadow-lg shadow-lime-500/25 mb-4">
+    <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-lime-500 to-lime-600 rounded-card shadow-lg shadow-lime-500/25 mb-4">
         <BookOpen className="w-8 h-8 text-white" />
       </div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-1">
+      <h3 className="text-lg font-semibold text-content mb-1">
         {hasAny ? 'No manuscripts for this pen name' : 'No manuscripts yet'}
       </h3>
-      <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">
+      <p className="text-sm text-content-secondary mb-5 max-w-sm mx-auto">
         {hasAny
           ? 'Switch pen name, or link an existing manuscript to a book under this one.'
           : 'Import a DOCX or text file, or start blank, to bring your manuscript into the Command Center.'}
@@ -170,7 +170,7 @@ function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
       {!hasAny && (
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-lg shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control shadow-sm"
         >
           <Plus className="w-4 h-4" /> New manuscript
         </button>

@@ -66,21 +66,21 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
+        className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content mb-4"
       >
         <ArrowLeft className="w-4 h-4" /> Back to Book Tracker
       </button>
 
-      <h1 className="text-2xl font-bold text-slate-800 mb-2">Import legacy export</h1>
-      <p className="text-sm text-slate-500 mb-6">
+      <h1 className="text-2xl font-bold text-content mb-2">Import legacy export</h1>
+      <p className="text-sm text-content-secondary mb-6">
         Upload the JSON file from your old book tracker. We'll preview the records before writing
         anything, and re-importing the same file updates existing books rather than duplicating them.
       </p>
 
       {phase.kind === 'idle' && (
-        <div className="bg-white rounded-2xl border-2 border-dashed border-slate-300 p-10 text-center">
-          <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-          <p className="text-sm text-slate-600 mb-4">Choose your legacy JSON export</p>
+        <div className="bg-surface rounded-card border-2 border-dashed border-edge-strong p-10 text-center">
+          <Upload className="w-8 h-8 text-content-muted mx-auto mb-3" />
+          <p className="text-sm text-content-secondary mb-4">Choose your legacy JSON export</p>
           <input
             ref={fileRef}
             type="file"
@@ -90,7 +90,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700"
+            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-control hover:bg-purple-700"
           >
             Choose file…
           </button>
@@ -99,23 +99,23 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
 
       {phase.kind === 'previewed' && (
         <div className="space-y-4">
-          <div className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h2 className="font-semibold text-slate-800 mb-3">Preview</h2>
+          <div className="bg-surface rounded-card border border-edge p-5">
+            <h2 className="font-semibold text-content mb-3">Preview</h2>
             <div className="grid grid-cols-3 gap-3 mb-4">
               <Stat label="Active" value={phase.result.summary.active} />
               <Stat label="Paid off" value={phase.result.summary.paidOff} />
               <Stat label="Quarterly updates" value={phase.result.summary.totalUpdates} />
             </div>
 
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+            <div className="bg-surface-hover border border-edge rounded-card p-3 mb-4">
+              <label className="block text-sm font-medium text-content mb-1">
                 Pen name for new books
               </label>
-              <p className="text-xs text-slate-500 mb-2">
+              <p className="text-xs text-content-secondary mb-2">
                 Any imported title that isn't already in Catalog will be created and attached to this pen name. Books that already exist by title or legacy id keep their current attribution.
               </p>
               {penNames.length === 0 ? (
-                <p className="text-sm text-slate-500 italic">
+                <p className="text-sm text-content-secondary italic">
                   No pen names yet — imported books will be unassigned. Add pen names in{' '}
                   <a href="/settings" className="text-purple-600 hover:underline">Settings</a>{' '}
                   and re-run the import to attribute them.
@@ -124,7 +124,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
                 <select
                   value={importPenNameId ?? ''}
                   onChange={e => setImportPenNameId(e.target.value || null)}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                  className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm bg-surface"
                 >
                   <option value="">— Unassigned —</option>
                   {penNames.map(pn => (
@@ -145,7 +145,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
             </div>
 
             {phase.result.summary.warnings.length > 0 && (
-              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+              <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-control p-3 mb-4">
                 <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                 <div className="text-xs text-amber-800">
                   <p className="font-medium mb-1">{phase.result.summary.warnings.length} warning(s):</p>
@@ -159,9 +159,9 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
               </div>
             )}
 
-            <div className="max-h-72 overflow-y-auto border border-slate-200 rounded-lg">
+            <div className="max-h-72 overflow-y-auto border border-edge rounded-control">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
+                <thead className="bg-surface-hover text-left text-xs text-content-secondary uppercase">
                   <tr>
                     <th className="px-3 py-2">Title</th>
                     <th className="px-3 py-2">Status</th>
@@ -171,7 +171,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
                 </thead>
                 <tbody>
                   {phase.result.parsed.map((p, i) => (
-                    <tr key={i} className="border-t border-slate-100">
+                    <tr key={i} className="border-t border-edge-soft">
                       <td className="px-3 py-1.5">{p.book.title}</td>
                       <td className="px-3 py-1.5">{p.book.status === 'paid_off' ? 'Paid off' : 'Active'}</td>
                       <td className="px-3 py-1.5 text-right tabular-nums">${(p.book.dev_cost ?? 0).toFixed(2)}</td>
@@ -186,14 +186,14 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setPhase({ kind: 'idle' })}
-              className="px-4 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
+              className="px-4 py-2 text-sm text-content border border-edge-strong rounded-control hover:bg-surface-hover"
             >
               Choose a different file
             </button>
             <button
               onClick={handleImport}
               disabled={phase.result.parsed.length === 0}
-              className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700 disabled:opacity-50"
             >
               Import {phase.result.parsed.length} books
             </button>
@@ -202,22 +202,22 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
       )}
 
       {phase.kind === 'importing' && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-6 flex items-center gap-3">
+        <div className="bg-surface rounded-card border border-edge p-6 flex items-center gap-3">
           <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
-          <span className="text-sm text-slate-700">
+          <span className="text-sm text-content">
             Importing {phase.done} of {phase.total}…
           </span>
         </div>
       )}
 
       {phase.kind === 'done' && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 flex items-start gap-3">
+        <div className="bg-emerald-50 border border-emerald-200 rounded-card p-6 flex items-start gap-3">
           <CheckCircle className="w-5 h-5 text-emerald-600 mt-0.5" />
           <div>
             <p className="text-sm text-emerald-800">{phase.msg}</p>
             <button
               onClick={onBack}
-              className="mt-3 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+              className="mt-3 px-3 py-1.5 text-sm bg-emerald-600 text-white rounded-control hover:bg-emerald-700"
             >
               Back to Book Tracker
             </button>
@@ -226,13 +226,13 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
       )}
 
       {phase.kind === 'error' && (
-        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex items-start gap-3">
+        <div className="bg-rose-50 border border-rose-200 rounded-card p-6 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-rose-600 mt-0.5" />
           <div>
             <p className="text-sm text-rose-800">{phase.msg}</p>
             <button
               onClick={() => setPhase({ kind: 'idle' })}
-              className="mt-3 px-3 py-1.5 text-sm border border-rose-300 text-rose-700 rounded-lg hover:bg-rose-100"
+              className="mt-3 px-3 py-1.5 text-sm border border-rose-300 text-rose-700 rounded-control hover:bg-rose-100"
             >
               Try again
             </button>
@@ -245,9 +245,9 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
 
 function Stat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="bg-slate-50 rounded-lg p-3 text-center">
-      <div className="text-xs text-slate-500 uppercase tracking-wide">{label}</div>
-      <div className="text-xl font-bold text-slate-800 mt-0.5">{value}</div>
+    <div className="bg-surface-hover rounded-control p-3 text-center">
+      <div className="text-xs text-content-secondary uppercase tracking-wide">{label}</div>
+      <div className="text-xl font-bold text-content mt-0.5">{value}</div>
     </div>
   );
 }

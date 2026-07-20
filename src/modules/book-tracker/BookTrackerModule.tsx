@@ -122,15 +122,15 @@ export default function BookTrackerModule() {
       <div className="p-6 lg:p-8 max-w-3xl mx-auto">
         <button
           onClick={() => setView(initial ? { mode: 'detail', book: initial } : { mode: 'list', tab: 'active' })}
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
+          className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> Back
         </button>
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">
+        <h1 className="text-2xl font-bold text-content mb-6">
           {initial ? `Edit: ${initial.title}` : 'Add a book'}
         </h1>
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+          <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
         )}
         <BookForm
           initial={initial}
@@ -208,23 +208,23 @@ function BookList({
     <div className="p-6 lg:p-8 max-w-6xl mx-auto">
       <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-content flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-purple-500" /> Book Tracker
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-content-secondary mt-1">
             Track development costs per book and watch each title pay for itself.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={onImport}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-content border border-edge-strong rounded-control hover:bg-surface-hover"
           >
             <Upload className="w-4 h-4" /> Import JSON
           </button>
           <button
             onClick={onNew}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700 shadow-sm"
           >
             <Plus className="w-4 h-4" /> New book
           </button>
@@ -232,7 +232,7 @@ function BookList({
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
+        <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">{error}</div>
       )}
 
       {/* Headline stats */}
@@ -248,34 +248,34 @@ function BookList({
 
       {/* Tabs + search */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div className="inline-flex bg-slate-100 rounded-lg p-1">
+        <div className="inline-flex bg-surface-sunken rounded-control p-1">
           <TabButton active={tab === 'active'} onClick={() => onTabChange('active')}>
-            Active <span className="text-slate-400 ml-1">({activeCount})</span>
+            Active <span className="text-content-muted ml-1">({activeCount})</span>
           </TabButton>
           <TabButton active={tab === 'paid_off'} onClick={() => onTabChange('paid_off')}>
-            Paid off <span className="text-slate-400 ml-1">({paidCount})</span>
+            Paid off <span className="text-content-muted ml-1">({paidCount})</span>
           </TabButton>
         </div>
         <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
           <input
             type="text"
             value={query}
             onChange={e => onQueryChange(e.target.value)}
             placeholder="Search titles…"
-            className="pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm w-56"
+            className="pl-9 pr-3 py-2 border border-edge-strong rounded-control text-sm w-56"
           />
         </div>
       </div>
 
       {loading ? (
-        <div className="text-sm text-slate-500">Loading books…</div>
+        <div className="text-sm text-content-secondary">Loading books…</div>
       ) : filtered.length === 0 ? (
         <EmptyState tab={tab} onNew={onNew} onImport={onImport} hasAny={books.length > 0} />
       ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="bg-surface border border-edge rounded-card overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-left text-xs text-slate-500 uppercase">
+            <thead className="bg-surface-hover text-left text-xs text-content-secondary uppercase">
               <tr>
                 <th className="px-4 py-3">Title</th>
                 <th className="px-4 py-3">Launch</th>
@@ -293,9 +293,9 @@ function BookList({
                   <tr
                     key={b.id}
                     onClick={() => onOpen(b)}
-                    className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer"
+                    className="border-t border-edge-soft hover:bg-surface-hover cursor-pointer"
                   >
-                    <td className="px-4 py-2.5 font-medium text-slate-800">
+                    <td className="px-4 py-2.5 font-medium text-content">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{displayTitle(b)}</span>
                         {pn && <PenNameChip name={pn.name} color={pn.color} />}
@@ -306,21 +306,21 @@ function BookList({
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 text-slate-600">
+                    <td className="px-4 py-2.5 text-content-secondary">
                       {b.launch_date
                         ? new Date(b.launch_date).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })
                         : '—'}
                     </td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">${b.dev_cost.toFixed(2)}</td>
-                    <td className="px-4 py-2.5 text-right tabular-nums text-slate-700">${b.cumulative_profit.toFixed(2)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-content">${b.dev_cost.toFixed(2)}</td>
+                    <td className="px-4 py-2.5 text-right tabular-nums text-content">${b.cumulative_profit.toFixed(2)}</td>
                     <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${net >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                       {net >= 0 ? '+' : '-'}${Math.abs(net).toFixed(2)}
                     </td>
                     {tab === 'paid_off' && (
-                      <td className="px-4 py-2.5 text-slate-600">
+                      <td className="px-4 py-2.5 text-content-secondary">
                         {b.payoff_quarter ?? '—'}
                         {b.months_to_payoff !== null && (
-                          <span className="text-slate-400 text-xs ml-1.5">({b.months_to_payoff}mo)</span>
+                          <span className="text-content-muted text-xs ml-1.5">({b.months_to_payoff}mo)</span>
                         )}
                       </td>
                     )}
@@ -339,8 +339,8 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+      className={`px-3 py-1.5 text-sm font-medium rounded-control transition-colors ${
+        active ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
       }`}
     >
       {children}
@@ -351,13 +351,13 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 function SummaryCard({ label, value, positive }: { label: string; value: string; positive?: boolean }) {
   const color =
     positive === undefined
-      ? 'text-slate-800'
+      ? 'text-content'
       : positive
         ? 'text-emerald-700'
         : 'text-rose-700';
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-4">
-      <div className="text-xs text-slate-500 uppercase tracking-wide">{label}</div>
+    <div className="bg-surface border border-edge rounded-card p-4">
+      <div className="text-xs text-content-secondary uppercase tracking-wide">{label}</div>
       <div className={`text-xl font-bold mt-1 ${color}`}>{value}</div>
     </div>
   );
@@ -366,26 +366,26 @@ function SummaryCard({ label, value, positive }: { label: string; value: string;
 function EmptyState({ tab, onNew, onImport, hasAny }: { tab: Tab; onNew: () => void; onImport: () => void; hasAny: boolean }) {
   if (hasAny) {
     return (
-      <div className="text-center py-12 text-sm text-slate-500 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+      <div className="text-center py-12 text-sm text-content-secondary bg-surface-hover rounded-card border border-dashed border-edge-strong">
         No {tab === 'paid_off' ? 'paid-off' : 'active'} books yet.
       </div>
     );
   }
   return (
-    <div className="text-center py-16 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
-      <BookOpen className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-      <h3 className="font-semibold text-slate-700 mb-1">No books tracked yet</h3>
-      <p className="text-sm text-slate-500 mb-5">Add your first book or import an export from your old tracker.</p>
+    <div className="text-center py-16 bg-surface-hover rounded-card border border-dashed border-edge-strong">
+      <BookOpen className="w-10 h-10 text-content-faint mx-auto mb-3" />
+      <h3 className="font-semibold text-content mb-1">No books tracked yet</h3>
+      <p className="text-sm text-content-secondary mb-5">Add your first book or import an export from your old tracker.</p>
       <div className="flex justify-center gap-2">
         <button
           onClick={onNew}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700"
         >
           <Plus className="w-4 h-4" /> New book
         </button>
         <button
           onClick={onImport}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-content border border-edge-strong rounded-control hover:bg-surface-hover"
         >
           <Upload className="w-4 h-4" /> Import JSON
         </button>

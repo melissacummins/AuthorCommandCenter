@@ -29,18 +29,18 @@ export default function MySidebarSection() {
   }
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-2">
         <LayoutGrid className="w-5 h-5 text-indigo-600" />
-        <h2 className="text-lg font-semibold text-slate-800">My sidebar</h2>
+        <h2 className="text-lg font-semibold text-content">My sidebar</h2>
       </div>
-      <p className="text-sm text-slate-500 mb-5">
+      <p className="text-sm text-content-secondary mb-5">
         Hide areas you don't use from your own navigation. This only affects your account — hidden
         areas stay available to everyone else and are still reachable by direct link.
       </p>
 
       {error && (
-        <div className="mb-4 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-lg p-3 text-sm text-rose-700">
+        <div className="mb-4 flex items-start gap-2 bg-rose-50 border border-rose-200 rounded-control p-3 text-sm text-rose-700">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" /> {error}
         </div>
       )}
@@ -49,16 +49,16 @@ export default function MySidebarSection() {
         {toggleable.map(m => {
           const hidden = hiddenModules.has(m.key);
           return (
-            <div key={m.key} className="flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5">
-              <span className={`flex-1 text-sm font-medium truncate ${hidden ? 'text-slate-400' : 'text-slate-700'}`}>
+            <div key={m.key} className="flex items-center gap-2 border border-edge rounded-card px-3 py-2.5">
+              <span className={`flex-1 text-sm font-medium truncate ${hidden ? 'text-content-muted' : 'text-content'}`}>
                 {m.label}
               </span>
               <button
                 onClick={() => toggle(m.key, !hidden)}
                 disabled={busyKey === m.key}
-                className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-control border transition-colors disabled:opacity-50 ${
                   hidden
-                    ? 'text-slate-500 bg-slate-50 border-slate-200 hover:bg-slate-100'
+                    ? 'text-content-secondary bg-surface-hover border-edge hover:bg-surface-sunken'
                     : 'text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100'
                 }`}
                 title={hidden ? 'Hidden from your sidebar' : 'Showing in your sidebar'}

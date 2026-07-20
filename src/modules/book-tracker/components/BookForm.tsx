@@ -60,68 +60,68 @@ export default function BookForm({ initial, saving, onCancel, onSubmit, onDelete
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5">
+    <form onSubmit={handleSubmit} className="bg-surface rounded-card border border-edge p-6 space-y-5">
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Book</label>
+        <label className="block text-sm font-medium text-content mb-1">Book</label>
         <CatalogBookPicker
           value={draft.catalog_book_id ?? null}
           onChange={(id, book) => setDraft(d => ({ ...d, catalog_book_id: id, title: book.title }))}
           placeholder="Pick from Catalog or add a new book…"
         />
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs text-content-muted mt-1">
           Books in the Tracker reference your Catalog so title and pen name stay in sync. Add a new one inline above if it isn't there yet.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Launch date</label>
+          <label className="block text-sm font-medium text-content mb-1">Launch date</label>
           <input
             type="date"
             value={draft.launch_date ?? ''}
             onChange={e => setDraft(d => ({ ...d, launch_date: e.target.value || null }))}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            className="w-full px-3 py-2 border border-edge-strong rounded-control"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+          <label className="block text-sm font-medium text-content mb-1">Status</label>
           <select
             value={draft.status ?? 'active'}
             onChange={e => setDraft(d => ({ ...d, status: e.target.value as 'active' | 'paid_off' }))}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white"
+            className="w-full px-3 py-2 border border-edge-strong rounded-control bg-surface"
           >
             <option value="active">Active (not paid off)</option>
             <option value="paid_off">Paid off</option>
           </select>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-content-muted mt-1">
             Status auto-flips to "paid off" when cumulative profit clears dev cost.
           </p>
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-2">Cost breakdown</label>
+        <label className="block text-sm font-medium text-content mb-2">Cost breakdown</label>
         <CostBreakdownEditor items={draft.cost_breakdown ?? []} onChange={setCost} />
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+        <label className="block text-sm font-medium text-content mb-1">Notes</label>
         <textarea
           value={draft.notes ?? ''}
           onChange={e => setDraft(d => ({ ...d, notes: e.target.value || null }))}
           rows={3}
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+          className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm"
           placeholder="Anything you want to remember about this title's dev costs…"
         />
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+      <div className="flex items-center justify-between pt-2 border-t border-edge">
         <div>
           {onDelete && (
             <button
               type="button"
               onClick={onDelete}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-rose-600 border border-rose-200 rounded-control hover:bg-rose-50"
             >
               <Trash2 className="w-4 h-4" /> Delete
             </button>
@@ -131,14 +131,14 @@ export default function BookForm({ initial, saving, onCancel, onSubmit, onDelete
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-sm text-slate-700 border border-slate-300 rounded-lg hover:bg-slate-50"
+            className="px-4 py-2 text-sm text-content border border-edge-strong rounded-control hover:bg-surface-hover"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={saving || !draft.catalog_book_id}
-            className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 shadow-sm"
+            className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700 disabled:opacity-50 shadow-sm"
           >
             {saving ? 'Saving…' : initial ? 'Save changes' : 'Add book'}
           </button>

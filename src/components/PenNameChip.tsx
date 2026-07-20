@@ -3,7 +3,7 @@ import type { PenNameColor } from '../lib/penNames';
 // Static class lookups so Tailwind's purge keeps these styles. Adding a
 // new color requires extending both this map and PEN_NAME_COLORS.
 const COLORS: Record<PenNameColor, { bg: string; text: string; ring: string; dot: string }> = {
-  slate:    { bg: 'bg-slate-100',    text: 'text-slate-700',    ring: 'ring-slate-300',    dot: 'bg-slate-500'    },
+  slate:    { bg: 'bg-surface-sunken',    text: 'text-content',    ring: 'ring-edge-strong',    dot: 'bg-slate-500'    },
   rose:     { bg: 'bg-rose-100',     text: 'text-rose-700',     ring: 'ring-rose-300',     dot: 'bg-rose-500'     },
   pink:     { bg: 'bg-pink-100',     text: 'text-pink-700',     ring: 'ring-pink-300',     dot: 'bg-pink-500'     },
   fuchsia:  { bg: 'bg-fuchsia-100',  text: 'text-fuchsia-700',  ring: 'ring-fuchsia-300',  dot: 'bg-fuchsia-500'  },

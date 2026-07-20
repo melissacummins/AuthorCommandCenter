@@ -135,7 +135,7 @@ export default function LinkShortenerModule() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <div className="flex gap-1 bg-slate-100 rounded-lg p-1">
+        <div className="flex gap-1 bg-surface-sunken rounded-control p-1">
           <TabButton active={tab === 'links'} onClick={() => setTab('links')} icon={<Link2 className="w-4 h-4" />} label="Links" />
           <TabButton active={tab === 'pages'} onClick={() => setTab('pages')} icon={<BookOpen className="w-4 h-4" />} label="Landing pages" />
           <TabButton active={tab === 'bio'} onClick={() => setTab('bio')} icon={<Layout className="w-4 h-4" />} label="Bio page" />
@@ -152,7 +152,7 @@ export default function LinkShortenerModule() {
             <select
               value={rangeDays}
               onChange={(e) => setRangeDays(Number(e.target.value))}
-              className="px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
             >
               <option value={7}>Last 7 days</option>
               <option value={30}>Last 30 days</option>
@@ -162,7 +162,7 @@ export default function LinkShortenerModule() {
           )}
           <button
             onClick={() => setAttribOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 text-sm"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-control bg-surface border border-edge text-content-secondary hover:bg-surface-hover text-sm"
             title="Conversion tracking setup"
           >
             <Settings2 className="w-4 h-4" />
@@ -173,7 +173,7 @@ export default function LinkShortenerModule() {
               setCreateParent(null);
               setCreateOpen(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm"
           >
             <Plus className="w-4 h-4" /> Create link
           </button>
@@ -181,11 +181,11 @@ export default function LinkShortenerModule() {
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
+        <div className="mb-4 px-4 py-3 rounded-control bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center py-24 text-slate-400">
+        <div className="flex items-center justify-center py-24 text-content-muted">
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       ) : tab === 'links' ? (
@@ -221,7 +221,7 @@ export default function LinkShortenerModule() {
       ) : tab === 'domain' ? (
         <DomainSettings onPrimaryChange={refreshBase} />
       ) : loadingAnalytics ? (
-        <div className="flex items-center justify-center py-24 text-slate-400">
+        <div className="flex items-center justify-center py-24 text-content-muted">
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
       ) : (
@@ -257,19 +257,19 @@ export default function LinkShortenerModule() {
       {qrLink && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setQrLink(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-            <button onClick={() => setQrLink(null)} className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100">
+          <div className="relative bg-surface rounded-card shadow-2xl max-w-sm w-full p-6">
+            <button onClick={() => setQrLink(null)} className="absolute top-3 right-3 p-1.5 text-content-muted hover:text-content rounded-control hover:bg-surface-sunken">
               <X className="w-5 h-5" />
             </button>
-            <h3 className="text-base font-semibold text-slate-800 mb-1">QR code</h3>
-            <p className="text-xs text-slate-500 mb-4 truncate">/{qrLink.slug}</p>
+            <h3 className="text-base font-semibold text-content mb-1">QR code</h3>
+            <p className="text-xs text-content-secondary mb-4 truncate">/{qrLink.slug}</p>
             <QRCodeBlock url={buildShortUrl(qrLink.slug)} filename={`qr-${qrLink.slug}`} />
           </div>
         </div>
       )}
 
       {toast && (
-        <div className="fixed bottom-6 right-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 text-white text-sm shadow-xl z-50">
+        <div className="fixed bottom-6 right-6 inline-flex items-center gap-2 px-4 py-2.5 rounded-card bg-slate-900 text-white text-sm shadow-xl z-50">
           <Check className="w-4 h-4 text-emerald-400" />
           {toast}
         </div>
@@ -282,8 +282,8 @@ function TabButton({ active, onClick, icon, label }: { active: boolean; onClick:
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-        active ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+      className={`flex items-center gap-2 px-4 py-2 rounded-control text-sm font-medium transition-colors ${
+        active ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
       }`}
     >
       {icon}

@@ -207,21 +207,21 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
       <div className="flex flex-wrap gap-4 mb-6">
         <button 
           onClick={() => setActiveTab('entry')}
-          className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'entry' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          className={`flex items-center px-4 py-2 rounded-control font-medium transition-colors ${activeTab === 'entry' ? 'bg-blue-600 text-white shadow-sm' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
         >
           <BookOpen className="w-4 h-4 mr-2" />
           Monthly Entry
         </button>
         <button 
           onClick={() => setActiveTab('stats')}
-          className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'stats' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          className={`flex items-center px-4 py-2 rounded-control font-medium transition-colors ${activeTab === 'stats' ? 'bg-blue-600 text-white shadow-sm' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
         >
           <BarChart2 className="w-4 h-4 mr-2" />
           Statistics & Breakdown
         </button>
         <button 
           onClick={() => setActiveTab('config')}
-          className={`flex items-center px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'config' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+          className={`flex items-center px-4 py-2 rounded-control font-medium transition-colors ${activeTab === 'config' ? 'bg-blue-600 text-white shadow-sm' : 'bg-surface text-gray-600 hover:bg-gray-50'}`}
         >
           <Settings className="w-4 h-4 mr-2" />
           Manage Bundles & Sources
@@ -230,7 +230,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
 
       {/* --- CONFIG TAB --- */}
       {activeTab === 'config' && (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+        <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Order Sources & Multipliers</h2>
           <p className="text-sm text-gray-500 mb-6">
             Manage your retailers and bundles. 
@@ -240,12 +240,12 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
           <div className="space-y-4">
              {/* Active Sources */}
              {sources.filter(s => !s.isArchived).map(source => (
-               <div key={source.id} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+               <div key={source.id} className="flex items-center space-x-4 p-3 bg-gray-50 rounded-control border border-gray-100">
                  <input 
                     type="text" 
                     value={source.name}
                     onChange={(e) => handleUpdateSource(source.id, 'name', e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                  />
                  <div className="flex items-center space-x-2">
                     <span className="text-xs text-gray-500 font-medium">Multiplier:</span>
@@ -255,14 +255,14 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                         step="1"
                         value={source.multiplier}
                         onChange={(e) => handleUpdateSource(source.id, 'multiplier', parseFloat(e.target.value))}
-                        className="w-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                        className="w-20 px-3 py-2 border border-gray-300 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                     />
                  </div>
                  
                  {!source.isSystem && (
                      <button 
                         onClick={() => handleArchiveSource(source.id)}
-                        className="flex items-center px-3 py-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-md transition-colors text-xs font-medium"
+                        className="flex items-center px-3 py-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-control transition-colors text-xs font-medium"
                         title="Archive Source"
                      >
                         <Archive className="w-3.5 h-3.5 mr-1" />
@@ -273,13 +273,13 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
              ))}
 
              {/* Add New Source */}
-             <div className="flex items-center space-x-4 p-3 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50/50 mt-4">
+             <div className="flex items-center space-x-4 p-3 border-2 border-dashed border-gray-200 rounded-control bg-gray-50/50 mt-4">
                 <input 
                     type="text" 
                     placeholder="New Source Name (e.g. My New Bundle)"
                     value={newSourceName}
                     onChange={(e) => setNewSourceName(e.target.value)}
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                  />
                  <div className="flex items-center space-x-2">
                     <span className="text-xs text-gray-500 font-medium">Multiplier:</span>
@@ -288,13 +288,13 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                         min="1"
                         value={newSourceMultiplier}
                         onChange={(e) => setNewSourceMultiplier(parseFloat(e.target.value))}
-                        className="w-20 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500"
+                        className="w-20 px-3 py-2 border border-gray-300 rounded-control text-sm focus:ring-2 focus:ring-blue-500"
                     />
                  </div>
                  <button 
                     onClick={handleAddSource}
                     disabled={!newSourceName}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-control text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                  >
                     <Plus className="w-4 h-4 mr-1" />
                     Add
@@ -310,7 +310,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                      </h3>
                      <div className="space-y-2 opacity-75">
                          {sources.filter(s => s.isArchived).map(source => (
-                             <div key={source.id} className="flex items-center justify-between p-3 bg-gray-100 rounded-lg border border-gray-200">
+                             <div key={source.id} className="flex items-center justify-between p-3 bg-gray-100 rounded-control border border-gray-200">
                                  <span className="text-sm text-gray-500 line-through">{source.name}</span>
                                  <div className="flex items-center space-x-3">
                                      <button 
@@ -339,7 +339,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
       {/* --- STATS TAB --- */}
       {activeTab === 'stats' && (
         <div className="space-y-6">
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+            <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100 flex justify-between items-center">
                 <div>
                     <h2 className="text-lg font-bold text-gray-900">Unit Breakdown</h2>
                     <p className="text-sm text-gray-500">Total units sold per retailer/bundle for the selected period.</p>
@@ -347,7 +347,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                 <select 
                     value={statsYear}
                     onChange={(e) => setStatsYear(e.target.value)}
-                    className="border border-gray-300 rounded-md px-4 py-2 text-sm font-medium"
+                    className="border border-gray-300 rounded-control px-4 py-2 text-sm font-medium"
                 >
                     <option value="All">All Time</option>
                     {years.map(y => <option key={y} value={y}>{y}</option>)}
@@ -356,7 +356,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Chart */}
-                <div className="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-80">
+                <div className="lg:col-span-3 bg-surface p-6 rounded-card shadow-sm border border-gray-100 h-80">
                     <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={statsData.slice(0, 10)} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                             <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
@@ -373,7 +373,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                 </div>
 
                 {/* Detailed Table */}
-                <div className="lg:col-span-3 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="lg:col-span-3 bg-surface rounded-card shadow-sm border border-gray-100 overflow-hidden">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -383,7 +383,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% of Volume</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-200 bg-white">
+                        <tbody className="divide-y divide-gray-200 bg-surface">
                             {statsData.map((row) => {
                                 const totalVolume = statsData.reduce((acc, curr) => acc + curr.totalUnits, 0);
                                 const percentage = totalVolume > 0 ? (row.totalUnits / totalVolume) * 100 : 0;
@@ -408,7 +408,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
 
       {/* --- ENTRY TAB --- */}
       {activeTab === 'entry' && (
-        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 relative">
+        <div className="bg-surface p-8 rounded-card shadow-sm border border-gray-100 relative">
            {/* Header with Save Controls */}
            <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 pb-6 border-b border-gray-100">
               <div className="flex items-center space-x-6">
@@ -418,17 +418,17 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                         type="month" 
                         value={selectedMonth}
                         onChange={(e) => setSelectedMonth(e.target.value)}
-                        className="px-4 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium text-gray-900"
+                        className="px-4 py-2 border border-gray-300 rounded-control shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium text-gray-900"
                     />
                  </div>
                  {hasUnsavedChanges && (
-                    <div className="flex items-center text-amber-600 bg-amber-50 px-3 py-1 rounded-md text-sm animate-pulse">
+                    <div className="flex items-center text-amber-600 bg-amber-50 px-3 py-1 rounded-control text-sm animate-pulse">
                         <AlertCircle className="w-4 h-4 mr-2" />
                         Unsaved Changes
                     </div>
                  )}
                  {saveMessage && (
-                    <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-md text-sm">
+                    <div className="flex items-center text-green-600 bg-green-50 px-3 py-1 rounded-control text-sm">
                         <CheckCircle className="w-4 h-4 mr-2" />
                         {saveMessage}
                     </div>
@@ -443,7 +443,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                 <button 
                     onClick={handleSave}
                     disabled={!hasUnsavedChanges}
-                    className={`flex items-center px-6 py-3 rounded-lg font-bold shadow-md transition-all ${
+                    className={`flex items-center px-6 py-3 rounded-control font-bold shadow-md transition-all ${
                         hasUnsavedChanges 
                         ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg transform hover:-translate-y-0.5' 
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -462,14 +462,14 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                     <BookOpen className="w-5 h-5 mr-2 text-indigo-500" />
                     Page Reads
                 </h3>
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 transition-colors focus-within:bg-white focus-within:ring-2 focus-within:ring-indigo-500">
+                <div className="bg-indigo-50 p-4 rounded-control border border-indigo-100 transition-colors focus-within:bg-surface focus-within:ring-2 focus-within:ring-indigo-500">
                     <label className="block text-sm font-medium text-indigo-900 mb-2">Total Page Reads</label>
                     <input 
                         type="number"
                         placeholder="0"
                         value={getPageReadsValue()}
                         onChange={(e) => handlePageReadsChange(e.target.value)}
-                        className={`w-full px-4 py-3 border rounded-md text-lg font-semibold transition-colors ${hasUnsavedChanges ? 'bg-yellow-50 border-yellow-300 text-gray-900' : 'bg-white border-indigo-200 text-gray-900'}`}
+                        className={`w-full px-4 py-3 border rounded-control text-lg font-semibold transition-colors ${hasUnsavedChanges ? 'bg-yellow-50 border-yellow-300 text-gray-900' : 'bg-surface border-indigo-200 text-gray-900'}`}
                     />
                     <p className="text-xs text-indigo-600 mt-2">Enter total KENP reads for this month.</p>
                 </div>
@@ -493,7 +493,7 @@ export const OrdersManager: React.FC<OrdersManagerProps> = ({
                                     placeholder="0"
                                     value={val}
                                     onChange={(e) => handleOrderChange(source.id, e.target.value)}
-                                    className={`w-32 px-3 py-2 border rounded-md text-right font-medium transition-all ${
+                                    className={`w-32 px-3 py-2 border rounded-control text-right font-medium transition-all ${
                                         hasUnsavedChanges 
                                         ? 'focus:ring-yellow-400 border-gray-300 focus:bg-yellow-50' 
                                         : 'focus:ring-blue-500 border-gray-300'

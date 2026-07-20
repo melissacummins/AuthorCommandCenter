@@ -39,27 +39,27 @@ export default function ElevenLabsKeyGate({ children }: { children: React.ReactN
   if (connected) return <>{children}</>;
 
   return (
-    <div className="max-w-xl mx-auto mt-10 bg-white rounded-2xl border border-slate-200 p-6">
+    <div className="max-w-xl mx-auto mt-10 bg-surface rounded-card border border-edge p-6">
       <div className="flex items-center gap-3 mb-2">
-        <div className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow shadow-violet-500/25">
+        <div className="inline-flex items-center justify-center w-10 h-10 rounded-card bg-gradient-to-br from-violet-500 to-fuchsia-600 shadow shadow-violet-500/25">
           <KeyRound className="w-5 h-5 text-white" />
         </div>
-        <h2 className="text-lg font-semibold text-slate-800">Connect ElevenLabs</h2>
+        <h2 className="text-lg font-semibold text-content">Connect ElevenLabs</h2>
       </div>
-      <p className="text-sm text-slate-500 mb-4">
+      <p className="text-sm text-content-secondary mb-4">
         Paste your ElevenLabs API key to start building audiobooks. It's encrypted server-side and every
         generation is billed to your own ElevenLabs account. AI speaker-tagging also needs your Claude key
-        (add it in <span className="font-medium text-slate-600">Settings → API Keys</span>).
+        (add it in <span className="font-medium text-content-secondary">Settings → API Keys</span>).
       </p>
       <div className="flex items-center gap-2">
         <input
           type="password" value={raw} onChange={e => setRaw(e.target.value)}
           placeholder="ElevenLabs API key" autoComplete="off"
           onKeyDown={e => { if (e.key === 'Enter') save(); }}
-          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono"
+          className="flex-1 px-3 py-2 border border-edge-strong rounded-control text-sm font-mono"
         />
         <button onClick={save} disabled={busy || raw.trim().length < 20}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-white font-medium rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm text-white font-medium rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
           {busy && <Loader2 className="w-4 h-4 animate-spin" />} Save
         </button>
       </div>

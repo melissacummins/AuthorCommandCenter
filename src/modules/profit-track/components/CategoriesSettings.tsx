@@ -9,12 +9,12 @@ interface CategoriesSettingsProps {
 
 export default function CategoriesSettings({ categories, onUpdate }: CategoriesSettingsProps) {
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-      <h3 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
+    <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
+      <h3 className="text-lg font-semibold text-content mb-1 flex items-center gap-2">
         <Tag className="w-5 h-5 text-indigo-500" />
         Ad & Revenue Categories
       </h3>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         Rename, hide, reorder, or add categories. Hiding a category keeps its
         historical data — it just disappears from data entry and reports.
         Built-in categories can't be deleted (only hidden); custom ones can.
@@ -27,7 +27,7 @@ export default function CategoriesSettings({ categories, onUpdate }: CategoriesS
         onUpdate={onUpdate}
       />
 
-      <div className="my-8 border-t border-slate-100" />
+      <div className="my-8 border-t border-edge-soft" />
 
       <CategorySection
         title="Revenue"
@@ -95,7 +95,7 @@ function CategorySection({
 
   return (
     <div>
-      <h4 className="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">
+      <h4 className="text-sm font-bold text-content-secondary uppercase tracking-wider mb-3">
         {title}
       </h4>
       <div className="space-y-2">
@@ -149,17 +149,17 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
 
   return (
     <div
-      className={`flex items-center gap-2 p-3 rounded-lg border ${
+      className={`flex items-center gap-2 p-3 rounded-control border ${
         category.isVisible
-          ? 'bg-white border-slate-200'
-          : 'bg-slate-50 border-slate-200 opacity-70'
+          ? 'bg-surface border-edge'
+          : 'bg-surface-hover border-edge opacity-70'
       }`}
     >
       <div className="flex flex-col">
         <button
           onClick={onMoveUp}
           disabled={!canMoveUp}
-          className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-default"
+          className="p-0.5 text-content-muted hover:text-content disabled:opacity-20 disabled:cursor-default"
           title="Move up"
         >
           <ChevronUp className="w-3.5 h-3.5" />
@@ -167,7 +167,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
         <button
           onClick={onMoveDown}
           disabled={!canMoveDown}
-          className="p-0.5 text-slate-400 hover:text-slate-700 disabled:opacity-20 disabled:cursor-default"
+          className="p-0.5 text-content-muted hover:text-content disabled:opacity-20 disabled:cursor-default"
           title="Move down"
         >
           <ChevronDown className="w-3.5 h-3.5" />
@@ -178,11 +178,11 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
         type="text"
         value={category.name}
         onChange={(e) => onChange({ ...category, name: e.target.value })}
-        className="flex-1 px-3 py-1.5 border border-slate-200 rounded text-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+        className="flex-1 px-3 py-1.5 border border-edge rounded text-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
       />
 
       {!category.isCustom && (
-        <span className="text-[10px] uppercase tracking-wider font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+        <span className="text-[10px] uppercase tracking-wider font-semibold text-content-muted bg-surface-sunken px-2 py-0.5 rounded">
           Built-in
         </span>
       )}
@@ -192,7 +192,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
         className={`p-1.5 rounded ${
           category.isVisible
             ? 'text-emerald-600 hover:bg-emerald-50'
-            : 'text-slate-400 hover:bg-slate-100'
+            : 'text-content-muted hover:bg-surface-sunken'
         }`}
         title={category.isVisible ? 'Visible — click to hide' : 'Hidden — click to show'}
       >
@@ -202,7 +202,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
       {category.isCustom ? (
         <button
           onClick={handleDelete}
-          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
+          className="p-1.5 text-content-muted hover:text-red-600 hover:bg-red-50 rounded"
           title="Delete custom category"
         >
           <Trash2 className="w-4 h-4" />
@@ -222,7 +222,7 @@ function AddCategoryForm({ onAdd }: { onAdd: (name: string) => void }) {
     setName('');
   };
   return (
-    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-dashed border-slate-200">
+    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-dashed border-edge">
       <input
         type="text"
         placeholder="Add a custom category…"
@@ -231,7 +231,7 @@ function AddCategoryForm({ onAdd }: { onAdd: (name: string) => void }) {
         onKeyDown={(e) => {
           if (e.key === 'Enter') submit();
         }}
-        className="flex-1 px-3 py-1.5 border border-slate-200 rounded text-sm placeholder-slate-400 focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+        className="flex-1 px-3 py-1.5 border border-edge rounded text-sm placeholder-slate-400 focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
       />
       <button
         onClick={submit}

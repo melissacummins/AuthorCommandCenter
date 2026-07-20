@@ -25,7 +25,7 @@ const modules = [
   { name: 'Media', path: '/media', icon: ImagePlus, color: 'text-fuchsia-400' },
   { name: 'Social Media', path: '/social-media', icon: Share2, color: 'text-violet-400' },
   { name: 'Audiobook', path: '/audiobook', icon: AudioLines, color: 'text-fuchsia-400' },
-  { name: 'Settings', path: '/settings', icon: Settings, color: 'text-slate-300' },
+  { name: 'Settings', path: '/settings', icon: Settings, color: 'text-sidebar-content' },
 ];
 
 // Sidebar sections — each section header groups the module paths that
@@ -63,13 +63,13 @@ function NavLink({
       onClick={onNav}
       title={collapsed ? module.name : undefined}
       className={`
-        flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-xl transition-all group
-        ${isActive ? 'bg-slate-800 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-800/50'}
+        flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'} py-2.5 rounded-card transition-all group
+        ${isActive ? 'bg-sidebar-raised text-white shadow-lg' : 'text-sidebar-content hover:text-white hover:bg-sidebar-raised/50'}
       `}
     >
-      <Icon className={`w-5 h-5 shrink-0 ${isActive ? module.color : 'text-slate-500 group-hover:text-slate-300'}`} />
+      <Icon className={`w-5 h-5 shrink-0 ${isActive ? module.color : 'text-sidebar-muted group-hover:text-sidebar-content'}`} />
       {!collapsed && <span className="font-medium text-sm">{module.name}</span>}
-      {!collapsed && isActive && <ChevronRight className="w-4 h-4 ml-auto text-slate-500" />}
+      {!collapsed && isActive && <ChevronRight className="w-4 h-4 ml-auto text-sidebar-muted" />}
     </Link>
   );
 }
@@ -97,7 +97,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   const currentModule = modules.find(m => m.path === location.pathname) || modules[0];
 
   return (
-    <div className="flex h-screen bg-slate-100">
+    <div className="flex h-screen bg-surface-sunken">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
@@ -106,22 +106,22 @@ export default function Layout({ children }: { children: ReactNode }) {
       {/* Sidebar */}
       <aside className={`
         fixed lg:static inset-y-0 left-0 z-50
-        ${collapsed ? 'w-[68px]' : 'w-72'} bg-slate-900 flex flex-col
+        ${collapsed ? 'w-[68px]' : 'w-72'} bg-sidebar flex flex-col
         transform transition-all duration-200
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Brand */}
-        <div className={`flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-6'} py-5 border-b border-slate-700/50`}>
-          <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-600 rounded-xl shadow-lg shadow-amber-500/20 shrink-0">
+        <div className={`flex items-center ${collapsed ? 'justify-center px-2' : 'gap-3 px-6'} py-5 border-b border-sidebar-edge/50`}>
+          <div className="flex items-center justify-center w-10 h-10 bg-brand-500 rounded-control shrink-0">
             <BookOpen className="w-5 h-5 text-white" />
           </div>
           {!collapsed && (
             <>
               <div>
                 <h1 className="text-white font-bold text-lg leading-tight">Command Center</h1>
-                <p className="text-slate-500 text-xs">Author Tools</p>
+                <p className="text-sidebar-muted text-xs">Author Tools</p>
               </div>
-              <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-slate-400 hover:text-white">
+              <button onClick={() => setSidebarOpen(false)} className="ml-auto lg:hidden text-sidebar-content hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </>
@@ -131,7 +131,7 @@ export default function Layout({ children }: { children: ReactNode }) {
         {/* Collapse toggle — desktop only */}
         <button
           onClick={toggleCollapsed}
-          className="hidden lg:flex items-center justify-center py-2 text-slate-500 hover:text-white hover:bg-slate-800/50 transition-colors"
+          className="hidden lg:flex items-center justify-center py-2 text-sidebar-muted hover:text-white hover:bg-sidebar-raised/50 transition-colors"
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           {collapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
@@ -148,14 +148,14 @@ export default function Layout({ children }: { children: ReactNode }) {
             <div key={section.label} className="mt-5">
               {!collapsed && (
                 <div className="flex items-center gap-2 px-3 pb-2">
-                  <div className="h-px flex-1 bg-slate-700/60" />
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-amber-400/70">
+                  <div className="h-px flex-1 bg-sidebar-edge/60" />
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-400/70">
                     {section.label}
                   </span>
-                  <div className="h-px flex-1 bg-slate-700/60" />
+                  <div className="h-px flex-1 bg-sidebar-edge/60" />
                 </div>
               )}
-              {collapsed && <div className="mx-3 my-3 border-t border-slate-700/50" />}
+              {collapsed && <div className="mx-3 my-3 border-t border-sidebar-edge/50" />}
               <div className="space-y-1">
                 {section.paths.map(path => {
                   const m = moduleByPath[path];
@@ -175,18 +175,18 @@ export default function Layout({ children }: { children: ReactNode }) {
           ))}
 
           <div className="mt-4">
-            {collapsed && <div className="mx-3 my-2 border-t border-slate-700/50" />}
+            {collapsed && <div className="mx-3 my-2 border-t border-sidebar-edge/50" />}
             <NavLink module={settingsModule} collapsed={collapsed} activePath={location.pathname} onNav={() => setSidebarOpen(false)} />
           </div>
         </nav>
 
         {/* User */}
-        <div className={`${collapsed ? 'px-2' : 'px-4'} py-4 border-t border-slate-700/50`}>
+        <div className={`${collapsed ? 'px-2' : 'px-4'} py-4 border-t border-sidebar-edge/50`}>
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'gap-3'}`}>
             {avatarUrl ? (
-              <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full ring-2 ring-slate-700 shrink-0" />
+              <img src={avatarUrl} alt="" className="w-9 h-9 rounded-full ring-2 ring-sidebar-edge shrink-0" />
             ) : (
-              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-white font-bold text-sm shrink-0">
+              <div className="w-9 h-9 rounded-full bg-brand-500 flex items-center justify-center text-white font-bold text-sm shrink-0">
                 {displayName.charAt(0).toUpperCase()}
               </div>
             )}
@@ -194,9 +194,9 @@ export default function Layout({ children }: { children: ReactNode }) {
               <>
                 <div className="flex-1 min-w-0">
                   <p className="text-white text-sm font-medium truncate">{displayName}</p>
-                  <p className="text-slate-500 text-xs truncate">{user?.email}</p>
+                  <p className="text-sidebar-muted text-xs truncate">{user?.email}</p>
                 </div>
-                <button onClick={signOut} className="p-2 text-slate-500 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors" title="Sign Out">
+                <button onClick={signOut} className="p-2 text-sidebar-muted hover:text-red-400 hover:bg-sidebar-raised rounded-control transition-colors" title="Sign Out">
                   <LogOut className="w-4 h-4" />
                 </button>
               </>
@@ -207,13 +207,13 @@ export default function Layout({ children }: { children: ReactNode }) {
 
       {/* Main content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="flex items-center gap-4 px-6 py-4 bg-white border-b border-slate-200 shadow-sm">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-600 hover:text-slate-900">
+        <header className="flex items-center gap-4 px-6 py-4 bg-surface border-b border-edge shadow-sm">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-content-secondary hover:text-content">
             <Menu className="w-6 h-6" />
           </button>
           <div className="flex items-center gap-2">
             <currentModule.icon className={`w-5 h-5 ${currentModule.color}`} />
-            <h2 className="text-lg font-semibold text-slate-800">{currentModule.name}</h2>
+            <h2 className="text-lg font-semibold text-content">{currentModule.name}</h2>
           </div>
         </header>
         <div className="flex-1 overflow-y-auto">

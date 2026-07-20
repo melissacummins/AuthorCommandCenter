@@ -106,48 +106,48 @@ export default function AdminSection() {
   }
 
   return (
-    <section className="bg-white rounded-2xl border border-slate-200 p-6 mb-6">
+    <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-2">
         <ShieldCheck className="w-5 h-5 text-amber-600" />
-        <h2 className="text-lg font-semibold text-slate-800">Members & access</h2>
+        <h2 className="text-lg font-semibold text-content">Members & access</h2>
         <span className="ml-auto text-xs font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-0.5">
           Owner only
         </span>
       </div>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         Approve who can use the Command Center and pick which areas each person sees. Payment is
         handled in your community — add a member's email here once they've joined.
       </p>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-content-secondary">
           <Loader2 className="w-4 h-4 animate-spin" /> Loading…
         </div>
       ) : (
         <div className="space-y-8">
           {/* Add member */}
           <div>
-            <h3 className="font-medium text-slate-800 mb-2">Add a member</h3>
+            <h3 className="font-medium text-content mb-2">Add a member</h3>
             <div className="flex gap-2">
               <input
                 type="email"
                 value={newEmail}
                 onChange={e => setNewEmail(e.target.value)}
                 placeholder="member@example.com"
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm"
+                className="flex-1 px-3 py-2 border border-edge-strong rounded-control text-sm"
                 autoComplete="off"
               />
               <button
                 onClick={addMember}
                 disabled={busy || !newEmail.trim() || newModules.length === 0}
-                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-amber-600 text-white font-medium rounded-control hover:bg-amber-700 disabled:opacity-50"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
                 Add
               </button>
             </div>
             <div className="mt-3">
-              <p className="text-xs font-medium text-slate-600 mb-2">Areas this member can see</p>
+              <p className="text-xs font-medium text-content-secondary mb-2">Areas this member can see</p>
               <ModuleChecklist values={newModules} onToggle={toggleNewModule} />
             </div>
             {error && <p className="text-rose-600 text-sm mt-2">{error}</p>}
@@ -155,9 +155,9 @@ export default function AdminSection() {
 
           {/* Member list */}
           <div>
-            <h3 className="font-medium text-slate-800 mb-3">Members</h3>
+            <h3 className="font-medium text-content mb-3">Members</h3>
             {members.length === 0 ? (
-              <p className="text-sm text-slate-400">No members yet.</p>
+              <p className="text-sm text-content-muted">No members yet.</p>
             ) : (
               <div className="space-y-2">
                 {members.map(m => (
@@ -177,21 +177,21 @@ export default function AdminSection() {
 
           {/* Custom domains */}
           <div>
-            <h3 className="font-medium text-slate-800 mb-1 flex items-center gap-2">
+            <h3 className="font-medium text-content mb-1 flex items-center gap-2">
               <Globe className="w-4 h-4 text-indigo-600" /> Custom domains
             </h3>
-            <p className="text-xs text-slate-500 mb-3">
+            <p className="text-xs text-content-secondary mb-3">
               When a member connects a domain, attach it in the Vercel dashboard, confirm their DNS
               points to it, then mark it verified here to switch it on.
             </p>
             {domains.length === 0 ? (
-              <p className="text-sm text-slate-400">No domains requested yet.</p>
+              <p className="text-sm text-content-muted">No domains requested yet.</p>
             ) : (
               <div className="space-y-2">
                 {domains.map((d) => (
-                  <div key={d.id} className="flex flex-wrap items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5">
+                  <div key={d.id} className="flex flex-wrap items-center gap-2 border border-edge rounded-card px-3 py-2.5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-slate-800 truncate font-mono">{d.domain}</p>
+                      <p className="text-sm font-medium text-content truncate font-mono">{d.domain}</p>
                       <span className={`text-[11px] font-medium ${d.verified ? 'text-emerald-700' : 'text-amber-700'}`}>
                         {d.verified ? 'verified' : 'pending'}{d.is_primary ? ' · primary' : ''}
                       </span>
@@ -199,7 +199,7 @@ export default function AdminSection() {
                     {!d.verified && (
                       <button
                         onClick={() => verifyDomain(d)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-control hover:bg-emerald-100"
                       >
                         <CheckCircle className="w-3.5 h-3.5" /> Verify
                       </button>
@@ -207,14 +207,14 @@ export default function AdminSection() {
                     {d.verified && !d.is_primary && (
                       <button
                         onClick={() => setPrimaryDomain(d)}
-                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-content-secondary border border-edge rounded-control hover:bg-surface-hover"
                       >
                         <Star className="w-3.5 h-3.5" /> Make primary
                       </button>
                     )}
                     <button
                       onClick={() => deleteDomain(d)}
-                      className="p-1.5 text-rose-500 border border-rose-200 rounded-lg hover:bg-rose-50"
+                      className="p-1.5 text-rose-500 border border-rose-200 rounded-control hover:bg-rose-50"
                       title="Remove domain"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -248,10 +248,10 @@ function MemberRow({
   }
 
   return (
-    <div className="border border-slate-200 rounded-xl px-3 py-2.5">
+    <div className="border border-edge rounded-card px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-800 truncate">{member.email}</p>
+          <p className="text-sm font-medium text-content truncate">{member.email}</p>
           <StatusBadge status={member.status} />
           {isAdmin && (
             <span className="ml-2 inline-block text-[11px] font-medium border rounded-full px-2 py-0.5 text-amber-700 bg-amber-50 border-amber-200">
@@ -263,7 +263,7 @@ function MemberRow({
         {member.status === 'pending' && (
           <button
             onClick={onApprove}
-            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100"
+            className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-control hover:bg-emerald-100"
           >
             <Check className="w-3.5 h-3.5" /> Approve
           </button>
@@ -274,21 +274,21 @@ function MemberRow({
             {member.status !== 'blocked' ? (
               <button
                 onClick={onBlock}
-                className="px-2.5 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                className="px-2.5 py-1.5 text-xs font-medium text-content-secondary border border-edge rounded-control hover:bg-surface-hover"
               >
                 Block
               </button>
             ) : (
               <button
                 onClick={onUnblock}
-                className="px-2.5 py-1.5 text-xs font-medium text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-50"
+                className="px-2.5 py-1.5 text-xs font-medium text-emerald-700 border border-emerald-200 rounded-control hover:bg-emerald-50"
               >
                 Unblock
               </button>
             )}
             <button
               onClick={onRemove}
-              className="p-1.5 text-rose-500 border border-rose-200 rounded-lg hover:bg-rose-50"
+              className="p-1.5 text-rose-500 border border-rose-200 rounded-control hover:bg-rose-50"
               title="Remove member"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -299,7 +299,7 @@ function MemberRow({
 
       {!isAdmin && (
         <details className="mt-2 group">
-          <summary className="inline-flex items-center gap-1 text-xs font-medium text-slate-600 cursor-pointer list-none select-none hover:text-slate-800">
+          <summary className="inline-flex items-center gap-1 text-xs font-medium text-content-secondary cursor-pointer list-none select-none hover:text-content">
             <ChevronDown className="w-3.5 h-3.5 transition-transform group-open:rotate-180" />
             Areas ({modules.length}/{ALL_MODULE_KEYS.length})
           </summary>
@@ -321,17 +321,17 @@ function ModuleChecklist({ values, onToggle }: { values: string[]; onToggle: (ke
         return (
           <label
             key={m.key}
-            className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border cursor-pointer select-none ${
+            className={`flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-control border cursor-pointer select-none ${
               on
                 ? 'bg-amber-50 border-amber-200 text-amber-900'
-                : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                : 'bg-surface border-edge text-content-secondary hover:bg-surface-hover'
             }`}
           >
             <input
               type="checkbox"
               checked={on}
               onChange={() => onToggle(m.key)}
-              className="rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+              className="rounded border-edge-strong text-amber-600 focus:ring-amber-500"
             />
             <span className="truncate">{m.label}</span>
           </label>

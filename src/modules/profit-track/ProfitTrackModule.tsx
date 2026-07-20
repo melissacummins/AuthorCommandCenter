@@ -317,11 +317,11 @@ export default function ProfitTrackModule() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-slate-800">{header.title}</h1>
-        <p className="text-slate-500 text-sm mt-1">{header.subtitle}</p>
+        <h1 className="text-2xl font-bold text-content">{header.title}</h1>
+        <p className="text-content-secondary text-sm mt-1">{header.subtitle}</p>
       </div>
 
-      <div className="flex flex-wrap gap-1 bg-slate-100 rounded-lg p-1 mb-6 w-fit">
+      <div className="flex flex-wrap gap-1 bg-surface-sunken rounded-control p-1 mb-6 w-fit">
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = view === item.view;
@@ -332,10 +332,10 @@ export default function ProfitTrackModule() {
                 setView(item.view);
                 setEditingRecord(null);
               }}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-control text-sm font-medium transition-colors ${
                 active
-                  ? 'bg-white text-slate-800 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
+                  ? 'bg-surface text-content shadow-sm'
+                  : 'text-content-secondary hover:text-content'
               }`}
             >
               <Icon className="w-4 h-4" />

@@ -33,22 +33,22 @@ export default function CastStep({
     <div className="space-y-5">
       <div className="grid sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Voice model</label>
+          <label className="block text-xs font-medium text-content-secondary mb-1">Voice model</label>
           <select value={project.model_id} onChange={e => onChange({ model_id: e.target.value })}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+            className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm bg-surface">
             {MODEL_OPTIONS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
           </select>
-          <p className="text-xs text-slate-400 mt-1">{MODEL_OPTIONS.find(m => m.id === project.model_id)?.note}</p>
+          <p className="text-xs text-content-muted mt-1">{MODEL_OPTIONS.find(m => m.id === project.model_id)?.note}</p>
         </div>
         {project.narration_mode === 'duet' && (
           <div>
-            <label className="block text-xs font-medium text-slate-500 mb-1">Who narrates?</label>
+            <label className="block text-xs font-medium text-content-secondary mb-1">Who narrates?</label>
             <select value={project.narrator_role} onChange={e => onChange({ narrator_role: e.target.value as 'male' | 'female' })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+              className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm bg-surface">
               <option value="female">The female voice</option>
               <option value="male">The male voice</option>
             </select>
-            <p className="text-xs text-slate-400 mt-1">In a two-voice duet, narration is read by one of the two.</p>
+            <p className="text-xs text-content-muted mt-1">In a two-voice duet, narration is read by one of the two.</p>
           </div>
         )}
       </div>
@@ -57,20 +57,20 @@ export default function CastStep({
         {roles.map(role => {
           const v = voiceFor(role);
           return (
-            <div key={role} className="flex items-center gap-3 p-3 rounded-xl border border-slate-200">
-              <div className={`inline-flex items-center justify-center w-9 h-9 rounded-lg ${role === 'female' ? 'bg-pink-100 text-pink-600' : role === 'male' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
+            <div key={role} className="flex items-center gap-3 p-3 rounded-card border border-edge">
+              <div className={`inline-flex items-center justify-center w-9 h-9 rounded-control ${role === 'female' ? 'bg-pink-100 text-pink-600' : role === 'male' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
                 {role === 'narrator' ? <Mic2 className="w-4 h-4" /> : <UserCircle2 className="w-4 h-4" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800">{ROLE_LABELS[role]}</p>
+                <p className="text-sm font-medium text-content">{ROLE_LABELS[role]}</p>
                 {v.id ? (
                   <p className="text-xs text-emerald-600 flex items-center gap-1"><Check className="w-3 h-3" /> {v.name}</p>
                 ) : (
-                  <p className="text-xs text-slate-400">No voice assigned yet</p>
+                  <p className="text-xs text-content-muted">No voice assigned yet</p>
                 )}
               </div>
               <button onClick={() => setPicking(role)}
-                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-violet-200 text-violet-700 hover:bg-violet-50">
+                className="px-3 py-1.5 text-sm font-medium rounded-control border border-violet-200 text-violet-700 hover:bg-violet-50">
                 {v.id ? 'Change' : 'Assign'}
               </button>
             </div>

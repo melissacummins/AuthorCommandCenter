@@ -42,7 +42,7 @@ export default function ScreenshotsTab({ book, manuscript }: { book: Book; manus
     return () => { cancelled = true; };
   }, [user, book.id]);
 
-  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></div>;
+  if (loading) return <div className="flex justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-content-muted" /></div>;
   if (!user) return null;
 
   const open = openId ? creatives.find(c => c.id === openId) : null;
@@ -69,37 +69,37 @@ export default function ScreenshotsTab({ book, manuscript }: { book: Book; manus
           onCreated={c => { setCreatives(prev => [c, ...prev]); setCreating(false); setOpenId(c.id); }}
         />
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-wrap items-center justify-between gap-3">
+        <div className="bg-surface rounded-card border border-edge p-5 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-              <BookOpenText className="w-4 h-4 text-slate-400" /> Kindle Screenshots
+            <h3 className="text-sm font-semibold text-content flex items-center gap-2">
+              <BookOpenText className="w-4 h-4 text-content-muted" /> Kindle Screenshots
             </h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-content-secondary mt-0.5">
               Render a scene as an annotated e-reader page — highlight dialogue, strike out the naughty words, stamp hearts.
             </p>
           </div>
           <button onClick={() => setCreating(true)}
-            className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 flex items-center gap-2">
+            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 flex items-center gap-2">
             <Plus className="w-4 h-4" /> New screenshot
           </button>
         </div>
       )}
 
       {creatives.length === 0 && !creating ? (
-        <div className="bg-white rounded-xl border border-dashed border-slate-300 p-10 text-center">
-          <p className="text-slate-500 text-sm">No screenshots yet for this book.</p>
+        <div className="bg-surface rounded-card border border-dashed border-edge-strong p-10 text-center">
+          <p className="text-content-secondary text-sm">No screenshots yet for this book.</p>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {creatives.map(c => (
-            <div key={c.id} className="bg-white rounded-xl border border-slate-200 p-4 flex items-start justify-between gap-2">
+            <div key={c.id} className="bg-surface rounded-card border border-edge p-4 flex items-start justify-between gap-2">
               <button className="text-left min-w-0 flex-1" onClick={() => setOpenId(c.id)}>
-                <p className="text-sm font-medium text-slate-800 truncate">{c.title || 'Untitled screenshot'}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{new Date(c.updated_at).toLocaleDateString()}</p>
+                <p className="text-sm font-medium text-content truncate">{c.title || 'Untitled screenshot'}</p>
+                <p className="text-xs text-content-muted mt-0.5">{new Date(c.updated_at).toLocaleDateString()}</p>
               </button>
               <button
                 onClick={async () => { if (!confirm('Delete this screenshot?')) return; await deleteCreative(c.id); setCreatives(prev => prev.filter(x => x.id !== c.id)); }}
-                className="p-1.5 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+                className="p-1.5 rounded-control text-content-faint hover:text-rose-600 hover:bg-rose-50 shrink-0"
               >
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
@@ -162,14 +162,14 @@ function NewScreenshotForm({ userId, book, manuscript, hooks, onCancel, onCreate
   }
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-3">
-      <h3 className="text-sm font-semibold text-slate-800">New screenshot</h3>
+    <div className="bg-surface rounded-card border border-edge p-5 space-y-3">
+      <h3 className="text-sm font-semibold text-content">New screenshot</h3>
       <div className="flex flex-wrap gap-2">
         {hooksWithScenes.length > 0 && (
           <select
             defaultValue=""
             onChange={e => { const h = hooksWithScenes.find(x => x.id === e.target.value); if (h) setText(h.scene_excerpt); }}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white max-w-72"
+            className="rounded-control border border-edge-strong px-3 py-2 text-sm bg-surface max-w-72"
           >
             <option value="" disabled>Use a hook's scene…</option>
             {hooksWithScenes.map(h => <option key={h.id} value={h.id}>{h.hook_text.slice(0, 70)}</option>)}
@@ -180,7 +180,7 @@ function NewScreenshotForm({ userId, book, manuscript, hooks, onCancel, onCreate
             defaultValue=""
             onFocus={async () => { if (!chapters) setChapters(await listChapters(manuscript.id)); }}
             onChange={e => loadChapter(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white max-w-72"
+            className="rounded-control border border-edge-strong px-3 py-2 text-sm bg-surface max-w-72"
           >
             <option value="" disabled>Pull a chapter…</option>
             {(chapters ?? []).map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -192,13 +192,13 @@ function NewScreenshotForm({ userId, book, manuscript, hooks, onCancel, onCreate
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="Paste or pull the scene text, then trim it down to the part you want on the page…"
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 outline-none font-serif"
+        className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none font-serif"
       />
-      <p className="text-[11px] text-slate-400">{text.length} characters — a page reads best under ~1,200.</p>
+      <p className="text-[11px] text-content-muted">{text.length} characters — a page reads best under ~1,200.</p>
       <div className="flex gap-2 justify-end">
-        <button onClick={onCancel} className="px-3 py-2 text-sm text-slate-500 hover:text-slate-700">Cancel</button>
+        <button onClick={onCancel} className="px-3 py-2 text-sm text-content-secondary hover:text-content">Cancel</button>
         <button onClick={create} disabled={busy || !text.trim()}
-          className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50">
+          className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50">
           Create page
         </button>
       </div>
@@ -301,14 +301,14 @@ function ScreenshotEditor({ creative, onBack, onChanged }: {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-3 flex flex-wrap items-center gap-2 text-xs">
-        <button onClick={onBack} className="p-1.5 rounded-md text-slate-400 hover:text-slate-700"><ArrowLeft className="w-4 h-4" /></button>
+      <div className="bg-surface rounded-card border border-edge p-3 flex flex-wrap items-center gap-2 text-xs">
+        <button onClick={onBack} className="p-1.5 rounded-control text-content-muted hover:text-content"><ArrowLeft className="w-4 h-4" /></button>
         <ToolButton active={tool === 'highlight'} onClick={() => setTool('highlight')} label="Highlight (click dialogue)"><Highlighter className="w-4 h-4" /></ToolButton>
         {tool === 'highlight' && (
           <span className="flex gap-1">
             {(Object.keys(HIGHLIGHT_FILLS) as HighlightColor[]).map(c => (
               <button key={c} onClick={() => setHlColor(c)}
-                className={`w-5 h-5 rounded-full border ${hlColor === c ? 'ring-2 ring-slate-500' : 'border-slate-200'}`}
+                className={`w-5 h-5 rounded-full border ${hlColor === c ? 'ring-2 ring-slate-500' : 'border-edge'}`}
                 style={{ background: HIGHLIGHT_FILLS[c] }} />
             ))}
           </span>
@@ -320,31 +320,31 @@ function ScreenshotEditor({ creative, onBack, onChanged }: {
         <ToolButton active={tool === 'underline'} onClick={() => setTool('underline')} label="Stamp: underline"><span className="font-bold text-sm w-4 text-center underline">U</span></ToolButton>
         <ToolButton active={tool === 'select'} onClick={() => setTool('select')} label="Move stamps"><MousePointer2 className="w-4 h-4" /></ToolButton>
 
-        <span className="text-slate-300">|</span>
+        <span className="text-content-faint">|</span>
         <select value={payload.page.bg} onChange={e => commit({ ...payload, page: { ...payload.page, bg: e.target.value as PageBg } })}
-          className="rounded border border-slate-200 px-1.5 py-1 bg-white">
+          className="rounded border border-edge px-1.5 py-1 bg-surface">
           {(Object.keys(PAGE_BGS) as PageBg[]).map(b => <option key={b} value={b}>{PAGE_BGS[b].label}</option>)}
         </select>
         <select value={payload.page.fontSize} onChange={e => commit({ ...payload, page: { ...payload.page, fontSize: e.target.value as 'sm' | 'md' | 'lg' } })}
-          className="rounded border border-slate-200 px-1.5 py-1 bg-white">
+          className="rounded border border-edge px-1.5 py-1 bg-surface">
           <option value="sm">A-</option><option value="md">A</option><option value="lg">A+</option>
         </select>
-        <label className="flex items-center gap-1 text-slate-500">
+        <label className="flex items-center gap-1 text-content-secondary">
           <input type="checkbox" checked={payload.page.showHeader} onChange={e => commit({ ...payload, page: { ...payload.page, showHeader: e.target.checked } })} /> header
         </label>
-        <label className="flex items-center gap-1 text-slate-500">
+        <label className="flex items-center gap-1 text-content-secondary">
           <input type="checkbox" checked={payload.page.showFooter} onChange={e => commit({ ...payload, page: { ...payload.page, showFooter: e.target.checked } })} /> footer
         </label>
 
-        <span className="text-[11px] text-slate-400 ml-auto">{saveState === 'saving' ? 'Saving…' : 'Saved'}</span>
+        <span className="text-[11px] text-content-muted ml-auto">{saveState === 'saving' ? 'Saving…' : 'Saved'}</span>
         <button onClick={exportPng} disabled={exporting}
-          className="px-3 py-2 rounded-lg bg-slate-800 text-white font-medium hover:bg-slate-700 disabled:opacity-50 flex items-center gap-1.5">
+          className="px-3 py-2 rounded-control bg-slate-800 text-white font-medium hover:bg-slate-700 disabled:opacity-50 flex items-center gap-1.5">
           {exporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />} Export PNG
         </button>
         <SendTo getFiles={renderForCloud} disabled={exporting} />
       </div>
       {error && <p className="text-xs text-rose-600">{error}</p>}
-      <p className="text-[11px] text-slate-400">
+      <p className="text-[11px] text-content-muted">
         Highlight tool: quoted dialogue is auto-detected — click it to highlight, click again to remove. Strike tool: click any word. Stamps: click the page to place; in Move mode drag them, double-click to delete.
       </p>
 
@@ -424,7 +424,7 @@ function ToolButton({ active, onClick, label, children }: {
 }) {
   return (
     <button onClick={onClick} title={label}
-      className={`p-1.5 rounded-md ${active ? 'bg-pink-100 text-pink-700' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'}`}>
+      className={`p-1.5 rounded-control ${active ? 'bg-pink-100 text-pink-700' : 'text-content-secondary hover:text-content hover:bg-surface-hover'}`}>
       {children}
     </button>
   );

@@ -73,13 +73,13 @@ export default function ScanModelPickers({ disabled }: { disabled?: boolean }) {
         const err = modelErrors[provider];
         return (
           <div key={task}>
-            <p className="text-[11px] font-medium text-slate-500 mb-1" title={hint}>{label}</p>
+            <p className="text-[11px] font-medium text-content-secondary mb-1" title={hint}>{label}</p>
             <div className="flex items-center gap-1.5">
               <select
                 value={provider}
                 disabled={disabled}
                 onChange={e => update(task, e.target.value, '')}
-                className="px-2 py-1.5 border border-slate-200 rounded-lg text-slate-600 bg-white text-xs shrink-0 disabled:opacity-50"
+                className="px-2 py-1.5 border border-edge rounded-control text-content-secondary bg-surface text-xs shrink-0 disabled:opacity-50"
               >
                 {(Object.keys(PROVIDER_LABELS) as AiProvider[]).map(p => (
                   <option key={p} value={p}>{PROVIDER_LABELS[p]}</option>
@@ -88,7 +88,7 @@ export default function ScanModelPickers({ disabled }: { disabled?: boolean }) {
               {err ? (
                 <p className="text-[11px] text-rose-600">{err}</p>
               ) : !list ? (
-                <p className="text-[11px] text-slate-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
+                <p className="text-[11px] text-content-muted flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Loading…</p>
               ) : (
                 <div className={`flex-1 min-w-0 ${disabled ? 'opacity-50 pointer-events-none' : ''}`}>
                   <ModelSelect

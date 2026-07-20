@@ -24,10 +24,10 @@ export default function Dashboard() {
 
   if (summaries.length === 0) {
     return (
-      <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
-        <DollarSign className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-        <h3 className="text-lg font-semibold text-slate-700 mb-1">No transactions yet</h3>
-        <p className="text-sm text-slate-400">Import bank transactions from the Transactions tab to see your financial overview.</p>
+      <div className="text-center py-16 bg-surface rounded-card border border-edge">
+        <DollarSign className="w-12 h-12 text-content-faint mx-auto mb-3" />
+        <h3 className="text-lg font-semibold text-content mb-1">No transactions yet</h3>
+        <p className="text-sm text-content-muted">Import bank transactions from the Transactions tab to see your financial overview.</p>
       </div>
     );
   }
@@ -64,24 +64,24 @@ export default function Dashboard() {
       </div>
 
       {/* Monthly Trend */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="p-4 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800">Monthly Trend</h3>
+      <div className="bg-surface rounded-card border border-edge overflow-hidden">
+        <div className="p-4 border-b border-edge-soft">
+          <h3 className="font-semibold text-content">Monthly Trend</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-slate-50 text-left">
-                <th className="px-4 py-3 font-medium text-slate-500">Month</th>
-                <th className="px-4 py-3 font-medium text-slate-500 text-right">Income</th>
-                <th className="px-4 py-3 font-medium text-slate-500 text-right">Expenses</th>
-                <th className="px-4 py-3 font-medium text-slate-500 text-right">Net</th>
+              <tr className="bg-surface-hover text-left">
+                <th className="px-4 py-3 font-medium text-content-secondary">Month</th>
+                <th className="px-4 py-3 font-medium text-content-secondary text-right">Income</th>
+                <th className="px-4 py-3 font-medium text-content-secondary text-right">Expenses</th>
+                <th className="px-4 py-3 font-medium text-content-secondary text-right">Net</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-edge-soft">
               {summaries.map(s => (
-                <tr key={s.month} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-slate-800">{formatMonth(s.month)}</td>
+                <tr key={s.month} className="hover:bg-surface-hover">
+                  <td className="px-4 py-3 font-medium text-content">{formatMonth(s.month)}</td>
                   <td className="px-4 py-3 text-right text-emerald-600">{formatCurrency(s.income)}</td>
                   <td className="px-4 py-3 text-right text-red-600">{formatCurrency(s.expenses)}</td>
                   <td className={`px-4 py-3 text-right font-semibold ${s.net >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
@@ -115,15 +115,15 @@ export default function Dashboard() {
         const maxAmount = sorted[0].amount;
 
         return (
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <h3 className="font-semibold text-slate-800 mb-4">Top Categories</h3>
+          <div className="bg-surface rounded-card border border-edge p-5">
+            <h3 className="font-semibold text-content mb-4">Top Categories</h3>
             <div className="space-y-3">
               {sorted.slice(0, 10).map((cat, i) => {
                 const pct = maxAmount > 0 ? (cat.amount / maxAmount) * 100 : 0;
                 return (
                   <div key={i} className="flex items-center gap-3">
-                    <span className="text-sm text-slate-600 w-40 truncate">{cat.category}</span>
-                    <div className="flex-1 h-6 bg-slate-100 rounded-full overflow-hidden">
+                    <span className="text-sm text-content-secondary w-40 truncate">{cat.category}</span>
+                    <div className="flex-1 h-6 bg-surface-sunken rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full ${cat.type === 'income' ? 'bg-emerald-400' : 'bg-red-400'}`}
                         style={{ width: `${pct}%` }}
@@ -151,13 +151,13 @@ function StatCard({ label, value, color, bg, icon: Icon }: {
   icon: typeof DollarSign;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5">
+    <div className="bg-surface rounded-card border border-edge p-5">
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center`}>
+        <div className={`w-10 h-10 ${bg} rounded-control flex items-center justify-center`}>
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
         <div>
-          <p className="text-xs text-slate-500">{label}</p>
+          <p className="text-xs text-content-secondary">{label}</p>
           <p className={`text-xl font-bold ${color}`}>{formatCurrency(value)}</p>
         </div>
       </div>

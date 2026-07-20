@@ -59,32 +59,32 @@ export default function QRCodeBlock({ url, filename = 'qr-code' }: Props) {
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 flex flex-col items-center gap-4">
-      <canvas ref={canvasRef} className="rounded-lg" />
+    <div className="rounded-card border border-edge bg-surface p-5 flex flex-col items-center gap-4">
+      <canvas ref={canvasRef} className="rounded-control" />
       <div className="flex items-center gap-2">
         {COLORS.map((c) => (
           <button
             key={c.name}
             onClick={() => setColor(c.dark)}
             title={c.name}
-            className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c.dark ? 'border-slate-700 scale-110' : 'border-slate-200'}`}
+            className={`w-6 h-6 rounded-full border-2 transition-transform ${color === c.dark ? 'border-slate-700 scale-110' : 'border-edge'}`}
             style={{ backgroundColor: c.dark }}
           />
         ))}
       </div>
       <div className="flex gap-2 w-full">
-        <button onClick={downloadPng} className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium">
+        <button onClick={downloadPng} className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium">
           <Download className="w-4 h-4" /> PNG
         </button>
         <button
           onClick={downloadSvg}
           disabled={renderingSvg}
-          className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium disabled:opacity-50"
+          className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2 rounded-control bg-surface-sunken hover:bg-edge text-content text-sm font-medium disabled:opacity-50"
         >
           {renderingSvg ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} SVG
         </button>
       </div>
-      <p className="text-xs text-slate-500 text-center break-all">{url}</p>
+      <p className="text-xs text-content-secondary text-center break-all">{url}</p>
     </div>
   );
 }

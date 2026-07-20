@@ -77,7 +77,7 @@ export default function SendTo({ getFiles, disabled }: SendToProps) {
           onClick={() => send(service)}
           disabled={disabled || sending}
           title={`Send to the "${CLOUD_FOLDER_NAME}" folder in your ${SERVICE_LABELS[service]}`}
-          className="px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 flex items-center gap-1.5"
+          className="px-3 py-2 rounded-control border border-edge bg-surface text-content text-xs font-medium hover:bg-surface-hover disabled:opacity-50 flex items-center gap-1.5"
         >
           {sending && state.service === service
             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -87,7 +87,7 @@ export default function SendTo({ getFiles, disabled }: SendToProps) {
       ))}
 
       {state.phase === 'sending' && state.total > 1 && (
-        <span className="text-[11px] text-slate-400">{state.done}/{state.total}</span>
+        <span className="text-[11px] text-content-muted">{state.done}/{state.total}</span>
       )}
       {state.phase === 'sent' && (
         <span className="text-[11px] text-emerald-600 flex items-center gap-1">
@@ -101,7 +101,7 @@ export default function SendTo({ getFiles, disabled }: SendToProps) {
       {state.phase === 'needs-connect' && (
         <button
           onClick={() => connectThenSend(state.service)}
-          className="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white text-[11px] font-medium hover:bg-indigo-500"
+          className="px-2.5 py-1.5 rounded-control bg-indigo-600 text-white text-[11px] font-medium hover:bg-indigo-500"
         >
           Connect {SERVICE_LABELS[state.service]} & send
         </button>

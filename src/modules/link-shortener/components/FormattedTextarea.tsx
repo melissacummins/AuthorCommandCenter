@@ -32,11 +32,11 @@ export default function FormattedTextarea({
   }
 
   return (
-    <div className="rounded-lg border border-slate-300 focus-within:ring-2 focus-within:ring-indigo-300 overflow-hidden">
-      <div className="flex items-center gap-1 px-2 py-1 border-b border-slate-200 bg-slate-50">
+    <div className="rounded-control border border-edge-strong focus-within:ring-2 focus-within:ring-indigo-300 overflow-hidden">
+      <div className="flex items-center gap-1 px-2 py-1 border-b border-edge bg-surface-hover">
         <ToolbarButton onClick={() => apply('**', 'bold text')} title="Bold"><Bold className="w-3.5 h-3.5" /></ToolbarButton>
         <ToolbarButton onClick={() => apply('*', 'italic text')} title="Italic"><Italic className="w-3.5 h-3.5" /></ToolbarButton>
-        <span className="ml-1 text-[11px] text-slate-400">Select text, then format · Enter for a new line</span>
+        <span className="ml-1 text-[11px] text-content-muted">Select text, then format · Enter for a new line</span>
       </div>
       <textarea
         ref={ref}
@@ -45,7 +45,7 @@ export default function FormattedTextarea({
         onBlur={onBlur}
         rows={rows}
         placeholder={placeholder}
-        className={className ?? 'w-full px-3 py-2 text-sm bg-white resize-none focus:outline-none'}
+        className={className ?? 'w-full px-3 py-2 text-sm bg-surface resize-none focus:outline-none'}
       />
     </div>
   );
@@ -58,7 +58,7 @@ function ToolbarButton({ onClick, title, children }: { onClick: () => void; titl
       onMouseDown={(e) => e.preventDefault()}
       onClick={onClick}
       title={title}
-      className="p-1.5 rounded text-slate-600 hover:bg-slate-200"
+      className="p-1.5 rounded text-content-secondary hover:bg-edge"
     >
       {children}
     </button>

@@ -172,31 +172,31 @@ export default function MigrationTool({ onComplete }: { onComplete: () => void }
     <div className="space-y-4">
       {status === 'idle' && (
         <>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-content-secondary">
             Import your products, orders, and purchase orders from your old InventoryPro app.
             Your old data will <strong>not</strong> be modified or deleted.
           </p>
 
           <button
             onClick={importFromFirebase}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white font-medium rounded-card hover:bg-blue-700"
           >
             <Download className="w-5 h-5" />
             Connect to Firebase & Import
           </button>
 
           <div className="flex items-center gap-3 my-2">
-            <div className="flex-1 border-t border-slate-200" />
-            <span className="text-xs text-slate-400">or upload a JSON export</span>
-            <div className="flex-1 border-t border-slate-200" />
+            <div className="flex-1 border-t border-edge" />
+            <span className="text-xs text-content-muted">or upload a JSON export</span>
+            <div className="flex-1 border-t border-edge" />
           </div>
 
           <div
             onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+            className="border-2 border-dashed border-edge-strong rounded-card p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
           >
-            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-2" />
-            <p className="font-medium text-slate-600 text-sm">Upload JSON file</p>
+            <Upload className="w-8 h-8 text-content-muted mx-auto mb-2" />
+            <p className="font-medium text-content-secondary text-sm">Upload JSON file</p>
             <input ref={fileRef} type="file" accept=".json" onChange={handleFile} className="hidden" />
           </div>
         </>
@@ -205,15 +205,15 @@ export default function MigrationTool({ onComplete }: { onComplete: () => void }
       {status === 'processing' && (
         <div className="text-center py-8">
           <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-3" />
-          <p className="text-sm text-slate-600">{progress}</p>
+          <p className="text-sm text-content-secondary">{progress}</p>
         </div>
       )}
 
       {status === 'done' && (
         <div className="text-center py-8">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto mb-3" />
-          <p className="text-xl font-semibold text-slate-800 mb-3">Import Complete!</p>
-          <div className="text-sm text-slate-600 space-y-1">
+          <p className="text-xl font-semibold text-content mb-3">Import Complete!</p>
+          <div className="text-sm text-content-secondary space-y-1">
             <p><strong>{counts.products}</strong> products imported</p>
             <p><strong>{counts.orders}</strong> inventory orders imported</p>
             <p><strong>{counts.purchaseOrders}</strong> purchase orders imported</p>
@@ -224,11 +224,11 @@ export default function MigrationTool({ onComplete }: { onComplete: () => void }
       {status === 'error' && (
         <div className="text-center py-8">
           <AlertCircle className="w-14 h-14 text-red-500 mx-auto mb-3" />
-          <p className="font-semibold text-slate-800 mb-2">Import Failed</p>
+          <p className="font-semibold text-content mb-2">Import Failed</p>
           <p className="text-sm text-red-600 mb-4">{error}</p>
           <button
             onClick={() => { setStatus('idle'); setError(null); }}
-            className="px-4 py-2 text-sm bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200"
+            className="px-4 py-2 text-sm bg-surface-sunken text-content rounded-control hover:bg-edge"
           >
             Try Again
           </button>

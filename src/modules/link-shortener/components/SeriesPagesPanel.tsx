@@ -53,39 +53,39 @@ export default function SeriesPagesPanel() {
   return (
     <div className="max-w-3xl">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-lg font-semibold text-slate-800">Series pages</h2>
+        <h2 className="text-lg font-semibold text-content">Series pages</h2>
         <button
           onClick={() => setEditing('new')}
           disabled={books.length === 0}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
         >
           <Plus className="w-4 h-4" /> New series
         </button>
       </div>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         Bundle several book pages into one shareable URL — each book shows as a cover with its retailer
         icons. Build the individual book pages first, then group them here.
       </p>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-sm text-slate-400"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
+        <div className="flex items-center gap-2 text-sm text-content-muted"><Loader2 className="w-4 h-4 animate-spin" /> Loading…</div>
       ) : books.length === 0 ? (
-        <p className="text-sm text-slate-400">Create a few book pages first (on the Books tab), then come back to group them into a series.</p>
+        <p className="text-sm text-content-muted">Create a few book pages first (on the Books tab), then come back to group them into a series.</p>
       ) : series.length === 0 ? (
-        <p className="text-sm text-slate-400">No series pages yet.</p>
+        <p className="text-sm text-content-muted">No series pages yet.</p>
       ) : (
         <div className="space-y-2">
           {series.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2.5">
+            <div key={s.id} className="flex items-center gap-3 border border-edge rounded-card px-3 py-2.5">
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-800 truncate">{s.title || `/${s.slug}`}</p>
-                <p className="text-xs text-slate-400 font-mono truncate">/{s.slug} · {s.page_ids?.length ?? 0} books</p>
+                <p className="text-sm font-medium text-content truncate">{s.title || `/${s.slug}`}</p>
+                <p className="text-xs text-content-muted font-mono truncate">/{s.slug} · {s.page_ids?.length ?? 0} books</p>
               </div>
-              <a href={buildShortUrl(s.slug)} target="_blank" rel="noreferrer" className="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-50" title="Open page">
+              <a href={buildShortUrl(s.slug)} target="_blank" rel="noreferrer" className="p-1.5 text-content-muted hover:text-indigo-600 rounded-control hover:bg-surface-hover" title="Open page">
                 <ExternalLink className="w-4 h-4" />
               </a>
-              <button onClick={() => setEditing(s)} className="px-2.5 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50">Edit</button>
-              <button onClick={() => handleDelete(s)} className="p-1.5 text-rose-500 border border-rose-200 rounded-lg hover:bg-rose-50" title="Delete">
+              <button onClick={() => setEditing(s)} className="px-2.5 py-1.5 text-xs font-medium text-content-secondary border border-edge rounded-control hover:bg-surface-hover">Edit</button>
+              <button onClick={() => handleDelete(s)} className="p-1.5 text-rose-500 border border-rose-200 rounded-control hover:bg-rose-50" title="Delete">
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -172,7 +172,7 @@ function SeriesEditor({
 
   return (
     <div className="max-w-2xl">
-      <button onClick={onCancel} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-4">
+      <button onClick={onCancel} className="inline-flex items-center gap-1.5 text-sm text-content-secondary hover:text-content mb-4">
         <ArrowLeft className="w-4 h-4" /> Back to series
       </button>
 
@@ -182,43 +182,43 @@ function SeriesEditor({
             value={slug}
             onChange={(e) => setSlug(e.target.value.replace(/\s+/g, '-'))}
             placeholder="darkling-series"
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
           />
         </Field>
 
         <Field label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="The Darkling Series" className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="The Darkling Series" className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300" />
         </Field>
 
         <Field label="Description">
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short intro shown above the books." className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short intro shown above the books." className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300" />
         </Field>
 
         {/* Books in the series */}
         <div>
-          <label className="text-sm font-medium text-slate-700">Books in this series</label>
-          <p className="text-xs text-slate-400 mb-2">Order is top-to-bottom on the page. Each book shows its cover + retailer icons.</p>
+          <label className="text-sm font-medium text-content">Books in this series</label>
+          <p className="text-xs text-content-muted mb-2">Order is top-to-bottom on the page. Each book shows its cover + retailer icons.</p>
           {selectedIds.length === 0 ? (
-            <p className="text-xs text-slate-400 mb-2">No books added yet.</p>
+            <p className="text-xs text-content-muted mb-2">No books added yet.</p>
           ) : (
             <div className="space-y-2 mb-2">
               {selectedIds.map((id, i) => {
                 const b = booksById.get(id);
                 if (!b) return null;
                 return (
-                  <div key={id} className="flex items-center gap-3 border border-slate-200 rounded-xl px-3 py-2">
+                  <div key={id} className="flex items-center gap-3 border border-edge rounded-card px-3 py-2">
                     {b.cover_image_url ? (
-                      <img src={b.cover_image_url} alt="" className="w-8 h-11 object-cover rounded shrink-0 bg-slate-100" />
-                    ) : <div className="w-8 h-11 rounded shrink-0 bg-slate-100" />}
+                      <img src={b.cover_image_url} alt="" className="w-8 h-11 object-cover rounded shrink-0 bg-surface-sunken" />
+                    ) : <div className="w-8 h-11 rounded shrink-0 bg-surface-sunken" />}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-800 truncate">{b.title || `/${b.slug}`}</p>
-                      <p className="text-[11px] text-slate-400 font-mono truncate">/{b.slug}</p>
+                      <p className="text-sm text-content truncate">{b.title || `/${b.slug}`}</p>
+                      <p className="text-[11px] text-content-muted font-mono truncate">/{b.slug}</p>
                     </div>
                     <div className="flex items-center">
-                      <button onClick={() => move(i, -1)} disabled={i === 0} className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
-                      <button onClick={() => move(i, 1)} disabled={i === selectedIds.length - 1} className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
+                      <button onClick={() => move(i, -1)} disabled={i === 0} className="p-1 text-content-muted hover:text-content disabled:opacity-30"><ChevronUp className="w-4 h-4" /></button>
+                      <button onClick={() => move(i, 1)} disabled={i === selectedIds.length - 1} className="p-1 text-content-muted hover:text-content disabled:opacity-30"><ChevronDown className="w-4 h-4" /></button>
                     </div>
-                    <button onClick={() => setSelectedIds((ids) => ids.filter((x) => x !== id))} className="p-1.5 text-slate-400 hover:text-rose-600 rounded-md hover:bg-rose-50 shrink-0"><X className="w-4 h-4" /></button>
+                    <button onClick={() => setSelectedIds((ids) => ids.filter((x) => x !== id))} className="p-1.5 text-content-muted hover:text-rose-600 rounded-control hover:bg-rose-50 shrink-0"><X className="w-4 h-4" /></button>
                   </div>
                 );
               })}
@@ -228,7 +228,7 @@ function SeriesEditor({
             <select
               value=""
               onChange={(e) => { if (e.target.value) setSelectedIds((ids) => [...ids, e.target.value]); }}
-              className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
             >
               <option value="">+ Add a book…</option>
               {available.map((b) => (
@@ -240,12 +240,12 @@ function SeriesEditor({
 
         {/* Card text */}
         <div>
-          <label className="text-sm font-medium text-slate-700">Text on each book card</label>
-          <p className="text-xs text-slate-400 mb-1">What shows next to each cover. Headline keeps cards short.</p>
+          <label className="text-sm font-medium text-content">Text on each book card</label>
+          <p className="text-xs text-content-muted mb-1">What shows next to each cover. Headline keeps cards short.</p>
           <select
             value={cardTextMode}
             onChange={(e) => setCardTextMode(e.target.value as 'headline' | 'description' | 'none')}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
           >
             <option value="description">Each book's description</option>
             <option value="headline">Each book's headline</option>
@@ -255,18 +255,18 @@ function SeriesEditor({
 
         {/* Theme */}
         <div>
-          <label className="text-sm font-medium text-slate-700 mb-2 block">Theme</label>
+          <label className="text-sm font-medium text-content mb-2 block">Theme</label>
           <div className="flex flex-wrap gap-2">
             {BIO_THEMES.map((th) => {
               const active = theme === th.id;
               return (
                 <button key={th.id} type="button" onClick={() => setTheme(th.id)} aria-label={th.name}
-                  className={`relative w-[78px] rounded-xl overflow-hidden border-2 transition ${active ? 'border-indigo-500' : 'border-transparent hover:border-slate-300'}`}>
+                  className={`relative w-[78px] rounded-card overflow-hidden border-2 transition ${active ? 'border-indigo-500' : 'border-transparent hover:border-edge-strong'}`}>
                   <div style={{ background: th.bg }} className="h-10 flex items-end justify-center px-2 pb-1.5">
                     <span style={{ background: th.surface }} className="block w-full h-2.5 rounded-sm shadow-sm" />
                   </div>
-                  <div className="flex items-center justify-between px-2 py-1 bg-white">
-                    <span className="text-[10px] font-medium text-slate-700">{th.name}</span>
+                  <div className="flex items-center justify-between px-2 py-1 bg-surface">
+                    <span className="text-[10px] font-medium text-content">{th.name}</span>
                     <span style={{ background: th.accent }} className="w-2 h-2 rounded-full" />
                   </div>
                   {active && <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 text-white grid place-items-center"><Check className="w-2.5 h-2.5" /></span>}
@@ -275,20 +275,20 @@ function SeriesEditor({
             })}
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <label className="text-xs font-medium text-slate-600">Accent color</label>
-            <input type="color" value={accentColor || bioThemeById(theme).accent} onChange={(e) => setAccentColor(e.target.value)} className="w-9 h-9 rounded-lg border border-slate-200 bg-white cursor-pointer p-0.5" />
-            {accentColor && <button onClick={() => setAccentColor(null)} className="text-xs text-slate-500 hover:underline">Use theme default</button>}
+            <label className="text-xs font-medium text-content-secondary">Accent color</label>
+            <input type="color" value={accentColor || bioThemeById(theme).accent} onChange={(e) => setAccentColor(e.target.value)} className="w-9 h-9 rounded-control border border-edge bg-surface cursor-pointer p-0.5" />
+            {accentColor && <button onClick={() => setAccentColor(null)} className="text-xs text-content-secondary hover:underline">Use theme default</button>}
           </div>
         </div>
 
-        {error && <div className="px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-sm">{error}</div>}
+        {error && <div className="px-3 py-2 rounded-control bg-rose-50 border border-rose-200 text-rose-700 text-sm">{error}</div>}
 
         <div className="flex items-center gap-2 pt-1">
-          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {series ? 'Save changes' : 'Create series'}
           </button>
-          <button onClick={onCancel} className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 text-sm hover:bg-slate-50">Cancel</button>
+          <button onClick={onCancel} className="px-4 py-2 rounded-control border border-edge text-content-secondary text-sm hover:bg-surface-hover">Cancel</button>
         </div>
       </div>
     </div>
@@ -298,8 +298,8 @@ function SeriesEditor({
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <div>
-      <label className="text-sm font-medium text-slate-700">{label}</label>
-      {hint && <p className="text-xs text-slate-400 mb-1">{hint}</p>}
+      <label className="text-sm font-medium text-content">{label}</label>
+      {hint && <p className="text-xs text-content-muted mb-1">{hint}</p>}
       <div className={hint ? '' : 'mt-1'}>{children}</div>
     </div>
   );

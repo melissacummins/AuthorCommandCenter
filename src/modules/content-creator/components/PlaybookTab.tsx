@@ -57,7 +57,7 @@ export default function PlaybookTab() {
     return () => { cancelled = true; };
   }, [user]);
 
-  if (loading) return <Centered><Loader2 className="w-6 h-6 animate-spin text-slate-400" /></Centered>;
+  if (loading) return <Centered><Loader2 className="w-6 h-6 animate-spin text-content-muted" /></Centered>;
   if (error) return <Centered><p className="text-rose-600 text-sm">{error}</p></Centered>;
   if (!user) return null;
 
@@ -78,9 +78,9 @@ export default function PlaybookTab() {
         defaults={defaults} optouts={optouts} setOptouts={setOptouts}
         rules={rules} setRules={setRules}
       />
-      <details className="bg-white rounded-xl border border-slate-200">
-        <summary className="px-5 py-4 cursor-pointer select-none flex items-center gap-2 text-sm font-semibold text-slate-700">
-          <Cpu className="w-4 h-4 text-slate-400" /> AI models per task
+      <details className="bg-surface rounded-card border border-edge">
+        <summary className="px-5 py-4 cursor-pointer select-none flex items-center gap-2 text-sm font-semibold text-content">
+          <Cpu className="w-4 h-4 text-content-muted" /> AI models per task
         </summary>
         <div className="px-5 pb-5">
           <ModelSettingsPanel onSaved={invalidateTaskModelCache} />
@@ -94,8 +94,8 @@ function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex items-center justify-center py-16">{children}</div>;
 }
 
-const cardCls = 'bg-white rounded-xl border border-slate-200 p-5';
-const inputCls = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none bg-white';
+const cardCls = 'bg-surface rounded-card border border-edge p-5';
+const inputCls = 'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none bg-surface';
 
 // ---------------- Built-in strategy library ----------------
 
@@ -103,19 +103,19 @@ function BuiltinLibraryPanel() {
   return (
     <details className={cardCls}>
       <summary className="cursor-pointer select-none">
-        <span className="text-sm font-semibold text-slate-800 inline-flex items-center gap-2">
-          <BookMarked className="w-4 h-4 text-slate-400" /> Built-in strategy library ({BUILTIN_STRATEGIES.length})
+        <span className="text-sm font-semibold text-content inline-flex items-center gap-2">
+          <BookMarked className="w-4 h-4 text-content-muted" /> Built-in strategy library ({BUILTIN_STRATEGIES.length})
         </span>
-        <span className="block text-xs text-slate-500 mt-1">
+        <span className="block text-xs text-content-secondary mt-1">
           The tested BookTok hook strategies ship with the app and apply to every scan and generation automatically — for every book, no import needed. Everything below this panel is <em>your</em> additions on top.
         </span>
       </summary>
       <div className="mt-4 space-y-2">
         {BUILTIN_STRATEGIES.map(s => (
-          <div key={s.title} className="p-3 rounded-lg border border-slate-100 bg-slate-50/50">
-            <p className="text-sm font-medium text-slate-700">{s.title}</p>
-            <p className="text-xs text-slate-500 mt-0.5">{s.pattern}</p>
-            {s.example && <p className="text-xs text-slate-400 italic mt-0.5">"{s.example}"</p>}
+          <div key={s.title} className="p-3 rounded-control border border-edge-soft bg-surface-hover/50">
+            <p className="text-sm font-medium text-content">{s.title}</p>
+            <p className="text-xs text-content-secondary mt-0.5">{s.pattern}</p>
+            {s.example && <p className="text-xs text-content-muted italic mt-0.5">"{s.example}"</p>}
           </div>
         ))}
       </div>
@@ -182,10 +182,10 @@ function ImportPanel({ userId, onImported }: { userId: string; onImported: (adde
 
   return (
     <div className={cardCls}>
-      <h3 className="text-sm font-semibold text-slate-800 mb-1 flex items-center gap-2">
-        <Upload className="w-4 h-4 text-slate-400" /> Import hook patterns
+      <h3 className="text-sm font-semibold text-content mb-1 flex items-center gap-2">
+        <Upload className="w-4 h-4 text-content-muted" /> Import hook patterns
       </h3>
-      <p className="text-xs text-slate-500 mb-3">
+      <p className="text-xs text-content-secondary mb-3">
         Paste your monthly hook batch or Author Ad Copy Pro material (or upload .txt / .md / .docx). AI splits it into entries for your review — nothing saves until you approve it.
       </p>
       {!proposed ? (
@@ -194,10 +194,10 @@ function ImportPanel({ userId, onImported }: { userId: string; onImported: (adde
             placeholder="Paste hook patterns, rules, or reference material here…" />
           <div className="flex items-center gap-3 mt-3">
             <button onClick={propose} disabled={proposing || !text.trim()}
-              className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
               {proposing && <Loader2 className="w-4 h-4 animate-spin" />} Propose entries
             </button>
-            <label className="px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50 cursor-pointer">
+            <label className="px-3 py-2 rounded-control border border-edge-strong text-sm text-content-secondary hover:bg-surface-hover cursor-pointer">
               Upload file
               <input type="file" accept=".txt,.md,.docx" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f).catch(err => setError((err as Error).message)); e.target.value = ''; }} />
@@ -207,23 +207,23 @@ function ImportPanel({ userId, onImported }: { userId: string; onImported: (adde
       ) : (
         <div className="space-y-2">
           {proposed.map((p, i) => (
-            <label key={i} className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer ${p.keep ? 'border-pink-300 bg-pink-50/40' : 'border-slate-200 opacity-60'}`}>
+            <label key={i} className={`flex items-start gap-3 p-3 rounded-control border cursor-pointer ${p.keep ? 'border-pink-300 bg-pink-50/40' : 'border-edge opacity-60'}`}>
               <input type="checkbox" checked={p.keep} className="mt-1"
                 onChange={() => setProposed(prev => prev!.map((x, j) => j === i ? { ...x, keep: !x.keep } : x))} />
               <span className="min-w-0">
-                <span className="block text-sm font-medium text-slate-800">{p.title}</span>
-                <span className="block text-xs text-slate-600 mt-0.5">{p.pattern_text}</span>
-                {p.example_text && <span className="block text-xs text-slate-400 italic mt-0.5">"{p.example_text}"</span>}
+                <span className="block text-sm font-medium text-content">{p.title}</span>
+                <span className="block text-xs text-content-secondary mt-0.5">{p.pattern_text}</span>
+                {p.example_text && <span className="block text-xs text-content-muted italic mt-0.5">"{p.example_text}"</span>}
               </span>
             </label>
           ))}
           <div className="flex items-center gap-3 pt-1">
             <button onClick={saveKept} disabled={saving}
-              className="px-4 py-2 rounded-lg bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Save {proposed.filter(p => p.keep).length} entries
             </button>
-            <button onClick={() => setProposed(null)} className="text-sm text-slate-500 hover:text-slate-700">Cancel</button>
+            <button onClick={() => setProposed(null)} className="text-sm text-content-secondary hover:text-content">Cancel</button>
           </div>
         </div>
       )}
@@ -256,31 +256,31 @@ function EntriesPanel({ userId, entries, setEntries }: {
   return (
     <div className={cardCls}>
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-slate-800">Hook patterns ({entries.length})</h3>
+        <h3 className="text-sm font-semibold text-content">Hook patterns ({entries.length})</h3>
         <button onClick={() => setAdding(v => !v)} className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1">
           <Plus className="w-4 h-4" /> Add
         </button>
       </div>
       {adding && (
-        <div className="mb-4 p-3 rounded-lg border border-slate-200 space-y-2">
+        <div className="mb-4 p-3 rounded-control border border-edge space-y-2">
           <input className={inputCls} placeholder="Pattern name (e.g. Unhinged Devotion)" value={title} onChange={e => setTitle(e.target.value)} />
           <textarea rows={2} className={inputCls} placeholder="How the pattern works…" value={pattern} onChange={e => setPattern(e.target.value)} />
-          <button onClick={addManual} className="px-3 py-1.5 rounded-lg bg-pink-600 text-white text-sm hover:bg-pink-700">Save</button>
+          <button onClick={addManual} className="px-3 py-1.5 rounded-control bg-pink-600 text-white text-sm hover:bg-pink-700">Save</button>
         </div>
       )}
       {entries.length === 0 && !adding && (
-        <p className="text-sm text-slate-400">No patterns yet — import your Author Ad Copy Pro material above to seed the playbook.</p>
+        <p className="text-sm text-content-muted">No patterns yet — import your Author Ad Copy Pro material above to seed the playbook.</p>
       )}
       <div className="space-y-2">
         {entries.map(e => (
-          <div key={e.id} className={`p-3 rounded-lg border ${e.active ? 'border-slate-200' : 'border-slate-100 opacity-50'}`}>
+          <div key={e.id} className={`p-3 rounded-control border ${e.active ? 'border-edge' : 'border-edge-soft opacity-50'}`}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-sm font-medium text-slate-800">{e.title}</p>
-                <p className="text-xs text-slate-600 mt-0.5">{e.pattern_text}</p>
-                {e.example_text && <p className="text-xs text-slate-400 italic mt-0.5">"{e.example_text}"</p>}
+                <p className="text-sm font-medium text-content">{e.title}</p>
+                <p className="text-xs text-content-secondary mt-0.5">{e.pattern_text}</p>
+                {e.example_text && <p className="text-xs text-content-muted italic mt-0.5">"{e.example_text}"</p>}
                 {e.tags.length > 0 && (
-                  <p className="text-[11px] text-slate-400 mt-1">{e.tags.map(t => `#${t}`).join(' ')}</p>
+                  <p className="text-[11px] text-content-muted mt-1">{e.tags.map(t => `#${t}`).join(' ')}</p>
                 )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
@@ -289,13 +289,13 @@ function EntriesPanel({ userId, entries, setEntries }: {
                     const updated = await updatePlaybookEntry(e.id, { active: !e.active });
                     setEntries(prev => prev.map(x => x.id === e.id ? updated : x));
                   }}
-                  className={`text-[11px] px-2 py-1 rounded-full border ${e.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-400'}`}
+                  className={`text-[11px] px-2 py-1 rounded-full border ${e.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-edge text-content-muted'}`}
                 >
                   {e.active ? 'Active' : 'Off'}
                 </button>
                 <button
                   onClick={async () => { if (!confirm('Delete this pattern?')) return; await deletePlaybookEntry(e.id); setEntries(prev => prev.filter(x => x.id !== e.id)); }}
-                  className="p-1.5 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50"
+                  className="p-1.5 rounded-control text-content-faint hover:text-rose-600 hover:bg-rose-50"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -330,21 +330,21 @@ function RulesPanel({ userId, rules, setRules, kind, title, hint }: {
 
   return (
     <div className={cardCls}>
-      <h3 className="text-sm font-semibold text-slate-800 mb-1">{title} ({mine.length})</h3>
-      <p className="text-xs text-slate-500 mb-3">{hint}</p>
+      <h3 className="text-sm font-semibold text-content mb-1">{title} ({mine.length})</h3>
+      <p className="text-xs text-content-secondary mb-3">{hint}</p>
       <div className="space-y-2 mb-3">
         {mine.map(r => (
-          <div key={r.id} className={`flex items-start gap-2 p-3 rounded-lg border ${r.active ? 'border-slate-200' : 'border-slate-100 opacity-50'}`}>
-            <p className="flex-1 text-xs text-slate-600 whitespace-pre-wrap">{r.content}</p>
+          <div key={r.id} className={`flex items-start gap-2 p-3 rounded-control border ${r.active ? 'border-edge' : 'border-edge-soft opacity-50'}`}>
+            <p className="flex-1 text-xs text-content-secondary whitespace-pre-wrap">{r.content}</p>
             <button
               onClick={async () => { const u = await updateRule(r.id, { active: !r.active }); setRules(prev => prev.map(x => x.id === r.id ? u : x)); }}
-              className={`text-[11px] px-2 py-1 rounded-full border shrink-0 ${r.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-400'}`}
+              className={`text-[11px] px-2 py-1 rounded-full border shrink-0 ${r.active ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-edge text-content-muted'}`}
             >
               {r.active ? 'Active' : 'Off'}
             </button>
             <button
               onClick={async () => { if (!confirm('Delete this rule?')) return; await deleteRule(r.id); setRules(prev => prev.filter(x => x.id !== r.id)); }}
-              className="p-1.5 rounded-md text-slate-300 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+              className="p-1.5 rounded-control text-content-faint hover:text-rose-600 hover:bg-rose-50 shrink-0"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
@@ -355,7 +355,7 @@ function RulesPanel({ userId, rules, setRules, kind, title, hint }: {
         <textarea rows={2} className={inputCls} value={text} onChange={e => setText(e.target.value)}
           placeholder={kind === 'style' ? 'e.g. Never open a hook with a rhetorical question.' : 'e.g. The reader who wants to be chosen violently — she reads for the moment the hero burns the world down for her.'} />
         <button onClick={add} disabled={!text.trim()}
-          className="self-start px-3 py-2 rounded-lg bg-slate-800 text-white text-sm hover:bg-slate-700 disabled:opacity-40">
+          className="self-start px-3 py-2 rounded-control bg-slate-800 text-white text-sm hover:bg-slate-700 disabled:opacity-40">
           Add
         </button>
       </div>
@@ -387,10 +387,10 @@ function BannedWordsPanel({ userId, defaults, optouts, setOptouts, rules, setRul
 
   return (
     <div className={cardCls}>
-      <h3 className="text-sm font-semibold text-slate-800 mb-1 flex items-center gap-2">
-        <ShieldBan className="w-4 h-4 text-slate-400" /> Banned words
+      <h3 className="text-sm font-semibold text-content mb-1 flex items-center gap-2">
+        <ShieldBan className="w-4 h-4 text-content-muted" /> Banned words
       </h3>
-      <p className="text-xs text-slate-500 mb-3">
+      <p className="text-xs text-content-secondary mb-3">
         Words ad platforms flag. The built-in list applies automatically (click one to disable it for your account); add your own below, with an optional preferred substitute.
       </p>
       <div className="flex flex-wrap gap-1.5 mb-4">
@@ -406,7 +406,7 @@ function BannedWordsPanel({ userId, defaults, optouts, setOptouts, rules, setRul
                 try { await setBannedWordOptout(userId, d.id, next); }
                 catch { setOptouts(prev => { const s = new Set(prev); if (next) s.delete(d.id); else s.add(d.id); return s; }); }
               }}
-              className={`text-xs px-2 py-1 rounded-full border ${off ? 'border-slate-200 text-slate-300 line-through' : 'border-rose-200 bg-rose-50 text-rose-700'}`}
+              className={`text-xs px-2 py-1 rounded-full border ${off ? 'border-edge text-content-faint line-through' : 'border-rose-200 bg-rose-50 text-rose-700'}`}
             >
               {d.word}
             </button>
@@ -428,7 +428,7 @@ function BannedWordsPanel({ userId, defaults, optouts, setOptouts, rules, setRul
         <input className={`${inputCls} !w-40`} placeholder="Word to ban" value={word} onChange={e => setWord(e.target.value)} />
         <input className={`${inputCls} !w-48`} placeholder="Substitute (optional)" value={replacement} onChange={e => setReplacement(e.target.value)} />
         <button onClick={addWord} disabled={!word.trim()}
-          className="px-3 py-2 rounded-lg bg-slate-800 text-white text-sm hover:bg-slate-700 disabled:opacity-40">
+          className="px-3 py-2 rounded-control bg-slate-800 text-white text-sm hover:bg-slate-700 disabled:opacity-40">
           Add word
         </button>
       </div>

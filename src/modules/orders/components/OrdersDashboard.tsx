@@ -361,31 +361,31 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
   }
 
   function SortIcon({ field }: { field: SortField }) {
-    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-slate-300" />;
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-content-faint" />;
     return sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
   }
 
   return (
     <div className="space-y-6">
       {/* Sync Controls */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-4">Sync Orders from Shopify</h3>
+      <div className="bg-surface rounded-card border border-edge p-5">
+        <h3 className="font-semibold text-content mb-4">Sync Orders from Shopify</h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {/* Location Picker */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-content-secondary mb-1">
               <MapPin className="w-3 h-3" /> Fulfillment Location
             </label>
             {loadingLocations ? (
-              <div className="flex items-center gap-2 text-sm text-slate-400 py-2">
+              <div className="flex items-center gap-2 text-sm text-content-muted py-2">
                 <Loader2 className="w-4 h-4 animate-spin" /> Loading locations...
               </div>
             ) : (
               <select
                 value={selectedLocationId}
                 onChange={(e) => handleLocationChange(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">All locations</option>
                 {locations.map(loc => (
@@ -397,27 +397,27 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
           {/* Date From */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-content-secondary mb-1">
               <Calendar className="w-3 h-3" /> From
             </label>
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
           {/* Date To */}
           <div>
-            <label className="flex items-center gap-1.5 text-xs font-medium text-slate-500 mb-1">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-content-secondary mb-1">
               <Calendar className="w-3 h-3" /> To
             </label>
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -426,7 +426,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
             >
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               {syncing ? 'Syncing...' : 'Sync & Update Inventory'}
@@ -436,7 +436,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
         {/* Last sync info */}
         {settings.last_sync_at && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-content-muted">
             Last synced: {new Date(settings.last_sync_at).toLocaleString()}
             {settings.default_location_name && ` from "${settings.default_location_name}"`}
           </p>
@@ -444,13 +444,13 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
         {/* Messages */}
         {syncError && (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-control">
             <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
             <p className="text-sm text-red-700">{syncError}</p>
           </div>
         )}
         {syncSuccess && (
-          <div className="mt-3 flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="mt-3 flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-control">
             {inventoryApplied && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />}
             <p className="text-sm text-emerald-700">{syncSuccess}</p>
           </div>
@@ -466,9 +466,9 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
       </div>
 
       {/* Push to Shopify */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h3 className="font-semibold text-slate-800 mb-2">Push Inventory to Shopify</h3>
-        <p className="text-sm text-slate-500 mb-4">
+      <div className="bg-surface rounded-card border border-edge p-5">
+        <h3 className="font-semibold text-content mb-2">Push Inventory to Shopify</h3>
+        <p className="text-sm text-content-secondary mb-4">
           Update your Shopify store's inventory levels to match what's in the app.
           Products are linked by SKU — click "Link Products" first if you haven't already.
         </p>
@@ -477,7 +477,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
           <button
             onClick={handleSyncMapping}
             disabled={mappingSyncing}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-50 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 border border-edge text-content text-sm font-medium rounded-control hover:bg-surface-hover disabled:opacity-50"
           >
             {mappingSyncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2 className="w-4 h-4" />}
             {mappingSyncing ? 'Linking...' : 'Link Products'}
@@ -485,24 +485,24 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
           <button
             onClick={handlePushToShopify}
             disabled={pushing || !selectedLocationId || mappedCount === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
           >
             {pushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {pushing ? 'Pushing...' : 'Push to Shopify'}
           </button>
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-content-muted">
             {mappedCount} of {products.length} products linked to Shopify
           </span>
         </div>
 
         {pushError && (
-          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-control">
             <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
             <pre className="text-sm text-red-700 whitespace-pre-wrap font-sans">{pushError}</pre>
           </div>
         )}
         {pushMessage && (
-          <div className="flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="flex items-start gap-2 p-3 bg-emerald-50 border border-emerald-200 rounded-control">
             <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
             <p className="text-sm text-emerald-700">{pushMessage}</p>
           </div>
@@ -516,17 +516,17 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
       {/* SKU Breakdown Table */}
       {!loadingOrders && orders.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-800">Sales by SKU</h3>
+        <div className="bg-surface rounded-card border border-edge overflow-hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-b border-edge-soft">
+            <h3 className="font-semibold text-content">Sales by SKU</h3>
             <div className="relative">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-content-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search SKU or product..."
-                className="pl-9 pr-3 py-1.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56"
+                className="pl-9 pr-3 py-1.5 text-sm border border-edge rounded-control focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56"
               />
             </div>
           </div>
@@ -534,36 +534,36 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-slate-50 text-left">
-                  <th className="px-4 py-3 font-medium text-slate-500">
-                    <button onClick={() => toggleSort('sku')} className="flex items-center gap-1 hover:text-slate-700">
+                <tr className="bg-surface-hover text-left">
+                  <th className="px-4 py-3 font-medium text-content-secondary">
+                    <button onClick={() => toggleSort('sku')} className="flex items-center gap-1 hover:text-content">
                       SKU <SortIcon field="sku" />
                     </button>
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-500">
-                    <button onClick={() => toggleSort('productName')} className="flex items-center gap-1 hover:text-slate-700">
+                  <th className="px-4 py-3 font-medium text-content-secondary">
+                    <button onClick={() => toggleSort('productName')} className="flex items-center gap-1 hover:text-content">
                       Product <SortIcon field="productName" />
                     </button>
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-500">Category</th>
-                  <th className="px-4 py-3 font-medium text-slate-500 text-right">
-                    <button onClick={() => toggleSort('totalQuantity')} className="flex items-center gap-1 ml-auto hover:text-slate-700">
+                  <th className="px-4 py-3 font-medium text-content-secondary">Category</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary text-right">
+                    <button onClick={() => toggleSort('totalQuantity')} className="flex items-center gap-1 ml-auto hover:text-content">
                       Qty Sold <SortIcon field="totalQuantity" />
                     </button>
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-500 text-right">
-                    <button onClick={() => toggleSort('orderCount')} className="flex items-center gap-1 ml-auto hover:text-slate-700">
+                  <th className="px-4 py-3 font-medium text-content-secondary text-right">
+                    <button onClick={() => toggleSort('orderCount')} className="flex items-center gap-1 ml-auto hover:text-content">
                       Orders <SortIcon field="orderCount" />
                     </button>
                   </th>
-                  <th className="px-4 py-3 font-medium text-slate-500 text-center">Match</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary text-center">Match</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-edge-soft">
                 {filteredMatches.map(match => (
-                  <tr key={match.sku} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-mono text-xs text-slate-600">{match.sku}</td>
-                    <td className="px-4 py-3 text-slate-800">{match.productName}</td>
+                  <tr key={match.sku} className="hover:bg-surface-hover">
+                    <td className="px-4 py-3 font-mono text-xs text-content-secondary">{match.sku}</td>
+                    <td className="px-4 py-3 text-content">{match.productName}</td>
                     <td className="px-4 py-3">
                       {match.category ? (
                         <span className={`inline-flex px-2 py-0.5 text-xs rounded-full ${
@@ -574,11 +574,11 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
                           {match.category}
                         </span>
                       ) : (
-                        <span className="text-slate-300">-</span>
+                        <span className="text-content-faint">-</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-slate-800">{match.totalQuantity}</td>
-                    <td className="px-4 py-3 text-right text-slate-600">{match.orderCount}</td>
+                    <td className="px-4 py-3 text-right font-semibold text-content">{match.totalQuantity}</td>
+                    <td className="px-4 py-3 text-right text-content-secondary">{match.orderCount}</td>
                     <td className="px-4 py-3 text-center">
                       {match.productId ? (
                         <span className="inline-flex w-5 h-5 items-center justify-center bg-emerald-100 text-emerald-600 rounded-full text-xs font-bold">&#10003;</span>
@@ -590,7 +590,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
                 ))}
                 {filteredMatches.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-8 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-8 text-center text-content-muted">
                       {search ? 'No matching SKUs found.' : 'No order data yet. Sync orders to see results.'}
                     </td>
                   </tr>
@@ -603,41 +603,41 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
       {/* Orders List */}
       {!loadingOrders && orders.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="p-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-800">Recent Orders ({orders.length})</h3>
+        <div className="bg-surface rounded-card border border-edge overflow-hidden">
+          <div className="p-4 border-b border-edge-soft">
+            <h3 className="font-semibold text-content">Recent Orders ({orders.length})</h3>
           </div>
           <div className="overflow-x-auto max-h-96 overflow-y-auto">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50">
+              <thead className="sticky top-0 bg-surface-hover">
                 <tr className="text-left">
-                  <th className="px-4 py-3 font-medium text-slate-500">Order #</th>
-                  <th className="px-4 py-3 font-medium text-slate-500">Date</th>
-                  <th className="px-4 py-3 font-medium text-slate-500">Customer</th>
-                  <th className="px-4 py-3 font-medium text-slate-500">Items</th>
-                  <th className="px-4 py-3 font-medium text-slate-500 text-right">Total</th>
-                  <th className="px-4 py-3 font-medium text-slate-500">Status</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary">Order #</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary">Date</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary">Customer</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary">Items</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary text-right">Total</th>
+                  <th className="px-4 py-3 font-medium text-content-secondary">Status</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-edge-soft">
                 {orders.slice(0, 100).map(order => {
                   const lineItems: ShopifyLineItem[] = typeof order.line_items === 'string'
                     ? JSON.parse(order.line_items)
                     : order.line_items;
                   return (
-                    <tr key={order.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 font-medium text-slate-800">{order.order_number}</td>
-                      <td className="px-4 py-3 text-slate-600">{new Date(order.order_date).toLocaleDateString()}</td>
-                      <td className="px-4 py-3 text-slate-600">{order.customer_name || '-'}</td>
-                      <td className="px-4 py-3 text-slate-600">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</td>
-                      <td className="px-4 py-3 text-right font-medium text-slate-800">${Number(order.total_price).toFixed(2)}</td>
+                    <tr key={order.id} className="hover:bg-surface-hover">
+                      <td className="px-4 py-3 font-medium text-content">{order.order_number}</td>
+                      <td className="px-4 py-3 text-content-secondary">{new Date(order.order_date).toLocaleDateString()}</td>
+                      <td className="px-4 py-3 text-content-secondary">{order.customer_name || '-'}</td>
+                      <td className="px-4 py-3 text-content-secondary">{lineItems.length} item{lineItems.length !== 1 ? 's' : ''}</td>
+                      <td className="px-4 py-3 text-right font-medium text-content">${Number(order.total_price).toFixed(2)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-0.5 text-xs rounded-full ${
                           order.fulfillment_status === 'fulfilled'
                             ? 'bg-emerald-100 text-emerald-700'
                             : order.fulfillment_status === 'partial'
                             ? 'bg-amber-100 text-amber-700'
-                            : 'bg-slate-100 text-slate-600'
+                            : 'bg-surface-sunken text-content-secondary'
                         }`}>
                           {order.fulfillment_status || 'unfulfilled'}
                         </span>
@@ -653,10 +653,10 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
       {/* Empty state */}
       {!loadingOrders && orders.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-slate-200">
-          <ShoppingCart className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <h3 className="text-lg font-semibold text-slate-700 mb-1">No orders synced yet</h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
+        <div className="text-center py-16 bg-surface rounded-card border border-edge">
+          <ShoppingCart className="w-12 h-12 text-content-faint mx-auto mb-3" />
+          <h3 className="text-lg font-semibold text-content mb-1">No orders synced yet</h3>
+          <p className="text-sm text-content-muted max-w-md mx-auto">
             Select a fulfillment location, choose a date range, and click "Sync & Update Inventory" to pull your Shopify orders and automatically update your product inventory.
           </p>
         </div>
@@ -741,35 +741,35 @@ function LinkedProductsTable({ products }: { products: Product[] }) {
         {expanded ? 'Hide' : 'Show'} linked products ({linked.length})
       </button>
       {expanded && (
-        <div className="mt-2 overflow-x-auto border border-slate-200 rounded-lg">
+        <div className="mt-2 overflow-x-auto border border-edge rounded-control">
           <table className="w-full text-xs">
             <thead>
-              <tr className="bg-slate-50 text-left">
-                <th className="px-3 py-2 font-medium text-slate-500">Product</th>
-                <th className="px-3 py-2 font-medium text-slate-500">SKU</th>
-                <th className="px-3 py-2 font-medium text-slate-500">Category</th>
-                <th className="px-3 py-2 font-medium text-slate-500 text-right">Will Push</th>
-                <th className="px-3 py-2 font-medium text-slate-500 text-right">Displayed Inventory</th>
-                <th className="px-3 py-2 font-medium text-slate-500">Shopify Item ID</th>
+              <tr className="bg-surface-hover text-left">
+                <th className="px-3 py-2 font-medium text-content-secondary">Product</th>
+                <th className="px-3 py-2 font-medium text-content-secondary">SKU</th>
+                <th className="px-3 py-2 font-medium text-content-secondary">Category</th>
+                <th className="px-3 py-2 font-medium text-content-secondary text-right">Will Push</th>
+                <th className="px-3 py-2 font-medium text-content-secondary text-right">Displayed Inventory</th>
+                <th className="px-3 py-2 font-medium text-content-secondary">Shopify Item ID</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-edge-soft">
               {linked.map(p => {
                 const metrics = calculateProductMetrics(p, products);
                 const isBundle = p.category === 'Bundle' || p.category === 'Book Box';
                 const willPush = Math.max(0, isBundle ? metrics.bundlesInventory : metrics.bookInventory);
                 return (
-                  <tr key={p.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2 text-slate-800">{p.name}</td>
-                    <td className="px-3 py-2 font-mono text-slate-500">{p.sku}</td>
+                  <tr key={p.id} className="hover:bg-surface-hover">
+                    <td className="px-3 py-2 text-content">{p.name}</td>
+                    <td className="px-3 py-2 font-mono text-content-secondary">{p.sku}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
                         isBundle ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
                       }`}>{p.category}</span>
                     </td>
-                    <td className="px-3 py-2 text-right font-semibold text-slate-800">{willPush}</td>
-                    <td className="px-3 py-2 text-right text-slate-600">{isBundle ? metrics.bundlesInventory : metrics.bookInventory}</td>
-                    <td className="px-3 py-2 font-mono text-slate-400 text-[10px]">{p.shopify_inventory_item_id}</td>
+                    <td className="px-3 py-2 text-right font-semibold text-content">{willPush}</td>
+                    <td className="px-3 py-2 text-right text-content-secondary">{isBundle ? metrics.bundlesInventory : metrics.bookInventory}</td>
+                    <td className="px-3 py-2 font-mono text-content-muted text-[10px]">{p.shopify_inventory_item_id}</td>
                   </tr>
                 );
               })}
@@ -789,14 +789,14 @@ function StatCard({ icon: Icon, label, value, color, bg }: {
   bg: string;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4">
+    <div className="bg-surface rounded-card border border-edge p-4">
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 ${bg} rounded-lg flex items-center justify-center`}>
+        <div className={`w-10 h-10 ${bg} rounded-control flex items-center justify-center`}>
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
         <div>
-          <p className="text-2xl font-bold text-slate-800">{value.toLocaleString()}</p>
-          <p className="text-xs text-slate-500">{label}</p>
+          <p className="text-2xl font-bold text-content">{value.toLocaleString()}</p>
+          <p className="text-xs text-content-secondary">{label}</p>
         </div>
       </div>
     </div>

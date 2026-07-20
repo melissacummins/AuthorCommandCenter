@@ -137,18 +137,18 @@ export default function WeeklyResetView({
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-1">
         <RotateCcw className="w-6 h-6 text-violet-500" />
-        <h2 className="text-2xl font-bold text-slate-800">Weekly Reset</h2>
+        <h2 className="text-2xl font-bold text-content">Weekly Reset</h2>
       </div>
-      <p className="text-sm text-slate-400 mb-5">Reflect on last week and set up this one. Snap a photo of your handwritten page or fill it in here.</p>
+      <p className="text-sm text-content-muted mb-5">Reflect on last week and set up this one. Snap a photo of your handwritten page or fill it in here.</p>
 
       {/* Week navigator */}
       <div className="flex items-center justify-center gap-4 mb-5">
-        <button onClick={onPrevWeek} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100" title="Previous week"><ChevronLeft className="w-5 h-5" /></button>
-        <div className="text-sm font-semibold text-slate-700 text-center">
+        <button onClick={onPrevWeek} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken" title="Previous week"><ChevronLeft className="w-5 h-5" /></button>
+        <div className="text-sm font-semibold text-content text-center">
           {weekLabel(weekStart)}
           {thisWeek && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-violet-600">This week</span>}
         </div>
-        <button onClick={onNextWeek} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100" title="Next week"><ChevronRight className="w-5 h-5" /></button>
+        <button onClick={onNextWeek} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken" title="Next week"><ChevronRight className="w-5 h-5" /></button>
       </div>
       {!thisWeek && (
         <div className="text-center -mt-3 mb-4">
@@ -157,18 +157,18 @@ export default function WeeklyResetView({
       )}
 
       {/* Add from photo */}
-      <div className="rounded-2xl border border-violet-200 bg-violet-50/50 p-4 mb-6">
+      <div className="rounded-card border border-violet-200 bg-violet-50/50 p-4 mb-6">
         <div className="flex items-center gap-3 flex-wrap">
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={e => onPickPhotos(e.target.files)} />
           <button
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="inline-flex items-center gap-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-lg px-3 py-2"
+            className="inline-flex items-center gap-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-control px-3 py-2"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
             {busy ? (progress && progress.n > 1 ? `Reading page ${progress.i} of ${progress.n}…` : 'Reading your reset…') : 'Add from photo'}
           </button>
-          <p className="text-xs text-slate-500 flex items-center gap-1">
+          <p className="text-xs text-content-secondary flex items-center gap-1">
             <Sparkles className="w-3.5 h-3.5 text-violet-400" /> Transcribes with your own AI key. Photos aren’t stored.
           </p>
         </div>
@@ -181,17 +181,17 @@ export default function WeeklyResetView({
       </div>
 
       {/* Reflective journal — collapsible rows so the page stays tidy. */}
-      <div className="mb-8 rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+      <div className="mb-8 rounded-card border border-edge bg-surface divide-y divide-edge-soft">
         {REFLECTIVE.map(f => {
           const open = openFields.has(f.key);
           const preview = refl[f.key].trim().replace(/\s+/g, ' ');
           return (
             <div key={f.key}>
               <button onClick={() => toggleField(f.key)} className="w-full flex items-center gap-2 px-4 py-2.5 text-left">
-                {open ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
-                <span className="text-sm font-medium text-slate-700 shrink-0">{f.label}</span>
+                {open ? <ChevronDown className="w-4 h-4 text-content-muted shrink-0" /> : <ChevronRight className="w-4 h-4 text-content-muted shrink-0" />}
+                <span className="text-sm font-medium text-content shrink-0">{f.label}</span>
                 {!open && (
-                  <span className={`ml-auto text-xs truncate ${preview ? 'text-slate-400' : 'text-slate-300'}`}>
+                  <span className={`ml-auto text-xs truncate ${preview ? 'text-content-muted' : 'text-content-faint'}`}>
                     {preview || 'Tap to add…'}
                   </span>
                 )}
@@ -205,7 +205,7 @@ export default function WeeklyResetView({
                     onBlur={() => saveField(f.key)}
                     placeholder={f.placeholder}
                     rows={3}
-                    className="w-full text-sm rounded-xl border border-slate-200 bg-white px-3 py-2 outline-none focus:border-violet-300 text-slate-700 placeholder:text-slate-300 resize-y"
+                    className="w-full text-sm rounded-card border border-edge bg-surface px-3 py-2 outline-none focus:border-violet-300 text-content placeholder:text-content-faint resize-y"
                   />
                 </div>
               )}
@@ -217,14 +217,14 @@ export default function WeeklyResetView({
       {/* Brain dump → tag each item */}
       <div className="flex items-center justify-between mb-1">
         <div>
-          <h3 className="text-sm font-bold text-slate-700">Brain dump</h3>
-          <p className="text-xs text-slate-400">Everything on your mind. Tag each: <Star className="inline w-3 h-3 text-amber-400 -mt-0.5" /> priority · <Zap className="inline w-3 h-3 text-teal-500 -mt-0.5" /> quick (15m) · <Heart className="inline w-3 h-3 text-rose-400 -mt-0.5" /> feel-good · <CalendarDays className="inline w-3 h-3 text-violet-500 -mt-0.5" /> schedule a day · <CalendarClock className="inline w-3 h-3 text-sky-500 -mt-0.5" /> meeting (date).</p>
+          <h3 className="text-sm font-bold text-content">Brain dump</h3>
+          <p className="text-xs text-content-muted">Everything on your mind. Tag each: <Star className="inline w-3 h-3 text-amber-400 -mt-0.5" /> priority · <Zap className="inline w-3 h-3 text-teal-500 -mt-0.5" /> quick (15m) · <Heart className="inline w-3 h-3 text-rose-400 -mt-0.5" /> feel-good · <CalendarDays className="inline w-3 h-3 text-violet-500 -mt-0.5" /> schedule a day · <CalendarClock className="inline w-3 h-3 text-sky-500 -mt-0.5" /> meeting (date).</p>
         </div>
         {itemCount > 0 && (
           <button
             onClick={approve}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-60 rounded-lg px-3 py-1.5 shrink-0"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-60 rounded-control px-3 py-1.5 shrink-0"
           >
             <Check className="w-4 h-4" /> Approve &amp; create {itemCount} to-do{itemCount === 1 ? '' : 's'}
           </button>
@@ -232,15 +232,15 @@ export default function WeeklyResetView({
       </div>
 
       {saved != null && (
-        <div className="my-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="my-3 flex items-center gap-2 rounded-card border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           <Check className="w-4 h-4 shrink-0" />
           Created {saved} to-do{saved === 1 ? '' : 's'} in this week’s <span className="font-medium">Weekly Reset</span> list (under Lists). Ones you gave a day are already scheduled; schedule the rest in Planning — drag on desktop, or use a to-do’s Schedule menu on your phone.
         </div>
       )}
 
-      <ul className="mt-3 rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100">
+      <ul className="mt-3 rounded-card border border-edge bg-surface divide-y divide-edge-soft">
         {draft.items.length === 0 ? (
-          <li className="px-4 py-6 text-center text-sm text-slate-400">
+          <li className="px-4 py-6 text-center text-sm text-content-muted">
             Add a photo above, or add items by hand below. Nothing becomes a to-do until you approve.
           </li>
         ) : draft.items.map((it, i) => (
@@ -255,16 +255,16 @@ export default function WeeklyResetView({
                 onChange={v => patchItem(i, { text: v, uncertain: false })}
                 placeholder="Describe it…"
               />
-              <button onClick={() => removeItem(i)} className="mt-0.5 text-slate-300 hover:text-rose-500 shrink-0" title="Remove"><Trash2 className="w-3.5 h-3.5" /></button>
+              <button onClick={() => removeItem(i)} className="mt-0.5 text-content-faint hover:text-rose-500 shrink-0" title="Remove"><Trash2 className="w-3.5 h-3.5" /></button>
             </div>
             <div className="mt-1.5 flex items-center flex-wrap gap-1.5">
-              {it.quick && it.estimate_minutes ? <span className="text-[11px] text-slate-400 mr-0.5">{it.estimate_minutes}m</span> : null}
+              {it.quick && it.estimate_minutes ? <span className="text-[11px] text-content-muted mr-0.5">{it.estimate_minutes}m</span> : null}
               {(it.meeting || it.date != null) && (
                 <input
                   type="date"
                   value={it.date ?? ''}
                   onChange={e => patchItem(i, { date: e.target.value || null })}
-                  className="shrink-0 text-xs border border-slate-200 rounded px-1.5 py-0.5 text-slate-600"
+                  className="shrink-0 text-xs border border-edge rounded px-1.5 py-0.5 text-content-secondary"
                   title={it.meeting ? 'Meeting date' : 'Scheduled day'}
                 />
               )}
@@ -284,7 +284,7 @@ export default function WeeklyResetView({
           </li>
         ))}
       </ul>
-      <button onClick={addItem} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-400 hover:text-violet-600">
+      <button onClick={addItem} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-content-muted hover:text-violet-600">
         <Plus className="w-3.5 h-3.5" /> add an item
       </button>
     </div>
@@ -315,7 +315,7 @@ function GrowTextarea({
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
-      className="flex-1 min-w-0 resize-none overflow-hidden text-sm bg-transparent outline-none text-slate-700 placeholder:text-slate-300 leading-snug"
+      className="flex-1 min-w-0 resize-none overflow-hidden text-sm bg-transparent outline-none text-content placeholder:text-content-faint leading-snug"
     />
   );
 }
@@ -338,7 +338,7 @@ function TagButton({
     <button
       onClick={onClick}
       title={title}
-      className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${active ? `${on} ring-1` : 'text-slate-300 hover:text-slate-500 hover:bg-slate-100'}`}
+      className={`shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-control transition-colors ${active ? `${on} ring-1` : 'text-content-faint hover:text-content-secondary hover:bg-surface-sunken'}`}
     >
       {children}
     </button>

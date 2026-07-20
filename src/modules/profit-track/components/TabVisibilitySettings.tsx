@@ -28,12 +28,12 @@ export default function TabVisibilitySettings({ uiPrefs, onUpdate }: TabVisibili
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-      <h3 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
+    <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
+      <h3 className="text-lg font-semibold text-content mb-1 flex items-center gap-2">
         <Layout className="w-5 h-5 text-indigo-500" />
         Profit Tabs
       </h3>
-      <p className="text-sm text-slate-500 mb-6">
+      <p className="text-sm text-content-secondary mb-6">
         Hide tabs you don't use. Dashboard, Add Data, and Settings stay
         visible by design.
       </p>
@@ -44,19 +44,19 @@ export default function TabVisibilitySettings({ uiPrefs, onUpdate }: TabVisibili
           return (
             <div
               key={tab.id}
-              className={`flex items-center gap-4 p-3 rounded-lg border ${
-                isHidden ? 'bg-slate-50 border-slate-200 opacity-70' : 'bg-white border-slate-200'
+              className={`flex items-center gap-4 p-3 rounded-control border ${
+                isHidden ? 'bg-surface-hover border-edge opacity-70' : 'bg-surface border-edge'
               }`}
             >
               <div className="flex-1">
-                <div className="text-sm font-medium text-slate-800">{tab.label}</div>
-                <div className="text-xs text-slate-500">{tab.description}</div>
+                <div className="text-sm font-medium text-content">{tab.label}</div>
+                <div className="text-xs text-content-secondary">{tab.description}</div>
               </div>
               <button
                 onClick={() => toggle(tab.id)}
                 className={`p-1.5 rounded ${
                   isHidden
-                    ? 'text-slate-400 hover:bg-slate-100'
+                    ? 'text-content-muted hover:bg-surface-sunken'
                     : 'text-emerald-600 hover:bg-emerald-50'
                 }`}
                 title={isHidden ? 'Hidden — click to show' : 'Visible — click to hide'}

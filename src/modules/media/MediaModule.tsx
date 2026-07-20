@@ -577,17 +577,17 @@ export default function MediaModule() {
     <div className="p-4 lg:p-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
-        <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-xl shadow-lg shadow-fuchsia-500/25">
+        <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-fuchsia-500 to-purple-600 rounded-card shadow-lg shadow-fuchsia-500/25">
           <ImagePlus className="w-6 h-6 text-white" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Media</h1>
-          <p className="text-sm text-slate-500">Generate Pinterest pins, new release art, social images, and short video clips.</p>
+          <h1 className="text-2xl font-bold text-content">Media</h1>
+          <p className="text-sm text-content-secondary">Generate Pinterest pins, new release art, social images, and short video clips.</p>
         </div>
       </div>
 
       {error && (
-        <div className="mb-4 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
+        <div className="mb-4 flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 rounded-card px-4 py-3 text-sm">
           <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
           <span className="flex-1">{error}</span>
           <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
@@ -595,7 +595,7 @@ export default function MediaModule() {
       )}
 
       {keyStatus && !keyStatus.has_key && (
-        <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl px-4 py-3 text-sm">
+        <div className="mb-4 flex items-start gap-3 bg-amber-50 border border-amber-200 text-amber-900 rounded-card px-4 py-3 text-sm">
           <AlertCircle className="w-5 h-5 mt-0.5 shrink-0 text-amber-600" />
           <div className="flex-1">
             <p className="font-semibold">Add your Fal.AI API key to get started.</p>
@@ -607,7 +607,7 @@ export default function MediaModule() {
               , then paste it in <RouterLink to="/settings" className="underline font-medium">Settings → Media generator keys</RouterLink>.
             </p>
           </div>
-          <RouterLink to="/settings" className="px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shrink-0">
+          <RouterLink to="/settings" className="px-3 py-1.5 rounded-control bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 shrink-0">
             Open Settings
           </RouterLink>
         </div>
@@ -615,11 +615,11 @@ export default function MediaModule() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] gap-6">
         {/* Controls */}
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 h-fit space-y-4">
+        <div className="bg-surface rounded-card border border-edge p-5 h-fit space-y-4">
           {/* Model */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Model</label>
+              <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide">Model</label>
               <button onClick={() => setCustomModelsDrawerOpen(true)} className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1">
                 <Layers className="w-3 h-3" /> Custom models
               </button>
@@ -627,7 +627,7 @@ export default function MediaModule() {
             <select
               value={modelId}
               onChange={(e) => setModelId(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
+              className="w-full px-3 py-2 rounded-control border border-edge text-sm bg-surface"
             >
               {(() => {
                 // Pick the visible curated set. If the user picked an
@@ -671,7 +671,7 @@ export default function MediaModule() {
                 );
               })()}
             </select>
-            <label className="flex items-center gap-1.5 mt-1.5 text-[11px] text-slate-500 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 mt-1.5 text-[11px] text-content-secondary cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={showAllModels}
@@ -680,7 +680,7 @@ export default function MediaModule() {
               />
               Show all models ({MODELS.length} total)
             </label>
-            <p className="text-[11px] text-slate-400 mt-1">{model.description}</p>
+            <p className="text-[11px] text-content-muted mt-1">{model.description}</p>
             {model.id === 'gpt-image-2' && (
               <p className="text-[11px] mt-1">
                 {gptImage1Provider === 'openai' ? (
@@ -688,7 +688,7 @@ export default function MediaModule() {
                     via OpenAI direct (cheaper)
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-sunken text-content-secondary font-medium">
                     via Fal
                     {openaiKeyStatus !== null && !openaiKeyStatus.has_key && (
                       <>
@@ -706,7 +706,7 @@ export default function MediaModule() {
                     via Ideogram direct (cheaper)
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-sunken text-content-secondary font-medium">
                     via Fal
                     {ideogramKeyStatus !== null && !ideogramKeyStatus.has_key && (
                       <>
@@ -721,11 +721,11 @@ export default function MediaModule() {
 
           {/* Describe an image — drop a reference to seed your prompt. */}
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+            <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
               <Sparkles className="w-3 h-3" /> Describe an image
             </label>
             {!describeImageUrl ? (
-              <label className={`flex flex-col items-center justify-center gap-1.5 px-3 py-4 rounded-lg border-2 border-dashed text-xs cursor-pointer transition-colors ${describing ? 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700' : 'border-slate-200 text-slate-500 hover:border-fuchsia-300 hover:bg-fuchsia-50/40'}`}>
+              <label className={`flex flex-col items-center justify-center gap-1.5 px-3 py-4 rounded-control border-2 border-dashed text-xs cursor-pointer transition-colors ${describing ? 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700' : 'border-edge text-content-secondary hover:border-fuchsia-300 hover:bg-fuchsia-50/40'}`}>
                 {describing ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -750,37 +750,37 @@ export default function MediaModule() {
                 />
               </label>
             ) : (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 space-y-2">
+              <div className="rounded-control border border-edge bg-surface-hover p-2 space-y-2">
                 <div className="flex items-start gap-2">
                   {describeThumbDataUrl && (
-                    <img src={describeThumbDataUrl} alt="Reference" className="w-14 h-14 rounded object-cover border border-slate-200 shrink-0" />
+                    <img src={describeThumbDataUrl} alt="Reference" className="w-14 h-14 rounded object-cover border border-edge shrink-0" />
                   )}
                   <textarea
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
                     rows={4}
                     placeholder={describing ? 'Reading image…' : 'Caption appears here — edit before using'}
-                    className="flex-1 px-2 py-1.5 rounded border border-slate-200 text-xs bg-white"
+                    className="flex-1 px-2 py-1.5 rounded border border-edge text-xs bg-surface"
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
                     disabled={!caption.trim()}
                     onClick={() => setPrompt(caption.trim())}
-                    className="px-2.5 py-1 rounded-md bg-fuchsia-600 text-white text-[11px] font-semibold hover:bg-fuchsia-700 disabled:opacity-40"
+                    className="px-2.5 py-1 rounded-control bg-fuchsia-600 text-white text-[11px] font-semibold hover:bg-fuchsia-700 disabled:opacity-40"
                   >
                     Use as prompt
                   </button>
                   <button
                     disabled={!caption.trim()}
                     onClick={() => setPrompt((p) => (p.trim() ? `${p.trim()}\n\n${caption.trim()}` : caption.trim()))}
-                    className="px-2.5 py-1 rounded-md bg-white border border-slate-200 text-slate-700 text-[11px] font-semibold hover:bg-slate-100 disabled:opacity-40"
+                    className="px-2.5 py-1 rounded-control bg-surface border border-edge text-content text-[11px] font-semibold hover:bg-surface-sunken disabled:opacity-40"
                   >
                     Append to prompt
                   </button>
                   <button
                     onClick={handleClearDescribe}
-                    className="ml-auto px-2 py-1 rounded-md text-slate-400 hover:text-slate-700 text-[11px]"
+                    className="ml-auto px-2 py-1 rounded-control text-content-muted hover:text-content text-[11px]"
                   >
                     Clear
                   </button>
@@ -792,7 +792,7 @@ export default function MediaModule() {
           {/* Collection */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Save to collection</label>
+              <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide">Save to collection</label>
               <button onClick={() => setCollectionsDrawerOpen(true)} className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1">
                 <Folder className="w-3 h-3" /> Manage
               </button>
@@ -800,7 +800,7 @@ export default function MediaModule() {
             <select
               value={selectedCollectionId ?? ''}
               onChange={(e) => setSelectedCollectionId(e.target.value || null)}
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
+              className="w-full px-3 py-2 rounded-control border border-edge text-sm bg-surface"
             >
               <option value="">Uncategorised</option>
               {collections.map((c) => (
@@ -812,14 +812,14 @@ export default function MediaModule() {
           {/* Size */}
           {model.supportsCustomSize && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Size</label>
+              <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide mb-1.5">Size</label>
               <select
                 value={useCustomSize ? '__custom__' : sizePresetId}
                 onChange={(e) => {
                   if (e.target.value === '__custom__') setUseCustomSize(true);
                   else { setUseCustomSize(false); setSizePresetId(e.target.value); }
                 }}
-                className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white"
+                className="w-full px-3 py-2 rounded-control border border-edge text-sm bg-surface"
               >
                 <optgroup label="Aspect ratio">
                   {SIZE_PRESETS.filter((p) => p.group === 'aspect').map((p) => (
@@ -840,9 +840,9 @@ export default function MediaModule() {
               </select>
               {useCustomSize && (
                 <div className="flex gap-2 mt-2">
-                  <input type="number" min={256} max={4096} value={customWidth} onChange={(e) => setCustomWidth(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="Width" />
-                  <span className="self-center text-slate-400">×</span>
-                  <input type="number" min={256} max={4096} value={customHeight} onChange={(e) => setCustomHeight(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" placeholder="Height" />
+                  <input type="number" min={256} max={4096} value={customWidth} onChange={(e) => setCustomWidth(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-control border border-edge text-sm" placeholder="Width" />
+                  <span className="self-center text-content-muted">×</span>
+                  <input type="number" min={256} max={4096} value={customHeight} onChange={(e) => setCustomHeight(parseInt(e.target.value) || 1024)} className="flex-1 px-3 py-2 rounded-control border border-edge text-sm" placeholder="Height" />
                 </div>
               )}
               {(() => {
@@ -850,8 +850,8 @@ export default function MediaModule() {
                 const h = useCustomSize ? customHeight : sizePreset?.height ?? 0;
                 const note = describeEffectiveSize(model.size, w, h, inputImages.length > 0);
                 return note ? (
-                  <p className="mt-2 flex items-start gap-1.5 text-[11px] text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5">
-                    <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-slate-400" />
+                  <p className="mt-2 flex items-start gap-1.5 text-[11px] text-content-secondary bg-surface-hover border border-edge rounded-control px-2 py-1.5">
+                    <AlertCircle className="w-3 h-3 mt-0.5 shrink-0 text-content-muted" />
                     <span>{note}</span>
                   </p>
                 ) : null;
@@ -862,23 +862,23 @@ export default function MediaModule() {
           {/* GPT Image 1 quality */}
           {model.id === 'gpt-image-2' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Quality</label>
+              <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide mb-1.5">Quality</label>
               <div className="grid grid-cols-4 gap-1.5">
                 {(['low', 'medium', 'high', 'auto'] as const).map((q) => (
                   <button
                     key={q}
                     onClick={() => setGptImage1Quality(q)}
-                    className={`py-2 rounded-lg text-xs font-medium border transition-colors ${
+                    className={`py-2 rounded-control text-xs font-medium border transition-colors ${
                       gptImage1Quality === q
                         ? 'bg-fuchsia-600 text-white border-fuchsia-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-surface text-content-secondary border-edge hover:bg-surface-hover'
                     }`}
                   >
                     {q[0].toUpperCase() + q.slice(1)}
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-content-muted mt-1">
                 Lower quality is fine for drafts; High has the best detail.
               </p>
             </div>
@@ -887,23 +887,23 @@ export default function MediaModule() {
           {/* Ideogram v3 rendering speed — only when routed via Ideogram direct. */}
           {isIdeogramDirectModel && ideogramProvider === 'ideogram' && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Rendering speed</label>
+              <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide mb-1.5">Rendering speed</label>
               <div className="grid grid-cols-3 gap-1.5">
                 {(['TURBO', 'DEFAULT', 'QUALITY'] as const).map((s) => (
                   <button
                     key={s}
                     onClick={() => setIdeogramSpeed(s)}
-                    className={`py-2 rounded-lg text-xs font-medium border transition-colors ${
+                    className={`py-2 rounded-control text-xs font-medium border transition-colors ${
                       ideogramSpeed === s
                         ? 'bg-indigo-600 text-white border-indigo-600'
-                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        : 'bg-surface text-content-secondary border-edge hover:bg-surface-hover'
                     }`}
                   >
                     {s[0] + s.slice(1).toLowerCase()}
                   </button>
                 ))}
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">
+              <p className="text-[11px] text-content-muted mt-1">
                 Turbo is fast; Quality has the best detail.
               </p>
             </div>
@@ -912,17 +912,17 @@ export default function MediaModule() {
           {/* Reference / input images */}
           {model.canReference && (
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+              <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide mb-1.5">
                 Reference {inputImages.length === 1 ? 'image' : 'images'} {model.referenceRequired ? '(required)' : '(optional)'}
               </label>
               {inputImages.length > 0 && (
                 <div className="grid grid-cols-4 gap-2 mb-2">
                   {inputImages.map((img, idx) => (
                     <div key={img.url} className="relative group aspect-square">
-                      <img src={img.url} alt={img.name} className="w-full h-full object-cover rounded-lg border border-slate-200" />
+                      <img src={img.url} alt={img.name} className="w-full h-full object-cover rounded-control border border-edge" />
                       <button
                         onClick={() => setInputImages((prev) => prev.filter((_, i) => i !== idx))}
-                        className="absolute -top-1.5 -right-1.5 bg-white border border-slate-200 rounded-full p-0.5 text-slate-400 hover:text-red-500 shadow-sm"
+                        className="absolute -top-1.5 -right-1.5 bg-surface border border-edge rounded-full p-0.5 text-content-muted hover:text-red-500 shadow-sm"
                         title="Remove"
                       >
                         <X className="w-3.5 h-3.5" />
@@ -935,13 +935,13 @@ export default function MediaModule() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg border-2 border-dashed border-slate-300 text-sm text-slate-500 hover:border-slate-400 hover:bg-slate-50 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-control border-2 border-dashed border-edge-strong text-sm text-content-secondary hover:border-edge-strong hover:bg-surface-hover disabled:opacity-50"
               >
                 {uploading
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading…</>
                   : <><Upload className="w-4 h-4" /> {inputImages.length > 0 ? 'Add more images' : 'Upload reference images'}</>}
               </button>
-              <p className="text-[11px] text-slate-400 mt-1">You can add several — they're all sent to the model as references.</p>
+              <p className="text-[11px] text-content-muted mt-1">You can add several — they're all sent to the model as references.</p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -959,7 +959,7 @@ export default function MediaModule() {
           {/* Prompt */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">Prompt</label>
+              <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide">Prompt</label>
               <button
                 onClick={() => setPromptHistoryOpen(true)}
                 className="text-xs text-fuchsia-600 hover:text-fuchsia-700 flex items-center gap-1"
@@ -973,7 +973,7 @@ export default function MediaModule() {
               onChange={(e) => setPrompt(e.target.value)}
               rows={5}
               placeholder="Describe what you want to generate…"
-              className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm resize-y"
+              className="w-full px-3 py-2 rounded-control border border-edge text-sm resize-y"
             />
           </div>
 
@@ -981,8 +981,8 @@ export default function MediaModule() {
           {model.kind === 'image' && (
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide">How many?</label>
-                <span className="text-[11px] text-slate-400">Up to {model.maxImages} per run</span>
+                <label className="block text-xs font-semibold text-content-secondary uppercase tracking-wide">How many?</label>
+                <span className="text-[11px] text-content-muted">Up to {model.maxImages} per run</span>
               </div>
               {model.maxImages > 1 ? (
                 <div className="flex gap-1.5">
@@ -990,10 +990,10 @@ export default function MediaModule() {
                     <button
                       key={n}
                       onClick={() => setQuantity(n)}
-                      className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      className={`flex-1 py-2 rounded-control text-sm font-medium border transition-colors ${
                         quantity === n
                           ? 'bg-fuchsia-600 text-white border-fuchsia-600'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                          : 'bg-surface text-content-secondary border-edge hover:bg-surface-hover'
                       }`}
                     >
                       {n}
@@ -1001,13 +1001,13 @@ export default function MediaModule() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400">This model returns a single image per run.</p>
+                <p className="text-xs text-content-muted">This model returns a single image per run.</p>
               )}
             </div>
           )}
 
           {isEditMode && (
-            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2.5 text-xs text-amber-900">
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-300 rounded-card px-3 py-2.5 text-xs text-amber-900">
               <AlertCircle className="w-4 h-4 mt-0.5 shrink-0 text-amber-600" />
               <div className="flex-1">
                 <p className="font-semibold">
@@ -1019,7 +1019,7 @@ export default function MediaModule() {
               </div>
               <button
                 onClick={() => setInputImages([])}
-                className="px-2 py-1 rounded-md bg-amber-600 text-white text-[11px] font-semibold hover:bg-amber-700 shrink-0"
+                className="px-2 py-1 rounded-control bg-amber-600 text-white text-[11px] font-semibold hover:bg-amber-700 shrink-0"
                 title="Remove all references and switch back to generation"
               >
                 Clear
@@ -1030,12 +1030,12 @@ export default function MediaModule() {
           <button
             onClick={handleGenerate}
             disabled={inflightCount >= MAX_CONCURRENT_GENERATIONS || !prompt.trim() || uploading || (keyStatus !== null && !keyStatus.has_key)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-semibold shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-card bg-gradient-to-r from-fuchsia-500 to-purple-600 text-white font-semibold shadow-lg shadow-fuchsia-500/25 hover:shadow-fuchsia-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Wand2 className="w-4 h-4" /> {isEditMode ? 'Edit' : 'Generate'}{model.kind === 'image' && quantity > 1 ? ` ${quantity}×` : ''}
           </button>
           {inflightCount > 0 && (
-            <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
+            <p className="text-[11px] text-content-secondary mt-1 flex items-center gap-1.5">
               <Loader2 className="w-3 h-3 animate-spin" />
               {inflightCount} request{inflightCount > 1 ? 's' : ''} in flight
               {inflightCount >= MAX_CONCURRENT_GENERATIONS && ' — wait for one to finish to queue more'}
@@ -1047,12 +1047,12 @@ export default function MediaModule() {
         <div>
           {/* Bulk action toolbar — only when there's a selection. */}
           {selectedIds.size > 0 && (
-            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 mb-3 bg-fuchsia-50 border border-fuchsia-200 rounded-xl px-3 py-2 text-sm">
+            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 mb-3 bg-fuchsia-50 border border-fuchsia-200 rounded-card px-3 py-2 text-sm">
               <span className="font-semibold text-fuchsia-900">{selectedIds.size} selected</span>
               <select
                 value=""
                 onChange={(e) => handleBulkMoveToCollection(e.target.value || null)}
-                className="text-xs px-2 py-1.5 rounded-lg border border-fuchsia-200 bg-white text-slate-700"
+                className="text-xs px-2 py-1.5 rounded-control border border-fuchsia-200 bg-surface text-content"
               >
                 <option value="" disabled>Move to collection…</option>
                 <option value="">Uncategorised</option>
@@ -1062,7 +1062,7 @@ export default function MediaModule() {
               </select>
               <button
                 onClick={handleBulkDelete}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700"
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-control bg-red-600 text-white text-xs font-semibold hover:bg-red-700"
               >
                 <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size}
               </button>
@@ -1078,13 +1078,13 @@ export default function MediaModule() {
           <div className="flex flex-wrap items-center gap-2 mb-4 pb-1">
             <button
               onClick={() => setFilterCollectionId(null)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${filterCollectionId === null ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${filterCollectionId === null ? 'bg-slate-800 text-white' : 'bg-surface text-content-secondary border border-edge hover:bg-surface-hover'}`}
             >
               All ({history.length})
             </button>
             <button
               onClick={() => setFilterCollectionId('__uncategorised__')}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${filterCollectionId === '__uncategorised__' ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${filterCollectionId === '__uncategorised__' ? 'bg-slate-800 text-white' : 'bg-surface text-content-secondary border border-edge hover:bg-surface-hover'}`}
             >
               Uncategorised
             </button>
@@ -1094,7 +1094,7 @@ export default function MediaModule() {
                 <button
                   key={c.id}
                   onClick={() => setFilterCollectionId(c.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${filterCollectionId === c.id ? 'bg-slate-800 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap ${filterCollectionId === c.id ? 'bg-slate-800 text-white' : 'bg-surface text-content-secondary border border-edge hover:bg-surface-hover'}`}
                 >
                   {c.name} ({count})
                 </button>
@@ -1103,8 +1103,8 @@ export default function MediaModule() {
           </div>
 
           {filteredHistory.length === 0 ? (
-            <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400">
-              <ImagePlus className="w-10 h-10 mx-auto mb-3 text-slate-300" />
+            <div className="bg-surface border border-edge rounded-card p-12 text-center text-content-muted">
+              <ImagePlus className="w-10 h-10 mx-auto mb-3 text-content-faint" />
               <p className="text-sm">Nothing here yet. Write a prompt and hit Generate.</p>
             </div>
           ) : (
@@ -1203,16 +1203,16 @@ function MediaCard({
   const failed = generation.status === 'failed';
 
   return (
-    <div className={`bg-white rounded-2xl border overflow-hidden flex flex-col ${selected ? 'border-fuchsia-500 ring-2 ring-fuchsia-200' : 'border-slate-200'}`}>
-      <div className="aspect-square bg-slate-100 relative">
+    <div className={`bg-surface rounded-card border overflow-hidden flex flex-col ${selected ? 'border-fuchsia-500 ring-2 ring-fuchsia-200' : 'border-edge'}`}>
+      <div className="aspect-square bg-surface-sunken relative">
         {/* Selection checkbox — top-left overlay. */}
         {!pending && !failed && (
           <button
             onClick={onToggleSelected}
-            className={`absolute top-2 left-2 z-10 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+            className={`absolute top-2 left-2 z-10 w-6 h-6 rounded-control border-2 flex items-center justify-center transition-all ${
               selected
                 ? 'bg-fuchsia-600 border-fuchsia-600 text-white'
-                : 'bg-white/80 border-white hover:border-fuchsia-400'
+                : 'bg-surface/80 border-white hover:border-fuchsia-400'
             }`}
             title={selected ? 'Deselect' : 'Select'}
           >
@@ -1220,7 +1220,7 @@ function MediaCard({
           </button>
         )}
         {pending && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-slate-500">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-content-secondary">
             <Loader2 className="w-8 h-8 animate-spin" />
             <span className="text-xs">{generation.kind === 'video' ? 'Rendering video…' : 'Generating…'}</span>
           </div>
@@ -1247,14 +1247,14 @@ function MediaCard({
       </div>
 
       <div className="p-3 flex-1 flex flex-col gap-2">
-        <button onClick={() => setShowPrompt((v) => !v)} className="text-left text-xs text-slate-600 line-clamp-2 hover:text-slate-900">
+        <button onClick={() => setShowPrompt((v) => !v)} className="text-left text-xs text-content-secondary line-clamp-2 hover:text-content">
           {generation.prompt}
         </button>
         {showPrompt && (
-          <p className="text-[11px] text-slate-500 whitespace-pre-wrap bg-slate-50 rounded p-2 max-h-32 overflow-y-auto">{generation.full_prompt}</p>
+          <p className="text-[11px] text-content-secondary whitespace-pre-wrap bg-surface-hover rounded p-2 max-h-32 overflow-y-auto">{generation.full_prompt}</p>
         )}
 
-        <div className="flex items-center text-[11px] text-slate-400">
+        <div className="flex items-center text-[11px] text-content-muted">
           <span className="flex items-center gap-1">
             {generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}
             {generation.source_image_url && (
@@ -1268,7 +1268,7 @@ function MediaCard({
             <button
               onClick={onDownload}
               disabled={downloading}
-              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-50"
+              className="p-1.5 rounded-control text-content-secondary hover:bg-surface-sunken hover:text-content disabled:opacity-50"
               title="Download"
             >
               {downloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
@@ -1277,7 +1277,7 @@ function MediaCard({
           {!pending && (
             <button
               onClick={onRetry}
-              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              className="p-1.5 rounded-control text-content-secondary hover:bg-surface-sunken hover:text-content"
               title="Generate again with the same prompt and settings"
             >
               <RotateCw className="w-4 h-4" />
@@ -1286,7 +1286,7 @@ function MediaCard({
           {generation.output_url && generation.kind === 'image' && !pending && (
             <button
               onClick={onUseAsInput}
-              className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+              className="p-1.5 rounded-control text-content-secondary hover:bg-surface-sunken hover:text-content"
               title="Use as input for editing"
             >
               <RefreshCw className="w-4 h-4" />
@@ -1294,7 +1294,7 @@ function MediaCard({
           )}
           <button
             onClick={onDelete}
-            className="p-1.5 rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-500"
+            className="p-1.5 rounded-control text-content-muted hover:bg-red-50 hover:text-red-500"
             title="Delete"
           >
             <Trash2 className="w-4 h-4" />
@@ -1302,7 +1302,7 @@ function MediaCard({
           <select
             value={generation.collection_id ?? ''}
             onChange={(e) => onMoveCollection(e.target.value || null)}
-            className="ml-auto min-w-0 max-w-[140px] text-[11px] px-2 py-1 rounded border border-slate-200 bg-white"
+            className="ml-auto min-w-0 max-w-[140px] text-[11px] px-2 py-1 rounded border border-edge bg-surface"
           >
             <option value="">Uncategorised</option>
             {collections.map((c) => (
@@ -1318,10 +1318,10 @@ function MediaCard({
 function Drawer({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="sticky top-0 bg-white flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <h3 className="font-semibold text-slate-800">{title}</h3>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
+      <div className="bg-surface rounded-card w-full max-w-lg max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="sticky top-0 bg-surface flex items-center justify-between px-5 py-4 border-b border-edge-soft">
+          <h3 className="font-semibold text-content">{title}</h3>
+          <button onClick={onClose} className="text-content-muted hover:text-content"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-5">{children}</div>
       </div>
@@ -1340,24 +1340,24 @@ function CollectionsDrawer({
   const [name, setName] = useState('');
   return (
     <Drawer title="Collections" onClose={onClose}>
-      <p className="text-sm text-slate-500 mb-4">Buckets for organising your history — e.g. "Pinterest", "New Release", "Business Community".</p>
+      <p className="text-sm text-content-secondary mb-4">Buckets for organising your history — e.g. "Pinterest", "New Release", "Business Community".</p>
 
       <div className="space-y-2 mb-5">
-        {collections.length === 0 && <p className="text-sm text-slate-400 italic">No collections yet.</p>}
+        {collections.length === 0 && <p className="text-sm text-content-muted italic">No collections yet.</p>}
         {collections.map((c) => (
-          <div key={c.id} className="flex items-center justify-between border border-slate-200 rounded-lg px-3 py-2">
-            <span className="text-sm text-slate-800">{c.name}</span>
-            <button onClick={() => onDelete(c.id)} className="text-slate-400 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+          <div key={c.id} className="flex items-center justify-between border border-edge rounded-control px-3 py-2">
+            <span className="text-sm text-content">{c.name}</span>
+            <button onClick={() => onDelete(c.id)} className="text-content-muted hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
           </div>
         ))}
       </div>
 
-      <div className="border-t border-slate-100 pt-4 flex gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New collection name" className="flex-1 px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+      <div className="border-t border-edge-soft pt-4 flex gap-2">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="New collection name" className="flex-1 px-3 py-2 rounded-control border border-edge text-sm" />
         <button
           disabled={!name.trim()}
           onClick={async () => { await onSave(name.trim()); setName(''); }}
-          className="flex items-center gap-1 px-3 py-2 rounded-lg bg-slate-800 text-white text-sm disabled:opacity-50"
+          className="flex items-center gap-1 px-3 py-2 rounded-control bg-slate-800 text-white text-sm disabled:opacity-50"
         >
           <Plus className="w-4 h-4" /> Add
         </button>
@@ -1410,29 +1410,29 @@ function CustomModelsDrawer({
 
   return (
     <Drawer title="Custom models" onClose={onClose}>
-      <p className="text-sm text-slate-500 mb-4">
+      <p className="text-sm text-content-secondary mb-4">
         Add any Fal.AI model that isn't in the built-in dropdown. Paste the endpoint from{' '}
         <a href="https://fal.ai/models" target="_blank" rel="noreferrer" className="text-fuchsia-600 underline inline-flex items-center gap-0.5">
           fal.ai/models <ExternalLink className="w-3 h-3" />
         </a>
-        {' '}— e.g. <code className="font-mono text-xs bg-slate-100 px-1 rounded">fal-ai/flux-pro/v1.1</code>.
+        {' '}— e.g. <code className="font-mono text-xs bg-surface-sunken px-1 rounded">fal-ai/flux-pro/v1.1</code>.
       </p>
 
       <div className="space-y-2 mb-5">
-        {models.length === 0 && <p className="text-sm text-slate-400 italic">No custom models yet.</p>}
+        {models.length === 0 && <p className="text-sm text-content-muted italic">No custom models yet.</p>}
         {models.map((m) => (
-          <div key={m.id} className="border border-slate-200 rounded-xl p-3">
+          <div key={m.id} className="border border-edge rounded-card p-3">
             <div className="flex items-start justify-between gap-2 mb-1">
               <div className="flex-1 min-w-0">
-                <div className="font-medium text-sm text-slate-800">{m.label}</div>
-                <code className="text-[11px] text-slate-500 font-mono">{m.endpoint}</code>
+                <div className="font-medium text-sm text-content">{m.label}</div>
+                <code className="text-[11px] text-content-secondary font-mono">{m.endpoint}</code>
               </div>
-              <button onClick={() => onDelete(m.id)} className="text-slate-400 hover:text-red-500 shrink-0">
+              <button onClick={() => onDelete(m.id)} className="text-content-muted hover:text-red-500 shrink-0">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
             <div className="flex flex-wrap gap-1.5 mt-1.5 text-[11px]">
-              <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">{m.kind}</span>
+              <span className="px-1.5 py-0.5 rounded bg-surface-sunken text-content-secondary">{m.kind}</span>
               {m.is_async && <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">async</span>}
               {m.accepts_input_image && <span className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">input image</span>}
               {m.supports_custom_size && <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">custom size</span>}
@@ -1441,23 +1441,23 @@ function CustomModelsDrawer({
         ))}
       </div>
 
-      <div className="border-t border-slate-100 pt-4 space-y-3">
-        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Add new model</h4>
+      <div className="border-t border-edge-soft pt-4 space-y-3">
+        <h4 className="text-xs font-semibold text-content-secondary uppercase tracking-wide">Add new model</h4>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Display name</label>
-          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Flux Pro v1.1" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm" />
+          <label className="block text-[11px] font-semibold text-content-secondary mb-1">Display name</label>
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Flux Pro v1.1" className="w-full px-3 py-2 rounded-control border border-edge text-sm" />
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Fal endpoint</label>
-          <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} placeholder="fal-ai/flux-pro/v1.1" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm font-mono" />
-          <p className="text-[11px] text-slate-400 mt-1">Must start with <code className="font-mono">fal-ai/</code>.</p>
+          <label className="block text-[11px] font-semibold text-content-secondary mb-1">Fal endpoint</label>
+          <input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} placeholder="fal-ai/flux-pro/v1.1" className="w-full px-3 py-2 rounded-control border border-edge text-sm font-mono" />
+          <p className="text-[11px] text-content-muted mt-1">Must start with <code className="font-mono">fal-ai/</code>.</p>
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Kind</label>
-          <select value={kind} onChange={(e) => { const k = e.target.value as 'image' | 'video'; setKind(k); setIsAsync(k === 'video'); }} className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm bg-white">
+          <label className="block text-[11px] font-semibold text-content-secondary mb-1">Kind</label>
+          <select value={kind} onChange={(e) => { const k = e.target.value as 'image' | 'video'; setKind(k); setIsAsync(k === 'video'); }} className="w-full px-3 py-2 rounded-control border border-edge text-sm bg-surface">
             <option value="image">Image</option>
             <option value="video">Video</option>
           </select>
@@ -1479,8 +1479,8 @@ function CustomModelsDrawer({
         </div>
 
         <div>
-          <label className="block text-[11px] font-semibold text-slate-500 mb-1">Description (optional)</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What this model is good for" className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm resize-y" />
+          <label className="block text-[11px] font-semibold text-content-secondary mb-1">Description (optional)</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="What this model is good for" className="w-full px-3 py-2 rounded-control border border-edge text-sm resize-y" />
         </div>
 
         {err && <p className="text-xs text-red-600">{err}</p>}
@@ -1488,7 +1488,7 @@ function CustomModelsDrawer({
         <button
           disabled={saving || !label.trim() || !endpoint.startsWith('fal-ai/') || endpoint.length < 8}
           onClick={submit}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 text-white text-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 rounded-control bg-slate-800 text-white text-sm disabled:opacity-50"
         >
           <Plus className="w-4 h-4" /> {saving ? 'Saving…' : 'Add model'}
         </button>
@@ -1533,31 +1533,31 @@ function PromptHistoryDrawer({
 
   return (
     <Drawer title="Recent prompts" onClose={onClose}>
-      <p className="text-sm text-slate-500 mb-3">Every prompt you've used, most recent first. Click one to load it into the prompt box.</p>
+      <p className="text-sm text-content-secondary mb-3">Every prompt you've used, most recent first. Click one to load it into the prompt box.</p>
       <input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Filter…"
-        className="w-full px-3 py-2 rounded-lg border border-slate-200 text-sm mb-4"
+        className="w-full px-3 py-2 rounded-control border border-edge text-sm mb-4"
         autoFocus
       />
       {filtered.length === 0 ? (
-        <p className="text-sm text-slate-400 italic">No prompts {query ? 'match that filter' : 'yet'}.</p>
+        <p className="text-sm text-content-muted italic">No prompts {query ? 'match that filter' : 'yet'}.</p>
       ) : (
         <div className="space-y-2">
           {filtered.map((u) => (
             <button
               key={u.prompt}
               onClick={() => onPick(u.prompt)}
-              className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${
+              className={`w-full text-left px-3 py-2.5 rounded-card border text-sm transition-colors ${
                 u.prompt === currentPrompt
                   ? 'bg-fuchsia-50 border-fuchsia-300 text-fuchsia-900'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                  : 'bg-surface border-edge text-content hover:bg-surface-hover hover:border-edge-strong'
               }`}
             >
               <p className="whitespace-pre-wrap line-clamp-3">{u.prompt}</p>
-              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-slate-400">
+              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-content-muted">
                 <span>{new Date(u.lastUsed).toLocaleDateString()}</span>
                 {u.uses > 1 && <span>used {u.uses}×</span>}
               </div>
@@ -1601,7 +1601,7 @@ function Lightbox({
       {/* Close */}
       <button
         onClick={onClose}
-        className="absolute top-4 right-4 p-2 rounded-full bg-white/10 text-white hover:bg-white/20"
+        className="absolute top-4 right-4 p-2 rounded-full bg-surface/10 text-white hover:bg-surface/20"
         title="Close (Esc)"
       >
         <X className="w-5 h-5" />
@@ -1611,7 +1611,7 @@ function Lightbox({
       {prev && (
         <button
           onClick={(e) => { e.stopPropagation(); onJump(prev.id); }}
-          className="absolute left-2 sm:left-4 p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
+          className="absolute left-2 sm:left-4 p-3 rounded-full bg-surface/10 text-white hover:bg-surface/20"
           title="Previous (←)"
         >
           <ChevronLeft className="w-6 h-6" />
@@ -1622,7 +1622,7 @@ function Lightbox({
       {next && (
         <button
           onClick={(e) => { e.stopPropagation(); onJump(next.id); }}
-          className="absolute right-2 sm:right-4 p-3 rounded-full bg-white/10 text-white hover:bg-white/20"
+          className="absolute right-2 sm:right-4 p-3 rounded-full bg-surface/10 text-white hover:bg-surface/20"
           title="Next (→)"
         >
           <ChevronRightIcon className="w-6 h-6" />
@@ -1636,14 +1636,14 @@ function Lightbox({
       >
         {generation.output_url && (
           generation.kind === 'video' ? (
-            <video src={generation.output_url} controls className="max-w-full max-h-[80vh] rounded-lg" />
+            <video src={generation.output_url} controls className="max-w-full max-h-[80vh] rounded-control" />
           ) : (
-            <img src={generation.output_url} alt={generation.prompt} className="max-w-full max-h-[80vh] object-contain rounded-lg" />
+            <img src={generation.output_url} alt={generation.prompt} className="max-w-full max-h-[80vh] object-contain rounded-control" />
           )
         )}
-        <div className="bg-white/95 backdrop-blur rounded-xl px-4 py-3 max-w-2xl w-full">
-          <p className="text-xs text-slate-500 whitespace-pre-wrap line-clamp-4">{generation.prompt}</p>
-          <div className="flex items-center justify-between mt-2 text-[11px] text-slate-400">
+        <div className="bg-surface/95 backdrop-blur rounded-card px-4 py-3 max-w-2xl w-full">
+          <p className="text-xs text-content-secondary whitespace-pre-wrap line-clamp-4">{generation.prompt}</p>
+          <div className="flex items-center justify-between mt-2 text-[11px] text-content-muted">
             <span>{generation.model} · {generation.width && generation.height ? `${generation.width}×${generation.height}` : generation.kind}</span>
             <div className="flex items-center gap-3">
               <button

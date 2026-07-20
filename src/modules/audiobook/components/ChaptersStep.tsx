@@ -83,13 +83,13 @@ export default function ChaptersStep({
   return (
     <div className="space-y-5">
       <div>
-        <label className="block text-xs font-medium text-slate-500 mb-2">Narration style</label>
+        <label className="block text-xs font-medium text-content-secondary mb-2">Narration style</label>
         <div className="grid sm:grid-cols-2 gap-2.5">
           {modes.map(m => (
             <button key={m.id} onClick={() => onChange({ narration_mode: m.id })}
-              className={`text-left p-3 rounded-xl border ${project.narration_mode === m.id ? 'border-violet-400 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}`}>
-              <p className="text-sm font-medium text-slate-800">{m.label}</p>
-              <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
+              className={`text-left p-3 rounded-card border ${project.narration_mode === m.id ? 'border-violet-400 bg-violet-50' : 'border-edge hover:border-edge-strong'}`}>
+              <p className="text-sm font-medium text-content">{m.label}</p>
+              <p className="text-xs text-content-secondary mt-0.5">{m.desc}</p>
             </button>
           ))}
         </div>
@@ -97,9 +97,9 @@ export default function ChaptersStep({
 
       {books.length > 0 && (
         <div>
-          <label className="block text-xs font-medium text-slate-500 mb-1">Link to a book (optional)</label>
+          <label className="block text-xs font-medium text-content-secondary mb-1">Link to a book (optional)</label>
           <select value={project.book_id ?? ''} onChange={e => onAttachBook(e.target.value || null)}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white">
+            className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm bg-surface">
             <option value="">— none —</option>
             {books.map(b => <option key={b.id} value={b.id}>{b.title}</option>)}
           </select>
@@ -108,9 +108,9 @@ export default function ChaptersStep({
 
       <div>
         <div className="flex items-center justify-between mb-1">
-          <label className="block text-xs font-medium text-slate-500">Manuscript</label>
+          <label className="block text-xs font-medium text-content-secondary">Manuscript</label>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-400">{text.length.toLocaleString()} characters</span>
+            <span className="text-xs text-content-muted">{text.length.toLocaleString()} characters</span>
             <label className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline cursor-pointer">
               {busy === 'file' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} Upload .txt / .docx
               <input type="file" accept=".txt,.md,.docx,text/plain" className="hidden"
@@ -120,20 +120,20 @@ export default function ChaptersStep({
         </div>
         <textarea value={text} onChange={e => setText(e.target.value)} rows={10}
           placeholder="Paste your whole manuscript here, or upload a file…"
-          className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono leading-relaxed" />
+          className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm font-mono leading-relaxed" />
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={scanHeadings} disabled={!!busy}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white rounded-lg bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
           <ScanLine className="w-4 h-4" /> Scan into chapters
         </button>
         <button onClick={scanAI} disabled={!!busy}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-lg border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-control border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">
           {busy === 'ai' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Rescan with AI
         </button>
         {chapters.length > 0 && drafts === null && (
-          <span className="text-xs text-slate-400">Saved: {chapters.length} chapter{chapters.length === 1 ? '' : 's'}</span>
+          <span className="text-xs text-content-muted">Saved: {chapters.length} chapter{chapters.length === 1 ? '' : 's'}</span>
         )}
       </div>
 
@@ -143,10 +143,10 @@ export default function ChaptersStep({
       {drafts === null && chapters.length > 0 && (
         <div className="space-y-1.5">
           {chapters.map((c, i) => (
-            <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-slate-100">
-              <span className="text-xs text-slate-400 w-6">{i + 1}</span>
-              <span className="flex-1 text-sm font-medium text-slate-700 truncate">{c.title}</span>
-              <span className="text-xs text-slate-400">{c.source_text.length.toLocaleString()} chars</span>
+            <div key={c.id} className="flex items-center gap-3 p-2.5 rounded-control border border-edge-soft">
+              <span className="text-xs text-content-muted w-6">{i + 1}</span>
+              <span className="flex-1 text-sm font-medium text-content truncate">{c.title}</span>
+              <span className="text-xs text-content-muted">{c.source_text.length.toLocaleString()} chars</span>
             </div>
           ))}
         </div>
@@ -156,9 +156,9 @@ export default function ChaptersStep({
       {drafts !== null && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-700">{drafts.length} chapter{drafts.length === 1 ? '' : 's'} detected — review & accept</p>
+            <p className="text-sm font-medium text-content">{drafts.length} chapter{drafts.length === 1 ? '' : 's'} detected — review & accept</p>
             <button onClick={accept} disabled={busy === 'save' || !drafts.length}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-control bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50">
               {busy === 'save' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Accept {drafts.length} chapter{drafts.length === 1 ? '' : 's'}
             </button>
           </div>
@@ -169,20 +169,20 @@ export default function ChaptersStep({
           )}
           <div className="space-y-1.5">
             {drafts.map((d, i) => (
-              <div key={i} className="flex items-start gap-2 p-2.5 rounded-lg border border-slate-100">
-                <span className="text-xs text-slate-400 w-6 mt-2">{i + 1}</span>
+              <div key={i} className="flex items-start gap-2 p-2.5 rounded-control border border-edge-soft">
+                <span className="text-xs text-content-muted w-6 mt-2">{i + 1}</span>
                 <div className="flex-1 min-w-0">
                   <input value={d.title} onChange={e => editTitle(i, e.target.value)}
-                    className="w-full px-2 py-1 text-sm font-medium border border-slate-200 rounded-md mb-1" />
-                  <p className="text-xs text-slate-400 truncate">{d.source_text.replace(/\s+/g, ' ').slice(0, 140)}…</p>
-                  <span className="text-[11px] text-slate-400">{d.source_text.length.toLocaleString()} chars</span>
+                    className="w-full px-2 py-1 text-sm font-medium border border-edge rounded-control mb-1" />
+                  <p className="text-xs text-content-muted truncate">{d.source_text.replace(/\s+/g, ' ').slice(0, 140)}…</p>
+                  <span className="text-[11px] text-content-muted">{d.source_text.length.toLocaleString()} chars</span>
                 </div>
                 {i > 0 && (
-                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-slate-300 hover:text-violet-600 mt-1">
+                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-content-faint hover:text-violet-600 mt-1">
                     <ArrowUpToLine className="w-4 h-4" />
                   </button>
                 )}
-                <button onClick={() => remove(i)} title="Delete chapter" className="text-slate-300 hover:text-rose-600 mt-1">
+                <button onClick={() => remove(i)} title="Delete chapter" className="text-content-faint hover:text-rose-600 mt-1">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>

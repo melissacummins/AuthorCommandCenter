@@ -280,10 +280,10 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-content flex items-center gap-2">
             <Layout className="w-5 h-5" /> Bio page
           </h2>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-content-secondary mt-0.5">
             Customize how your bio page looks and what readers see.
           </p>
         </div>
@@ -292,7 +292,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             href={publicBioUrl}
             target="_blank"
             rel="noreferrer noopener"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-control bg-surface-sunken hover:bg-edge text-content text-sm font-medium"
           >
             <ExternalLink className="w-4 h-4" /> View public page
           </a>
@@ -300,9 +300,9 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
       </div>
 
       <Section title="Page logo" hint="Square images work best. PNG, JPG, WEBP, or SVG up to 2MB.">
-        <div className="flex items-center gap-4 p-4 rounded-xl bg-white border border-slate-200">
+        <div className="flex items-center gap-4 p-4 rounded-card bg-surface border border-edge">
           <div
-            className="w-16 h-16 rounded-2xl overflow-hidden grid place-items-center shrink-0 border border-slate-200"
+            className="w-16 h-16 rounded-card overflow-hidden grid place-items-center shrink-0 border border-edge"
             style={{
               background: bioSettings?.logo_url
                 ? '#fff'
@@ -327,7 +327,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={logoBusy}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
             >
               {logoBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {bioSettings?.logo_url ? 'Replace logo' : 'Upload logo'}
@@ -337,7 +337,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                 type="button"
                 onClick={handleRemoveLogo}
                 disabled={logoBusy}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-control bg-rose-50 hover:bg-rose-100 text-rose-700 text-sm font-medium disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" /> Remove
               </button>
@@ -345,7 +345,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
           </div>
         </div>
         {logoError && (
-          <div className="mt-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+          <div className="mt-2 px-3 py-2 rounded-control bg-rose-50 border border-rose-200 text-rose-700 text-xs">
             {logoError}
           </div>
         )}
@@ -362,15 +362,15 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                 onClick={() => saveAppearance({ theme: th.id })}
                 disabled={themeBusy}
                 aria-label={th.name}
-                className={`relative w-[88px] rounded-xl overflow-hidden border-2 transition disabled:opacity-60 ${
-                  active ? 'border-indigo-500' : 'border-transparent hover:border-slate-300'
+                className={`relative w-[88px] rounded-card overflow-hidden border-2 transition disabled:opacity-60 ${
+                  active ? 'border-indigo-500' : 'border-transparent hover:border-edge-strong'
                 }`}
               >
                 <div style={{ background: th.bg }} className="h-12 flex items-end justify-center px-2 pb-1.5">
                   <span style={{ background: th.surface }} className="block w-full h-3 rounded-sm shadow-sm" />
                 </div>
-                <div className="flex items-center justify-between px-2 py-1 bg-white">
-                  <span className="text-[11px] font-medium text-slate-700">{th.name}</span>
+                <div className="flex items-center justify-between px-2 py-1 bg-surface">
+                  <span className="text-[11px] font-medium text-content">{th.name}</span>
                   <span style={{ background: th.accent }} className="w-2.5 h-2.5 rounded-full" />
                 </div>
                 {active && (
@@ -383,13 +383,13 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
           })}
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <label className="text-xs font-medium text-slate-600">Accent color</label>
+          <label className="text-xs font-medium text-content-secondary">Accent color</label>
           <input
             type="color"
             value={bioSettings?.accent_color || bioThemeById(bioSettings?.theme).accent}
             onChange={(e) => saveAppearance({ accent_color: e.target.value })}
             disabled={themeBusy}
-            className="w-9 h-9 rounded-lg border border-slate-200 bg-white cursor-pointer p-0.5"
+            className="w-9 h-9 rounded-control border border-edge bg-surface cursor-pointer p-0.5"
             title="Accent color"
           />
           {bioSettings?.accent_color && (
@@ -397,15 +397,15 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
               type="button"
               onClick={() => saveAppearance({ accent_color: null })}
               disabled={themeBusy}
-              className="text-xs text-slate-500 hover:text-slate-700 hover:underline"
+              className="text-xs text-content-secondary hover:text-content hover:underline"
             >
               Use theme default
             </button>
           )}
-          {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+          {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-content-muted" />}
         </div>
         {themeError && (
-          <div className="mt-2 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+          <div className="mt-2 px-3 py-2 rounded-control bg-rose-50 border border-rose-200 text-rose-700 text-xs">
             {themeError}
           </div>
         )}
@@ -424,11 +424,11 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             }}
             inputMode="numeric"
             placeholder="Meta Pixel ID (e.g. 1234567890123456)"
-            className="flex-1 px-3 py-2 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-300 font-mono"
+            className="flex-1 px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300 font-mono"
           />
-          {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-slate-400" />}
+          {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-content-muted" />}
         </div>
-        <p className="text-[11px] text-slate-400 mt-2">Find it in Meta Events Manager → Data sources. Leave blank to turn tracking off.</p>
+        <p className="text-[11px] text-content-muted mt-2">Find it in Meta Events Manager → Data sources. Leave blank to turn tracking off.</p>
       </Section>
 
       <Section
@@ -477,21 +477,21 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             <button
               onClick={handleAddSection}
               disabled={adding !== null}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-surface border border-edge text-content hover:bg-surface-hover text-sm font-medium disabled:opacity-50"
             >
               <Heading className="w-3.5 h-3.5" /> Section
             </button>
             <button
               onClick={handleAddImageCard}
               disabled={adding !== null}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-surface border border-edge text-content hover:bg-surface-hover text-sm font-medium disabled:opacity-50"
             >
               <ImageIcon className="w-3.5 h-3.5" /> Image card
             </button>
             <button
               onClick={handleAddBook}
               disabled={adding !== null}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-sm font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control bg-surface border border-edge text-content hover:bg-surface-hover text-sm font-medium disabled:opacity-50"
             >
               <BookOpen className="w-3.5 h-3.5" /> Book
             </button>
@@ -580,8 +580,8 @@ function Section({ title, hint, action, children }: { title: string; hint: strin
     <section>
       <header className="mb-2 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-          <p className="text-xs text-slate-500 mt-0.5">{hint}</p>
+          <h3 className="text-sm font-semibold text-content">{title}</h3>
+          <p className="text-xs text-content-secondary mt-0.5">{hint}</p>
         </div>
         {action}
       </header>
@@ -592,7 +592,7 @@ function Section({ title, hint, action, children }: { title: string; hint: strin
 
 function EmptyHint({ message }: { message: string }) {
   return (
-    <div className="px-4 py-6 rounded-lg bg-slate-50 border border-dashed border-slate-200 text-sm text-slate-500 text-center">
+    <div className="px-4 py-6 rounded-control bg-surface-hover border border-dashed border-edge text-sm text-content-secondary text-center">
       {message}
     </div>
   );
@@ -613,7 +613,7 @@ function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes
     <button
       {...(attributes as React.HTMLAttributes<HTMLButtonElement>)}
       {...(listeners as React.HTMLAttributes<HTMLButtonElement>)}
-      className="cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-700 p-1 shrink-0"
+      className="cursor-grab active:cursor-grabbing text-content-muted hover:text-content p-1 shrink-0"
       aria-label="Drag to reorder"
     >
       <GripVertical className="w-4 h-4" />
@@ -646,11 +646,11 @@ function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide 
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 px-3 py-3 rounded-xl bg-white border border-slate-200 hover:border-slate-300 transition"
+      className="flex items-center gap-3 px-3 py-3 rounded-card bg-surface border border-edge hover:border-edge-strong transition"
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       <div
-        className="w-9 h-9 rounded-lg flex-shrink-0 grid place-items-center text-white"
+        className="w-9 h-9 rounded-control flex-shrink-0 grid place-items-center text-white"
         style={{ background: platformColor }}
       >
         {iconUrl ? (
@@ -662,8 +662,8 @@ function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide 
       <div className="flex-1 min-w-0">
         {isIcon ? (
           <div>
-            <div className="text-sm font-medium text-slate-700 truncate">{platformName}</div>
-            <div className="text-xs text-slate-500 truncate">{link.destination_url}</div>
+            <div className="text-sm font-medium text-content truncate">{platformName}</div>
+            <div className="text-xs text-content-secondary truncate">{link.destination_url}</div>
           </div>
         ) : (
           <div>
@@ -673,11 +673,11 @@ function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide 
               onBlur={() => onSaveTitle(link, titleDraft)}
               onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
               placeholder={link.label || `/${link.slug}`}
-              className="w-full text-sm font-medium text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+              className="w-full text-sm font-medium text-content bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
             />
-            <div className="text-xs text-slate-500 truncate mt-0.5">
+            <div className="text-xs text-content-secondary truncate mt-0.5">
               <span className="font-mono">/{link.slug}</span>
-              <span className="mx-1.5 text-slate-300">·</span>
+              <span className="mx-1.5 text-content-faint">·</span>
               <span>{platformName}</span>
             </div>
           </div>
@@ -685,14 +685,14 @@ function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide 
       </div>
       <button
         onClick={() => onToggleStyle(link)}
-        className="p-1.5 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50"
+        className="p-1.5 rounded-control text-content-muted hover:text-indigo-600 hover:bg-indigo-50"
         title={isIcon ? 'Show as card' : 'Show as social icon'}
       >
         <ArrowLeftRight className="w-4 h-4" />
       </button>
       <button
         onClick={() => onHide(link)}
-        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+        className="p-1.5 rounded-control text-content-muted hover:text-rose-600 hover:bg-rose-50"
         title="Hide from bio page"
       >
         <EyeOff className="w-4 h-4" />
@@ -718,10 +718,10 @@ function SortableSectionRow({ sortableId, block, onSave, onDelete }: SectionRowP
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-amber-50/40 border border-amber-200/60"
+      className="flex items-start gap-3 px-3 py-3 rounded-card bg-amber-50/40 border border-amber-200/60"
     >
       <DragHandle attributes={attributes} listeners={listeners} />
-      <div className="w-9 h-9 rounded-lg flex-shrink-0 grid place-items-center bg-amber-100 text-amber-700">
+      <div className="w-9 h-9 rounded-control flex-shrink-0 grid place-items-center bg-amber-100 text-amber-700">
         <Type className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0 space-y-1.5">
@@ -731,7 +731,7 @@ function SortableSectionRow({ sortableId, block, onSave, onDelete }: SectionRowP
           onBlur={() => onSave({ title })}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
           placeholder="Section heading"
-          className="w-full text-sm font-semibold text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+          className="w-full text-sm font-semibold text-content bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
         />
         <textarea
           value={body}
@@ -739,12 +739,12 @@ function SortableSectionRow({ sortableId, block, onSave, onDelete }: SectionRowP
           onBlur={() => onSave({ body })}
           rows={2}
           placeholder="Optional body text — supports line breaks."
-          className="w-full text-xs text-slate-600 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 resize-none placeholder-slate-400"
+          className="w-full text-xs text-content-secondary bg-transparent border-0 focus:outline-none focus:ring-0 p-0 resize-none placeholder-slate-400"
         />
       </div>
       <button
         onClick={onDelete}
-        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        className="p-1.5 rounded-control text-content-muted hover:text-rose-600 hover:bg-rose-50 shrink-0"
         title="Delete section"
       >
         <Trash2 className="w-4 h-4" />
@@ -774,10 +774,10 @@ function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowP
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-emerald-50/40 border border-emerald-200/60"
+      className="flex items-start gap-3 px-3 py-3 rounded-card bg-emerald-50/40 border border-emerald-200/60"
     >
       <DragHandle attributes={attributes} listeners={listeners} />
-      <div className="w-9 h-9 rounded-lg flex-shrink-0 grid place-items-center bg-emerald-100 text-emerald-700">
+      <div className="w-9 h-9 rounded-control flex-shrink-0 grid place-items-center bg-emerald-100 text-emerald-700">
         <ShoppingBag className="w-4 h-4" />
       </div>
       <div className="flex-1 min-w-0 space-y-2">
@@ -787,7 +787,7 @@ function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowP
           onBlur={() => onSave({ title })}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
           placeholder="Heading (optional, e.g. Get the book)"
-          className="w-full text-sm font-semibold text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+          className="w-full text-sm font-semibold text-content bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
         />
         <div className="space-y-1.5">
           {buttons.map((b, i) => (
@@ -797,18 +797,18 @@ function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowP
                 onChange={(e) => updateBtn(i, { label: e.target.value })}
                 onBlur={() => commit(buttons)}
                 placeholder="Amazon"
-                className="w-28 px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                className="w-28 px-2 py-1.5 text-xs rounded-control border border-edge bg-surface focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
               <input
                 value={b.url}
                 onChange={(e) => updateBtn(i, { url: e.target.value })}
                 onBlur={() => commit(buttons)}
                 placeholder="https://amazon.com/dp/…"
-                className="flex-1 min-w-0 px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-emerald-400"
+                className="flex-1 min-w-0 px-2 py-1.5 text-xs rounded-control border border-edge bg-surface focus:outline-none focus:ring-1 focus:ring-emerald-400"
               />
               <button
                 onClick={() => commit(buttons.filter((_, idx) => idx !== i))}
-                className="p-1 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+                className="p-1 rounded-control text-content-muted hover:text-rose-600 hover:bg-rose-50 shrink-0"
                 title="Remove"
               >
                 <XIcon className="w-3.5 h-3.5" />
@@ -825,7 +825,7 @@ function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowP
       </div>
       <button
         onClick={onDelete}
-        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        className="p-1.5 rounded-control text-content-muted hover:text-rose-600 hover:bg-rose-50 shrink-0"
         title="Delete block"
       >
         <Trash2 className="w-4 h-4" />
@@ -844,11 +844,11 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-amber-50/40 border border-amber-200/60"
+      className="flex items-start gap-3 px-3 py-3 rounded-card bg-amber-50/40 border border-amber-200/60"
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       {selected?.cover_image_url ? (
-        <img src={selected.cover_image_url} alt="" className="w-9 h-12 object-cover rounded shrink-0 bg-slate-100" />
+        <img src={selected.cover_image_url} alt="" className="w-9 h-12 object-cover rounded shrink-0 bg-surface-sunken" />
       ) : (
         <div className="w-9 h-12 rounded shrink-0 bg-amber-100 grid place-items-center text-amber-600"><BookOpen className="w-4 h-4" /></div>
       )}
@@ -859,7 +859,7 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
           <select
             value={block.landing_page_id ?? ''}
             onChange={(e) => onSave({ landing_page_id: e.target.value || null })}
-            className="w-full px-2.5 py-1.5 text-sm rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+            className="w-full px-2.5 py-1.5 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-1 focus:ring-amber-400"
           >
             <option value="">— Pick a book page —</option>
             {landingPages.map((p) => (
@@ -869,11 +869,11 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
         )}
         {block.landing_page_id && (
           <div className="flex items-center gap-2">
-            <label className="text-[11px] font-medium text-slate-500 shrink-0">When expanded, show</label>
+            <label className="text-[11px] font-medium text-content-secondary shrink-0">When expanded, show</label>
             <select
               value={mode}
               onChange={(e) => onSave({ text_mode: e.target.value })}
-              className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-slate-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+              className="flex-1 px-2 py-1.5 text-xs rounded-control border border-edge bg-surface focus:outline-none focus:ring-1 focus:ring-amber-400"
             >
               <option value="description">Full description</option>
               <option value="headline">Headline only</option>
@@ -891,11 +891,11 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
             placeholder="Custom text for this spot"
           />
         )}
-        <p className="text-[11px] text-slate-400">Shows as a card that expands to your chosen text + retailer buttons, right on your bio page.</p>
+        <p className="text-[11px] text-content-muted">Shows as a card that expands to your chosen text + retailer buttons, right on your bio page.</p>
       </div>
       <button
         onClick={onDelete}
-        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        className="p-1.5 rounded-control text-content-muted hover:text-rose-600 hover:bg-rose-50 shrink-0"
         title="Delete block"
       >
         <Trash2 className="w-4 h-4" />
@@ -939,14 +939,14 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-xl bg-violet-50/40 border border-violet-200/60"
+      className="flex items-start gap-3 px-3 py-3 rounded-card bg-violet-50/40 border border-violet-200/60"
     >
       <DragHandle attributes={attributes} listeners={listeners} />
-      <div className="w-16 h-16 rounded-lg flex-shrink-0 overflow-hidden bg-white border border-slate-200 grid place-items-center">
+      <div className="w-16 h-16 rounded-control flex-shrink-0 overflow-hidden bg-surface border border-edge grid place-items-center">
         {block.image_url ? (
           <img src={block.image_url} alt="" className="w-full h-full object-cover" />
         ) : (
-          <ImageIcon className="w-5 h-5 text-slate-300" />
+          <ImageIcon className="w-5 h-5 text-content-faint" />
         )}
       </div>
       <div className="flex-1 min-w-0 space-y-1.5">
@@ -956,7 +956,7 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
           onBlur={() => onSave({ title })}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
           placeholder="Caption (optional)"
-          className="w-full text-sm font-medium text-slate-800 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+          className="w-full text-sm font-medium text-content bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
         />
         <input
           value={linkUrl}
@@ -964,7 +964,7 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
           onBlur={() => onSave({ link_url: linkUrl.trim() || null })}
           onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
           placeholder="Where this image links to (e.g. /my-vicious-beast or https://...)"
-          className="w-full text-xs text-slate-600 bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
+          className="w-full text-xs text-content-secondary bg-transparent border-0 focus:outline-none focus:ring-0 p-0 placeholder-slate-400"
         />
         <div className="flex items-center gap-2 pt-1">
           <input
@@ -978,7 +978,7 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border border-violet-200 bg-white text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control text-xs font-medium border border-violet-200 bg-surface text-violet-700 hover:bg-violet-50 disabled:opacity-50"
           >
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             {block.image_url ? 'Replace image' : 'Upload image'}
@@ -987,7 +987,7 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
       </div>
       <button
         onClick={onDelete}
-        className="p-1.5 rounded-md text-slate-400 hover:text-rose-600 hover:bg-rose-50 shrink-0"
+        className="p-1.5 rounded-control text-content-muted hover:text-rose-600 hover:bg-rose-50 shrink-0"
         title="Delete image card"
       >
         <Trash2 className="w-4 h-4" />

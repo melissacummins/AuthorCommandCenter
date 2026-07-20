@@ -171,15 +171,15 @@ export default function CatalogModule() {
       <div className="p-6 lg:p-8 max-w-4xl mx-auto">
         <button
           onClick={() => setView({ mode: 'list', tab: 'books' })}
-          className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4"
+          className="inline-flex items-center gap-2 text-sm text-content-secondary hover:text-content mb-4"
         >
           <ArrowLeft className="w-4 h-4" /> Back to Catalog
         </button>
-        <h1 className="text-2xl font-bold text-slate-800 mb-6">
+        <h1 className="text-2xl font-bold text-content mb-6">
           {isEdit ? `Edit: ${initial?.title}` : 'Add a book'}
         </h1>
         {error && (
-          <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
+          <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">
             {error}
           </div>
         )}
@@ -209,39 +209,39 @@ export default function CatalogModule() {
       {/* Header */}
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-content flex items-center gap-2">
             <Library className="w-6 h-6 text-indigo-500" /> Catalog
           </h1>
-          <p className="text-slate-500 mt-1 text-sm">
+          <p className="text-content-secondary mt-1 text-sm">
             Every book in one place — status, covers, ISBNs, series, tropes, and marketing copy.
           </p>
         </div>
         <button
           onClick={() => setView({ mode: 'new' })}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" /> Add book
         </button>
       </div>
 
       {/* Tab strip */}
-      <div className="flex gap-1 border-b border-slate-200 mb-5">
+      <div className="flex gap-1 border-b border-edge mb-5">
         <TabButton active={activeTab === 'overview'} onClick={() => setView({ mode: 'list', tab: 'overview' })}>
           Overview
         </TabButton>
         <TabButton active={activeTab === 'books'} onClick={() => setView({ mode: 'list', tab: 'books' })}>
-          Books {books.length > 0 && <span className="ml-1 text-xs text-slate-400">({books.length})</span>}
+          Books {books.length > 0 && <span className="ml-1 text-xs text-content-muted">({books.length})</span>}
         </TabButton>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded-lg bg-rose-50 border border-rose-200 text-sm text-rose-700">
+        <div className="mb-4 p-3 rounded-control bg-rose-50 border border-rose-200 text-sm text-rose-700">
           {error}
         </div>
       )}
 
       {loading ? (
-        <div className="text-center py-16 text-slate-500 text-sm">Loading catalog…</div>
+        <div className="text-center py-16 text-content-secondary text-sm">Loading catalog…</div>
       ) : activeTab === 'overview' ? (
         <CatalogOverview
           books={books}
@@ -253,12 +253,12 @@ export default function CatalogModule() {
           {/* Search */}
           {books.length > 0 && (
             <div className="relative mb-5 max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-content-muted absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search by title, series, or trope"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
               />
             </div>
           )}
@@ -292,7 +292,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
         active
           ? 'border-indigo-500 text-indigo-600'
-          : 'border-transparent text-slate-500 hover:text-slate-700'
+          : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
       {children}
@@ -313,12 +313,12 @@ function BookCard({
     ? book.series + (book.series_position ? ` · #${book.series_position}` : '')
     : null;
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all">
+    <div className="bg-surface rounded-card border border-edge hover:shadow-md hover:border-edge-strong transition-all">
       <button
         onClick={onClick}
         className="text-left p-5 w-full flex gap-4 items-center"
       >
-        <div className="w-16 h-24 rounded-lg bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-16 h-24 rounded-control bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
           {book.cover_url ? (
             <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
           ) : (
@@ -334,7 +334,7 @@ function BookCard({
               {STATUS_LABELS[book.status]}
             </span>
           </div>
-          <h3 className="font-semibold text-slate-800 leading-tight break-words">{book.title}</h3>
+          <h3 className="font-semibold text-content leading-tight break-words">{book.title}</h3>
           {penName && (
             <div className="mt-1.5">
               <PenNameChip name={penName.name} color={penName.color} />
@@ -344,8 +344,8 @@ function BookCard({
       </button>
 
       {translations.length > 0 && (
-        <div className="border-t border-slate-100 px-5 py-2.5">
-          <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-1.5">
+        <div className="border-t border-edge-soft px-5 py-2.5">
+          <div className="text-[10px] uppercase tracking-wider text-content-muted mb-1.5">
             Translations
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -354,7 +354,7 @@ function BookCard({
                 key={t.id}
                 type="button"
                 onClick={(e) => { e.stopPropagation(); onClickTranslation?.(t); }}
-                className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-slate-100 text-slate-700 hover:bg-slate-200"
+                className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-surface-sunken text-content hover:bg-edge"
                 title={t.title}
               >
                 <span className="font-medium">{languageLabel(t.language) ?? '—'}</span>
@@ -372,14 +372,14 @@ function BookCard({
 
 function EmptyState({ onAdd, hasBooks }: { onAdd: () => void; hasBooks: boolean }) {
   return (
-    <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-slate-300">
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl shadow-lg shadow-indigo-500/25 mb-4">
+    <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-card shadow-lg shadow-indigo-500/25 mb-4">
         <Library className="w-8 h-8 text-white" />
       </div>
-      <h3 className="text-lg font-semibold text-slate-800 mb-1">
+      <h3 className="text-lg font-semibold text-content mb-1">
         {hasBooks ? 'No matches' : 'No books yet'}
       </h3>
-      <p className="text-sm text-slate-500 mb-5 max-w-sm mx-auto">
+      <p className="text-sm text-content-secondary mb-5 max-w-sm mx-auto">
         {hasBooks
           ? 'Try a different search term.'
           : 'Add your first book to start building out your catalog.'}
@@ -387,7 +387,7 @@ function EmptyState({ onAdd, hasBooks }: { onAdd: () => void; hasBooks: boolean 
       {!hasBooks && (
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control shadow-sm"
         >
           <Plus className="w-4 h-4" /> Add your first book
         </button>
