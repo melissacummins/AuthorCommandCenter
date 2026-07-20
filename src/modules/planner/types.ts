@@ -266,7 +266,10 @@ export interface PhaseInfo {
   tagline: string;
   appropriateWhen: string;
   watchFor?: string;
-  accent: string; // tailwind text color, e.g. 'text-rose-600'
+  // Theme-aware: phases ride the per-theme status tokens (hue-matched to
+  // the old fixed palette) so they recolor with the app theme and inherit
+  // the contrast-checked values from scripts/check_contrast.py.
+  accent: string; // tailwind text color, e.g. 'text-status-paused-fg'
   dot: string;    // tailwind bg color for the phase dot
   // The daily target (minutes) this phase proposes, given the user's baseline
   // target and how many days they've been in the phase (for ramps).
@@ -283,8 +286,8 @@ export const PHASES: PhaseInfo[] = [
     tagline: 'Post-illness or post-sprint — minimal decisions, maintenance mode.',
     appropriateWhen: "You've been sick, sleep-deprived, emotionally depleted, or just finished something big.",
     watchFor: "You can't meet deep-work demands here. Calibration-level work in Recovery sends you further back — walking's fine, a hike isn't.",
-    accent: 'text-sky-600',
-    dot: 'bg-sky-500',
+    accent: 'text-status-editing-fg',
+    dot: 'bg-status-editing-fg',
     // Start gentle (~1h) and ramp ~30m/day, capped at half your baseline.
     proposed: (base, daysIn) => round15(Math.min(base * 0.5, 60 + Math.max(0, daysIn) * 30)),
   },
@@ -293,8 +296,8 @@ export const PHASES: PhaseInfo[] = [
     label: 'Calibration',
     tagline: "Assessing what's working, making adjustments — moderate energy.",
     appropriateWhen: "You can think clearly but aren't ready for sustained creative output. Ad optimization, inventory checks, system tweaks live here.",
-    accent: 'text-amber-600',
-    dot: 'bg-amber-500',
+    accent: 'text-status-drafting-fg',
+    dot: 'bg-status-drafting-fg',
     proposed: base => round15(base * 0.6),
   },
   {
@@ -302,8 +305,8 @@ export const PHASES: PhaseInfo[] = [
     label: 'Building',
     tagline: 'Steady, consistent work at a sustainable pace.',
     appropriateWhen: 'The target zone for most weeks — writing, creating, growing the business at a pace that doesn’t deplete you.',
-    accent: 'text-teal-600',
-    dot: 'bg-teal-500',
+    accent: 'text-status-published-fg',
+    dot: 'bg-status-published-fg',
     proposed: base => base,
   },
   {
@@ -312,8 +315,8 @@ export const PHASES: PhaseInfo[] = [
     tagline: 'Launching something new — high output, time-bound.',
     appropriateWhen: "You're energized, resourced, and the work has a clear endpoint.",
     watchFor: 'Sprinting when you’re actually in Recovery — the calendar says Sprint, the body says no.',
-    accent: 'text-rose-600',
-    dot: 'bg-rose-500',
+    accent: 'text-status-paused-fg',
+    dot: 'bg-status-paused-fg',
     proposed: base => round15(base * 1.15),
   },
   {
@@ -321,8 +324,8 @@ export const PHASES: PhaseInfo[] = [
     label: 'Flow',
     tagline: 'Everything humming — clear-headed, ready for bigger moves.',
     appropriateWhen: "The big creative leaps. You can't force your way in; it arrives when the other phases have been honored.",
-    accent: 'text-violet-600',
-    dot: 'bg-violet-500',
+    accent: 'text-status-preorder-fg',
+    dot: 'bg-status-preorder-fg',
     proposed: base => base,
   },
 ];
