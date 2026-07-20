@@ -10,6 +10,7 @@ import StockModal from './components/StockModal';
 import PurchaseOrders from './components/PurchaseOrders';
 import BookSpecsTab from './components/BookSpecsTab';
 import PrinterQuotesTab from './components/PrinterQuotesTab';
+import LocationPicker from './components/LocationPicker';
 import OrdersDashboard from '../orders/components/OrdersDashboard';
 import Modal from '../../components/Modal';
 import { getPendingByProduct } from './api/purchaseOrders';
@@ -121,6 +122,7 @@ export default function InventoryModule() {
         </div>
 
         <div className="flex gap-2">
+          <LocationPicker settings={shopifySettings} onChanged={refetchShopify} />
           {tab === 'orders' && shopifySettings?.access_token && (
             <Link
               to="/settings"
