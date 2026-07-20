@@ -398,6 +398,48 @@ export async function getBookOpportunities(userId: string, bookId: string): Prom
   ).filter(o => o.bookId === bookId);
 }
 
+export interface BookChecklist {
+  opportunities: Opportunity[];
+  pipelinePercent: number;
+  decisions: OpportunityDecision[];
+  /** Language codes of this book's existing translation children. */
+  translationsDone: string[];
+  /** Set when the book itself is a translation — its checklist lives on the parent. */
+  parentTitle: string | null;
+}
+
+/** Everything the Catalog checklist needs for one book in one call:
+    the full engine output plus the pipeline percent. */
+export async function getBookChecklist(userId: string, bookId: string): Promise<BookChecklist> {
+  const [booksRes, manuscriptRes, projectsRes, decisionsRes] = await Promise.all([
+    supabase.from('books').select('*').eq('user_id', userId),
+    supabase.from('manuscripts').select('*').eq('user_id', userId).eq('book_id', bookId).limit(1).maybeSingle(),
+    supabase.from('audiobook_projects').select('book_id, status').eq('user_id', userId),
+    supabase.from('book_opportunity_decisions').select('book_id, opportunity_key, decision').eq('user_id', userId).eq('book_id', bookId),
+  ]);
+  if (booksRes.error) throw booksRes.error;
+  if (projectsRes.error) throw projectsRes.error;
+
+  const books = (booksRes.data ?? []) as Book[];
+  const book = books.find(b => b.id === bookId);
+  if (!book) throw new Error('Book not found');
+  const projects = (projectsRes.data ?? []) as AudiobookProjectLite[];
+  const decisions = decisionsRes.error ? [] : ((decisionsRes.data ?? []) as OpportunityDecision[]);
+  const manuscript = (manuscriptRes.error ? null : manuscriptRes.data) as Manuscript | null;
+
+  return {
+    opportunities: deriveOpportunities(books, projects, decisions).filter(o => o.bookId === bookId),
+    pipelinePercent: pipelinePercent(book, manuscript, projects, decisions),
+    decisions,
+    translationsDone: books
+      .filter(b => b.parent_book_id === bookId && b.language)
+      .map(b => b.language as string),
+    parentTitle: book.parent_book_id
+      ? books.find(b => b.id === book.parent_book_id)?.title ?? null
+      : null,
+  };
+}
+
 export async function setOpportunityDecision(
   userId: string,
   bookId: string,
