@@ -1466,6 +1466,9 @@ function ViewPane({
         <p className="text-sm text-content-muted -mt-4 mb-5">What's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus.</p>
       )}
 
+      {/* Long lists read best on the same surface card My Day uses — not on
+          the sunken page background (theme follow-up). */}
+      <div className="bg-surface border border-edge rounded-card p-4">
       <QuickAdd
         value={draft}
         onChange={setDraft}
@@ -1527,6 +1530,7 @@ function ViewPane({
           {visible.map(row)}
         </ul>
       )}
+      </div>
     </div>
   );
 }
@@ -1931,6 +1935,8 @@ function NotePane({
         </div>
       </div>
 
+      {/* Same surface-card treatment as My Day for the list body. */}
+      <div className="bg-surface border border-edge rounded-card p-4">
       <div className="flex items-center gap-2 mb-1">
         <div className="flex-1">
           <QuickAdd
@@ -2082,6 +2088,7 @@ function NotePane({
       )}
         </>
       )}
+      </div>
     </div>
   );
 }

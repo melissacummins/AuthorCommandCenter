@@ -41,6 +41,13 @@ PAIRS = [
     ("sidebar-content", "sidebar", 4.5, "sidebar nav labels"),
     ("sidebar-content", "sidebar-raised", 4.5, "sidebar labels on active row"),
     ("sidebar-muted", "sidebar", 4.5, "sidebar secondary labels"),
+    # Status fg colors double as accent text directly on surfaces (planner
+    # working phases) — they must pass there too, not just on their pills.
+    ("status-drafting-fg", "surface", 4.5, "phase/status accent text on cards"),
+    ("status-editing-fg", "surface", 4.5, "phase/status accent text on cards"),
+    ("status-preorder-fg", "surface", 4.5, "phase/status accent text on cards"),
+    ("status-published-fg", "surface", 4.5, "phase/status accent text on cards"),
+    ("status-paused-fg", "surface", 4.5, "phase/status accent text on cards"),
     ("status-idea-fg", "status-idea-bg", 4.5, "status pill: idea"),
     ("status-drafting-fg", "status-drafting-bg", 4.5, "status pill: drafting"),
     ("status-editing-fg", "status-editing-bg", 4.5, "status pill: editing"),
