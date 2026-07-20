@@ -7,6 +7,7 @@ import type { Book, BookUpdate } from '../types';
 import { STATUS_COLORS, STATUS_LABELS } from '../types';
 import type { PenNameColor } from '../../../lib/penNames';
 import PenNameChip from '../../../components/PenNameChip';
+import BookChecklist from './BookChecklist';
 import { getManuscriptForBook, getManuscriptChapters } from '../../writing/api';
 import type { Manuscript } from '../../writing/types';
 import { runTask, runJsonTask } from '../../content-creator/lib/ai';
@@ -64,6 +65,12 @@ export default function BookView({ book, penName, onBack, onEdit, onBookUpdated 
       </div>
 
       <AutofillPanel book={book} onApply={onBookUpdated} />
+
+      {/* What this book could still become — pipeline ring + the full
+          opportunity engine output with Start / Plan / Dismiss (directive §6). */}
+      <Section title="Checklist" defaultOpen>
+        <BookChecklist book={book} />
+      </Section>
 
       <Section title="Marketing copy" defaultOpen>
         <Field label="Blurb" value={book.blurb} multiline copyable />
