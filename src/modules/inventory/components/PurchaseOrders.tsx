@@ -10,13 +10,28 @@ import Modal from '../../../components/Modal';
 interface Props {
   products: Product[];
   onInventoryChanged: () => void;
+  /** Home's "Order" deep link: pre-fill the New PO form with this product. */
+  prefill?: { productId: string; qty: number } | null;
+  onPrefillConsumed?: () => void;
 }
 
-export default function PurchaseOrders({ products, onInventoryChanged }: Props) {
+export default function PurchaseOrders({ products, onInventoryChanged, prefill, onPrefillConsumed }: Props) {
   const [orders, setOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [confirmingPO, setConfirmingPO] = useState<PurchaseOrder | null>(null);
+  // Home's "Order" deep link: open the New PO form pre-filled with the
+  // flagged product and its suggested quantity.
+  const [initialItems, setInitialItems] = useState<POLineItem[] | null>(null);
+  useEffect(() => {
+    if (!prefill) return;
+    const product = products.find(p => p.id === prefill.productId);
+    if (product) {
+      setInitialItems([{ product_id: product.id, product_name: product.name, quantity: prefill.qty }]);
+      setShowAdd(true);
+    }
+    onPrefillConsumed?.();
+  }, [prefill, products, onPrefillConsumed]);
 
   const fetchOrders = useCallback(async () => {
     const data = await getPurchaseOrders();
@@ -110,11 +125,12 @@ export default function PurchaseOrders({ products, onInventoryChanged }: Props) 
       )}
 
       {/* Add PO Modal */}
-      <Modal open={showAdd} onClose={() => setShowAdd(false)} title="New Purchase Order" maxWidth="max-w-2xl">
+      <Modal open={showAdd} onClose={() => { setShowAdd(false); setInitialItems(null); }} title="New Purchase Order" maxWidth="max-w-2xl">
         <AddPOForm
           products={products}
-          onClose={() => setShowAdd(false)}
-          onCreated={() => { fetchOrders(); setShowAdd(false); }}
+          initialItems={initialItems ?? undefined}
+          onClose={() => { setShowAdd(false); setInitialItems(null); }}
+          onCreated={() => { fetchOrders(); setShowAdd(false); setInitialItems(null); }}
         />
       </Modal>
 
@@ -288,8 +304,9 @@ function POCard({ group, products, onConfirm, onDelete }: {
 
 // ---- Add PO Form ----
 
-function AddPOForm({ products, onClose, onCreated }: {
+function AddPOForm({ products, initialItems, onClose, onCreated }: {
   products: Product[];
+  initialItems?: POLineItem[];
   onClose: () => void;
   onCreated: () => void;
 }) {
@@ -301,7 +318,11 @@ function AddPOForm({ products, onClose, onCreated }: {
   const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
   const [expectedDispatch, setExpectedDispatch] = useState('');
   const [expectedArrival, setExpectedArrival] = useState('');
-  const [items, setItems] = useState<POLineItem[]>([{ product_id: '', product_name: '', quantity: 1 }]);
+  const [items, setItems] = useState<POLineItem[]>(
+    initialItems && initialItems.length > 0
+      ? initialItems
+      : [{ product_id: '', product_name: '', quantity: 1 }],
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 

@@ -2,7 +2,12 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
-import TodayPanel from '../modules/planner/TodayPanel';
+import NeedsAttentionWidget from '../components/dashboard/NeedsAttentionWidget';
+import OpenProjectsWidget from '../components/dashboard/OpenProjectsWidget';
+import MonthPnlWidget from '../components/dashboard/MonthPnlWidget';
+import OpportunitiesWidget from '../components/dashboard/OpportunitiesWidget';
+import UpcomingWidget from '../components/dashboard/UpcomingWidget';
+import RecentActivityWidget from '../components/dashboard/RecentActivityWidget';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Clapperboard, Wallet, Search, ArrowRight, Library, Link2, Users, ImagePlus, Share2,
@@ -119,9 +124,9 @@ const sections: { label: string; paths: string[] }[] = [
 export default function Home() {
   const { profile, user, visibleModules } = useAuth();
   const firstName = (profile?.full_name || user?.user_metadata?.full_name || 'there').split(' ')[0];
-  // Tools take a back seat to the day's plan; collapse state is remembered so
-  // the dashboard can stay focused on Today.
-  const [toolsOpen, setToolsOpen] = useState(() => localStorage.getItem('home-tools-open') !== 'false');
+  // The dashboard leads; module links are a collapsed drawer below it
+  // (directive §4). Open state is remembered per browser.
+  const [toolsOpen, setToolsOpen] = useState(() => localStorage.getItem('home-tools-open') === 'true');
   function toggleTools() {
     const next = !toolsOpen;
     setToolsOpen(next);
@@ -138,17 +143,26 @@ export default function Home() {
   return (
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Welcome */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-content">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-content">
           Welcome back, {firstName}!
         </h1>
-        <p className="text-content-secondary mt-1">
-          Your author business tools, all in one place.
+        <p className="text-sm text-content-secondary mt-0.5">
+          Here's where your author business stands today.
         </p>
       </div>
 
-      {/* Quick capture / today's plan — first thing you see on login. */}
-      <TodayPanel />
+      {/* Status board — every widget loads independently (directive §4).
+          Row 1: Needs Attention / Open Projects / Month P&L.
+          Row 2: Opportunities / Upcoming / Recent Activity. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 items-start mb-8">
+        <NeedsAttentionWidget />
+        <OpenProjectsWidget />
+        <MonthPnlWidget />
+        <OpportunitiesWidget />
+        <UpcomingWidget />
+        <RecentActivityWidget />
+      </div>
 
       {visibleSections.length === 0 && (
         <div className="bg-surface rounded-card border border-edge p-8 text-center">
@@ -199,17 +213,6 @@ export default function Home() {
           </div>
         </section>
       ))}
-
-      {/* Info Banner */}
-      {visibleSections.length > 0 && (
-        <div className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-card p-6">
-          <h3 className="font-semibold text-amber-800 mb-1">Data Migration</h3>
-          <p className="text-sm text-amber-700">
-            Each module includes import tools to bring in your existing data from your previous apps.
-            Your old apps and their data remain untouched.
-          </p>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { LayoutDashboard, List, Plus, ShoppingCart, Settings, Store, Truck, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { useProducts } from './hooks/useProducts';
 import { useShopifySettings } from '../orders/hooks/useShopifyOrders';
@@ -35,6 +35,20 @@ export default function InventoryModule() {
     setDuplicateFrom(null);
   }
   const [pendingStock, setPendingStock] = useState<Map<string, number>>(new Map());
+
+  // Home's "Order" deep link (/inventory?po=<productId>&qty=<n>) jumps to the
+  // Purchase Orders tab with the existing PO form pre-filled (directive §0.3).
+  // Params are cleared immediately so refresh/back behaves normally.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [poPrefill, setPoPrefill] = useState<{ productId: string; qty: number } | null>(null);
+  useEffect(() => {
+    const productId = searchParams.get('po');
+    if (!productId) return;
+    const qty = Math.max(1, parseInt(searchParams.get('qty') ?? '1', 10) || 1);
+    setPoPrefill({ productId, qty });
+    setTab('purchase-orders');
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const fetchPending = useCallback(async () => {
     const pending = await getPendingByProduct();
@@ -149,6 +163,8 @@ export default function InventoryModule() {
         <PurchaseOrders
           products={products}
           onInventoryChanged={() => { refetch(); fetchPending(); }}
+          prefill={poPrefill}
+          onPrefillConsumed={() => setPoPrefill(null)}
         />
       )}
       {tab === 'orders' && (

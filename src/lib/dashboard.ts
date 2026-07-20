@@ -168,12 +168,12 @@ export async function getOpenProjects(userId: string): Promise<OpenProjectsResul
   if (booksRes.error) throw booksRes.error;
   if (manuscriptsRes.error) throw manuscriptsRes.error;
   if (projectsRes.error) throw projectsRes.error;
-  if (decisionsRes.error) throw decisionsRes.error;
-
+  // Decisions tolerate a missing table (migration 106 not applied yet) —
+  // same convention as the Shopify sync surviving migration 104's absence.
   const books = (booksRes.data ?? []) as Book[];
   const manuscripts = (manuscriptsRes.data ?? []) as Manuscript[];
   const audioProjects = (projectsRes.data ?? []) as AudiobookProjectLite[];
-  const decisions = (decisionsRes.data ?? []) as OpportunityDecision[];
+  const decisions = decisionsRes.error ? [] : ((decisionsRes.data ?? []) as OpportunityDecision[]);
   const manuscriptByBook = new Map(
     manuscripts.filter(m => m.book_id).map(m => [m.book_id as string, m]),
   );
@@ -371,12 +371,11 @@ export async function getOpportunities(userId: string, limit = 5): Promise<Oppor
   ]);
   if (booksRes.error) throw booksRes.error;
   if (projectsRes.error) throw projectsRes.error;
-  if (decisionsRes.error) throw decisionsRes.error;
 
   return deriveOpportunities(
     (booksRes.data ?? []) as Book[],
     (projectsRes.data ?? []) as AudiobookProjectLite[],
-    (decisionsRes.data ?? []) as OpportunityDecision[],
+    decisionsRes.error ? [] : ((decisionsRes.data ?? []) as OpportunityDecision[]),
   )
     .filter(o => o.decision !== 'dismissed')
     .slice(0, limit);
@@ -391,12 +390,11 @@ export async function getBookOpportunities(userId: string, bookId: string): Prom
   ]);
   if (booksRes.error) throw booksRes.error;
   if (projectsRes.error) throw projectsRes.error;
-  if (decisionsRes.error) throw decisionsRes.error;
 
   return deriveOpportunities(
     (booksRes.data ?? []) as Book[],
     (projectsRes.data ?? []) as AudiobookProjectLite[],
-    (decisionsRes.data ?? []) as OpportunityDecision[],
+    decisionsRes.error ? [] : ((decisionsRes.data ?? []) as OpportunityDecision[]),
   ).filter(o => o.bookId === bookId);
 }
 

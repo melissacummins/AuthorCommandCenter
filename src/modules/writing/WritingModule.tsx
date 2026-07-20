@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PenTool, Plus, BookOpen, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePenNames } from '../../contexts/PenNameContext';
@@ -23,6 +24,16 @@ export default function WritingModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ mode: 'list' });
+
+  // Home's "Continue" deep link (/writing?manuscript=<id>) opens the reader
+  // directly; the param is cleared so refresh/back behaves normally.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const manuscriptId = searchParams.get('manuscript');
+    if (!manuscriptId) return;
+    setView({ mode: 'read', manuscriptId });
+    setSearchParams({}, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // `reloadToken` bumps to re-run the effect below after an import, edit, or
   // delete — same cancellation-safe fetch as the initial load, no duplicate
