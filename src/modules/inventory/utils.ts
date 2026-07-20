@@ -226,3 +226,53 @@ export function formatPercent(value: number): string {
 
 export const CATEGORIES = ['Paperback', 'Hardcover', 'Art Pack', 'Bundle', 'Book Box', 'Omnibus'] as const;
 export const STATUSES = ['Good', 'REORDER NOW', 'OUT OF STOCK', 'BUNDLE', 'TRACKING ONLY'] as const;
+
+// ---- Shopify sales-rate aggregation (pure) --------------------------------
+// Shared by the browser API (api/salesRates.ts) and the server-side MCP data
+// core (src/lib/dashboardCore.ts) — keep free of any Supabase client import.
+
+export interface SalesRate {
+  totalSold: number;
+  avgDaily: number;
+  windowDays: number;
+}
+
+export interface ShopifyOrderRow {
+  order_date: string;
+  line_items: unknown;
+  refunds: unknown;
+  cancelled_at: string | null;
+}
+
+export function aggregateSalesRates(rows: ShopifyOrderRow[], windowDays: number): Map<string, SalesRate> {
+  const totals = new Map<string, number>();
+  for (const row of rows) {
+    if (row.cancelled_at) continue; // cancelled order — nothing net-sold
+    const items = (row.line_items as { id?: number; sku?: string | null; quantity?: number | null }[]) || [];
+    const refunds = (row.refunds as { refund_line_items?: { line_item_id?: number; quantity?: number }[] }[]) || [];
+
+    const refundedByLineItem = new Map<number, number>();
+    for (const r of refunds) {
+      for (const rli of r.refund_line_items || []) {
+        if (rli.line_item_id == null) continue;
+        refundedByLineItem.set(rli.line_item_id, (refundedByLineItem.get(rli.line_item_id) || 0) + (Number(rli.quantity) || 0));
+      }
+    }
+
+    for (const it of items) {
+      const rawSku = (it?.sku || '').trim();
+      if (!rawSku) continue;
+      const key = rawSku.toUpperCase();
+      const refunded = it.id != null ? (refundedByLineItem.get(it.id) || 0) : 0;
+      const netQty = (Number(it?.quantity) || 0) - refunded;
+      if (netQty <= 0) continue;
+      totals.set(key, (totals.get(key) || 0) + netQty);
+    }
+  }
+
+  const map = new Map<string, SalesRate>();
+  for (const [sku, total] of totals) {
+    map.set(sku, { totalSold: total, avgDaily: total / windowDays, windowDays });
+  }
+  return map;
+}

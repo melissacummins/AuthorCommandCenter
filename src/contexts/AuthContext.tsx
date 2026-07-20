@@ -27,7 +27,7 @@ interface AuthContextType {
   sidebarModules: Set<string>;
   setModuleHidden: (key: string, hidden: boolean) => Promise<void>;
   refreshAccess: () => Promise<void>;
-  signInWithGoogle: () => Promise<void>;
+  signInWithGoogle: (redirectTo?: string) => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<{ error: string | null }>;
   signUpWithEmail: (email: string, password: string, fullName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -149,11 +149,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return next;
   }, [visibleModules, hiddenModules]);
 
-  async function signInWithGoogle() {
+  async function signInWithGoogle(redirectTo?: string) {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectTo ?? window.location.origin,
       },
     });
   }

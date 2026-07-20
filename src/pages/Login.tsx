@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { BookOpen, Mail, Lock, User, ArrowRight } from 'lucide-react';
 
-export default function Login() {
+export default function Login({ googleRedirectTo }: { googleRedirectTo?: string } = {}) {
   const { signInWithGoogle, signInWithEmail, signUpWithEmail } = useAuth();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
@@ -55,7 +55,7 @@ export default function Login() {
 
           {/* Google Sign In */}
           <button
-            onClick={signInWithGoogle}
+            onClick={() => signInWithGoogle(googleRedirectTo)}
             className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-edge rounded-card hover:bg-surface-hover transition-colors font-medium text-content"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
