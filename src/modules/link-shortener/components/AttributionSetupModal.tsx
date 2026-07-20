@@ -106,7 +106,7 @@ export default function AttributionSetupModal({ open, onClose }: Props) {
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               placeholder="shpss_..."
-              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-400"
             />
           </section>
 
@@ -125,7 +125,7 @@ export default function AttributionSetupModal({ open, onClose }: Props) {
               <input
                 value={param}
                 onChange={(e) => setParam(e.target.value)}
-                className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
               />
               <p className="mt-1 text-xs text-content-secondary">Default: <code>click_id</code>. Appears as <code>?click_id=…</code> on destination URLs.</p>
             </div>
@@ -135,7 +135,7 @@ export default function AttributionSetupModal({ open, onClose }: Props) {
                 type="number"
                 value={windowMin}
                 onChange={(e) => setWindowMin(Number(e.target.value) || 4320)}
-                className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
               />
               <p className="mt-1 text-xs text-content-secondary">If no click_id, match orders to clicks within this window. Default 4320 (3 days).</p>
             </div>
@@ -148,7 +148,7 @@ export default function AttributionSetupModal({ open, onClose }: Props) {
               href="https://help.shopify.com/en/manual/orders/notifications/webhooks"
               target="_blank"
               rel="noreferrer noopener"
-              className="text-xs text-indigo-600 hover:underline inline-flex items-center gap-1"
+              className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1"
             >
               Shopify webhook docs <ExternalLink className="w-3 h-3" />
             </a>
@@ -158,7 +158,7 @@ export default function AttributionSetupModal({ open, onClose }: Props) {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-700 text-white rounded-control disabled:opacity-50 inline-flex items-center gap-2"
+                className="px-4 py-1.5 text-sm bg-brand-600 hover:bg-brand-700 text-brand-fg rounded-control disabled:opacity-50 inline-flex items-center gap-2"
               >
                 {saving && <Loader2 className="w-4 h-4 animate-spin" />}
                 Save settings
@@ -195,7 +195,7 @@ function FieldCopy({
       )}
       <button
         onClick={() => onCopy(value, keyName)}
-        className="absolute top-2 right-2 p-1.5 text-content-muted hover:text-indigo-600 bg-surface rounded-control border border-edge"
+        className="absolute top-2 right-2 p-1.5 text-content-muted hover:text-brand-600 bg-surface rounded-control border border-edge"
         title="Copy"
       >
         {copied === keyName ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}

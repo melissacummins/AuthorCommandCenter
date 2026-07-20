@@ -104,7 +104,7 @@ export default function ConversionsList({ link, onTotalsChanged }: Props) {
         {!adding && (
           <button
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control text-xs font-medium bg-indigo-600 hover:bg-indigo-700 text-white"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control text-xs font-medium bg-brand-600 hover:bg-brand-700 text-brand-fg"
           >
             <Plus className="w-3.5 h-3.5" /> Log conversion
           </button>
@@ -116,9 +116,9 @@ export default function ConversionsList({ link, onTotalsChanged }: Props) {
           <div className="text-[11px] text-emerald-700 uppercase tracking-wide">Total revenue</div>
           <div className="text-lg font-semibold text-emerald-800 tabular-nums">{formatCurrency(link.conversion_value)}</div>
         </div>
-        <div className="bg-indigo-50 border border-indigo-100 rounded-card px-3 py-2">
-          <div className="text-[11px] text-indigo-700 uppercase tracking-wide">Count</div>
-          <div className="text-lg font-semibold text-indigo-800 tabular-nums">{link.conversion_count}</div>
+        <div className="bg-brand-50 border border-brand-100 rounded-card px-3 py-2">
+          <div className="text-[11px] text-brand-700 uppercase tracking-wide">Count</div>
+          <div className="text-lg font-semibold text-brand-800 tabular-nums">{link.conversion_count}</div>
         </div>
       </div>
 
@@ -137,34 +137,34 @@ export default function ConversionsList({ link, onTotalsChanged }: Props) {
               value={value}
               onChange={(e) => setValue(e.target.value)}
               placeholder="0.00"
-              className="flex-1 px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="flex-1 px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
             <input
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
               maxLength={3}
               placeholder="USD"
-              className="w-16 px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-indigo-300 uppercase"
+              className="w-16 px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-brand-300 uppercase"
             />
           </div>
           <input
             value={externalRef}
             onChange={(e) => setExternalRef(e.target.value)}
             placeholder="Reference (e.g. order #1234)"
-            className="w-full px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Notes (optional)"
-            className="w-full px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-2 py-1.5 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
           {error && <div className="text-xs text-red-600">{error}</div>}
           <div className="flex justify-end gap-2">
             <button onClick={() => setAdding(false)} className="px-3 py-1.5 text-xs text-content-secondary hover:bg-edge rounded-control">
               Cancel
             </button>
-            <button onClick={handleAdd} disabled={busy} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-indigo-600 hover:bg-indigo-700 text-white rounded-control disabled:opacity-50">
+            <button onClick={handleAdd} disabled={busy} className="inline-flex items-center gap-1 px-3 py-1.5 text-xs bg-brand-600 hover:bg-brand-700 text-brand-fg rounded-control disabled:opacity-50">
               {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               Save
             </button>

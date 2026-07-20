@@ -104,7 +104,7 @@ export default function CategoryRules() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
       </div>
     );
   }
@@ -135,7 +135,7 @@ export default function CategoryRules() {
             <label className="block text-xs text-content-secondary mb-1">If description contains</label>
             <input type="text" value={matchString} onChange={e => setMatchString(e.target.value)}
               placeholder="e.g., AMAZON, NETFLIX"
-              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400" />
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
           </div>
           <div className="flex-1 min-w-[150px]">
             <label className="block text-xs text-content-secondary mb-1">Set category to</label>
@@ -156,7 +156,7 @@ export default function CategoryRules() {
             </select>
           </div>
           <button type="submit" disabled={saving || !matchString.trim() || !targetCategory.trim()}
-            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-control hover:bg-cyan-700 disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             Add Rule
           </button>
@@ -167,7 +167,7 @@ export default function CategoryRules() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search rules..."
-            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400" />
+            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
 
         {error && (
@@ -196,7 +196,7 @@ export default function CategoryRules() {
                   <div className="flex items-center gap-3 flex-1 flex-wrap">
                     <input type="text" value={editMatch} onChange={e => setEditMatch(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') setEditingId(null); }}
-                      className="px-2 py-1 border border-cyan-400 rounded text-sm font-mono w-48 focus:outline-none" autoFocus />
+                      className="px-2 py-1 border border-brand-400 rounded text-sm font-mono w-48 focus:outline-none" autoFocus />
                     <span className="text-content-muted">&rarr;</span>
                     <CategoryInput
                       value={editCategory}
@@ -207,7 +207,7 @@ export default function CategoryRules() {
                       onEscape={() => setEditingId(null)}
                     />
                     <select value={editType} onChange={e => setEditType(e.target.value as '' | 'income' | 'expense')}
-                      className="px-2 py-1 border border-cyan-400 rounded text-sm focus:outline-none">
+                      className="px-2 py-1 border border-brand-400 rounded text-sm focus:outline-none">
                       <option value="expense">expense</option>
                       <option value="income">income</option>
                       <option value="">auto</option>
@@ -231,7 +231,7 @@ export default function CategoryRules() {
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => startEdit(rule)} className="p-1 text-content-faint hover:text-cyan-500 rounded">
+                    <button onClick={() => startEdit(rule)} className="p-1 text-content-faint hover:text-brand-500 rounded">
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button onClick={() => handleDelete(rule.id)} className="p-1 text-content-faint hover:text-red-500 rounded">

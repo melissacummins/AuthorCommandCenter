@@ -13,7 +13,7 @@ export default function CloudExportSection() {
   return (
     <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-2">
-        <CloudUpload className="w-5 h-5 text-sky-600" />
+        <CloudUpload className="w-5 h-5 text-brand-600" />
         <h2 className="text-lg font-semibold text-content">Cloud Export</h2>
       </div>
       <p className="text-sm text-content-secondary mb-6">
@@ -111,7 +111,7 @@ function ServiceRow({ service, fetchStatus, onConnect, onDisconnect, disconnectN
         </button>
       ) : (
         <button onClick={handleConnect} disabled={busy || status === null}
-          className="px-3 py-2 rounded-control bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-500 disabled:opacity-50 flex items-center gap-1.5">
+          className="px-3 py-2 rounded-control bg-brand-600 text-brand-fg text-xs font-medium hover:bg-brand-500 disabled:opacity-50 flex items-center gap-1.5">
           {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Connect
         </button>
       )}

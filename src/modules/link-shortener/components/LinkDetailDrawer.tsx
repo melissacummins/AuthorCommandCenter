@@ -314,7 +314,7 @@ export default function LinkDetailDrawer({
         <header className="flex items-center justify-between px-6 py-4 border-b border-edge">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-lg font-semibold text-indigo-600">/{link.slug}</span>
+              <span className="font-mono text-lg font-semibold text-brand-600">/{link.slug}</span>
               {!link.is_active && <span className="text-xs px-2 py-0.5 rounded-full bg-edge text-content-secondary">inactive</span>}
               {link.archived_at && <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">archived</span>}
             </div>
@@ -333,7 +333,7 @@ export default function LinkDetailDrawer({
         </section>
 
         <section className="px-6 py-3 flex flex-wrap gap-2 border-b border-edge-soft">
-          <button onClick={copyUrl} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-control bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700">
+          <button onClick={copyUrl} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700">
             <Copy className="w-4 h-4" />
             {copied ? 'Copied!' : 'Copy URL'}
           </button>
@@ -378,7 +378,7 @@ export default function LinkDetailDrawer({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {parent && (
             <div className="mb-4 px-3 py-2 rounded-control bg-surface-hover border border-edge text-sm text-content-secondary">
-              Channel variant of <span className="font-mono text-indigo-600">/{parent.slug}</span>
+              Channel variant of <span className="font-mono text-brand-600">/{parent.slug}</span>
               {parent.label && <span> {parent.label}</span>}
             </div>
           )}
@@ -389,7 +389,7 @@ export default function LinkDetailDrawer({
                 <input
                   value={label}
                   onChange={(e) => setLabel(e.target.value)}
-                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
               </Field>
 
@@ -397,7 +397,7 @@ export default function LinkDetailDrawer({
                 <input
                   value={destination}
                   onChange={(e) => setDestination(e.target.value)}
-                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
               </Field>
 
@@ -406,14 +406,14 @@ export default function LinkDetailDrawer({
                   <input
                     value={channel}
                     onChange={(e) => setChannel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                   />
                 </Field>
                 <Field label="Folder" icon={<FolderIcon className="w-3.5 h-3.5" />}>
                   <select
                     value={folderId ?? ''}
                     onChange={(e) => setFolderId(e.target.value || null)}
-                    className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                   >
                     <option value="">No folder</option>
                     {folders.map((f) => (
@@ -423,14 +423,14 @@ export default function LinkDetailDrawer({
                 </Field>
               </div>
 
-              <div className="rounded-card border border-edge p-4 space-y-3 bg-indigo-50/30">
+              <div className="rounded-card border border-edge p-4 space-y-3 bg-brand-50/30">
                 <button
                   type="button"
                   onClick={() => setShowOnBio((v) => !v)}
                   className="w-full flex items-center justify-between"
                 >
                   <div className="flex items-center gap-2 min-w-0 text-left">
-                    <Layout className={`w-4 h-4 ${showOnBio ? 'text-indigo-600' : 'text-content-muted'}`} />
+                    <Layout className={`w-4 h-4 ${showOnBio ? 'text-brand-600' : 'text-content-muted'}`} />
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-content">Show on bio page</div>
                       <div className="text-xs text-content-secondary">Visible to readers on your link-in-bio page.</div>
@@ -438,7 +438,7 @@ export default function LinkDetailDrawer({
                   </div>
                   <span
                     className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                      showOnBio ? 'bg-indigo-600' : 'bg-edge-strong'
+                      showOnBio ? 'bg-brand-600' : 'bg-edge-strong'
                     }`}
                     aria-hidden="true"
                   >
@@ -451,13 +451,13 @@ export default function LinkDetailDrawer({
                 </button>
 
                 {showOnBio && (
-                  <div className="space-y-3 pt-3 border-t border-indigo-100">
+                  <div className="space-y-3 pt-3 border-t border-brand-100">
                     <Field label="Public title" hint="What readers see on the bio page. Falls back to the internal label if blank.">
                       <input
                         value={bioTitle}
                         onChange={(e) => setBioTitle(e.target.value)}
                         placeholder={label || `/${link.slug}`}
-                        className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                        className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                       />
                     </Field>
 
@@ -498,7 +498,7 @@ export default function LinkDetailDrawer({
                         </div>
                         <span
                           className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                            bioFeatured ? 'bg-indigo-600' : 'bg-edge-strong'
+                            bioFeatured ? 'bg-brand-600' : 'bg-edge-strong'
                           }`}
                           aria-hidden="true"
                         >
@@ -524,7 +524,7 @@ export default function LinkDetailDrawer({
                       type="datetime-local"
                       value={startsAt}
                       onChange={(e) => setStartsAt(e.target.value)}
-                      className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                      className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                     />
                   </Field>
                   <Field label="Expires (optional)" hint="After this time, visitors see an 'Expired' page or your fallback URL.">
@@ -532,7 +532,7 @@ export default function LinkDetailDrawer({
                       type="datetime-local"
                       value={expiresAt}
                       onChange={(e) => setExpiresAt(e.target.value)}
-                      className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                      className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                     />
                   </Field>
                 </div>
@@ -541,7 +541,7 @@ export default function LinkDetailDrawer({
                     value={expiredRedirect}
                     onChange={(e) => setExpiredRedirect(e.target.value)}
                     placeholder="https://your-main-site.com"
-                    className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                    className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                   />
                 </Field>
               </div>
@@ -550,7 +550,7 @@ export default function LinkDetailDrawer({
                 <input
                   value={tagsInput}
                   onChange={(e) => setTagsInput(e.target.value)}
-                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
               </Field>
 
@@ -559,7 +559,7 @@ export default function LinkDetailDrawer({
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={3}
-                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                  className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 />
               </Field>
 
@@ -569,7 +569,7 @@ export default function LinkDetailDrawer({
                 <button
                   onClick={handleSave}
                   disabled={!hasChanges || busy}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-brand-600 hover:bg-brand-700 text-brand-fg text-sm font-medium disabled:opacity-50"
                 >
                   {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Save changes
@@ -587,10 +587,10 @@ export default function LinkDetailDrawer({
                       const variantBots = (v.click_count ?? 0) - variantNonBot;
                       return (
                         <div key={v.id} className="flex items-center gap-2 px-3 py-2 rounded-control bg-surface-hover border border-edge-soft text-sm min-w-0">
-                          <span className="font-mono text-indigo-600 shrink-0" title={`/${v.slug}`}>/{v.slug}</span>
+                          <span className="font-mono text-brand-600 shrink-0" title={`/${v.slug}`}>/{v.slug}</span>
                           {v.channel && (
                             <span
-                              className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 max-w-[10rem] truncate shrink-0"
+                              className="text-xs px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 max-w-[10rem] truncate shrink-0"
                               title={v.channel}
                             >
                               {v.channel}
@@ -607,7 +607,7 @@ export default function LinkDetailDrawer({
                           </span>
                           <button
                             onClick={() => copyVariantUrl(v.slug)}
-                            className="p-1.5 text-content-muted hover:text-indigo-600 hover:bg-surface rounded shrink-0 transition"
+                            className="p-1.5 text-content-muted hover:text-brand-600 hover:bg-surface rounded shrink-0 transition"
                             title="Copy short URL"
                           >
                             {copiedVariantSlug === v.slug ? (
@@ -620,7 +620,7 @@ export default function LinkDetailDrawer({
                             href={buildShortUrl(v.slug)}
                             target="_blank"
                             rel="noreferrer noopener"
-                            className="p-1.5 text-content-muted hover:text-indigo-600 hover:bg-surface rounded shrink-0 transition"
+                            className="p-1.5 text-content-muted hover:text-brand-600 hover:bg-surface rounded shrink-0 transition"
                             title="Open short URL in new tab"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -656,7 +656,7 @@ export default function LinkDetailDrawer({
                     onClick={() => setShowBots((v) => !v)}
                     className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control text-xs font-medium border transition ${
                       showBots
-                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                        ? 'bg-brand-50 text-brand-700 border-brand-200 hover:bg-brand-100'
                         : 'bg-surface text-content-secondary border-edge hover:bg-surface-hover'
                     }`}
                     title={showBots ? 'Hide bot clicks' : `Show ${botClickCount} bot click${botClickCount === 1 ? '' : 's'}`}
@@ -689,7 +689,7 @@ export default function LinkDetailDrawer({
                     <div key={c.id} className="flex items-center gap-3 px-3 py-2 rounded-control bg-surface-hover border border-edge-soft text-xs">
                       <span className="text-content-secondary tabular-nums whitespace-nowrap">{timeAgo(c.clicked_at)}</span>
                       {hasVariants && c.slug !== link.slug && (
-                        <span className="font-mono text-indigo-600">/{c.slug}</span>
+                        <span className="font-mono text-brand-600">/{c.slug}</span>
                       )}
                       {c.is_bot ? (
                         <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-edge text-content-secondary">
@@ -748,7 +748,7 @@ function TabBtn({ active, onClick, icon, children }: { active: boolean; onClick:
     <button
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-t-control border-b-2 -mb-px ${
-        active ? 'border-indigo-500 text-indigo-700 font-medium' : 'border-transparent text-content-secondary hover:text-content'
+        active ? 'border-brand-500 text-brand-700 font-medium' : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
       {icon}
@@ -779,7 +779,7 @@ function StyleOption({
       onClick={onClick}
       className={`flex flex-col items-start gap-1 px-3 py-2.5 rounded-control border text-left transition ${
         selected
-          ? 'border-indigo-500 bg-surface ring-2 ring-indigo-200'
+          ? 'border-brand-500 bg-surface ring-2 ring-brand-200'
           : 'border-edge bg-surface hover:border-edge-strong'
       }`}
     >

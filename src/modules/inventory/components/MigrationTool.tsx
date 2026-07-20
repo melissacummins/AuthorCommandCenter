@@ -179,7 +179,7 @@ export default function MigrationTool({ onComplete }: { onComplete: () => void }
 
           <button
             onClick={importFromFirebase}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white font-medium rounded-card hover:bg-blue-700"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-600 text-brand-fg font-medium rounded-card hover:bg-brand-700"
           >
             <Download className="w-5 h-5" />
             Connect to Firebase & Import
@@ -193,7 +193,7 @@ export default function MigrationTool({ onComplete }: { onComplete: () => void }
 
           <div
             onClick={() => fileRef.current?.click()}
-            className="border-2 border-dashed border-edge-strong rounded-card p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+            className="border-2 border-dashed border-edge-strong rounded-card p-6 text-center cursor-pointer hover:border-brand-400 hover:bg-brand-50/50 transition-colors"
           >
             <Upload className="w-8 h-8 text-content-muted mx-auto mb-2" />
             <p className="font-medium text-content-secondary text-sm">Upload JSON file</p>
@@ -204,7 +204,7 @@ export default function MigrationTool({ onComplete }: { onComplete: () => void }
 
       {status === 'processing' && (
         <div className="text-center py-8">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-3" />
+          <Loader2 className="w-10 h-10 text-brand-500 animate-spin mx-auto mb-3" />
           <p className="text-sm text-content-secondary">{progress}</p>
         </div>
       )}

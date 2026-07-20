@@ -50,9 +50,9 @@ export default function Dashboard({ products, onAddProduct, onAdjustStock }: Das
   return (
     <div className="space-y-6">
       {/* Hero Banner */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-card p-6 lg:p-8 text-white">
+      <div className="bg-gradient-to-r from-brand-600 via-brand-600 to-brand-600 rounded-card p-6 lg:p-8 text-white">
         <h2 className="text-2xl lg:text-3xl font-bold mb-1">{greeting}, {firstName}</h2>
-        <p className="text-blue-100 mb-6">Here's what's happening with your inventory today.</p>
+        <p className="text-brand-100 mb-6">Here's what's happening with your inventory today.</p>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
@@ -68,7 +68,7 @@ export default function Dashboard({ products, onAddProduct, onAdjustStock }: Das
                   <div className="w-9 h-9 bg-surface/20 rounded-control flex items-center justify-center">
                     <Icon className="w-4 h-4 text-white" />
                   </div>
-                  <span className="text-sm text-blue-100">{stat.label}</span>
+                  <span className="text-sm text-brand-100">{stat.label}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <p className="text-2xl font-bold">{stat.value}</p>
@@ -102,8 +102,8 @@ export default function Dashboard({ products, onAddProduct, onAdjustStock }: Das
             onClick={onAdjustStock}
             className="flex items-center gap-3 p-4 border border-edge rounded-card hover:bg-surface-hover transition-colors text-left group"
           >
-            <div className="w-10 h-10 bg-blue-50 rounded-control flex items-center justify-center group-hover:bg-blue-100">
-              <Package className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-brand-50 rounded-control flex items-center justify-center group-hover:bg-brand-100">
+              <Package className="w-5 h-5 text-brand-600" />
             </div>
             <div>
               <p className="font-medium text-content text-sm">Update Stock</p>
@@ -172,7 +172,7 @@ export default function Dashboard({ products, onAddProduct, onAdjustStock }: Das
         {/* Top Inventory */}
         <div className="bg-surface rounded-card border border-edge p-5">
           <h3 className="font-semibold text-content mb-4 flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-blue-500" />
+            <TrendingUp className="w-4 h-4 text-brand-500" />
             Top Inventory Levels
           </h3>
           {topInventory.length === 0 ? (
@@ -184,7 +184,7 @@ export default function Dashboard({ products, onAddProduct, onAdjustStock }: Das
                   <div className="w-28 text-xs text-content-secondary truncate shrink-0" title={p.name}>{p.name}</div>
                   <div className="flex-1 bg-surface-sunken rounded-full h-5 overflow-hidden">
                     <div
-                      className="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all flex items-center justify-end pr-2"
+                      className="bg-gradient-to-r from-brand-500 to-brand-500 h-full rounded-full transition-all flex items-center justify-end pr-2"
                       style={{ width: `${Math.max(8, (p.metrics.bookInventory / maxInventory) * 100)}%` }}
                     >
                       <span className="text-[10px] text-white font-medium">{p.metrics.bookInventory}</span>

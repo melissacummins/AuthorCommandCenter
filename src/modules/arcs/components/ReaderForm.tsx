@@ -29,7 +29,7 @@ interface Props {
 
 const labelCls = 'block text-xs font-medium text-content mb-1';
 const inputCls =
-  'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-surface';
+  'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none bg-surface';
 const sectionCls = 'bg-surface rounded-card border border-edge p-5 space-y-4';
 
 // Project an ArcReader down to the insert shape. The joined
@@ -338,7 +338,7 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
                     : [...d.place_to_review, p],
                 }))}
                 className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                  on ? 'bg-indigo-100 text-indigo-800 border-indigo-200' : 'bg-surface text-content-secondary border-edge hover:border-edge-strong'
+                  on ? 'bg-brand-100 text-brand-800 border-brand-200' : 'bg-surface text-content-secondary border-edge hover:border-edge-strong'
                 }`}
               >
                 {p}
@@ -386,7 +386,7 @@ export default function ReaderForm({ initial, catalogBooks, saving, onSubmit, on
           <button
             type="submit"
             disabled={saving || !draft.name.trim()}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+            className="px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
           >
             {saving ? 'Saving…' : initial ? 'Save changes' : 'Add reader'}
           </button>
@@ -465,7 +465,7 @@ function PromoteBooksModal({
             type="button"
             onClick={onConfirm}
             disabled={!anySelected}
-            className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+            className="px-3 py-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
           >
             {single ? 'Yes, mark it' : 'Yes, mark them'}
           </button>

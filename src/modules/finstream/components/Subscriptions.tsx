@@ -43,7 +43,7 @@ export default function Subscriptions() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
       </div>
     );
   }
@@ -71,7 +71,7 @@ export default function Subscriptions() {
           <h3 className="font-semibold text-content">Tracked Subscriptions</h3>
           <button
             onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white text-sm font-medium rounded-control hover:bg-cyan-700"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700"
           >
             <Plus className="w-4 h-4" /> Add Subscription
           </button>
@@ -91,7 +91,7 @@ export default function Subscriptions() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="Search subscriptions..."
-              className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400" />
+              className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
           </div>
         )}
 
@@ -143,7 +143,7 @@ function SubscriptionRow({ sub, onDelete }: {
             <p className="text-xs text-content-muted">{sub.frequency}</p>
           </div>
           {sub.matchCount > 0 && (
-            <button onClick={() => setExpanded(!expanded)} className="text-xs text-cyan-600 hover:text-cyan-700">
+            <button onClick={() => setExpanded(!expanded)} className="text-xs text-brand-600 hover:text-brand-700">
               {expanded ? 'Hide' : 'History'}
             </button>
           )}
@@ -252,13 +252,13 @@ function AddSubscriptionForm({ transactions, onClose, onCreated }: {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input type="text" value={txSearch} onChange={e => setTxSearch(e.target.value)}
             placeholder="Search your expense transactions..."
-            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400" />
+            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
           {txSearch && filteredTxs.length > 0 && (
             <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-surface border border-edge rounded-control shadow-lg max-h-48 overflow-y-auto">
               {filteredTxs.slice(0, 10).map(tx => (
                 <button key={tx.id} type="button"
                   onClick={() => selectTransaction(tx)}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-cyan-50 flex justify-between gap-4">
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-brand-50 flex justify-between gap-4">
                   <span className="truncate text-content">{tx.description}</span>
                   <span className="text-content-muted shrink-0">${Math.abs(Number(tx.amount)).toFixed(2)}</span>
                 </button>
@@ -273,7 +273,7 @@ function AddSubscriptionForm({ transactions, onClose, onCreated }: {
           <label className="block text-xs text-content-secondary mb-1">Vendor Name *</label>
           <input type="text" value={vendor} onChange={e => setVendor(e.target.value)}
             placeholder="e.g., Adobe, Canva"
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <div>
           <label className="block text-xs text-content-secondary mb-1">Frequency</label>
@@ -290,10 +290,10 @@ function AddSubscriptionForm({ transactions, onClose, onCreated }: {
         <label className="block text-xs text-content-secondary mb-1">Match String</label>
         <input type="text" value={matchString} onChange={e => setMatchString(e.target.value)}
           placeholder="Text to match in transaction descriptions"
-          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400" />
+          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         <p className="text-xs text-content-muted mt-1">
           {matchString ? (
-            <span>Matches <strong className="text-cyan-600">{previewMatches}</strong> existing transaction{previewMatches !== 1 ? 's' : ''}</span>
+            <span>Matches <strong className="text-brand-600">{previewMatches}</strong> existing transaction{previewMatches !== 1 ? 's' : ''}</span>
           ) : (
             'Handles asterisks, different numbers, etc. Use the part that stays consistent.'
           )}
@@ -303,7 +303,7 @@ function AddSubscriptionForm({ transactions, onClose, onCreated }: {
       <div className="flex justify-end gap-3">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Cancel</button>
         <button type="submit" disabled={saving || !vendor.trim()}
-          className="px-4 py-2 text-sm bg-cyan-600 text-white rounded-control hover:bg-cyan-700 disabled:opacity-50">
+          className="px-4 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700 disabled:opacity-50">
           {saving ? 'Saving...' : 'Save Subscription'}
         </button>
       </div>

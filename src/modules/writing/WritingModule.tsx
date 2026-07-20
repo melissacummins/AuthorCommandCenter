@@ -101,7 +101,7 @@ export default function WritingModule() {
       <div className="flex items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-content flex items-center gap-2">
-            <PenTool className="w-6 h-6 text-lime-500" /> Writing
+            <PenTool className="w-6 h-6 text-brand-500" /> Writing
           </h1>
           <p className="text-content-secondary mt-1 text-sm">
             Import a manuscript, chapter by chapter, so the rest of the Command Center can use it.
@@ -109,7 +109,7 @@ export default function WritingModule() {
         </div>
         <button
           onClick={() => setView({ mode: 'import' })}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control shadow-sm shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" /> New manuscript
         </button>
@@ -153,7 +153,7 @@ function ManuscriptCard({
       className="text-left bg-surface rounded-card border border-edge hover:shadow-md hover:border-edge-strong transition-all p-5"
     >
       <div className="flex items-start justify-between gap-2 mb-2">
-        {book && <p className="text-xs text-lime-600 font-medium truncate">{book.title}</p>}
+        {book && <p className="text-xs text-brand-600 font-medium truncate">{book.title}</p>}
         <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[manuscript.status]}`}>
           {STATUS_LABELS[manuscript.status]}
         </span>
@@ -167,7 +167,7 @@ function ManuscriptCard({
 function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
   return (
     <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-lime-500 to-lime-600 rounded-card shadow-lg shadow-lime-500/25 mb-4">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-600 rounded-card shadow-lg shadow-brand-500/25 mb-4">
         <BookOpen className="w-8 h-8 text-white" />
       </div>
       <h3 className="text-lg font-semibold text-content mb-1">
@@ -181,7 +181,7 @@ function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
       {!hasAny && (
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control shadow-sm"
         >
           <Plus className="w-4 h-4" /> New manuscript
         </button>

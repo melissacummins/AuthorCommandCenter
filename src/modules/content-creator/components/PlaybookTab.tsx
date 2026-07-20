@@ -95,7 +95,7 @@ function Centered({ children }: { children: React.ReactNode }) {
 }
 
 const cardCls = 'bg-surface rounded-card border border-edge p-5';
-const inputCls = 'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 focus:ring-1 focus:ring-pink-500 outline-none bg-surface';
+const inputCls = 'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none bg-surface';
 
 // ---------------- Built-in strategy library ----------------
 
@@ -194,7 +194,7 @@ function ImportPanel({ userId, onImported }: { userId: string; onImported: (adde
             placeholder="Paste hook patterns, rules, or reference material here…" />
           <div className="flex items-center gap-3 mt-3">
             <button onClick={propose} disabled={proposing || !text.trim()}
-              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2">
               {proposing && <Loader2 className="w-4 h-4 animate-spin" />} Propose entries
             </button>
             <label className="px-3 py-2 rounded-control border border-edge-strong text-sm text-content-secondary hover:bg-surface-hover cursor-pointer">
@@ -207,7 +207,7 @@ function ImportPanel({ userId, onImported }: { userId: string; onImported: (adde
       ) : (
         <div className="space-y-2">
           {proposed.map((p, i) => (
-            <label key={i} className={`flex items-start gap-3 p-3 rounded-control border cursor-pointer ${p.keep ? 'border-pink-300 bg-pink-50/40' : 'border-edge opacity-60'}`}>
+            <label key={i} className={`flex items-start gap-3 p-3 rounded-control border cursor-pointer ${p.keep ? 'border-brand-300 bg-brand-50/40' : 'border-edge opacity-60'}`}>
               <input type="checkbox" checked={p.keep} className="mt-1"
                 onChange={() => setProposed(prev => prev!.map((x, j) => j === i ? { ...x, keep: !x.keep } : x))} />
               <span className="min-w-0">
@@ -219,7 +219,7 @@ function ImportPanel({ userId, onImported }: { userId: string; onImported: (adde
           ))}
           <div className="flex items-center gap-3 pt-1">
             <button onClick={saveKept} disabled={saving}
-              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
               Save {proposed.filter(p => p.keep).length} entries
             </button>
@@ -257,7 +257,7 @@ function EntriesPanel({ userId, entries, setEntries }: {
     <div className={cardCls}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-content">Hook patterns ({entries.length})</h3>
-        <button onClick={() => setAdding(v => !v)} className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1">
+        <button onClick={() => setAdding(v => !v)} className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1">
           <Plus className="w-4 h-4" /> Add
         </button>
       </div>
@@ -265,7 +265,7 @@ function EntriesPanel({ userId, entries, setEntries }: {
         <div className="mb-4 p-3 rounded-control border border-edge space-y-2">
           <input className={inputCls} placeholder="Pattern name (e.g. Unhinged Devotion)" value={title} onChange={e => setTitle(e.target.value)} />
           <textarea rows={2} className={inputCls} placeholder="How the pattern works…" value={pattern} onChange={e => setPattern(e.target.value)} />
-          <button onClick={addManual} className="px-3 py-1.5 rounded-control bg-pink-600 text-white text-sm hover:bg-pink-700">Save</button>
+          <button onClick={addManual} className="px-3 py-1.5 rounded-control bg-brand-600 text-brand-fg text-sm hover:bg-brand-700">Save</button>
         </div>
       )}
       {entries.length === 0 && !adding && (
@@ -416,10 +416,10 @@ function BannedWordsPanel({ userId, defaults, optouts, setOptouts, rules, setRul
       {userWords.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
           {userWords.map(r => (
-            <span key={r.id} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-purple-200 bg-purple-50 text-purple-700">
+            <span key={r.id} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full border border-brand-200 bg-brand-50 text-brand-700">
               {r.content}{r.replacement ? ` → ${r.replacement}` : ''}
               <button onClick={async () => { await deleteRule(r.id); setRules(prev => prev.filter(x => x.id !== r.id)); }}
-                className="text-purple-400 hover:text-rose-600">×</button>
+                className="text-brand-400 hover:text-rose-600">×</button>
             </span>
           ))}
         </div>

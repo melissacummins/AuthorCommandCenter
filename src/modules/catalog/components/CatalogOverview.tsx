@@ -142,7 +142,7 @@ export default function CatalogOverview({ books, onOpenBook, kdpKeywordCounts = 
   if (books.length === 0) {
     return (
       <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
-        <Library className="w-10 h-10 text-indigo-400 mx-auto mb-3" />
+        <Library className="w-10 h-10 text-brand-400 mx-auto mb-3" />
         <p className="text-sm text-content-secondary">Add a book to start seeing your catalog overview.</p>
       </div>
     );
@@ -277,7 +277,7 @@ export default function CatalogOverview({ books, onOpenBook, kdpKeywordCounts = 
                         <span className="font-semibold">{pct}%</span>
                       </div>
                       <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
-                        <div className="h-full bg-indigo-500" style={{ width: `${pct}%` }} />
+                        <div className="h-full bg-brand-500" style={{ width: `${pct}%` }} />
                       </div>
                     </>
                   ) : (

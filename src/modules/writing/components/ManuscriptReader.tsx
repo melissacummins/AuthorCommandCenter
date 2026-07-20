@@ -310,7 +310,7 @@ export default function ManuscriptReader({
           defaultValue={manuscript.title}
           onBlur={e => saveTitle(e.target.value)}
           disabled={savingTitle}
-          className="text-lg font-bold text-content flex-1 min-w-0 px-1 -mx-1 rounded-control border border-transparent hover:border-edge focus:border-lime-400 outline-none bg-transparent"
+          className="text-lg font-bold text-content flex-1 min-w-0 px-1 -mx-1 rounded-control border border-transparent hover:border-edge focus:border-brand-400 outline-none bg-transparent"
         />
         <span className="text-xs text-content-muted shrink-0 hidden sm:inline">{manuscript.word_count.toLocaleString()} words</span>
         <select
@@ -327,7 +327,7 @@ export default function ManuscriptReader({
             onClick={() => setExportMenuOpen(exportMenuOpen === 'manuscript' ? null : 'manuscript')}
             disabled={exporting || chapters.length === 0}
             title="Export manuscript"
-            className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-sunken disabled:opacity-40"
+            className="p-1.5 text-content-muted hover:text-brand-600 rounded-control hover:bg-surface-sunken disabled:opacity-40"
           >
             {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
           </button>
@@ -338,7 +338,7 @@ export default function ManuscriptReader({
         <button
           onClick={toggleChat}
           title="Manuscript chat"
-          className={`p-1.5 rounded-control hover:bg-surface-sunken shrink-0 ${chatOpen ? 'text-lime-600 bg-surface-sunken' : 'text-content-muted hover:text-lime-600'}`}
+          className={`p-1.5 rounded-control hover:bg-surface-sunken shrink-0 ${chatOpen ? 'text-brand-600 bg-surface-sunken' : 'text-content-muted hover:text-brand-600'}`}
         >
           <MessageSquare className="w-4 h-4" />
         </button>
@@ -346,7 +346,7 @@ export default function ManuscriptReader({
           <button
             onClick={() => setSyncOpen(true)}
             title="Analyze manuscript for Catalog"
-            className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-sunken shrink-0"
+            className="p-1.5 text-content-muted hover:text-brand-600 rounded-control hover:bg-surface-sunken shrink-0"
           >
             <Sparkles className="w-4 h-4" />
           </button>
@@ -375,7 +375,7 @@ export default function ManuscriptReader({
           <p className="text-sm text-content-secondary mb-4">This manuscript has no chapters yet.</p>
           <button
             onClick={handleAddChapter}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control"
           >
             <Plus className="w-4 h-4" /> Add a chapter
           </button>
@@ -385,7 +385,7 @@ export default function ManuscriptReader({
           {/* Collapsible chapter sidebar (§8.1) */}
           {sidebarCollapsed ? (
             <div className="w-10 shrink-0 h-full flex flex-col items-center gap-2 bg-surface rounded-card border border-edge py-3">
-              <button onClick={toggleSidebar} title="Expand chapter list" className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-hover">
+              <button onClick={toggleSidebar} title="Expand chapter list" className="p-1.5 text-content-muted hover:text-brand-600 rounded-control hover:bg-surface-hover">
                 <ChevronsRight className="w-4 h-4" />
               </button>
               <div className="flex-1 overflow-y-auto w-full flex flex-col items-center gap-1">
@@ -395,7 +395,7 @@ export default function ManuscriptReader({
                     onClick={() => { setActiveChapterId(c.id); setIsEditing(true); }}
                     title={c.title || `Chapter ${i + 1}`}
                     className={`w-6 h-6 text-[10px] rounded-control font-medium shrink-0 ${
-                      c.id === activeChapterId ? 'bg-lime-600 text-white' : 'text-content-muted hover:bg-surface-sunken'
+                      c.id === activeChapterId ? 'bg-brand-600 text-brand-fg' : 'text-content-muted hover:bg-surface-sunken'
                     }`}
                   >
                     {i + 1}
@@ -408,7 +408,7 @@ export default function ManuscriptReader({
               <button
                 onClick={toggleSidebar}
                 title="Collapse chapter list"
-                className="self-end p-1 text-content-faint hover:text-lime-600 mb-1"
+                className="self-end p-1 text-content-faint hover:text-brand-600 mb-1"
               >
                 <ChevronsLeft className="w-4 h-4" />
               </button>
@@ -434,7 +434,7 @@ export default function ManuscriptReader({
               </DndContext>
               <button
                 onClick={handleAddChapter}
-                className="w-full mt-2 shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-content-secondary hover:text-lime-600 border border-dashed border-edge-strong hover:border-lime-300 rounded-control"
+                className="w-full mt-2 shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-content-secondary hover:text-brand-600 border border-dashed border-edge-strong hover:border-brand-300 rounded-control"
               >
                 <Plus className="w-3.5 h-3.5" /> Add chapter
               </button>
@@ -450,7 +450,7 @@ export default function ManuscriptReader({
                     <button
                       onClick={() => setRevisionsFor(activeChapter)}
                       title="Version history"
-                      className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-hover"
+                      className="p-1.5 text-content-muted hover:text-brand-600 rounded-control hover:bg-surface-hover"
                     >
                       <History className="w-4 h-4" />
                     </button>
@@ -458,7 +458,7 @@ export default function ManuscriptReader({
                       <button
                         onClick={() => setExportMenuOpen(exportMenuOpen === activeChapter.id ? null : activeChapter.id)}
                         title="Export this chapter"
-                        className="p-1.5 text-content-muted hover:text-lime-600 rounded-control hover:bg-surface-hover"
+                        className="p-1.5 text-content-muted hover:text-brand-600 rounded-control hover:bg-surface-hover"
                       >
                         <ArrowDownToLine className="w-4 h-4" />
                       </button>
@@ -469,7 +469,7 @@ export default function ManuscriptReader({
                     <button
                       onClick={() => setIsEditing(v => !v)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control ${
-                        isEditing ? 'bg-lime-600 text-white hover:bg-lime-700' : 'border border-edge-strong text-content hover:bg-surface-hover'
+                        isEditing ? 'bg-brand-600 text-brand-fg hover:bg-brand-700' : 'border border-edge-strong text-content hover:bg-surface-hover'
                       }`}
                     >
                       <PenLine className="w-3.5 h-3.5" /> {isEditing ? 'Reading view' : 'Edit'}
@@ -529,7 +529,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-        active ? 'border-lime-500 text-lime-700' : 'border-transparent text-content-secondary hover:text-content'
+        active ? 'border-brand-500 text-brand-700' : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
       {children}
@@ -577,7 +577,7 @@ function SortableChapterRow({
       ref={setNodeRef}
       style={style}
       className={`group flex items-start gap-1.5 px-2 py-2 rounded-control border text-sm ${
-        active ? 'border-lime-300 bg-lime-50' : 'border-transparent hover:bg-surface-hover'
+        active ? 'border-brand-300 bg-brand-50' : 'border-transparent hover:bg-surface-hover'
       }`}
     >
       <button
@@ -601,7 +601,7 @@ function SortableChapterRow({
               className="flex-1 min-w-0 px-1 py-0.5 text-sm border border-edge-strong rounded-control"
             />
           ) : (
-            <span className={`flex-1 truncate font-medium ${active ? 'text-lime-900' : 'text-content-secondary'}`}>
+            <span className={`flex-1 truncate font-medium ${active ? 'text-brand-900' : 'text-content-secondary'}`}>
               {chapter.title || 'Untitled chapter'}
             </span>
           )}
@@ -609,11 +609,11 @@ function SortableChapterRow({
         <p className="text-xs text-content-muted pl-6">{chapter.word_count.toLocaleString()} words</p>
       </button>
       <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
-        <button onClick={onStartRename} title="Rename" className="p-1 text-content-faint hover:text-lime-600">
+        <button onClick={onStartRename} title="Rename" className="p-1 text-content-faint hover:text-brand-600">
           <Pencil className="w-3.5 h-3.5" />
         </button>
         {onMergeNext && (
-          <button onClick={onMergeNext} title="Merge with next chapter" className="p-1 text-content-faint hover:text-lime-600">
+          <button onClick={onMergeNext} title="Merge with next chapter" className="p-1 text-content-faint hover:text-brand-600">
             <Merge className="w-3.5 h-3.5" />
           </button>
         )}

@@ -9,9 +9,9 @@ import { getUpcomingDates, type UpcomingKind } from '../../lib/dashboard';
 
 const KIND_DOT: Record<UpcomingKind, string> = {
   release: 'bg-emerald-500',
-  pre_order: 'bg-purple-500',
+  pre_order: 'bg-brand-500',
   manuscript_due: 'bg-amber-500',
-  task: 'bg-sky-500',
+  task: 'bg-content-muted',
 };
 
 export default function UpcomingWidget() {

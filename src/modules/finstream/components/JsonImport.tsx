@@ -160,9 +160,9 @@ export default function JsonImport({ onComplete }: Props) {
       </div>
 
       <label className={`flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed rounded-card cursor-pointer transition-colors ${
-        importing ? 'border-edge bg-surface-hover opacity-50' : 'border-cyan-300 hover:bg-cyan-50 hover:border-cyan-400'
+        importing ? 'border-edge bg-surface-hover opacity-50' : 'border-brand-300 hover:bg-brand-50 hover:border-brand-400'
       }`}>
-        {importing ? <Loader2 className="w-5 h-5 text-cyan-500 animate-spin" /> : <FileJson className="w-5 h-5 text-cyan-500" />}
+        {importing ? <Loader2 className="w-5 h-5 text-brand-500 animate-spin" /> : <FileJson className="w-5 h-5 text-brand-500" />}
         <span className="text-sm font-medium text-content">
           {importing ? 'Importing...' : 'Choose JSON file'}
         </span>

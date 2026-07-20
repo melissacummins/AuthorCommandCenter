@@ -225,7 +225,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
             <button
               onClick={runScan}
               disabled={!manuscript}
-              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
+              className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-40 flex items-center gap-2"
             >
               <Play className="w-4 h-4" /> {resumable ? 'Resume scan' : 'Scan manuscript'}
             </button>
@@ -250,7 +250,7 @@ export default function HooksTab({ book, manuscript }: { book: Book; manuscript:
             </div>
             <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
               <div
-                className={`h-full rounded-full bg-pink-500 transition-all ${progress.phase === 'ranking' ? 'animate-pulse w-full' : ''}`}
+                className={`h-full rounded-full bg-brand-500 transition-all ${progress.phase === 'ranking' ? 'animate-pulse w-full' : ''}`}
                 style={progress.phase !== 'ranking' ? { width: `${(progress.done / progress.total) * 100}%` } : undefined}
               />
             </div>
@@ -458,19 +458,19 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
             value={quote}
             onChange={e => setQuote(e.target.value)}
             placeholder={'Paste the quote or short excerpt, verbatim from the book…\ne.g. "You are mine," he growled, hooking her knees and pulling her into him.'}
-            className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
+            className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 outline-none"
           />
           <div className="flex flex-wrap gap-2 items-center">
             <input
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Optional direction (e.g. lean possessive, he's a vampire boss)…"
-              className="flex-1 min-w-52 rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
+              className="flex-1 min-w-52 rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 outline-none"
             />
             <button
               onClick={generate}
               disabled={busy || !quote.trim()}
-              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
+              className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-40 flex items-center gap-2"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               {busy ? 'Writing…' : variations.length ? 'Re-roll variations' : 'Write variations'}
@@ -479,7 +479,7 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
               onClick={generatePremise}
               disabled={busy}
               title="Write premise-level hooks from the Catalog facts alone — no quote needed (the 'would you read a book about…' shape)"
-              className="px-4 py-2 rounded-control border border-pink-200 text-pink-700 text-sm font-medium hover:bg-pink-50 disabled:opacity-40"
+              className="px-4 py-2 rounded-control border border-brand-200 text-brand-700 text-sm font-medium hover:bg-brand-50 disabled:opacity-40"
             >
               Premise hooks
             </button>
@@ -505,7 +505,7 @@ function QuoteWorkshop({ userId, book, manuscriptId, bannedActive, onSaved, work
                   <div key={i} className="rounded-control border border-edge p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-pink-50 text-pink-700 border border-pink-100 mb-1.5">
+                        <span className="inline-block text-[11px] font-medium px-2 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100 mb-1.5">
                           {v.strategy || 'Untitled strategy'}
                         </span>
                         <p className="text-sm text-content">{v.hook_text}</p>
@@ -555,7 +555,7 @@ function AddHookButton({ userId, bookId, manuscriptId, onAdded }: {
   }
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1">
+      <button onClick={() => setOpen(true)} className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1">
         <Plus className="w-4 h-4" /> Add hook
       </button>
     );
@@ -564,13 +564,13 @@ function AddHookButton({ userId, bookId, manuscriptId, onAdded }: {
     <div className="flex gap-2 items-center">
       <input
         autoFocus
-        className="rounded-control border border-edge-strong px-3 py-1.5 text-sm w-72 focus:border-pink-500 outline-none"
+        className="rounded-control border border-edge-strong px-3 py-1.5 text-sm w-72 focus:border-brand-500 outline-none"
         placeholder="Type the hook…"
         value={text}
         onChange={e => setText(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') add(); if (e.key === 'Escape') setOpen(false); }}
       />
-      <button onClick={add} className="px-3 py-1.5 rounded-control bg-pink-600 text-white text-sm hover:bg-pink-700">Save</button>
+      <button onClick={add} className="px-3 py-1.5 rounded-control bg-brand-600 text-brand-fg text-sm hover:bg-brand-700">Save</button>
     </div>
   );
 }
@@ -621,7 +621,7 @@ function ImportMomentsButton({ userId, bookId, manuscriptId, onAdded }: {
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder={'Paste your saved moments — one per paragraph (blank line between them).\nEach becomes a candidate, and I\'ll find its scene in the linked manuscript automatically.'}
-        className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
+        className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 outline-none"
       />
       <div className="flex gap-2 items-center">
         <button onClick={runImport} disabled={!!progress || !text.trim()}
@@ -688,12 +688,12 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted, onWorkshop
           <textarea
             rows={2}
             autoFocus
-            className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
+            className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 outline-none"
             value={draft}
             onChange={e => setDraft(e.target.value)}
           />
           <div className="flex gap-2">
-            <button onClick={() => save(draft)} className="px-3 py-1.5 rounded-control bg-pink-600 text-white text-xs hover:bg-pink-700">Save</button>
+            <button onClick={() => save(draft)} className="px-3 py-1.5 rounded-control bg-brand-600 text-brand-fg text-xs hover:bg-brand-700">Save</button>
             <button onClick={() => { setEditing(false); setDraft(hook.hook_text); }} className="text-xs text-content-secondary hover:text-content">Cancel</button>
           </div>
         </div>
@@ -744,7 +744,7 @@ function HookCard({ hook, userId, bannedActive, onChanged, onDeleted, onWorkshop
         )}
         <button onClick={() => onWorkshop(hook.scene_excerpt || hook.hook_text)}
           title="Send to the Hook workshop for strategy variations"
-          className="text-xs text-content-muted hover:text-pink-600">Workshop</button>
+          className="text-xs text-content-muted hover:text-brand-600">Workshop</button>
         <select
           value={hook.test_result}
           onChange={async e => onChanged(await updateHook(hook.id, { test_result: e.target.value as HookTestResult }))}

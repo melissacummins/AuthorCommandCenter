@@ -144,7 +144,7 @@ export default function LinkShortenerModule() {
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-50 border border-indigo-100 text-xs text-indigo-700">
+          <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 border border-brand-100 text-xs text-brand-700">
             <ExternalLink className="w-3.5 h-3.5" />
             <span className="font-mono">{baseDomain}</span>
           </div>
@@ -152,7 +152,7 @@ export default function LinkShortenerModule() {
             <select
               value={rangeDays}
               onChange={(e) => setRangeDays(Number(e.target.value))}
-              className="px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300"
             >
               <option value={7}>Last 7 days</option>
               <option value={30}>Last 30 days</option>
@@ -173,7 +173,7 @@ export default function LinkShortenerModule() {
               setCreateParent(null);
               setCreateOpen(true);
             }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-control bg-brand-600 hover:bg-brand-700 text-brand-fg text-sm font-medium shadow-sm"
           >
             <Plus className="w-4 h-4" /> Create link
           </button>

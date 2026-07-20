@@ -42,7 +42,7 @@ export default function ScriptStep({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={analyzeAll} disabled={allBusy || pendingChapters.length === 0}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-50">
           {allBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
           {allBusy && allProgress ? `Analyzing chapter ${allProgress.chapter}/${allProgress.total}` : `Analyze ${pendingChapters.length || 'all'} pending chapter${pendingChapters.length === 1 ? '' : 's'}`}
         </button>
@@ -95,7 +95,7 @@ function ChapterPanel({
           ? <span className="text-xs text-emerald-600 flex items-center gap-1"><Check className="w-3 h-3" /> {segments.length} segments</span>
           : <span className="text-xs text-content-muted">not analyzed</span>}
         <button onClick={analyze} disabled={busy}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-control border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-control border border-brand-200 text-brand-700 hover:bg-brand-50 disabled:opacity-50">
           {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
           {busy && progress ? `${progress.done}/${progress.total || '…'}` : analyzed ? 'Re-analyze' : 'Analyze'}
         </button>

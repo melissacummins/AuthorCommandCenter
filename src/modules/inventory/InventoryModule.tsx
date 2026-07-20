@@ -61,7 +61,7 @@ export default function InventoryModule() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -134,7 +134,7 @@ export default function InventoryModule() {
           {(tab === 'dashboard' || tab === 'products') && (
             <button
               onClick={() => setShowAddProduct(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-control hover:bg-blue-700 shadow-sm"
+              className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 shadow-sm"
             >
               <Plus className="w-4 h-4" /> Add Product
             </button>
@@ -203,7 +203,7 @@ function OrdersTab({ shopifySettings, shopifyLoading, refetchShopify, refetchPro
   if (shopifyLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -221,7 +221,7 @@ function OrdersTab({ shopifySettings, shopifyLoading, refetchShopify, refetchPro
           </p>
           <Link
             to="/settings"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700"
           >
             <Store className="w-4 h-4" /> Connect Shopify in Settings
           </Link>

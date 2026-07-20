@@ -272,7 +272,7 @@ export default function ARCsModule() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-content flex items-center gap-2">
-            <Users className="w-6 h-6 text-pink-500" /> ARCs
+            <Users className="w-6 h-6 text-brand-500" /> ARCs
           </h1>
           <p className="text-content-secondary mt-1 text-sm">
             Your ARC readers across every launch — track who's gotten what, who reviewed,
@@ -299,7 +299,7 @@ export default function ARCsModule() {
           )}
           <button
             onClick={() => setView({ mode: 'new' })}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control shadow-sm"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control shadow-sm"
           >
             <Plus className="w-4 h-4" /> Add reader
           </button>
@@ -365,9 +365,9 @@ export default function ARCsModule() {
           </div>
 
           {selectedIds.size > 0 && (
-            <div className="bg-indigo-50 border border-indigo-200 rounded-card p-3 text-sm mb-3 space-y-2">
+            <div className="bg-brand-50 border border-brand-200 rounded-card p-3 text-sm mb-3 space-y-2">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="font-medium text-indigo-800">{selectedIds.size} selected</span>
+                <span className="font-medium text-brand-800">{selectedIds.size} selected</span>
                 <select
                   value={bulkStatus}
                   onChange={e => setBulkStatus(e.target.value as ArcStatus)}
@@ -381,7 +381,7 @@ export default function ARCsModule() {
                 <button
                   onClick={applyBulk}
                   disabled={!bulkStatus || saving}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+                  className="px-3 py-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
                 >
                   Apply
                 </button>
@@ -392,7 +392,7 @@ export default function ARCsModule() {
                   Clear selection
                 </button>
               </div>
-              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-indigo-200">
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-brand-200">
                 <select
                   value={bulkAction}
                   onChange={e => setBulkAction(e.target.value as 'add' | 'remove')}
@@ -424,7 +424,7 @@ export default function ARCsModule() {
                 <button
                   onClick={applyBulkBook}
                   disabled={!bulkField || !bulkBookId || saving}
-                  className="px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+                  className="px-3 py-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
                 >
                   Apply
                 </button>
@@ -465,7 +465,7 @@ export default function ARCsModule() {
                     {filtered.map(r => (
                       <tr
                         key={r.id}
-                        className={`hover:bg-surface-hover cursor-pointer ${selectedIds.has(r.id) ? 'bg-indigo-50/50' : ''}`}
+                        className={`hover:bg-surface-hover cursor-pointer ${selectedIds.has(r.id) ? 'bg-brand-50/50' : ''}`}
                         onClick={() => setView({ mode: 'edit', reader: r })}
                       >
                         <td className="px-3 py-2" onClick={e => e.stopPropagation()}>
@@ -517,7 +517,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
-        active ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-content-secondary hover:text-content'
+        active ? 'border-brand-500 text-brand-600' : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
       {children}
@@ -543,7 +543,7 @@ function EmptyState({
 }: { hasAny: boolean; onAdd: () => void; onImport: () => void }) {
   return (
     <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
-      <Users className="w-10 h-10 text-pink-400 mx-auto mb-3" />
+      <Users className="w-10 h-10 text-brand-400 mx-auto mb-3" />
       <h3 className="text-lg font-semibold text-content mb-1">
         {hasAny ? 'No readers match these filters' : 'No ARC readers yet'}
       </h3>
@@ -554,7 +554,7 @@ function EmptyState({
       </p>
       {!hasAny && (
         <div className="inline-flex gap-2">
-          <button onClick={onAdd} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control">
+          <button onClick={onAdd} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control">
             <Plus className="w-4 h-4" /> Add reader
           </button>
           <button onClick={onImport} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-content bg-surface border border-edge-strong hover:bg-surface-hover rounded-control">

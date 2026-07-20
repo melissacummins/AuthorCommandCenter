@@ -9,7 +9,7 @@ import { calculateTrueCostForQuote, formatCurrency } from '../utils';
 import CsvImporter, { type ParsedRow } from './CsvImporter';
 
 const STATUS_OPTIONS: Array<{ value: PrinterStatus; label: string; chip: string }> = [
-  { value: 'active',   label: 'Active',   chip: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'active',   label: 'Active',   chip: 'bg-brand-100 text-brand-700 border-brand-200' },
   { value: 'current',  label: 'Current',  chip: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   { value: 'rejected', label: 'Rejected', chip: 'bg-red-100 text-red-700 border-red-200' },
 ];
@@ -300,7 +300,7 @@ export default function PrinterQuotesTab() {
                   type="number"
                   value={targetMargin}
                   onChange={e => setTargetMargin(Number(e.target.value) || 0)}
-                  className="w-14 px-1.5 py-1 border border-edge rounded text-xs text-right focus:outline-none focus:border-blue-400"
+                  className="w-14 px-1.5 py-1 border border-edge rounded text-xs text-right focus:outline-none focus:border-brand-400"
                 />
                 %
               </label>
@@ -333,7 +333,7 @@ export default function PrinterQuotesTab() {
                     <tr
                       key={r.printer}
                       onClick={() => setSelectedPrinter(r.printer)}
-                      className={`border-b border-edge-soft cursor-pointer hover:bg-surface-hover/60 ${isSelected ? 'bg-blue-50/40' : ''}`}
+                      className={`border-b border-edge-soft cursor-pointer hover:bg-surface-hover/60 ${isSelected ? 'bg-brand-50/40' : ''}`}
                     >
                       <td className="py-1.5 px-2 text-content-muted text-xs">{i + 1}</td>
                       <td className="py-1.5 px-2 font-medium text-content">{r.printer}</td>
@@ -368,7 +368,7 @@ export default function PrinterQuotesTab() {
         <select
           value={selectedPrinter}
           onChange={e => setSelectedPrinter(e.target.value)}
-          className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400 min-w-[200px]"
+          className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400 min-w-[200px]"
         >
           <option value="">Select a printer…</option>
           {printers.filter(p => showRejected || statusFor(p) !== 'rejected').map(p => <option key={p} value={p}>{p}</option>)}
@@ -384,7 +384,7 @@ export default function PrinterQuotesTab() {
         )}
         <button
           onClick={addPrinter}
-          className="flex items-center gap-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700"
+          className="flex items-center gap-1 px-3 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700"
         >
           <Plus className="w-4 h-4" /> Add Printer
         </button>
@@ -402,7 +402,7 @@ export default function PrinterQuotesTab() {
       {/* Per-book quote table */}
       {!hasLoaded ? (
         <div className="bg-surface rounded-card border border-edge p-12 text-center">
-          <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-6 h-6 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
       ) : selectedPrinter ? (
         <div className="bg-surface rounded-card border border-edge overflow-hidden">
@@ -481,7 +481,7 @@ function QuoteNumCell({ value, onChange, onSave, saving, highlight }: { value: n
         placeholder="0.00"
         onChange={e => onChange(Number(e.target.value))}
         onBlur={() => onSave(value)}
-        className={`w-24 px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${highlight ? 'font-medium' : ''} ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`w-24 px-2 py-1.5 border border-transparent hover:border-edge focus:border-brand-400 focus:bg-brand-50/20 rounded text-sm text-right focus:outline-none ${highlight ? 'font-medium' : ''} ${saving ? 'bg-brand-50/40' : ''}`}
       />
     </td>
   );
@@ -496,7 +496,7 @@ function QuoteTextCell({ value, onChange, onSave, saving }: { value: string; onC
         placeholder=""
         onChange={e => onChange(e.target.value)}
         onBlur={() => onSave(value)}
-        className={`min-w-[180px] w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`min-w-[180px] w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-brand-400 focus:bg-brand-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-brand-50/40' : ''}`}
       />
     </td>
   );

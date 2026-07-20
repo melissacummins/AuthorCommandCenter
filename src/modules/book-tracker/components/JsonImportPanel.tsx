@@ -90,7 +90,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
           />
           <button
             onClick={() => fileRef.current?.click()}
-            className="px-4 py-2 bg-purple-600 text-white text-sm font-medium rounded-control hover:bg-purple-700"
+            className="px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700"
           >
             Choose file…
           </button>
@@ -117,7 +117,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
               {penNames.length === 0 ? (
                 <p className="text-sm text-content-secondary italic">
                   No pen names yet — imported books will be unassigned. Add pen names in{' '}
-                  <a href="/settings" className="text-purple-600 hover:underline">Settings</a>{' '}
+                  <a href="/settings" className="text-brand-600 hover:underline">Settings</a>{' '}
                   and re-run the import to attribute them.
                 </p>
               ) : (
@@ -193,7 +193,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
             <button
               onClick={handleImport}
               disabled={phase.result.parsed.length === 0}
-              className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700 disabled:opacity-50"
+              className="px-4 py-2 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
             >
               Import {phase.result.parsed.length} books
             </button>
@@ -203,7 +203,7 @@ export default function JsonImportPanel({ onBack, onComplete }: Props) {
 
       {phase.kind === 'importing' && (
         <div className="bg-surface rounded-card border border-edge p-6 flex items-center gap-3">
-          <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+          <Loader2 className="w-5 h-5 animate-spin text-brand-600" />
           <span className="text-sm text-content">
             Importing {phase.done} of {phase.total}…
           </span>

@@ -82,7 +82,7 @@ export default function LinkCard({
         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(link)}>
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              className="text-content font-medium hover:text-indigo-600 truncate"
+              className="text-content font-medium hover:text-brand-600 truncate"
               onClick={(e) => {
                 e.stopPropagation();
                 onCopy(link.slug);
@@ -96,7 +96,7 @@ export default function LinkCard({
               {status.label}
             </span>
             {hasVariants && (
-              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+              <span className="text-[11px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 border border-brand-100">
                 {variants.length} {variants.length === 1 ? 'variant' : 'variants'}
               </span>
             )}
@@ -115,7 +115,7 @@ export default function LinkCard({
                 </span>
               )}
               {link.channel && (
-                <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-control bg-pink-50 text-pink-700 border border-pink-100">
+                <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-control bg-brand-50 text-brand-700 border border-brand-100">
                   <Tag className="w-2.5 h-2.5" />
                   {link.channel}
                 </span>
@@ -178,7 +178,7 @@ export default function LinkCard({
                       {buildShortUrl(v.slug).replace(/^https?:\/\//, '')}
                     </span>
                     {v.channel && (
-                      <span className="text-[11px] px-1.5 py-0.5 rounded-control bg-pink-50 text-pink-700 border border-pink-100">
+                      <span className="text-[11px] px-1.5 py-0.5 rounded-control bg-brand-50 text-brand-700 border border-brand-100">
                         {v.channel}
                       </span>
                     )}
@@ -229,7 +229,7 @@ interface PillProps {
 
 function Pill({ icon, value, label, tone = 'indigo', onClick, title }: PillProps) {
   const tones = {
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-100 hover:bg-indigo-100',
+    indigo: 'bg-brand-50 text-brand-700 border-brand-100 hover:bg-brand-100',
     emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100',
   };
   return (
@@ -255,7 +255,7 @@ function CopyButton({ slug, onCopy }: { slug: string; onCopy: (slug: string) => 
         setCopied(true);
         setTimeout(() => setCopied(false), 1200);
       }}
-      className="p-1 text-content-muted hover:text-indigo-600 rounded transition-opacity opacity-0 group-hover:opacity-100"
+      className="p-1 text-content-muted hover:text-brand-600 rounded transition-opacity opacity-0 group-hover:opacity-100"
       title="Copy short URL"
     >
       {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}

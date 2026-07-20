@@ -9,9 +9,9 @@ interface CategoriesSettingsProps {
 
 export default function CategoriesSettings({ categories, onUpdate }: CategoriesSettingsProps) {
   return (
-    <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
+    <div className="bg-surface p-6 rounded-card shadow-sm border border-edge-soft">
       <h3 className="text-lg font-semibold text-content mb-1 flex items-center gap-2">
-        <Tag className="w-5 h-5 text-indigo-500" />
+        <Tag className="w-5 h-5 text-brand-500" />
         Ad & Revenue Categories
       </h3>
       <p className="text-sm text-content-secondary mb-6">
@@ -178,7 +178,7 @@ const CategoryRow: React.FC<CategoryRowProps> = ({
         type="text"
         value={category.name}
         onChange={(e) => onChange({ ...category, name: e.target.value })}
-        className="flex-1 px-3 py-1.5 border border-edge rounded text-sm focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+        className="flex-1 px-3 py-1.5 border border-edge rounded text-sm focus:ring-2 focus:ring-brand-400 focus:border-transparent"
       />
 
       {!category.isCustom && (
@@ -231,12 +231,12 @@ function AddCategoryForm({ onAdd }: { onAdd: (name: string) => void }) {
         onKeyDown={(e) => {
           if (e.key === 'Enter') submit();
         }}
-        className="flex-1 px-3 py-1.5 border border-edge rounded text-sm placeholder-slate-400 focus:ring-2 focus:ring-indigo-400 focus:border-transparent"
+        className="flex-1 px-3 py-1.5 border border-edge rounded text-sm placeholder-slate-400 focus:ring-2 focus:ring-brand-400 focus:border-transparent"
       />
       <button
         onClick={submit}
         disabled={!name.trim()}
-        className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed"
+        className="flex items-center gap-1 px-3 py-1.5 bg-brand-600 text-brand-fg text-sm font-medium rounded hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed"
       >
         <Plus className="w-3.5 h-3.5" />
         Add

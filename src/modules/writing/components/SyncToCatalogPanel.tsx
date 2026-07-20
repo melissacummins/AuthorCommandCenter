@@ -153,7 +153,7 @@ export default function SyncToCatalogPanel({
       <div className="bg-surface rounded-card shadow-xl max-w-xl w-full max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge-soft shrink-0">
           <h3 className="font-semibold text-content flex items-center gap-2">
-            <Library className="w-4 h-4 text-lime-500" /> Sync to Catalog
+            <Library className="w-4 h-4 text-brand-500" /> Sync to Catalog
           </h3>
           <button onClick={onClose} className="text-content-muted hover:text-content-secondary">
             <X className="w-5 h-5" />
@@ -176,7 +176,7 @@ export default function SyncToCatalogPanel({
                 <button
                   onClick={analyze}
                   disabled={analyzing}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control disabled:opacity-50"
                 >
                   {analyzing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                   {analyzing ? 'Analyzing…' : 'Analyze for Catalog'}
@@ -208,7 +208,7 @@ export default function SyncToCatalogPanel({
                       <button
                         onClick={applyTropes}
                         disabled={selectedTropes.size === 0 || savingTropes}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control px-2 py-1 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-2 py-1 disabled:opacity-50"
                       >
                         {savingTropes ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                         Add {selectedTropes.size || ''} to book
@@ -220,7 +220,7 @@ export default function SyncToCatalogPanel({
                       <div className="flex flex-wrap gap-1.5">
                         {newTropes.map(t => (
                           <label key={t} className={`text-xs px-2 py-1 rounded-full border cursor-pointer ${
-                            selectedTropes.has(t) ? 'bg-lime-100 border-lime-300 text-lime-800' : 'border-edge text-content-secondary hover:bg-surface-hover'
+                            selectedTropes.has(t) ? 'bg-brand-100 border-brand-300 text-brand-800' : 'border-edge text-content-secondary hover:bg-surface-hover'
                           }`}>
                             <input type="checkbox" className="hidden" checked={selectedTropes.has(t)} onChange={() => toggleTrope(t)} />
                             {t}
@@ -236,7 +236,7 @@ export default function SyncToCatalogPanel({
                       <button
                         onClick={applyBlurb}
                         disabled={!blurbDraft.trim() || savingBlurb}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control px-2 py-1 disabled:opacity-50"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-2 py-1 disabled:opacity-50"
                       >
                         {savingBlurb ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                         Use this blurb

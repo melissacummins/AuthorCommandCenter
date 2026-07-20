@@ -75,7 +75,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {duplicateFrom && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-3 py-2 rounded-control text-sm">
+        <div className="bg-brand-50 border border-brand-200 text-brand-800 px-3 py-2 rounded-control text-sm">
           Pricing & costs copied from <strong>{duplicateFrom.name}</strong>. Enter a new name and SKU below.
         </div>
       )}
@@ -86,7 +86,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
             type="text"
             value={form.name}
             onChange={e => updateField('name', e.target.value)}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
           />
         </div>
         <div>
@@ -95,7 +95,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
             type="text"
             value={form.sku}
             onChange={e => updateField('sku', e.target.value)}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
           />
         </div>
         <div>
@@ -103,7 +103,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
           <select
             value={form.category}
             onChange={e => updateField('category', e.target.value)}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
           >
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -152,7 +152,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
               type="text"
               value={form.books_in_bundle}
               onChange={e => updateField('books_in_bundle', e.target.value)}
-              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
             />
           </div>
         </div>
@@ -176,7 +176,7 @@ export default function AddProductForm({ onClose, onRefetch, duplicateFrom }: Ad
         <button
           type="submit"
           disabled={saving}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50"
+          className="px-4 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700 disabled:opacity-50"
         >
           {saving ? 'Adding...' : 'Add Product'}
         </button>
@@ -193,7 +193,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number;
         type="number"
         value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+        className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
       />
     </div>
   );

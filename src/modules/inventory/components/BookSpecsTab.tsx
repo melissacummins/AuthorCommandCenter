@@ -218,7 +218,7 @@ export default function BookSpecsTab() {
           <button
             onClick={() => setShowAddPicker(s => !s)}
             disabled={candidateProducts.length === 0}
-            className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700 disabled:opacity-50"
           >
             <Plus className="w-4 h-4" /> Add Book
           </button>
@@ -228,7 +228,7 @@ export default function BookSpecsTab() {
                 <button
                   key={p.id}
                   onClick={() => addBook(p.id)}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-blue-50 border-b border-edge-soft last:border-b-0"
+                  className="block w-full text-left px-3 py-2 text-sm hover:bg-brand-50 border-b border-edge-soft last:border-b-0"
                 >
                   <div className="text-content">{p.name}</div>
                   <div className="text-[11px] text-content-muted">{p.category}</div>
@@ -274,7 +274,7 @@ export default function BookSpecsTab() {
 
       {!hasLoaded ? (
         <div className="bg-surface rounded-card border border-edge p-12 text-center">
-          <div className="w-6 h-6 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-6 h-6 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mx-auto" />
         </div>
       ) : trackedBooks.length === 0 ? (
         <div className="bg-surface rounded-card border border-edge p-12 text-center text-content-muted italic">
@@ -361,7 +361,7 @@ function SelectCell({ value, options, onChange, onSave, saving }: { value: strin
       <select
         value={value}
         onChange={handleChange}
-        className={`min-w-[120px] w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm bg-surface focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`min-w-[120px] w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-brand-400 focus:bg-brand-50/20 rounded text-sm bg-surface focus:outline-none ${saving ? 'bg-brand-50/40' : ''}`}
       >
         <option value="">—</option>
         {isCustom && <option value={value}>{value}</option>}
@@ -381,7 +381,7 @@ function TextCell({ value, placeholder, onChange, onSave, saving, wide }: { valu
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
         onBlur={() => onSave(value)}
-        className={`${wide ? 'min-w-[180px]' : 'min-w-[110px]'} w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`${wide ? 'min-w-[180px]' : 'min-w-[110px]'} w-full px-2 py-1.5 border border-transparent hover:border-edge focus:border-brand-400 focus:bg-brand-50/20 rounded text-sm focus:outline-none ${saving ? 'bg-brand-50/40' : ''}`}
       />
     </td>
   );
@@ -397,7 +397,7 @@ function NumCell({ value, onChange, onSave, saving }: { value: number; onChange:
         placeholder="0"
         onChange={e => onChange(Number(e.target.value))}
         onBlur={() => onSave(value)}
-        className={`w-20 px-2 py-1.5 border border-transparent hover:border-edge focus:border-blue-400 focus:bg-blue-50/20 rounded text-sm text-right focus:outline-none ${saving ? 'bg-blue-50/40' : ''}`}
+        className={`w-20 px-2 py-1.5 border border-transparent hover:border-edge focus:border-brand-400 focus:bg-brand-50/20 rounded text-sm text-right focus:outline-none ${saving ? 'bg-brand-50/40' : ''}`}
       />
     </td>
   );

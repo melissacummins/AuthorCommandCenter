@@ -4,8 +4,8 @@ import type { AudiobookSegment, Speaker } from '../types';
 
 const SPEAKER_STYLE: Record<Speaker, string> = {
   narrator: 'bg-amber-100 text-amber-700 border-amber-200',
-  male: 'bg-blue-100 text-blue-700 border-blue-200',
-  female: 'bg-pink-100 text-pink-700 border-pink-200',
+  male: 'bg-brand-100 text-brand-700 border-brand-200',
+  female: 'bg-brand-100 text-brand-700 border-brand-200',
 };
 
 // Step 3 — the payoff for "no more manual selection": AI pre-filled who speaks

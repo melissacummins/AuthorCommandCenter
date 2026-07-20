@@ -65,7 +65,7 @@ export default function ContentCreatorModule() {
     <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-content flex items-center gap-2">
-          <Clapperboard className="w-6 h-6 text-pink-500" /> Content Creator
+          <Clapperboard className="w-6 h-6 text-brand-500" /> Content Creator
         </h1>
         <p className="text-content-secondary mt-1">
           Scan your manuscript for hooks, then turn them into slideshows, Kindle screenshots, and videos.
@@ -154,7 +154,7 @@ function HashtagsChip({ book }: { book: Book }) {
     <button
       onClick={() => { navigator.clipboard.writeText(line).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => undefined); }}
       title="Copy post hashtags (built from this book's subgenre, tropes, and heat)"
-      className="text-xs text-sky-600 hover:text-sky-800 truncate max-w-xs text-left"
+      className="text-xs text-brand-600 hover:text-brand-800 truncate max-w-xs text-left"
     >
       {copied ? 'Copied!' : line}
     </button>

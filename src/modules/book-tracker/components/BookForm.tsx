@@ -138,7 +138,7 @@ export default function BookForm({ initial, saving, onCancel, onSubmit, onDelete
           <button
             type="submit"
             disabled={saving || !draft.catalog_book_id}
-            className="px-4 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700 disabled:opacity-50 shadow-sm"
+            className="px-4 py-2 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700 disabled:opacity-50 shadow-sm"
           >
             {saving ? 'Saving…' : initial ? 'Save changes' : 'Add book'}
           </button>

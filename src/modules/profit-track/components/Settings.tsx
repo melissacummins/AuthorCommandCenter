@@ -87,22 +87,22 @@ export const Settings: React.FC<SettingsProps> = ({
 
       <FirebaseImport />
 
-      <div className="bg-surface p-8 rounded-card shadow-sm border border-gray-100">
-        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-          <RefreshCw className="w-6 h-6 mr-2 text-gray-700" />
+      <div className="bg-surface p-8 rounded-card shadow-sm border border-edge-soft">
+        <h2 className="text-xl font-bold text-content mb-6 flex items-center">
+          <RefreshCw className="w-6 h-6 mr-2 text-content" />
           Data Management
         </h2>
 
         <div className="space-y-8">
           {/* Backup Section */}
-          <div className="pb-8 border-b border-gray-100">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Backup Data</h3>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="pb-8 border-b border-edge-soft">
+            <h3 className="text-lg font-medium text-content mb-2">Backup Data</h3>
+            <p className="text-sm text-content-secondary mb-4">
               Download a complete copy of your financial records, notes, order configurations, and history to your computer.
             </p>
             <button 
               onClick={handleDownload}
-              className="flex items-center px-4 py-2 bg-blue-50 text-blue-700 border border-blue-200 rounded-control hover:bg-blue-100 transition-colors font-medium"
+              className="flex items-center px-4 py-2 bg-brand-50 text-brand-700 border border-brand-200 rounded-control hover:bg-brand-100 transition-colors font-medium"
             >
               <Download className="w-4 h-4 mr-2" />
               Download Backup (.json)
@@ -110,9 +110,9 @@ export const Settings: React.FC<SettingsProps> = ({
           </div>
 
           {/* Restore Section */}
-          <div className="pb-8 border-b border-gray-100">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Restore Data</h3>
-            <p className="text-sm text-gray-500 mb-4">
+          <div className="pb-8 border-b border-edge-soft">
+            <h3 className="text-lg font-medium text-content mb-2">Restore Data</h3>
+            <p className="text-sm text-content-secondary mb-4">
               Import a previously saved backup file. <span className="text-red-600 font-medium">Warning: This will overwrite your current data.</span>
             </p>
             <div className="flex items-center">
@@ -125,7 +125,7 @@ export const Settings: React.FC<SettingsProps> = ({
                />
                <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center px-4 py-2 bg-surface text-gray-700 border border-gray-300 rounded-control hover:bg-gray-50 transition-colors font-medium shadow-sm"
+                  className="flex items-center px-4 py-2 bg-surface text-content border border-edge-strong rounded-control hover:bg-surface-hover transition-colors font-medium shadow-sm"
                >
                   <Upload className="w-4 h-4 mr-2" />
                   Select File to Restore
@@ -139,7 +139,7 @@ export const Settings: React.FC<SettingsProps> = ({
               <AlertTriangle className="w-5 h-5 mr-2" />
               Danger Zone
             </h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-content-secondary mb-4">
               Permanently delete all application data.
             </p>
             <button 

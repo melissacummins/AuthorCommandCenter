@@ -51,8 +51,8 @@ export default function BookView({ book, penName, onBack, onEdit, onBookUpdated 
       </div>
 
       <div className="flex gap-4">
-        <div className="w-28 h-40 rounded-control bg-gradient-to-br from-indigo-100 to-violet-100 grid place-items-center shrink-0 overflow-hidden border border-edge">
-          {book.cover_url ? <img src={book.cover_url} alt="" className="w-full h-full object-cover" /> : <BookOpen className="w-8 h-8 text-indigo-400" />}
+        <div className="w-28 h-40 rounded-control bg-gradient-to-br from-brand-100 to-brand-100 grid place-items-center shrink-0 overflow-hidden border border-edge">
+          {book.cover_url ? <img src={book.cover_url} alt="" className="w-full h-full object-cover" /> : <BookOpen className="w-8 h-8 text-brand-400" />}
         </div>
         <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm content-start">
           <Fact label="Subgenre" value={book.subgenre} />
@@ -277,7 +277,7 @@ function AutofillPanel({ book, onApply }: { book: Book; onApply: (patch: BookUpd
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-content flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-pink-500" /> Fill from manuscript
+            <Sparkles className="w-4 h-4 text-brand-500" /> Fill from manuscript
           </h3>
           <p className="text-xs text-content-secondary mt-0.5">
             Scans "{manuscript.title}" and proposes tropes, heat, subgenre, warnings, keywords, and a draft blurb. Nothing is written until you accept it.
@@ -285,7 +285,7 @@ function AutofillPanel({ book, onApply }: { book: Book; onApply: (patch: BookUpd
         </div>
         {!progress && !proposals && (
           <button onClick={analyze}
-            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 flex items-center gap-2">
+            className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 flex items-center gap-2">
             <Wand2 className="w-4 h-4" /> Analyze manuscript
           </button>
         )}
@@ -302,7 +302,7 @@ function AutofillPanel({ book, onApply }: { book: Book; onApply: (patch: BookUpd
             </p>
           )}
           {rows.map(r => (
-            <label key={r.key} className={`flex items-start gap-3 p-3 rounded-control border cursor-pointer ${r.skip ? 'opacity-50 pointer-events-none border-edge-soft' : accepted.has(r.key) ? 'border-pink-300 bg-pink-50/40' : 'border-edge'}`}>
+            <label key={r.key} className={`flex items-start gap-3 p-3 rounded-control border cursor-pointer ${r.skip ? 'opacity-50 pointer-events-none border-edge-soft' : accepted.has(r.key) ? 'border-brand-300 bg-brand-50/40' : 'border-edge'}`}>
               <input
                 type="checkbox"
                 className="mt-1"
@@ -319,7 +319,7 @@ function AutofillPanel({ book, onApply }: { book: Book; onApply: (patch: BookUpd
           ))}
           <div className="flex items-center gap-3 pt-1">
             <button onClick={applyAccepted} disabled={applying || accepted.size === 0}
-              className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+              className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2">
               {applying && <Loader2 className="w-4 h-4 animate-spin" />} Apply {accepted.size} accepted
             </button>
             <button onClick={() => setProposals(null)} className="text-sm text-content-secondary hover:text-content">Discard</button>

@@ -79,7 +79,7 @@ export default function ScreenshotsTab({ book, manuscript }: { book: Book; manus
             </p>
           </div>
           <button onClick={() => setCreating(true)}
-            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 flex items-center gap-2">
+            className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 flex items-center gap-2">
             <Plus className="w-4 h-4" /> New screenshot
           </button>
         </div>
@@ -192,13 +192,13 @@ function NewScreenshotForm({ userId, book, manuscript, hooks, onCancel, onCreate
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="Paste or pull the scene text, then trim it down to the part you want on the page…"
-        className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none font-serif"
+        className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 outline-none font-serif"
       />
       <p className="text-[11px] text-content-muted">{text.length} characters — a page reads best under ~1,200.</p>
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="px-3 py-2 text-sm text-content-secondary hover:text-content">Cancel</button>
         <button onClick={create} disabled={busy || !text.trim()}
-          className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50">
+          className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
           Create page
         </button>
       </div>
@@ -424,7 +424,7 @@ function ToolButton({ active, onClick, label, children }: {
 }) {
   return (
     <button onClick={onClick} title={label}
-      className={`p-1.5 rounded-control ${active ? 'bg-pink-100 text-pink-700' : 'text-content-secondary hover:text-content hover:bg-surface-hover'}`}>
+      className={`p-1.5 rounded-control ${active ? 'bg-brand-100 text-brand-700' : 'text-content-secondary hover:text-content hover:bg-surface-hover'}`}>
       {children}
     </button>
   );

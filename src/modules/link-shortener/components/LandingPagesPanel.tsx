@@ -117,7 +117,7 @@ export default function LandingPagesPanel() {
         <h2 className="text-lg font-semibold text-content">Book landing pages</h2>
         <button
           onClick={() => setEditing('new')}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-brand-600 hover:bg-brand-700 text-brand-fg text-sm font-medium"
         >
           <Plus className="w-4 h-4" /> New page
         </button>
@@ -150,7 +150,7 @@ export default function LandingPagesPanel() {
                 href={buildShortUrl(p.slug)}
                 target="_blank"
                 rel="noreferrer"
-                className="p-1.5 text-content-muted hover:text-indigo-600 rounded-control hover:bg-surface-hover"
+                className="p-1.5 text-content-muted hover:text-brand-600 rounded-control hover:bg-surface-hover"
                 title="Open page"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -347,7 +347,7 @@ function LandingPageEditor({
 
       <div className="space-y-5">
         {/* Auto-fill */}
-        <div className="rounded-card border border-indigo-200 bg-indigo-50/40 p-4">
+        <div className="rounded-card border border-brand-200 bg-brand-50/40 p-4">
           <label className="text-sm font-medium text-content">Pull from a retail link</label>
           <p className="text-xs text-content-secondary mb-2">Paste the book's first store link — we'll grab the cover, title, and blurb.</p>
           <div className="flex gap-2">
@@ -355,12 +355,12 @@ function LandingPageEditor({
               value={draft.sourceUrl}
               onChange={(e) => set('sourceUrl', e.target.value)}
               placeholder="https://www.amazon.com/dp/…"
-              className="flex-1 px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="flex-1 px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
             <button
               onClick={handleFetch}
               disabled={fetching || !draft.sourceUrl.trim()}
-              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-control bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-control bg-brand-600 text-brand-fg hover:bg-brand-700 disabled:opacity-50"
             >
               {fetching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
               Fetch
@@ -373,7 +373,7 @@ function LandingPageEditor({
             value={draft.slug}
             onChange={(e) => set('slug', e.target.value.replace(/\s+/g, '-'))}
             placeholder="forbidden"
-            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong font-mono focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
         </Field>
 
@@ -382,7 +382,7 @@ function LandingPageEditor({
             value={draft.title}
             onChange={(e) => set('title', e.target.value)}
             placeholder="e.g. Vicious Beast"
-            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
         </Field>
 
@@ -408,7 +408,7 @@ function LandingPageEditor({
           <select
             value={draft.pageTextMode}
             onChange={(e) => set('pageTextMode', e.target.value as BookTextMode)}
-            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300"
           >
             <option value="description">Full description</option>
             <option value="headline">Headline only</option>
@@ -439,7 +439,7 @@ function LandingPageEditor({
                 value={draft.coverUrl}
                 onChange={(e) => set('coverUrl', e.target.value)}
                 placeholder="…or paste an image URL"
-                className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-brand-300"
               />
             </div>
             {draft.coverUrl.trim() && (
@@ -452,7 +452,7 @@ function LandingPageEditor({
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className="text-sm font-medium text-content">Retailer buttons</label>
-            <button onClick={addButton} className="inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline">
+            <button onClick={addButton} className="inline-flex items-center gap-1 text-xs text-brand-700 hover:underline">
               <Plus className="w-3.5 h-3.5" /> Add button
             </button>
           </div>
@@ -478,7 +478,7 @@ function LandingPageEditor({
                           updateButton(i, { label: v });
                         }
                       }}
-                      className="w-40 px-2.5 py-1.5 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      className="w-40 px-2.5 py-1.5 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-1 focus:ring-brand-400"
                     >
                       <option value="">Choose retailer…</option>
                       {KNOWN_RETAILERS.map((r) => (
@@ -491,14 +491,14 @@ function LandingPageEditor({
                         value={b.label}
                         onChange={(e) => updateButton(i, { label: e.target.value })}
                         placeholder="Name"
-                        className="w-28 px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                        className="w-28 px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-brand-400"
                       />
                     )}
                     <input
                       value={b.url}
                       onChange={(e) => updateButton(i, { url: e.target.value })}
                       placeholder="https://…"
-                      className="flex-1 px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                      className="flex-1 px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-brand-400"
                     />
                     <button onClick={() => removeButton(i)} className="p-1.5 text-content-muted hover:text-rose-600 rounded-control hover:bg-rose-50 shrink-0">
                       <X className="w-4 h-4" />
@@ -517,14 +517,14 @@ function LandingPageEditor({
               value={draft.sampleUrl}
               onChange={(e) => set('sampleUrl', e.target.value)}
               placeholder="https://…"
-              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-brand-300"
             />
             <input
               value={draft.sampleLabel}
               onChange={(e) => set('sampleLabel', e.target.value)}
               placeholder="Read a sample"
               disabled={!draft.sampleUrl.trim()}
-              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-surface-hover disabled:text-content-muted"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-surface-hover disabled:text-content-muted"
             />
           </div>
         </Field>
@@ -533,7 +533,7 @@ function LandingPageEditor({
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="text-sm font-medium text-content">Reviews</label>
-            <button onClick={addReview} className="inline-flex items-center gap-1 text-xs text-indigo-700 hover:underline">
+            <button onClick={addReview} className="inline-flex items-center gap-1 text-xs text-brand-700 hover:underline">
               <Plus className="w-3.5 h-3.5" /> Add review
             </button>
           </div>
@@ -578,7 +578,7 @@ function LandingPageEditor({
                     value={r.attribution}
                     onChange={(e) => updateReview(i, { attribution: e.target.value })}
                     placeholder="Who said it (e.g. Goodreads, Sarah K., Publishers Weekly)"
-                    className="w-full px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                    className="w-full px-2.5 py-1.5 text-sm rounded-control border border-edge focus:outline-none focus:ring-1 focus:ring-brand-400"
                   />
                 </div>
               ))}
@@ -595,7 +595,7 @@ function LandingPageEditor({
             <select
               value={draft.seriesPageId ?? ''}
               onChange={(e) => set('seriesPageId', e.target.value || null)}
-              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300"
             >
               <option value="">Don't show other books</option>
               {seriesOptions.map((s) => (
@@ -606,7 +606,7 @@ function LandingPageEditor({
               value={draft.crossSellLabel}
               onChange={(e) => set('crossSellLabel', e.target.value as CrossSellLabel)}
               disabled={!draft.seriesPageId}
-              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300 disabled:bg-surface-hover disabled:text-content-muted"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300 disabled:bg-surface-hover disabled:text-content-muted"
             >
               <option value="series">Read the complete series</option>
               <option value="world">More standalones in this world</option>
@@ -631,7 +631,7 @@ function LandingPageEditor({
                   type="button"
                   onClick={() => set('theme', th.id)}
                   aria-label={th.name}
-                  className={`relative w-[78px] rounded-card overflow-hidden border-2 transition ${active ? 'border-indigo-500' : 'border-transparent hover:border-edge-strong'}`}
+                  className={`relative w-[78px] rounded-card overflow-hidden border-2 transition ${active ? 'border-brand-500' : 'border-transparent hover:border-edge-strong'}`}
                 >
                   <div style={{ background: th.bg }} className="h-10 flex items-end justify-center px-2 pb-1.5">
                     <span style={{ background: th.surface }} className="block w-full h-2.5 rounded-sm shadow-sm" />
@@ -641,7 +641,7 @@ function LandingPageEditor({
                     <span style={{ background: th.accent }} className="w-2 h-2 rounded-full" />
                   </div>
                   {active && (
-                    <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 text-white grid place-items-center">
+                    <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-brand-500 text-brand-fg grid place-items-center">
                       <Check className="w-2.5 h-2.5" />
                     </span>
                   )}
@@ -671,7 +671,7 @@ function LandingPageEditor({
           <button
             onClick={handleSave}
             disabled={saving}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {page ? 'Save changes' : 'Create page'}

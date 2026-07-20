@@ -50,13 +50,13 @@ export default function PenNamesSection() {
     <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-3">
-          <Users className="w-5 h-5 text-purple-600" />
+          <Users className="w-5 h-5 text-brand-600" />
           <h2 className="text-lg font-semibold text-content">Pen names</h2>
         </div>
         {!creating && (
           <button
             onClick={() => setCreating(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700"
           >
             <Plus className="w-4 h-4" /> New pen name
           </button>
@@ -157,7 +157,7 @@ function PenNameRowEdit({
   }
 
   return (
-    <form onSubmit={submit} className="border border-purple-300 bg-purple-50/40 rounded-card p-3 space-y-2">
+    <form onSubmit={submit} className="border border-brand-300 bg-brand-50/40 rounded-card p-3 space-y-2">
       <div className="flex gap-2 items-center">
         <input
           autoFocus

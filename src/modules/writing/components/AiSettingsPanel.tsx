@@ -62,7 +62,7 @@ export default function AiSettingsPanel({ onChange }: { onChange?: (settings: Ai
       <button
         onClick={() => setOpen(v => !v)}
         title="AI settings"
-        className={`p-1.5 rounded-control hover:bg-surface-hover ${open ? 'text-lime-600 bg-surface-hover' : 'text-content-muted hover:text-lime-600'}`}
+        className={`p-1.5 rounded-control hover:bg-surface-hover ${open ? 'text-brand-600 bg-surface-hover' : 'text-content-muted hover:text-brand-600'}`}
       >
         <Settings2 className="w-4 h-4" />
       </button>
@@ -76,7 +76,7 @@ export default function AiSettingsPanel({ onChange }: { onChange?: (settings: Ai
                 <button
                   key={p}
                   onClick={() => update({ provider: p, model: '' })}
-                  className={`flex-1 px-2 py-1.5 font-medium ${settings.provider === p ? 'bg-lime-600 text-white' : 'bg-surface text-content-secondary hover:bg-surface-hover'}`}
+                  className={`flex-1 px-2 py-1.5 font-medium ${settings.provider === p ? 'bg-brand-600 text-brand-fg' : 'bg-surface text-content-secondary hover:bg-surface-hover'}`}
                 >
                   {PROVIDER_LABELS[p]}
                 </button>

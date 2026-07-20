@@ -12,7 +12,7 @@ export default function OrdersModule() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -37,23 +37,23 @@ export default function OrdersModule() {
         </div>
 
         {/* Setup Instructions */}
-        <div className="mt-6 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-card p-6">
-          <h3 className="font-semibold text-indigo-800 mb-3">How to get your API credentials</h3>
-          <ol className="space-y-2 text-sm text-indigo-700">
+        <div className="mt-6 bg-gradient-to-r from-brand-50 to-brand-50 border border-brand-200 rounded-card p-6">
+          <h3 className="font-semibold text-brand-800 mb-3">How to get your API credentials</h3>
+          <ol className="space-y-2 text-sm text-brand-700">
             <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">1.</span>
+              <span className="font-bold text-brand-500 shrink-0">1.</span>
               Go to your <strong>Shopify Partners Dashboard</strong> or <strong>Store Admin &gt; Settings &gt; Apps &gt; Develop apps</strong>
             </li>
             <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">2.</span>
+              <span className="font-bold text-brand-500 shrink-0">2.</span>
               Create a new app (name it "Command Center" or anything you like)
             </li>
             <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">3.</span>
-              Under <strong>Configuration</strong>, enable these Admin API scopes: <code className="bg-indigo-100 px-1 rounded">read_orders</code>, <code className="bg-indigo-100 px-1 rounded">read_products</code>, <code className="bg-indigo-100 px-1 rounded">write_products</code>, <code className="bg-indigo-100 px-1 rounded">write_discounts</code>, <code className="bg-indigo-100 px-1 rounded">read_locations</code>
+              <span className="font-bold text-brand-500 shrink-0">3.</span>
+              Under <strong>Configuration</strong>, enable these Admin API scopes: <code className="bg-brand-100 px-1 rounded">read_orders</code>, <code className="bg-brand-100 px-1 rounded">read_products</code>, <code className="bg-brand-100 px-1 rounded">write_products</code>, <code className="bg-brand-100 px-1 rounded">write_discounts</code>, <code className="bg-brand-100 px-1 rounded">read_locations</code>
             </li>
             <li className="flex gap-2">
-              <span className="font-bold text-indigo-500 shrink-0">4.</span>
+              <span className="font-bold text-brand-500 shrink-0">4.</span>
               Install the app on your store, then copy the <strong>Admin API access token</strong>
             </li>
           </ol>

@@ -181,7 +181,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
         <button
           onClick={save}
           disabled={saving}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control shadow-sm shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control shadow-sm shrink-0"
         >
           <Save className="w-4 h-4" /> {saving ? 'Saving…' : 'Save'}
         </button>
@@ -224,7 +224,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
       </div>
 
       {/* Metadata indexing banner */}
-      <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-control text-sm text-indigo-800 flex items-start gap-2">
+      <div className="bg-brand-50 border border-brand-100 p-3 rounded-control text-sm text-brand-800 flex items-start gap-2">
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
           <span className="font-semibold">Metadata indexing:</span> words from your Title, Subtitle,
@@ -233,7 +233,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
           considered "covered". Keywords below that are <s>crossed out</s> are already present in these
           sources.
           {metadataWords.size > 0 && (
-            <div className="mt-1 text-xs text-indigo-600 opacity-80">
+            <div className="mt-1 text-xs text-brand-600 opacity-80">
               <strong>Active metadata:</strong> {Array.from(metadataWords).sort().join(', ')}
             </div>
           )}
@@ -247,7 +247,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
             <span className="font-semibold text-content">Assigned tropes</span>
             <span className="text-content-secondary ml-1">({assignedTropes.length})</span>
           </div>
-          <button onClick={() => setShowAssignTropes(v => !v)} className="text-sm text-indigo-600 hover:text-indigo-800">
+          <button onClick={() => setShowAssignTropes(v => !v)} className="text-sm text-brand-600 hover:text-brand-800">
             {showAssignTropes ? 'Done' : 'Edit tropes'}
           </button>
         </div>
@@ -290,7 +290,7 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
                 value={filterText}
                 onChange={e => setFilterText(e.target.value)}
                 placeholder="Filter keywords"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-1 focus:ring-brand-500"
               />
             </div>
             {assignedTropes.length > 0 && (
@@ -327,11 +327,11 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
                       <tr
                         key={kw.id}
                         onClick={() => toggleKeyword(kw.id)}
-                        className={`cursor-pointer transition ${isSelected ? 'bg-indigo-50' : 'hover:bg-surface-hover'}`}
+                        className={`cursor-pointer transition ${isSelected ? 'bg-brand-50' : 'hover:bg-surface-hover'}`}
                       >
                         <td className="px-3 py-2">
                           {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-indigo-600" />
+                            <CheckSquare className="w-4 h-4 text-brand-600" />
                           ) : (
                             <Square className="w-4 h-4 text-content-faint" />
                           )}
@@ -384,21 +384,21 @@ export default function BookOptimizer({ book, tropes, keywords, catalogBooks, on
 
         {/* RIGHT: Optimization */}
         <div className="space-y-4 lg:sticky lg:top-4 self-start">
-          <div className="bg-indigo-900 text-white p-5 rounded-card shadow-sm">
+          <div className="bg-brand-900 text-white p-5 rounded-card shadow-sm">
             <h3 className="text-lg font-semibold mb-2 flex items-center gap-2">
               <TrendingUp className="w-5 h-5" /> Optimization stats
             </h3>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="block text-indigo-200 text-xs">Selected phrases</span>
+                <span className="block text-brand-200 text-xs">Selected phrases</span>
                 <span className="text-2xl font-bold">{selectedKeywords.length}</span>
               </div>
               <div>
-                <span className="block text-indigo-200 text-xs">Total search volume</span>
+                <span className="block text-brand-200 text-xs">Total search volume</span>
                 <span className="text-2xl font-bold">{fmtNum(totalVolume)}</span>
               </div>
             </div>
-            <p className="mt-4 text-xs text-indigo-200 bg-indigo-800/50 p-3 rounded">
+            <p className="mt-4 text-xs text-brand-200 bg-brand-800/50 p-3 rounded">
               Algorithm excludes words already in your Title, Subtitle, Series, and Amazon
               Categories — Tropes are organization buckets and aren't indexed by Amazon.
             </p>
@@ -456,14 +456,14 @@ function KeywordBox({ index, content }: { index: number; content: string }) {
           value={content}
           placeholder="Empty"
           className={`w-full p-3 pr-10 rounded-control font-mono text-sm text-content border ${
-            isEmpty ? 'bg-surface-hover border-edge' : 'bg-surface border-indigo-200'
+            isEmpty ? 'bg-surface-hover border-edge' : 'bg-surface border-brand-200'
           } ${isOver ? 'border-rose-500' : ''}`}
         />
         {!isEmpty && (
           <button
             onClick={copy}
             title="Copy"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-content-faint hover:text-indigo-600"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-content-faint hover:text-brand-600"
           >
             <Copy className="w-4 h-4" />
           </button>

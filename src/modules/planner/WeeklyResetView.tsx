@@ -136,7 +136,7 @@ export default function WeeklyResetView({
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-1">
-        <RotateCcw className="w-6 h-6 text-violet-500" />
+        <RotateCcw className="w-6 h-6 text-brand-500" />
         <h2 className="text-2xl font-bold text-content">Weekly Reset</h2>
       </div>
       <p className="text-sm text-content-muted mb-5">Reflect on last week and set up this one. Snap a photo of your handwritten page or fill it in here.</p>
@@ -146,30 +146,30 @@ export default function WeeklyResetView({
         <button onClick={onPrevWeek} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken" title="Previous week"><ChevronLeft className="w-5 h-5" /></button>
         <div className="text-sm font-semibold text-content text-center">
           {weekLabel(weekStart)}
-          {thisWeek && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-violet-600">This week</span>}
+          {thisWeek && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-brand-600">This week</span>}
         </div>
         <button onClick={onNextWeek} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken" title="Next week"><ChevronRight className="w-5 h-5" /></button>
       </div>
       {!thisWeek && (
         <div className="text-center -mt-3 mb-4">
-          <button onClick={onThisWeek} className="text-xs font-medium text-violet-600 hover:text-violet-700">Jump to this week</button>
+          <button onClick={onThisWeek} className="text-xs font-medium text-brand-600 hover:text-brand-700">Jump to this week</button>
         </div>
       )}
 
       {/* Add from photo */}
-      <div className="rounded-card border border-violet-200 bg-violet-50/50 p-4 mb-6">
+      <div className="rounded-card border border-brand-200 bg-brand-50/50 p-4 mb-6">
         <div className="flex items-center gap-3 flex-wrap">
           <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={e => onPickPhotos(e.target.files)} />
           <button
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="inline-flex items-center gap-2 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 disabled:opacity-60 rounded-control px-3 py-2"
+            className="inline-flex items-center gap-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:opacity-60 rounded-control px-3 py-2"
           >
             {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
             {busy ? (progress && progress.n > 1 ? `Reading page ${progress.i} of ${progress.n}…` : 'Reading your reset…') : 'Add from photo'}
           </button>
           <p className="text-xs text-content-secondary flex items-center gap-1">
-            <Sparkles className="w-3.5 h-3.5 text-violet-400" /> Transcribes with your own AI key. Photos aren’t stored.
+            <Sparkles className="w-3.5 h-3.5 text-brand-400" /> Transcribes with your own AI key. Photos aren’t stored.
           </p>
         </div>
         {error && (
@@ -205,7 +205,7 @@ export default function WeeklyResetView({
                     onBlur={() => saveField(f.key)}
                     placeholder={f.placeholder}
                     rows={3}
-                    className="w-full text-sm rounded-card border border-edge bg-surface px-3 py-2 outline-none focus:border-violet-300 text-content placeholder:text-content-faint resize-y"
+                    className="w-full text-sm rounded-card border border-edge bg-surface px-3 py-2 outline-none focus:border-brand-300 text-content placeholder:text-content-faint resize-y"
                   />
                 </div>
               )}
@@ -218,13 +218,13 @@ export default function WeeklyResetView({
       <div className="flex items-center justify-between mb-1">
         <div>
           <h3 className="text-sm font-bold text-content">Brain dump</h3>
-          <p className="text-xs text-content-muted">Everything on your mind. Tag each: <Star className="inline w-3 h-3 text-amber-400 -mt-0.5" /> priority · <Zap className="inline w-3 h-3 text-teal-500 -mt-0.5" /> quick (15m) · <Heart className="inline w-3 h-3 text-rose-400 -mt-0.5" /> feel-good · <CalendarDays className="inline w-3 h-3 text-violet-500 -mt-0.5" /> schedule a day · <CalendarClock className="inline w-3 h-3 text-sky-500 -mt-0.5" /> meeting (date).</p>
+          <p className="text-xs text-content-muted">Everything on your mind. Tag each: <Star className="inline w-3 h-3 text-amber-400 -mt-0.5" /> priority · <Zap className="inline w-3 h-3 text-brand-500 -mt-0.5" /> quick (15m) · <Heart className="inline w-3 h-3 text-rose-400 -mt-0.5" /> feel-good · <CalendarDays className="inline w-3 h-3 text-brand-500 -mt-0.5" /> schedule a day · <CalendarClock className="inline w-3 h-3 text-brand-500 -mt-0.5" /> meeting (date).</p>
         </div>
         {itemCount > 0 && (
           <button
             onClick={approve}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 disabled:opacity-60 rounded-control px-3 py-1.5 shrink-0"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:opacity-60 rounded-control px-3 py-1.5 shrink-0"
           >
             <Check className="w-4 h-4" /> Approve &amp; create {itemCount} to-do{itemCount === 1 ? '' : 's'}
           </button>
@@ -284,7 +284,7 @@ export default function WeeklyResetView({
           </li>
         ))}
       </ul>
-      <button onClick={addItem} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-content-muted hover:text-violet-600">
+      <button onClick={addItem} className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-content-muted hover:text-brand-600">
         <Plus className="w-3.5 h-3.5" /> add an item
       </button>
     </div>
@@ -330,9 +330,9 @@ function TagButton({
   children: ReactNode;
 }) {
   const on = tone === 'amber' ? 'text-amber-500 bg-amber-50 ring-amber-200'
-    : tone === 'teal' ? 'text-teal-600 bg-teal-50 ring-teal-200'
-      : tone === 'sky' ? 'text-sky-600 bg-sky-50 ring-sky-200'
-        : tone === 'violet' ? 'text-violet-600 bg-violet-50 ring-violet-200'
+    : tone === 'teal' ? 'text-brand-600 bg-brand-50 ring-brand-200'
+      : tone === 'sky' ? 'text-brand-600 bg-brand-50 ring-brand-200'
+        : tone === 'violet' ? 'text-brand-600 bg-brand-50 ring-brand-200'
           : 'text-rose-500 bg-rose-50 ring-rose-200';
   return (
     <button

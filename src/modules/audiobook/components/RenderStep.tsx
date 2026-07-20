@@ -64,7 +64,7 @@ export default function RenderStep({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <button onClick={() => renderList(allSegments)} disabled={busy || pendingCount === 0}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-50">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <AudioLines className="w-4 h-4" />}
           {busy && progress ? `Rendering ${progress.done}/${progress.total}` : `Render ${pendingCount || 'all'} pending`}
         </button>
@@ -118,7 +118,7 @@ function ChapterRender({
         <span className="flex-1 text-sm font-medium text-content truncate">{chapter.title}</span>
         <span className="text-xs text-content-muted">{rendered}/{segments.length}</span>
         <button onClick={() => onRenderChapter(segments)} disabled={disabledControls || pending === 0}
-          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-control border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">
+          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-control border border-brand-200 text-brand-700 hover:bg-brand-50 disabled:opacity-50">
           <AudioLines className="w-3.5 h-3.5" /> Render
         </button>
         <button onClick={onDownload} disabled={downloading || rendered === 0}
@@ -132,7 +132,7 @@ function ChapterRender({
           {segments.map((s, j) => (
             <div key={s.id} className="flex items-center gap-3 p-2 rounded-control border border-edge-soft text-sm">
               <span className="text-xs text-content-muted w-8 shrink-0">{j + 1}</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded ${s.speaker === 'female' ? 'bg-pink-50 text-pink-600' : s.speaker === 'male' ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+              <span className={`text-xs px-1.5 py-0.5 rounded ${s.speaker === 'female' ? 'bg-brand-50 text-brand-600' : s.speaker === 'male' ? 'bg-brand-50 text-brand-600' : 'bg-amber-50 text-amber-600'}`}>
                 {s.speaker}
               </span>
               <span className="flex-1 truncate text-content-secondary">{s.text}</span>
@@ -140,7 +140,7 @@ function ChapterRender({
                 <span className="text-xs text-amber-600">no voice</span>
               ) : s.status === 'rendered' && s.audio_path ? (
                 <>
-                  <button onClick={() => onPlay(s.audio_path!)} className="text-content-muted hover:text-violet-600"><Play className="w-4 h-4" /></button>
+                  <button onClick={() => onPlay(s.audio_path!)} className="text-content-muted hover:text-brand-600"><Play className="w-4 h-4" /></button>
                   <button onClick={() => onRenderOne(s)} title="Re-render" className="text-content-faint hover:text-content-secondary"><RefreshCw className="w-3.5 h-3.5" /></button>
                 </>
               ) : s.status === 'error' ? (

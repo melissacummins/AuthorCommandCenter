@@ -101,7 +101,7 @@ export default function SendTo({ getFiles, disabled }: SendToProps) {
       {state.phase === 'needs-connect' && (
         <button
           onClick={() => connectThenSend(state.service)}
-          className="px-2.5 py-1.5 rounded-control bg-indigo-600 text-white text-[11px] font-medium hover:bg-indigo-500"
+          className="px-2.5 py-1.5 rounded-control bg-brand-600 text-brand-fg text-[11px] font-medium hover:bg-brand-500"
         >
           Connect {SERVICE_LABELS[state.service]} & send
         </button>

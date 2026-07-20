@@ -89,8 +89,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
 
   if (data.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 text-gray-500">
-        <PieChartIcon className="w-16 h-16 mb-4 text-gray-300" />
+      <div className="flex flex-col items-center justify-center h-96 text-content-secondary">
+        <PieChartIcon className="w-16 h-16 mb-4 text-content-faint" />
         <p className="text-lg font-medium">No data available yet.</p>
         <p className="text-sm">Go to "Add Data" to import your Excel sheet or add entries.</p>
       </div>
@@ -121,7 +121,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
           value={formatCurrency(aggregates.net)} 
           subValue={`Margin: ${formatPercent(aggregates.margin)}`}
           icon={TrendingUp}
-          colorClass="text-indigo-600"
+          colorClass="text-brand-600"
         />
         <SummaryCard 
           title="Average ROAS" 
@@ -139,14 +139,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
             value={formatNumber(volumeAggregates.totalUnits)}
             subValue="Calculated using bundle multipliers"
             icon={Layers}
-            colorClass="text-blue-600"
+            colorClass="text-brand-600"
          />
          <SummaryCard 
             title="Total Page Reads" 
             value={formatNumber(volumeAggregates.totalReads)}
             subValue="KENP"
             icon={BookOpen}
-            colorClass="text-purple-600"
+            colorClass="text-brand-600"
          />
       </div>
 
@@ -154,8 +154,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Left: Yearly Revenue vs Spend */}
-        <div className="lg:col-span-2 bg-surface p-6 rounded-card shadow-sm border border-gray-100">
-          <h3 className="text-lg font-bold text-gray-800 mb-6">Revenue vs Ad Spend (Yearly)</h3>
+        <div className="lg:col-span-2 bg-surface p-6 rounded-card shadow-sm border border-edge-soft">
+          <h3 className="text-lg font-bold text-content mb-6">Revenue vs Ad Spend (Yearly)</h3>
           <div className="h-80 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={yearlyChartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -176,8 +176,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
         </div>
 
         {/* Right: Platform Breakdown */}
-        <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="text-lg font-bold text-gray-800 mb-2">Earnings by Platform</h3>
+        <div className="bg-surface p-6 rounded-card shadow-sm border border-edge-soft flex flex-col">
+          <h3 className="text-lg font-bold text-content mb-2">Earnings by Platform</h3>
           <div className="flex-1 min-h-[300px] relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -204,9 +204,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
                 <div key={p.name} className="flex items-center justify-between text-sm">
                    <div className="flex items-center">
                       <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: p.color }}></div>
-                      <span className="text-gray-600">{p.name}</span>
+                      <span className="text-content-secondary">{p.name}</span>
                    </div>
-                   <span className="font-bold text-gray-900">{formatCurrency(p.value)}</span>
+                   <span className="font-bold text-content">{formatCurrency(p.value)}</span>
                 </div>
              ))}
           </div>
@@ -214,8 +214,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ data, monthlyOrders, month
       </div>
 
       {/* Fourth Row: Year-Over-Year Growth Trend */}
-      <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
-        <h3 className="text-lg font-bold text-gray-800 mb-6">Year-Over-Year Revenue Growth</h3>
+      <div className="bg-surface p-6 rounded-card shadow-sm border border-edge-soft">
+        <h3 className="text-lg font-bold text-content mb-6">Year-Over-Year Revenue Growth</h3>
         <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={yearlyChartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>

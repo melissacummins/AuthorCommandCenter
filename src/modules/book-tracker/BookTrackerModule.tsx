@@ -209,7 +209,7 @@ function BookList({
       <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-content flex items-center gap-2">
-            <BookOpen className="w-6 h-6 text-purple-500" /> Book Tracker
+            <BookOpen className="w-6 h-6 text-brand-500" /> Book Tracker
           </h1>
           <p className="text-sm text-content-secondary mt-1">
             Track development costs per book and watch each title pay for itself.
@@ -224,7 +224,7 @@ function BookList({
           </button>
           <button
             onClick={onNew}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700 shadow-sm"
           >
             <Plus className="w-4 h-4" /> New book
           </button>
@@ -379,7 +379,7 @@ function EmptyState({ tab, onNew, onImport, hasAny }: { tab: Tab; onNew: () => v
       <div className="flex justify-center gap-2">
         <button
           onClick={onNew}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700"
         >
           <Plus className="w-4 h-4" /> New book
         </button>

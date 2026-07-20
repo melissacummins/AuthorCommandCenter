@@ -180,7 +180,7 @@ function AudiobookInner({ userId }: { userId: string }) {
           value={project.title}
           onChange={e => setProject(prev => (prev ? { ...prev, title: e.target.value } : prev))}
           onBlur={e => patch({ title: e.target.value.trim() || 'Untitled audiobook' })}
-          className="text-xl font-bold text-content bg-transparent border-b border-transparent hover:border-edge focus:border-violet-400 outline-none flex-1 min-w-0"
+          className="text-xl font-bold text-content bg-transparent border-b border-transparent hover:border-edge focus:border-brand-400 outline-none flex-1 min-w-0"
         />
       </div>
 
@@ -189,7 +189,7 @@ function AudiobookInner({ userId }: { userId: string }) {
           const active = step === s.id;
           return (
             <button key={s.id} onClick={() => setStep(s.id)}
-              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${active ? 'border-violet-600 text-violet-700' : 'border-transparent text-content-secondary hover:text-content'}`}>
+              className={`inline-flex items-center gap-1.5 px-3 sm:px-4 py-2.5 text-sm font-medium border-b-2 -mb-px ${active ? 'border-brand-600 text-brand-700' : 'border-transparent text-content-secondary hover:text-content'}`}>
               <s.Icon className="w-4 h-4" /> <span className="hidden sm:inline">{s.label}</span>
             </button>
           );

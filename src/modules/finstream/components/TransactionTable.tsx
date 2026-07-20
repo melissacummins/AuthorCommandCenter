@@ -218,7 +218,7 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
       </div>
     );
   }
@@ -236,7 +236,7 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input type="text" placeholder="Search description, category, or amount..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-cyan-400" />
+            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
 
         <select value={monthFilter} onChange={e => setMonthFilter(e.target.value)}
@@ -277,12 +277,12 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
 
       {/* Bulk Action Bar */}
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-cyan-50 border border-cyan-200 rounded-card">
-          <span className="text-sm font-medium text-cyan-800">{selected.size} selected</span>
-          <div className="h-5 w-px bg-cyan-200" />
+        <div className="flex flex-wrap items-center gap-3 p-3 bg-brand-50 border border-brand-200 rounded-card">
+          <span className="text-sm font-medium text-brand-800">{selected.size} selected</span>
+          <div className="h-5 w-px bg-brand-200" />
 
           <select value={bulkAction} onChange={e => { setBulkAction(e.target.value as typeof bulkAction); setBulkValue(''); }}
-            className="px-2 py-1.5 border border-cyan-300 rounded-control text-sm bg-surface">
+            className="px-2 py-1.5 border border-brand-300 rounded-control text-sm bg-surface">
             <option value="">Choose action...</option>
             <option value="category">Set Category</option>
             <option value="description">Rename</option>
@@ -301,11 +301,11 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
           {bulkAction === 'description' && (
             <input type="text" value={bulkValue} onChange={e => setBulkValue(e.target.value)}
               placeholder="New description..."
-              className="px-3 py-1.5 border border-cyan-300 rounded-control text-sm w-52 bg-surface focus:outline-none focus:border-cyan-500" />
+              className="px-3 py-1.5 border border-brand-300 rounded-control text-sm w-52 bg-surface focus:outline-none focus:border-brand-500" />
           )}
           {bulkAction === 'type' && (
             <select value={bulkValue} onChange={e => setBulkValue(e.target.value)}
-              className="px-2 py-1.5 border border-cyan-300 rounded-control text-sm bg-surface">
+              className="px-2 py-1.5 border border-brand-300 rounded-control text-sm bg-surface">
               <option value="">Pick type...</option>
               <option value="income">Income</option>
               <option value="expense">Expense</option>
@@ -314,20 +314,20 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
 
           {bulkAction && bulkValue && (
             <button onClick={handleBulkApply} disabled={bulkProcessing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600 text-white text-sm font-medium rounded-control hover:bg-cyan-700 disabled:opacity-50">
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50">
               {bulkProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
               Apply
             </button>
           )}
 
-          <div className="h-5 w-px bg-cyan-200" />
+          <div className="h-5 w-px bg-brand-200" />
           <button onClick={handleBulkDelete} disabled={bulkProcessing}
             className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 text-sm font-medium rounded-control hover:bg-red-50 disabled:opacity-50">
             <Trash2 className="w-3 h-3" /> Delete
           </button>
 
           <button onClick={() => setSelected(new Set())}
-            className="ml-auto text-xs text-cyan-600 hover:text-cyan-700">Clear selection</button>
+            className="ml-auto text-xs text-brand-600 hover:text-brand-700">Clear selection</button>
         </div>
       )}
 
@@ -338,8 +338,8 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
             <thead className="sticky top-0 bg-surface-hover">
               <tr className="text-left">
                 <th className="px-3 py-3 w-10">
-                  <button onClick={toggleSelectAll} className="text-content-muted hover:text-cyan-600">
-                    {allFilteredSelected ? <CheckSquare className="w-4 h-4 text-cyan-600" /> : <Square className="w-4 h-4" />}
+                  <button onClick={toggleSelectAll} className="text-content-muted hover:text-brand-600">
+                    {allFilteredSelected ? <CheckSquare className="w-4 h-4 text-brand-600" /> : <Square className="w-4 h-4" />}
                   </button>
                 </th>
                 <th className="px-3 py-3 font-medium text-content-secondary w-28">Date</th>
@@ -352,10 +352,10 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
             </thead>
             <tbody className="divide-y divide-edge-soft">
               {filtered.slice(0, 500).map(tx => (
-                <tr key={tx.id} className={`hover:bg-surface-hover ${selected.has(tx.id) ? 'bg-cyan-50/50' : ''}`}>
+                <tr key={tx.id} className={`hover:bg-surface-hover ${selected.has(tx.id) ? 'bg-brand-50/50' : ''}`}>
                   <td className="px-3 py-3">
-                    <button onClick={() => toggleSelect(tx.id)} className="text-content-muted hover:text-cyan-600">
-                      {selected.has(tx.id) ? <CheckSquare className="w-4 h-4 text-cyan-600" /> : <Square className="w-4 h-4" />}
+                    <button onClick={() => toggleSelect(tx.id)} className="text-content-muted hover:text-brand-600">
+                      {selected.has(tx.id) ? <CheckSquare className="w-4 h-4 text-brand-600" /> : <Square className="w-4 h-4" />}
                     </button>
                   </td>
                   <td className="px-3 py-3 text-content-secondary whitespace-nowrap">{tx.date}</td>
@@ -364,18 +364,18 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
                       <div className="flex items-center gap-1">
                         <input type="text" value={editDescription} onChange={e => setEditDescription(e.target.value)}
                           onKeyDown={e => { if (e.key === 'Enter') handleSaveDescription(tx.id); if (e.key === 'Escape') setEditingId(null); }}
-                          className="w-full px-1 py-0.5 border border-cyan-400 rounded text-sm" autoFocus />
+                          className="w-full px-1 py-0.5 border border-brand-400 rounded text-sm" autoFocus />
                         <button onClick={() => handleSaveDescription(tx.id)} className="text-green-600 shrink-0"><Check className="w-3 h-3" /></button>
                         <button onClick={() => setEditingId(null)} className="text-content-muted shrink-0"><X className="w-3 h-3" /></button>
                       </div>
                     ) : (
                       <span
-                        className="cursor-pointer hover:bg-cyan-50 px-1 py-0.5 rounded flex items-center gap-1 group"
+                        className="cursor-pointer hover:bg-brand-50 px-1 py-0.5 rounded flex items-center gap-1 group"
                         onClick={() => { setEditingId(tx.id); setEditField('description'); setEditDescription(tx.description); }}
                         title={tx.description !== tx.original_description ? `Original: ${tx.original_description}` : tx.description}
                       >
                         <span className="text-content truncate block overflow-hidden">{tx.description}</span>
-                        <Edit2 className="w-3 h-3 text-content-faint group-hover:text-cyan-400 opacity-0 group-hover:opacity-100 shrink-0" />
+                        <Edit2 className="w-3 h-3 text-content-faint group-hover:text-brand-400 opacity-0 group-hover:opacity-100 shrink-0" />
                       </span>
                     )}
                   </td>
@@ -396,13 +396,13 @@ export default function TransactionTable({ filters, onFiltersChange }: Props) {
                       </div>
                     ) : (
                       <span
-                        className="cursor-pointer hover:bg-cyan-50 px-1 py-0.5 rounded inline-flex items-center gap-1 group"
+                        className="cursor-pointer hover:bg-brand-50 px-1 py-0.5 rounded inline-flex items-center gap-1 group"
                         onClick={() => { setEditingId(tx.id); setEditField('category'); setEditCategory(tx.category); }}
                       >
                         <span className={tx.category === 'Uncategorized' ? 'text-amber-500 italic' : 'text-content-secondary'}>
                           {tx.category || 'Uncategorized'}
                         </span>
-                        <Edit2 className="w-3 h-3 text-content-faint group-hover:text-cyan-400 opacity-0 group-hover:opacity-100" />
+                        <Edit2 className="w-3 h-3 text-content-faint group-hover:text-brand-400 opacity-0 group-hover:opacity-100" />
                       </span>
                     )}
                   </td>

@@ -209,7 +209,7 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
                 value={csv}
                 onChange={e => setCsv(e.target.value)}
                 placeholder="Paste CSV contents here…"
-                className="w-full h-64 px-3 py-2 border border-edge rounded-control text-xs font-mono focus:outline-none focus:border-blue-400"
+                className="w-full h-64 px-3 py-2 border border-edge rounded-control text-xs font-mono focus:outline-none focus:border-brand-400"
               />
               {error && (
                 <div className="flex items-start gap-2 text-sm text-red-600">
@@ -298,19 +298,19 @@ export default function CsvImporter({ open, onClose, products, onImportRows, onC
           {!parsed && (
             <>
               <button onClick={close} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Cancel</button>
-              <button onClick={handleParse} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700">Parse</button>
+              <button onClick={handleParse} className="px-4 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700">Parse</button>
             </>
           )}
           {parsed && !result && (
             <>
               <button onClick={() => { setParsed(null); setError(null); }} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Back</button>
-              <button onClick={handleImport} disabled={importing || !matchSummary?.matched} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={handleImport} disabled={importing || !matchSummary?.matched} className="px-4 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700 disabled:opacity-50">
                 {importing ? 'Importing…' : `Import ${matchSummary?.matched ?? 0} matched row${matchSummary?.matched === 1 ? '' : 's'}`}
               </button>
             </>
           )}
           {result && (
-            <button onClick={close} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700">Done</button>
+            <button onClick={close} className="px-4 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700">Done</button>
           )}
         </div>
       </div>

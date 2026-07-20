@@ -31,7 +31,7 @@ export default function MySidebarSection() {
   return (
     <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-2">
-        <LayoutGrid className="w-5 h-5 text-indigo-600" />
+        <LayoutGrid className="w-5 h-5 text-brand-600" />
         <h2 className="text-lg font-semibold text-content">My sidebar</h2>
       </div>
       <p className="text-sm text-content-secondary mb-5">
@@ -59,7 +59,7 @@ export default function MySidebarSection() {
                 className={`inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1.5 rounded-control border transition-colors disabled:opacity-50 ${
                   hidden
                     ? 'text-content-secondary bg-surface-hover border-edge hover:bg-surface-sunken'
-                    : 'text-indigo-700 bg-indigo-50 border-indigo-200 hover:bg-indigo-100'
+                    : 'text-brand-700 bg-brand-50 border-brand-200 hover:bg-brand-100'
                 }`}
                 title={hidden ? 'Hidden from your sidebar' : 'Showing in your sidebar'}
               >

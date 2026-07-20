@@ -236,7 +236,7 @@ export default function CatalogBookPicker({
                   type="button"
                   onClick={handleCreate}
                   disabled={!newTitle.trim() || saving}
-                  className="px-3 py-1.5 text-xs bg-indigo-600 text-white font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
+                  className="px-3 py-1.5 text-xs bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
                 >
                   {saving ? '…' : 'Add'}
                 </button>
@@ -245,7 +245,7 @@ export default function CatalogBookPicker({
               <button
                 type="button"
                 onClick={() => setCreating(true)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-control"
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-brand-600 hover:bg-brand-50 rounded-control"
               >
                 <Plus className="w-3.5 h-3.5" /> Add a new book to Catalog
               </button>

@@ -21,14 +21,14 @@ export default function VoicePicker({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="bg-surface rounded-card w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge">
-          <h3 className="font-semibold text-content">Assign a voice — <span className="text-violet-600">{roleLabel}</span></h3>
+          <h3 className="font-semibold text-content">Assign a voice — <span className="text-brand-600">{roleLabel}</span></h3>
           <button onClick={onClose} className="text-content-muted hover:text-content"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="flex gap-1 px-5 pt-3">
           {([['library', 'Pick from library', Library], ['design', 'Create from description', Wand2], ['clone', 'Clone from audio', Mic]] as const).map(([id, label, Icon]) => (
             <button key={id} onClick={() => setTab(id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-control ${tab === id ? 'bg-violet-50 text-violet-700' : 'text-content-secondary hover:bg-surface-hover'}`}>
+              className={`inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-control ${tab === id ? 'bg-brand-50 text-brand-700' : 'text-content-secondary hover:bg-surface-hover'}`}>
               <Icon className="w-4 h-4" /> {label}
             </button>
           ))}
@@ -49,7 +49,7 @@ function PreviewButton({ src }: { src: string | null }) {
   if (!src) return null;
   return (
     <>
-      <button onClick={() => audioRef.current?.play()} className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-violet-600">
+      <button onClick={() => audioRef.current?.play()} className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-brand-600">
         <Play className="w-3.5 h-3.5" /> Preview
       </button>
       <audio ref={audioRef} src={src} preload="none" />
@@ -68,7 +68,7 @@ function LibraryTab({ onAssign }: { onAssign: (id: string, name: string) => void
   }, []);
 
   if (error) return <p className="text-sm text-rose-600">{error}</p>;
-  if (!voices) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 text-violet-500 animate-spin" /></div>;
+  if (!voices) return <div className="flex justify-center py-8"><Loader2 className="w-5 h-5 text-brand-500 animate-spin" /></div>;
 
   const q = filter.trim().toLowerCase();
   const shown = q ? voices.filter(v => `${v.name} ${v.gender ?? ''} ${v.accent ?? ''}`.toLowerCase().includes(q)) : voices;
@@ -89,7 +89,7 @@ function LibraryTab({ onAssign }: { onAssign: (id: string, name: string) => void
             </div>
             <PreviewButton src={v.preview_url} />
             <button onClick={() => onAssign(v.voice_id, v.name)}
-              className="px-3 py-1.5 text-xs font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700">
+              className="px-3 py-1.5 text-xs font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700">
               Use
             </button>
           </div>
@@ -140,7 +140,7 @@ function DesignTab({ onAssign }: { onAssign: (id: string, name: string) => void 
           className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm" />
       </div>
       <button onClick={generate} disabled={busy}
-        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-50">
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />} Generate previews
       </button>
 
@@ -148,7 +148,7 @@ function DesignTab({ onAssign }: { onAssign: (id: string, name: string) => void 
         <div className="space-y-2 pt-1">
           <p className="text-xs font-medium text-content-secondary">Pick the one you like, name it, and save:</p>
           {previews.map((p, i) => (
-            <label key={p.generated_voice_id} className={`flex items-center gap-3 p-2.5 rounded-control border cursor-pointer ${chosen === p.generated_voice_id ? 'border-violet-400 bg-violet-50' : 'border-edge-soft'}`}>
+            <label key={p.generated_voice_id} className={`flex items-center gap-3 p-2.5 rounded-control border cursor-pointer ${chosen === p.generated_voice_id ? 'border-brand-400 bg-brand-50' : 'border-edge-soft'}`}>
               <input type="radio" name="preview" checked={chosen === p.generated_voice_id} onChange={() => setChosen(p.generated_voice_id)} />
               <span className="text-sm text-content flex-1">Preview {i + 1}</span>
               <PreviewButton src={`data:${p.media_type};base64,${p.audio_base64}`} />
@@ -207,7 +207,7 @@ function CloneTab({ onAssign }: { onAssign: (id: string, name: string) => void }
       </p>
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Voice name (e.g. Marcus)"
         className="w-full px-3 py-2 border border-edge-strong rounded-control text-sm" />
-      <label className="flex items-center justify-center gap-2 px-3 py-6 border-2 border-dashed border-edge-strong rounded-control text-sm text-content-secondary cursor-pointer hover:border-violet-400">
+      <label className="flex items-center justify-center gap-2 px-3 py-6 border-2 border-dashed border-edge-strong rounded-control text-sm text-content-secondary cursor-pointer hover:border-brand-400">
         <Upload className="w-4 h-4" /> Choose audio file(s)
         <input type="file" accept="audio/*" multiple className="hidden"
           onChange={e => setFiles(prev => [...prev, ...Array.from(e.target.files ?? [])])} />
@@ -226,7 +226,7 @@ function CloneTab({ onAssign }: { onAssign: (id: string, name: string) => void }
         </ul>
       )}
       <button onClick={clone} disabled={busy}
-        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+        className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-50">
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mic className="w-4 h-4" />} Clone & use
       </button>
       {error && <p className="text-xs text-rose-600">{error}</p>}

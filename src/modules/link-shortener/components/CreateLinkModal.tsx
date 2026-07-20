@@ -113,7 +113,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
                 setSlugStatus('idle');
               }}
               onBlur={(e) => checkSlug(e.target.value)}
-              className="flex-1 px-3 py-2 rounded-control border border-edge-strong font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="flex-1 px-3 py-2 rounded-control border border-edge-strong font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
               placeholder="abc123"
             />
             <button
@@ -139,7 +139,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
           <input
             value={destination}
             onChange={(e) => setDestination(e.target.value)}
-            className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             placeholder="https://your-book-page.com"
           />
           <p className="mt-1 text-xs text-content-secondary">You can change this later — the short URL stays the same.</p>
@@ -151,7 +151,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
               placeholder="Optional"
             />
           </div>
@@ -160,7 +160,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
             <select
               value={folderId ?? ''}
               onChange={(e) => setFolderId(e.target.value || null)}
-              className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
               <option value="">No folder</option>
               {folders.map((f) => (
@@ -176,7 +176,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
             <input
               value={channel}
               onChange={(e) => setChannel(e.target.value)}
-              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full px-3 py-2 rounded-control border border-edge-strong text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
               placeholder="Pinterest, Instagram, Facebook…"
             />
             <p className="mt-1 text-xs text-content-secondary">Click data for this slug will be tagged with this channel.</p>
@@ -194,7 +194,7 @@ export default function CreateLinkModal({ open, onClose, onCreated, parent, fold
           <button
             onClick={handleCreate}
             disabled={busy || slugStatus === 'taken' || slugStatus === 'invalid'}
-            className="px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+            className="px-4 py-2 rounded-control bg-brand-600 hover:bg-brand-700 text-brand-fg text-sm font-medium flex items-center gap-2 disabled:opacity-50"
           >
             {busy && <Loader2 className="w-4 h-4 animate-spin" />}
             Create link

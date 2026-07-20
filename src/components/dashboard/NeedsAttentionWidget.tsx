@@ -93,7 +93,7 @@ export default function NeedsAttentionWidget() {
               </span>
               <button
                 onClick={() => order(a)}
-                className="shrink-0 px-2.5 py-1 rounded-control bg-brand-600 text-white text-xs font-medium hover:bg-brand-700 transition-colors"
+                className="shrink-0 px-2.5 py-1 rounded-control bg-brand-600 text-brand-fg text-xs font-medium hover:bg-brand-700 transition-colors"
                 title={`Pre-fill a PO for ${a.reorderQty} (~${formatCurrency(a.reorderCost)})`}
               >
                 Order {a.reorderQty > 0 ? a.reorderQty : ''}
@@ -115,7 +115,7 @@ export default function NeedsAttentionWidget() {
             const overdue = !!task.due_date && task.due_date < today;
             return (
               <li key={task.id} className="flex items-center gap-2.5 py-1.5 group">
-                <button onClick={() => complete(task)} className="text-content-faint hover:text-teal-600 transition-colors shrink-0" title="Mark done">
+                <button onClick={() => complete(task)} className="text-content-faint hover:text-brand-600 transition-colors shrink-0" title="Mark done">
                   <span className="relative inline-flex items-center justify-center">
                     <Circle className="w-4.5 h-4.5" />
                     <Check className="w-3 h-3 absolute opacity-0 group-hover:opacity-100 transition-opacity" />
