@@ -19,6 +19,7 @@ import type { BackupFile } from './tables';
 import ApiKeysSection from './ApiKeysSection';
 import PenNamesSection from './PenNamesSection';
 import MySidebarSection from './MySidebarSection';
+import ThemeSection from './ThemeSection';
 import AdminSection from './AdminSection';
 import ShopifySection from './ShopifySection';
 import CloudExportSection from './CloudExportSection';
@@ -133,6 +134,8 @@ export default function SettingsModule() {
       )}
 
       <AdminSection />
+
+      <ThemeSection />
 
       <MySidebarSection />
 
