@@ -129,7 +129,7 @@ const DayCard = forwardRef<HTMLDivElement, {
   onOpenDay: (iso: string) => void;
 }>(function DayCard({ day, today, flash, notesById, onPatch, onDelete, onDeleteSession, onOpenList, onOpenDay }, ref) {
   return (
-    <div ref={ref} className={`scroll-mt-4 rounded-card transition-shadow ${flash ? 'ring-2 ring-teal-400 ring-offset-2' : ''}`}>
+    <div ref={ref} className={`scroll-mt-4 rounded-card transition-shadow ${flash ? 'ring-2 ring-brand-400 ring-offset-2' : ''}`}>
       <div className="flex items-baseline gap-2 mb-2">
         <h3 className="text-sm font-semibold text-content">{dayLabel(day.day, today)}</h3>
         {day.completedCount > 0 && <span className="text-xs text-content-muted">{day.completedCount} done</span>}
@@ -190,7 +190,7 @@ function EntryRow({
 
         <button
           onClick={onOpen}
-          className="flex-1 min-w-0 text-left text-sm text-content-secondary truncate hover:text-teal-600 transition-colors"
+          className="flex-1 min-w-0 text-left text-sm text-content-secondary truncate hover:text-brand-600 transition-colors"
           title="Open this to-do"
         >
           {task.title || 'Untitled'}
@@ -203,7 +203,7 @@ function EntryRow({
         {sessions.length > 0 && (
           <button
             onClick={() => setOpen(o => !o)}
-            className="text-xs text-content-muted shrink-0 hover:text-teal-600 transition-colors"
+            className="text-xs text-content-muted shrink-0 hover:text-brand-600 transition-colors"
             title="Show the timer runs (edit or remove a mistaken one)"
           >
             {sessions.length === 1 ? rangeLabel(sessions[0]) : `${sessions.length} sessions`}
@@ -224,7 +224,7 @@ function EntryRow({
           <>
             <button
               onClick={() => onPatch(task.id, { done: false })}
-              className="text-content-faint hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+              className="text-content-faint hover:text-brand-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
               title="Mark not done (move back to your lists)"
             >
               <RotateCcw className="w-3.5 h-3.5" />

@@ -9,10 +9,10 @@ import type { BookOption, SocialAccount, SocialPlatform, SocialPost } from './li
 
 const PLATFORM_META: Record<SocialPlatform, { label: string; gradient: string; accent: string }> = {
   pinterest: { label: 'Pinterest', gradient: 'from-red-500 to-rose-600',     accent: 'text-red-500'    },
-  instagram: { label: 'Instagram', gradient: 'from-fuchsia-500 to-orange-500', accent: 'text-fuchsia-500' },
-  facebook:  { label: 'Facebook',  gradient: 'from-blue-500 to-blue-700',    accent: 'text-blue-500'   },
+  instagram: { label: 'Instagram', gradient: 'from-brand-500 to-orange-500', accent: 'text-brand-500' },
+  facebook:  { label: 'Facebook',  gradient: 'from-brand-500 to-brand-700',    accent: 'text-brand-500'   },
   threads:   { label: 'Threads',   gradient: 'from-slate-800 to-slate-950',  accent: 'text-content'  },
-  tiktok:    { label: 'TikTok',    gradient: 'from-slate-900 to-pink-500',   accent: 'text-pink-500'   },
+  tiktok:    { label: 'TikTok',    gradient: 'from-slate-900 to-brand-500',   accent: 'text-brand-500'   },
 };
 
 function relativeTime(iso: string | null): string {
@@ -218,7 +218,7 @@ export default function SocialMediaModule() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
       </div>
     );
   }
@@ -283,7 +283,7 @@ export default function SocialMediaModule() {
             <button
               onClick={handleConnectPinterest}
               disabled={connecting}
-              className="inline-flex items-center gap-2 text-sm font-medium text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-2.5 rounded-card transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-3 py-2.5 rounded-card transition-colors disabled:opacity-50"
             >
               {connecting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               Connect another
@@ -366,7 +366,7 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
     <button
       onClick={onClick}
       className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-        active ? 'bg-violet-600 text-white' : 'bg-surface-sunken text-content-secondary hover:bg-edge'
+        active ? 'bg-brand-600 text-brand-fg' : 'bg-surface-sunken text-content-secondary hover:bg-edge'
       }`}
     >
       {children}
@@ -377,7 +377,7 @@ function FilterPill({ active, onClick, children }: { active: boolean; onClick: (
 function EmptyState({ onConnect, connecting }: { onConnect: () => void; connecting: boolean }) {
   return (
     <div className="bg-surface rounded-card border border-edge p-10 text-center">
-      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-card shadow-lg shadow-violet-500/25 mb-6">
+      <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-brand-500 to-brand-600 rounded-card shadow-lg shadow-brand-500/25 mb-6">
         <Share2 className="w-10 h-10 text-white" />
       </div>
       <h2 className="text-2xl font-bold text-content mb-2">Social Media Stats</h2>
@@ -525,7 +525,7 @@ function BookPicker({
         ))}
       </select>
       {linkedBook && (
-        <span className="inline-flex items-center gap-1 text-xs text-violet-700 bg-violet-50 px-1.5 py-0.5 rounded">
+        <span className="inline-flex items-center gap-1 text-xs text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded">
           <BookOpen className="w-3 h-3" />
         </span>
       )}

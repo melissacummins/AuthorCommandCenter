@@ -73,7 +73,7 @@ interface CalendarBridge {
 // today (and overdue) itself.
 const VIEWS: { bucket: Bucket; label: string; icon: typeof Inbox; color: string }[] = [
   { bucket: 'upcoming', label: 'Upcoming', icon: CalendarClock, color: 'text-rose-500' },
-  { bucket: 'anytime',  label: 'Anytime',  icon: Layers,        color: 'text-teal-600' },
+  { bucket: 'anytime',  label: 'Anytime',  icon: Layers,        color: 'text-brand-600' },
 ];
 
 export default function PlannerModule() {
@@ -858,7 +858,7 @@ export default function PlannerModule() {
                 selection.kind === 'orbit' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
               }`}
             >
-              <OrbitIcon className="w-4 h-4 text-violet-500" />
+              <OrbitIcon className="w-4 h-4 text-brand-500" />
               <span className="flex-1 text-left">Orbit</span>
               {orbitCount > 0 && <span className="text-xs text-content-muted font-medium">{orbitCount}</span>}
             </button>
@@ -897,7 +897,7 @@ export default function PlannerModule() {
               selection.kind === 'plan' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
-            <CalendarRange className="w-4 h-4 text-sky-500" />
+            <CalendarRange className="w-4 h-4 text-brand-500" />
             <span className="flex-1 text-left">Planning</span>
           </button>
           <button
@@ -906,7 +906,7 @@ export default function PlannerModule() {
               selection.kind === 'reset' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
-            <RotateCcw className="w-4 h-4 text-violet-500" />
+            <RotateCcw className="w-4 h-4 text-brand-500" />
             <span className="flex-1 text-left">Weekly Reset</span>
           </button>
           <button
@@ -924,7 +924,7 @@ export default function PlannerModule() {
               selection.kind === 'stats' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
             }`}
           >
-            <BarChart3 className="w-4 h-4 text-indigo-500" />
+            <BarChart3 className="w-4 h-4 text-brand-500" />
             <span className="flex-1 text-left">Stats</span>
           </button>
           <button
@@ -952,11 +952,11 @@ export default function PlannerModule() {
           <span className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Lists</span>
           <div className="flex items-center gap-1">
             {railNotes.length > 1 && (
-              <button onClick={sortNotesAZ} className="text-content-muted hover:text-teal-600" title="Sort lists A–Z">
+              <button onClick={sortNotesAZ} className="text-content-muted hover:text-brand-600" title="Sort lists A–Z">
                 <ArrowDownAZ className="w-4 h-4" />
               </button>
             )}
-            <button onClick={handleNewNote} className="text-content-muted hover:text-teal-600" title="New list">
+            <button onClick={handleNewNote} className="text-content-muted hover:text-brand-600" title="New list">
               <Plus className="w-4 h-4" />
             </button>
           </div>
@@ -998,7 +998,7 @@ export default function PlannerModule() {
                     <div key={n.id} className="group/arch flex items-center gap-2 px-3 py-1.5 rounded-control text-sm text-content-secondary hover:bg-surface/70">
                       <Archive className="w-3.5 h-3.5 text-content-faint shrink-0" />
                       <span className="flex-1 truncate">{n.title.trim() || 'Untitled list'}</span>
-                      <button onClick={() => saveNote(n.id, { archived: false })} className="text-content-faint hover:text-teal-600 shrink-0" title="Restore list">
+                      <button onClick={() => saveNote(n.id, { archived: false })} className="text-content-faint hover:text-brand-600 shrink-0" title="Restore list">
                         <ArchiveRestore className="w-4 h-4" />
                       </button>
                       <button onClick={() => removeNote(n.id)} className="text-content-faint hover:text-rose-500 shrink-0" title="Delete list">
@@ -1018,7 +1018,7 @@ export default function PlannerModule() {
       <section className="flex-1 min-w-0 overflow-y-auto nice-scrollbar pb-24">
         {/* Mobile-only bar to reopen the planner rail */}
         <div className="md:hidden sticky top-0 z-10 flex items-center gap-2 bg-surface/85 backdrop-blur border-b border-edge-soft px-3 py-2">
-          <button onClick={() => setRailOpen(true)} className="inline-flex items-center gap-2 text-sm font-medium text-content-secondary hover:text-teal-600">
+          <button onClick={() => setRailOpen(true)} className="inline-flex items-center gap-2 text-sm font-medium text-content-secondary hover:text-brand-600">
             <Menu className="w-5 h-5" /> Menu
           </button>
         </div>
@@ -1191,9 +1191,9 @@ function SelectableRow({ task, selected, onToggle, listName }: {
     <li>
       <button
         onClick={onToggle}
-        className={`w-full flex items-start gap-2 px-2 py-1.5 rounded-control text-left transition-colors ${selected ? 'bg-teal-50' : 'hover:bg-surface-hover'}`}
+        className={`w-full flex items-start gap-2 px-2 py-1.5 rounded-control text-left transition-colors ${selected ? 'bg-brand-50' : 'hover:bg-surface-hover'}`}
       >
-        <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selected ? 'bg-teal-600 border-teal-600 text-white' : 'border-edge-strong bg-surface'}`}>
+        <span className={`mt-0.5 shrink-0 w-4 h-4 rounded border flex items-center justify-center ${selected ? 'bg-brand-600 border-brand-600 text-brand-fg' : 'border-edge-strong bg-surface'}`}>
           {selected && <Check className="w-3 h-3" />}
         </span>
         <span className={`flex-1 min-w-0 text-sm break-words ${task.done ? 'text-content-muted line-through' : 'text-content'}`}>{task.title || 'Untitled'}</span>
@@ -1223,12 +1223,12 @@ function BulkBar({
   onNewHeading?: () => void;
 }) {
   const none = count === 0;
-  const btn = 'text-xs font-medium border border-edge rounded-control px-2 py-1 bg-surface text-content-secondary hover:text-teal-700 disabled:opacity-40';
+  const btn = 'text-xs font-medium border border-edge rounded-control px-2 py-1 bg-surface text-content-secondary hover:text-brand-700 disabled:opacity-40';
   return (
-    <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-1.5 rounded-card border border-teal-200 bg-teal-50/95 backdrop-blur px-3 py-2">
+    <div className="sticky top-0 z-10 mb-3 flex flex-wrap items-center gap-1.5 rounded-card border border-brand-200 bg-brand-50/95 backdrop-blur px-3 py-2">
       <span className="text-sm font-semibold text-content">{count} selected</span>
-      <button onClick={onSelectAll} className="text-xs font-medium text-teal-700 hover:underline">{allSelected ? 'Clear' : 'Select all'}</button>
-      <span className="w-px h-5 bg-teal-200 mx-1" />
+      <button onClick={onSelectAll} className="text-xs font-medium text-brand-700 hover:underline">{allSelected ? 'Clear' : 'Select all'}</button>
+      <span className="w-px h-5 bg-brand-200 mx-1" />
       <select
         value=""
         disabled={none}
@@ -1284,7 +1284,7 @@ function ViewPane({
   cal: CalendarBridge;
 }) {
   const meta = orbit
-    ? { label: 'Orbit', icon: OrbitIcon, color: 'text-violet-500' }
+    ? { label: 'Orbit', icon: OrbitIcon, color: 'text-brand-500' }
     : inbox
       ? { label: 'Inbox', icon: Inbox, color: 'text-content-secondary' }
       : VIEWS.find(v => v.bucket === bucket)!;
@@ -1431,7 +1431,7 @@ function ViewPane({
         {orbit && orbitEnabled && (
           <button
             onClick={runOrbitAi}
-            className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
+            className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-control px-2.5 py-1.5"
             title="Let Claude suggest which to-dos to pull into Orbit"
           >
             <Sparkles className="w-3.5 h-3.5" /> Suggest picks
@@ -1444,7 +1444,7 @@ function ViewPane({
             </span>
           )}
           {items.length > 0 && !selectMode && (
-            <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-content-secondary hover:text-teal-600 border border-edge rounded-control px-2.5 py-1.5">Select</button>
+            <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-1.5">Select</button>
           )}
         </div>
       </div>
@@ -1553,14 +1553,14 @@ function eventTimeLabel(ev: GCalEvent): string {
 function DayEventsStrip({ events }: { events?: GCalEvent[] }) {
   if (!events || events.length === 0) return null;
   return (
-    <div className="mt-3 mb-1 rounded-control bg-sky-50/70 border border-sky-100 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-sky-500 mb-1 flex items-center gap-1">
+    <div className="mt-3 mb-1 rounded-control bg-brand-50/70 border border-brand-100 px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-brand-500 mb-1 flex items-center gap-1">
         <CalendarDays className="w-3 h-3" /> On your calendar
       </p>
       <ul className="space-y-0.5">
         {events.map(ev => (
           <li key={ev.id} className="flex items-center gap-2 text-sm">
-            <span className="text-xs font-medium text-sky-600 w-16 shrink-0">{eventTimeLabel(ev)}</span>
+            <span className="text-xs font-medium text-brand-600 w-16 shrink-0">{eventTimeLabel(ev)}</span>
             <span className="flex-1 text-content-secondary truncate">{ev.summary || '(no title)'}</span>
           </li>
         ))}
@@ -1804,7 +1804,7 @@ function NotePane({
           >
             {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
           </button>
-          <button onClick={() => onDuplicateNote(note)} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken hover:text-teal-600" title="Duplicate this list (copy its to-dos, reset completion)">
+          <button onClick={() => onDuplicateNote(note)} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken hover:text-brand-600" title="Duplicate this list (copy its to-dos, reset completion)">
             <CopyPlus className="w-4 h-4" />
           </button>
           <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken" title="Archive">
@@ -1838,7 +1838,7 @@ function NotePane({
                       onChange={e => updateJournal(i, e.target.value)}
                       onBlur={saveJournal}
                       rows={3}
-                      className="w-full text-sm rounded-control border border-edge bg-surface px-2 py-1.5 outline-none focus:border-violet-300 text-content-secondary resize-y"
+                      className="w-full text-sm rounded-control border border-edge bg-surface px-2 py-1.5 outline-none focus:border-brand-300 text-content-secondary resize-y"
                     />
                   </div>
                 )}
@@ -1898,7 +1898,7 @@ function NotePane({
       {(listEst > 0 || listTracked > 0) && (
         <div className="flex items-center gap-3 text-xs text-content-muted mb-4">
           {listEst > 0 && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {formatMinutes(listEst)} planned</span>}
-          {listTracked > 0 && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-teal-500" /> {formatMinutes(listTracked)} tracked</span>}
+          {listTracked > 0 && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-brand-500" /> {formatMinutes(listTracked)} tracked</span>}
         </div>
       )}
 
@@ -1943,7 +1943,7 @@ function NotePane({
         </div>
         <button
           onClick={() => onAdd({ title: 'New section', note_id: note.id, kind: 'heading', sort_order: nextOrder })}
-          className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-teal-600 border border-edge rounded-control px-2.5 py-2"
+          className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-2"
           title="Add a section heading"
         >
           <HeadingIcon className="w-3.5 h-3.5" /> Heading
@@ -1951,7 +1951,7 @@ function NotePane({
         {selectable.length > 0 && !selectMode && (
           <button
             onClick={() => setSelectMode(true)}
-            className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-teal-600 border border-edge rounded-control px-2.5 py-2"
+            className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-2"
             title="Select multiple to-dos for bulk actions"
           >
             <Check className="w-3.5 h-3.5" /> Select
@@ -2201,14 +2201,14 @@ function HeadingRow({
         onBlur={commit}
         // Enter commits the heading and drops a fresh to-do underneath it.
         onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); commit(); onAddUnder(); } }}
-        className="flex-1 text-sm font-bold uppercase tracking-wide text-content-secondary bg-transparent outline-none border-b border-transparent focus:border-teal-400"
+        className="flex-1 text-sm font-bold uppercase tracking-wide text-content-secondary bg-transparent outline-none border-b border-transparent focus:border-brand-400"
       />
       {collapsed && childCount > 0 && (
         <span className="text-xs text-content-muted shrink-0">{childCount}</span>
       )}
       <button
         onClick={onAddUnder}
-        className="text-content-faint hover:text-teal-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
+        className="text-content-faint hover:text-brand-600 opacity-0 group-hover:opacity-100 touch:opacity-100 transition-opacity shrink-0"
         title="Add a to-do under this heading"
       >
         <Plus className="w-4 h-4" />
@@ -2431,7 +2431,7 @@ function QuickAdd({
       />
       {parsed.due && (
         <span
-          className="shrink-0 inline-flex items-center gap-1 rounded-full bg-teal-50 text-teal-700 px-2 py-0.5 text-xs font-medium"
+          className="shrink-0 inline-flex items-center gap-1 rounded-full bg-brand-50 text-brand-700 px-2 py-0.5 text-xs font-medium"
           title={`Will be scheduled for ${captureDateLabel(parsed.due, today!)}`}
         >
           <CalendarDays className="w-3 h-3" /> {captureDateLabel(parsed.due, today!)}
@@ -2442,7 +2442,7 @@ function QuickAdd({
         disabled={!value.trim()}
         title="Add (Enter)"
         className={`shrink-0 inline-flex items-center gap-1 rounded-control px-2 py-1 text-xs font-medium transition-colors ${
-          value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-content-faint cursor-default'
+          value.trim() ? 'bg-brand-600 text-brand-fg hover:bg-brand-700' : 'text-content-faint cursor-default'
         }`}
       >
         <CornerDownLeft className="w-3.5 h-3.5" /> Add

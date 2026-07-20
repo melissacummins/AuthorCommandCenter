@@ -81,7 +81,7 @@ export default function BookDetail({ book, onBack, onEdit, onBookUpdated }: Prop
               className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                 book.status === 'paid_off'
                   ? 'bg-emerald-100 text-emerald-700'
-                  : 'bg-purple-100 text-purple-700'
+                  : 'bg-brand-100 text-brand-700'
               }`}
             >
               {book.status === 'paid_off' ? 'Paid off' : 'Active'}

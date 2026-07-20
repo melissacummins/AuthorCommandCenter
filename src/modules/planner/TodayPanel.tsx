@@ -64,7 +64,7 @@ export default function TodayPanel() {
       <div className="p-6 lg:p-7">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center justify-center w-11 h-11 bg-gradient-to-br from-teal-500 to-emerald-600 rounded-card shadow-lg shadow-teal-500/25">
+            <div className="inline-flex items-center justify-center w-11 h-11 bg-gradient-to-br from-brand-500 to-emerald-600 rounded-card shadow-lg shadow-brand-500/25">
               <NotebookPen className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -80,7 +80,7 @@ export default function TodayPanel() {
                 <Clock className="w-4 h-4" /> {formatMinutes(sumEstimate(todayTasks))} planned
               </span>
             )}
-            <Link to="/planner" className="inline-flex items-center gap-1 text-sm font-medium text-teal-600 hover:text-teal-700">
+            <Link to="/planner" className="inline-flex items-center gap-1 text-sm font-medium text-brand-600 hover:text-brand-700">
               Open planner <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
@@ -111,7 +111,7 @@ export default function TodayPanel() {
                   const overdue = !!task.due_date && task.due_date < today;
                   return (
                     <li key={task.id} className="flex items-center gap-3 py-2 group">
-                      <button onClick={() => complete(task)} className="text-content-faint hover:text-teal-600 transition-colors shrink-0" title="Mark done">
+                      <button onClick={() => complete(task)} className="text-content-faint hover:text-brand-600 transition-colors shrink-0" title="Mark done">
                         <span className="relative inline-flex items-center justify-center">
                           <Circle className="w-5 h-5" />
                           <Check className="w-3 h-3 absolute opacity-0 group-hover:opacity-100 transition-opacity" />

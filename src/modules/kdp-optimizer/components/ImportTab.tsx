@@ -91,7 +91,7 @@ export default function ImportTab({ userId, onImported }: Props) {
           value={text}
           onChange={e => setText(e.target.value)}
           placeholder='{ "books": [...], "tropes": [...], "keywords": [...] }'
-          className="w-full font-mono text-xs rounded-control border border-edge-strong px-3 py-2 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+          className="w-full font-mono text-xs rounded-control border border-edge-strong px-3 py-2 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
         />
 
         <div className="flex items-center gap-2 mt-3">
@@ -106,7 +106,7 @@ export default function ImportTab({ userId, onImported }: Props) {
             type="button"
             onClick={runImport}
             disabled={!parsed || importing}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
           >
             <Upload className="w-4 h-4" />
             {importing ? 'Importing…' : 'Import'}

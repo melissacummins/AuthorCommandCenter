@@ -16,6 +16,7 @@
   --color-brand-700: var(--color-brand-700);
   --color-brand-800: var(--color-brand-800);
   --color-brand-900: var(--color-brand-900);
+  --color-brand-fg: var(--color-brand-fg);
 
   /* Semantic surface/text/border tokens (see docs/COMMAND_CENTER_REDESIGN_DIRECTIVE.md
      §2). Components must use these instead of literal white/slate classes so
@@ -68,6 +69,7 @@
   --color-brand-700: #6b1515;
   --color-brand-800: #501010;
   --color-brand-900: #3b0d0d;
+  --color-brand-fg: #ffffff;
 
   --color-surface: #ffffff;
   --color-surface-hover: #f8fafc;   /* was slate-50 */
@@ -76,14 +78,14 @@
   --color-edge-soft: #f1f5f9;       /* was slate-100 borders */
   --color-edge-strong: #cbd5e1;     /* was slate-300 */
   --color-content: #1e293b;         /* was slate-800/900/700 */
-  --color-content-secondary: #64748b; /* was slate-500/600 */
-  --color-content-muted: #94a3b8;   /* was slate-400 */
-  --color-content-faint: #cbd5e1;   /* was slate-300 icons/placeholders */
+  --color-content-secondary: #606f85; /* was slate-500/600 */
+  --color-content-muted: #626c79;   /* was slate-400 */
+  --color-content-faint: #8a9199;   /* was slate-300 icons/placeholders */
 
   --color-sidebar: #0f172a;         /* was slate-900 */
   --color-sidebar-raised: #1e293b;  /* was slate-800 */
   --color-sidebar-content: #94a3b8; /* was slate-400 (slate-300 hover) */
-  --color-sidebar-muted: #64748b;   /* was slate-500 */
+  --color-sidebar-muted: #778599;   /* was slate-500 */
   --color-sidebar-edge: #334155;    /* was slate-700 (opacity via /50 suffix) */
 
   --color-status-idea-bg: #f1f5f9;      --color-status-idea-fg: #334155;
@@ -122,6 +124,7 @@
   --color-brand-700: #97a1ff;
   --color-brand-800: #b3baff;
   --color-brand-900: #cdd2ff;
+  --color-brand-fg: #10121c;
 
   --color-surface: #171a21;
   --color-surface-hover: #1e222c;
@@ -131,13 +134,13 @@
   --color-edge-strong: #3b4357;
   --color-content: #e2e8f0;
   --color-content-secondary: #94a3b8;
-  --color-content-muted: #64748b;
-  --color-content-faint: #475569;
+  --color-content-muted: #7a879b;
+  --color-content-faint: #616d7e;
 
   --color-sidebar: #0b0d12;
   --color-sidebar-raised: #1a1f2b;
   --color-sidebar-content: #8b93a7;
-  --color-sidebar-muted: #5b6372;
+  --color-sidebar-muted: #797f8b;
   --color-sidebar-edge: #2a3040;
 
   --color-status-idea-bg: #262c3a;      --color-status-idea-fg: #cbd5e1;
@@ -170,12 +173,13 @@
   --color-brand-300: #97c187; --color-brand-400: #66a355; --color-brand-500: #40792f;
   --color-brand-600: #356527; --color-brand-700: #2b5220; --color-brand-800: #22401a;
   --color-brand-900: #1a3114;
+  --color-brand-fg: #ffffff;
   --color-surface: #fdfbf5;        --color-surface-hover: #f6f2e7; --color-surface-sunken: #f0ebdc;
   --color-edge: #e2dac6;           --color-edge-soft: #ece5d3;     --color-edge-strong: #cfc4a8;
-  --color-content: #2d3a2e;        --color-content-secondary: #5f6f5f;
-  --color-content-muted: #8fa08e;  --color-content-faint: #b9c5b7;
+  --color-content: #2d3a2e;        --color-content-secondary: #5b6b5b;
+  --color-content-muted: #5e6a5e;  --color-content-faint: #858e84;
   --color-sidebar: #1e2b20;        --color-sidebar-raised: #2c3d2e;
-  --color-sidebar-content: #9db39c; --color-sidebar-muted: #6d826c; --color-sidebar-edge: #3a4d3b;
+  --color-sidebar-content: #9db39c; --color-sidebar-muted: #849684; --color-sidebar-edge: #3a4d3b;
   --color-status-idea-bg: #ece5d3;      --color-status-idea-fg: #4c5a4c;
   --color-status-drafting-bg: #f3e6bd;  --color-status-drafting-fg: #7c5a10;
   --color-status-editing-bg: #d7e6f5;   --color-status-editing-fg: #29517c;
@@ -194,12 +198,13 @@
   --color-brand-300: #6dcfdd; --color-brand-400: #2cb1bc; --color-brand-500: #0e7490;
   --color-brand-600: #0c6379; --color-brand-700: #0a5265; --color-brand-800: #084152;
   --color-brand-900: #06333f;
+  --color-brand-fg: #ffffff;
   --color-surface: #ffffff;        --color-surface-hover: #f2f8fa; --color-surface-sunken: #e9f2f6;
   --color-edge: #d4e4ec;           --color-edge-soft: #e2eef3;     --color-edge-strong: #b3cedb;
   --color-content: #16323f;        --color-content-secondary: #48697a;
-  --color-content-muted: #7d9aab;  --color-content-faint: #b0c6d2;
+  --color-content-muted: #586c78;  --color-content-faint: #82939b;
   --color-sidebar: #0d2836;        --color-sidebar-raised: #163b4e;
-  --color-sidebar-content: #7fa2b4; --color-sidebar-muted: #567b8e; --color-sidebar-edge: #23485c;
+  --color-sidebar-content: #87a8b8; --color-sidebar-muted: #7493a2; --color-sidebar-edge: #23485c;
   --color-status-idea-bg: #e9f2f6;      --color-status-idea-fg: #3d5866;
   --color-status-drafting-bg: #fdf0cd;  --color-status-drafting-fg: #8a5b06;
   --color-status-editing-bg: #d6e9fb;   --color-status-editing-fg: #1d4f82;
@@ -218,12 +223,13 @@
   --color-brand-300: #e8a76b; --color-brand-400: #d97742; --color-brand-500: #b45309;
   --color-brand-600: #9a4207; --color-brand-700: #7c3506; --color-brand-800: #602905;
   --color-brand-900: #481f04;
+  --color-brand-fg: #ffffff;
   --color-surface: #fdf9f3;        --color-surface-hover: #f9f1e5; --color-surface-sunken: #f3e8d8;
   --color-edge: #e7d7c1;           --color-edge-soft: #efe3d0;     --color-edge-strong: #d3bc9d;
   --color-content: #3d2c1e;        --color-content-secondary: #75604c;
-  --color-content-muted: #a08a72;  --color-content-faint: #c8b6a2;
+  --color-content-muted: #736352;  --color-content-faint: #988a7b;
   --color-sidebar: #2a1c10;        --color-sidebar-raised: #3d2b1a;
-  --color-sidebar-content: #b39678; --color-sidebar-muted: #83684d; --color-sidebar-edge: #4d3927;
+  --color-sidebar-content: #b39678; --color-sidebar-muted: #9c8671; --color-sidebar-edge: #4d3927;
   --color-status-idea-bg: #f3e8d8;      --color-status-idea-fg: #61503e;
   --color-status-drafting-bg: #f8e3b8;  --color-status-drafting-fg: #7c5305;
   --color-status-editing-bg: #dfe7f3;   --color-status-editing-fg: #33517a;
@@ -242,12 +248,13 @@
   --color-brand-300: #8cc1de; --color-brand-400: #64a9d8; --color-brand-500: #3d7fae;
   --color-brand-600: #326a92; --color-brand-700: #285577; --color-brand-800: #1f425d;
   --color-brand-900: #173245;
+  --color-brand-fg: #ffffff;
   --color-surface: #ffffff;        --color-surface-hover: #f6f8fa; --color-surface-sunken: #eef1f5;
   --color-edge: #dde3ea;           --color-edge-soft: #e8edf2;     --color-edge-strong: #c3cdd8;
   --color-content: #24303c;        --color-content-secondary: #55636f;
-  --color-content-muted: #8794a1;  --color-content-faint: #bcc7d1;
+  --color-content-muted: #616b74;  --color-content-faint: #878f96;
   --color-sidebar: #1b2530;        --color-sidebar-raised: #283544;
-  --color-sidebar-content: #93a3b3; --color-sidebar-muted: #647484; --color-sidebar-edge: #354557;
+  --color-sidebar-content: #93a3b3; --color-sidebar-muted: #83909d; --color-sidebar-edge: #354557;
   --color-status-idea-bg: #eef1f5;      --color-status-idea-fg: #47555f;
   --color-status-drafting-bg: #faeecb;  --color-status-drafting-fg: #86590a;
   --color-status-editing-bg: #dbe9f8;   --color-status-editing-fg: #274f7c;
@@ -264,14 +271,15 @@
 .theme-spring {
   --color-brand-50: #f4fbe8;  --color-brand-100: #e4f5c8; --color-brand-200: #cbe999;
   --color-brand-300: #aad55f; --color-brand-400: #84bb26; --color-brand-500: #65a30d;
-  --color-brand-600: #54880b; --color-brand-700: #446e09; --color-brand-800: #355607;
+  --color-brand-600: #4f800a; --color-brand-700: #446e09; --color-brand-800: #355607;
   --color-brand-900: #294205;
+  --color-brand-fg: #ffffff;
   --color-surface: #fdfdf9;        --color-surface-hover: #f4f8ee; --color-surface-sunken: #ecf3e2;
   --color-edge: #dbe7cc;           --color-edge-soft: #e5eed8;     --color-edge-strong: #c2d4a9;
-  --color-content: #33402a;        --color-content-secondary: #667556;
-  --color-content-muted: #94a583;  --color-content-faint: #becbb0;
+  --color-content: #33402a;        --color-content-secondary: #627053;
+  --color-content-muted: #626d56;  --color-content-faint: #89927f;
   --color-sidebar: #2c3b22;        --color-sidebar-raised: #3d5030;
-  --color-sidebar-content: #a5bb92; --color-sidebar-muted: #75895f; --color-sidebar-edge: #4c6139;
+  --color-sidebar-content: #b0c39f; --color-sidebar-muted: #99a889; --color-sidebar-edge: #4c6139;
   --color-status-idea-bg: #ecf3e2;      --color-status-idea-fg: #55644a;
   --color-status-drafting-bg: #f8ecc0;  --color-status-drafting-fg: #80590c;
   --color-status-editing-bg: #dcebf7;   --color-status-editing-fg: #2d537d;
@@ -290,12 +298,13 @@
   --color-brand-300: #ef8ab8; --color-brand-400: #e35c9b; --color-brand-500: #d13d84;
   --color-brand-600: #b42b6f; --color-brand-700: #93215a; --color-brand-800: #731a47;
   --color-brand-900: #571336;
+  --color-brand-fg: #ffffff;
   --color-surface: #fef7fa;        --color-surface-hover: #fceef4; --color-surface-sunken: #f9e3ec;
   --color-edge: #f2cfde;           --color-edge-soft: #f7dbe7;     --color-edge-strong: #e4aec7;
   --color-content: #4a2233;        --color-content-secondary: #86556c;
-  --color-content-muted: #b4879b;  --color-content-faint: #d6b3c3;
+  --color-content-muted: #7a5c69;  --color-content-faint: #9e8490;
   --color-sidebar: #3b1425;        --color-sidebar-raised: #521f35;
-  --color-sidebar-content: #c795aa; --color-sidebar-muted: #96617a; --color-sidebar-edge: #64293f;
+  --color-sidebar-content: #c795aa; --color-sidebar-muted: #ab8195; --color-sidebar-edge: #64293f;
   --color-status-idea-bg: #f9e3ec;      --color-status-idea-fg: #77445a;
   --color-status-drafting-bg: #fbe9c6;  --color-status-drafting-fg: #8a5c0c;
   --color-status-editing-bg: #e2e6f9;   --color-status-editing-fg: #3c4d94;
@@ -314,12 +323,13 @@
   --color-brand-300: #b7ad8f; --color-brand-400: #8a8168; --color-brand-500: #6f6650;
   --color-brand-600: #5c5442; --color-brand-700: #494335; --color-brand-800: #383328;
   --color-brand-900: #2a261e;
+  --color-brand-fg: #ffffff;
   --color-surface: #faf8f2;        --color-surface-hover: #f4f1e8; --color-surface-sunken: #edeade;
   --color-edge: #dcd7c7;           --color-edge-soft: #e6e2d4;     --color-edge-strong: #c2bba6;
   --color-content: #2b2925;        --color-content-secondary: #5c584f;
-  --color-content-muted: #8c877b;  --color-content-faint: #bab4a5;
+  --color-content-muted: #6a675d;  --color-content-faint: #918c81;
   --color-sidebar: #262420;        --color-sidebar-raised: #35322c;
-  --color-sidebar-content: #a39d8e; --color-sidebar-muted: #746f62; --color-sidebar-edge: #454138;
+  --color-sidebar-content: #a39d8e; --color-sidebar-muted: #938f85; --color-sidebar-edge: #454138;
   --color-status-idea-bg: #edeade;      --color-status-idea-fg: #55524a;
   --color-status-drafting-bg: #efe4c3;  --color-status-drafting-fg: #6d5716;
   --color-status-editing-bg: #dfe4ea;   --color-status-editing-fg: #3d4f63;
@@ -339,12 +349,13 @@
   --color-brand-300: #55409a; --color-brand-400: #8b72d8; --color-brand-500: #a78bfa;
   --color-brand-600: #b9a3fb; --color-brand-700: #cbb8fc; --color-brand-800: #ddcefd;
   --color-brand-900: #efe7fe;
+  --color-brand-fg: #191030;
   --color-surface: #221b33;        --color-surface-hover: #2a2140; --color-surface-sunken: #191227;
   --color-edge: #382b52;           --color-edge-soft: #2f2545;     --color-edge-strong: #4b3a6d;
   --color-content: #e9e2f7;        --color-content-secondary: #a795c9;
-  --color-content-muted: #7a6a9c;  --color-content-faint: #55486f;
+  --color-content-muted: #8f82ac;  --color-content-faint: #746989;
   --color-sidebar: #150f22;        --color-sidebar-raised: #251b3a;
-  --color-sidebar-content: #a08fc4; --color-sidebar-muted: #6d5e8d; --color-sidebar-edge: #352a4f;
+  --color-sidebar-content: #a08fc4; --color-sidebar-muted: #877ba2; --color-sidebar-edge: #352a4f;
   --color-status-idea-bg: #2f2841;      --color-status-idea-fg: #cbc2df;
   --color-status-drafting-bg: #3d3010;  --color-status-drafting-fg: #fcd34d;
   --color-status-editing-bg: #1d2c54;   --color-status-editing-fg: #93c5fd;

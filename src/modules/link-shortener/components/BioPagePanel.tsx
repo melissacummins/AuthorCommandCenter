@@ -327,7 +327,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={logoBusy}
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-control bg-brand-600 hover:bg-brand-700 text-brand-fg text-sm font-medium disabled:opacity-50"
             >
               {logoBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {bioSettings?.logo_url ? 'Replace logo' : 'Upload logo'}
@@ -363,7 +363,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                 disabled={themeBusy}
                 aria-label={th.name}
                 className={`relative w-[88px] rounded-card overflow-hidden border-2 transition disabled:opacity-60 ${
-                  active ? 'border-indigo-500' : 'border-transparent hover:border-edge-strong'
+                  active ? 'border-brand-500' : 'border-transparent hover:border-edge-strong'
                 }`}
               >
                 <div style={{ background: th.bg }} className="h-12 flex items-end justify-center px-2 pb-1.5">
@@ -374,7 +374,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                   <span style={{ background: th.accent }} className="w-2.5 h-2.5 rounded-full" />
                 </div>
                 {active && (
-                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-indigo-500 text-white grid place-items-center">
+                  <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-brand-500 text-brand-fg grid place-items-center">
                     <Check className="w-3 h-3" />
                   </span>
                 )}
@@ -424,7 +424,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             }}
             inputMode="numeric"
             placeholder="Meta Pixel ID (e.g. 1234567890123456)"
-            className="flex-1 px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300 font-mono"
+            className="flex-1 px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300 font-mono"
           />
           {themeBusy && <Loader2 className="w-4 h-4 animate-spin text-content-muted" />}
         </div>
@@ -685,7 +685,7 @@ function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide 
       </div>
       <button
         onClick={() => onToggleStyle(link)}
-        className="p-1.5 rounded-control text-content-muted hover:text-indigo-600 hover:bg-indigo-50"
+        className="p-1.5 rounded-control text-content-muted hover:text-brand-600 hover:bg-brand-50"
         title={isIcon ? 'Show as card' : 'Show as social icon'}
       >
         <ArrowLeftRight className="w-4 h-4" />
@@ -939,7 +939,7 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-card bg-violet-50/40 border border-violet-200/60"
+      className="flex items-start gap-3 px-3 py-3 rounded-card bg-brand-50/40 border border-brand-200/60"
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       <div className="w-16 h-16 rounded-control flex-shrink-0 overflow-hidden bg-surface border border-edge grid place-items-center">
@@ -978,7 +978,7 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control text-xs font-medium border border-violet-200 bg-surface text-violet-700 hover:bg-violet-50 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-control text-xs font-medium border border-brand-200 bg-surface text-brand-700 hover:bg-brand-50 disabled:opacity-50"
           >
             {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             {block.image_url ? 'Replace image' : 'Upload image'}

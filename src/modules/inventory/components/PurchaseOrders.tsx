@@ -55,7 +55,7 @@ export default function PurchaseOrders({ products, onInventoryChanged, prefill, 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
       </div>
     );
   }
@@ -71,7 +71,7 @@ export default function PurchaseOrders({ products, onInventoryChanged, prefill, 
         </div>
         <button
           onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-control hover:bg-blue-700"
+          className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700"
         >
           <Plus className="w-4 h-4" /> New Purchase Order
         </button>
@@ -117,7 +117,7 @@ export default function PurchaseOrders({ products, onInventoryChanged, prefill, 
           <p className="text-sm text-content-muted mb-4">Create a purchase order to track incoming stock.</p>
           <button
             onClick={() => setShowAdd(true)}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-control hover:bg-blue-700"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700"
           >
             <Plus className="w-4 h-4" /> New Purchase Order
           </button>
@@ -396,8 +396,8 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
                 placeholder="Vendor name"
                 onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddVendor(); } }}
                 autoFocus
-                className="flex-1 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
-              <button type="button" onClick={handleAddVendor} className="px-3 py-2 bg-blue-600 text-white text-sm rounded-control hover:bg-blue-700">Add</button>
+                className="flex-1 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
+              <button type="button" onClick={handleAddVendor} className="px-3 py-2 bg-brand-600 text-brand-fg text-sm rounded-control hover:bg-brand-700">Add</button>
               <button type="button" onClick={() => setShowNewVendor(false)} className="px-2 py-2 text-content-muted hover:text-content-secondary">
                 <X className="w-4 h-4" />
               </button>
@@ -405,12 +405,12 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
           ) : (
             <div className="flex gap-2">
               <select value={vendor} onChange={e => setVendor(e.target.value)}
-                className="flex-1 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400">
+                className="flex-1 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400">
                 <option value="">Select vendor...</option>
                 {vendors.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
               </select>
               <button type="button" onClick={() => setShowNewVendor(true)}
-                className="px-2 py-2 text-blue-600 hover:bg-blue-50 rounded-control" title="Add new vendor">
+                className="px-2 py-2 text-brand-600 hover:bg-brand-50 rounded-control" title="Add new vendor">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
@@ -420,7 +420,7 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
           <label className="block text-xs text-content-secondary mb-1">Invoice #</label>
           <input type="text" value={invoiceNumber} onChange={e => setInvoiceNumber(e.target.value)}
             placeholder="From vendor"
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
       </div>
 
@@ -429,17 +429,17 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
         <div>
           <label className="block text-xs text-content-secondary mb-1">Order Date *</label>
           <input type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <div>
           <label className="block text-xs text-content-secondary mb-1">Expected Dispatch</label>
           <input type="date" value={expectedDispatch} onChange={e => setExpectedDispatch(e.target.value)}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <div>
           <label className="block text-xs text-content-secondary mb-1">Expected Arrival</label>
           <input type="date" value={expectedArrival} onChange={e => setExpectedArrival(e.target.value)}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
       </div>
 
@@ -447,7 +447,7 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
       <div className="border-t border-edge pt-4">
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-medium text-content">Products</p>
-          <button type="button" onClick={addLine} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium">
+          <button type="button" onClick={addLine} className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 font-medium">
             <Plus className="w-3 h-3" /> Add Product
           </button>
         </div>
@@ -459,7 +459,7 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
                 <select
                   value={item.product_id}
                   onChange={e => updateLine(idx, 'product_id', e.target.value)}
-                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
                 >
                   <option value="">Select product...</option>
                   {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
@@ -469,7 +469,7 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
                 {idx === 0 && <label className="block text-xs text-content-muted mb-1">Qty</label>}
                 <input type="number" min={1} value={item.quantity}
                   onChange={e => updateLine(idx, 'quantity', Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
               </div>
               {items.length > 1 && (
                 <button type="button" onClick={() => removeLine(idx)} className="p-2 text-content-faint hover:text-red-500 mb-0.5">
@@ -491,7 +491,7 @@ function AddPOForm({ products, initialItems, onClose, onCreated }: {
       <div className="flex justify-end gap-3 pt-2 border-t border-edge">
         <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">Cancel</button>
         <button type="submit" disabled={saving}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50">
+          className="px-4 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700 disabled:opacity-50">
           {saving ? 'Creating...' : 'Create Purchase Order'}
         </button>
       </div>
@@ -621,19 +621,19 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
           <label className="block text-xs text-content-secondary mb-1">Good Qty Received</label>
           <input type="number" min={0} value={goodQty}
             onChange={e => handleGoodQtyChange(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <div>
           <label className="block text-xs text-content-secondary mb-1">Scratch & Dent</label>
           <input type="number" min={0} value={sdQty}
             onChange={e => handleSdChange(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <div>
           <label className="block text-xs text-content-secondary mb-1">Add to Inventory</label>
           <input type="number" min={0} value={addToInv}
             onChange={e => setAddToInv(Number(e.target.value))}
-            className="w-full px-3 py-2 border border-indigo-300 bg-indigo-50/50 rounded-control text-sm focus:outline-none focus:border-indigo-500" />
+            className="w-full px-3 py-2 border border-brand-300 bg-brand-50/50 rounded-control text-sm focus:outline-none focus:border-brand-500" />
           <p className="text-xs text-content-muted mt-1">
             Set to 0 for component-only orders (e.g., stickers arriving before buttons)
           </p>
@@ -649,7 +649,7 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
           </span>
         )}
         {addToInv < goodQty && addToInv >= 0 && (
-          <span className="text-indigo-600 ml-2">
+          <span className="text-brand-600 ml-2">
             ({goodQty - addToInv} received but not added to inventory)
           </span>
         )}
@@ -665,7 +665,7 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
             <select
               value={sdProductId}
               onChange={e => setSdProductId(e.target.value)}
-              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
             >
               <option value="">Select the S&D product...</option>
               {sdOptions.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
@@ -694,7 +694,7 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
           onChange={e => setNotes(e.target.value)}
           rows={2}
           placeholder="e.g., Vendor shipped 54 of item 1 but only 49 of item 3"
-          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400 resize-none"
+          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400 resize-none"
         />
         <p className="text-xs text-content-muted mt-1">
           Notes will appear on the product's detail view so you can reference them later.
@@ -702,14 +702,14 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
       </div>
 
       {/* Summary */}
-      <div className="p-3 bg-blue-50 border border-blue-200 rounded-control text-sm text-blue-700 space-y-1">
+      <div className="p-3 bg-brand-50 border border-brand-200 rounded-control text-sm text-brand-700 space-y-1">
         {addToInv > 0 ? (
           <p>&bull; <strong>{addToInv}</strong> units will be added to <strong>{po.product_name}</strong> inventory</p>
         ) : (
           <p>&bull; <strong>{po.product_name}</strong> inventory will <strong>not change</strong> (component-only tracking)</p>
         )}
         {goodQty > addToInv && addToInv >= 0 && (
-          <p className="text-indigo-600">&bull; {goodQty - addToInv} units received but held (waiting for other components)</p>
+          <p className="text-brand-600">&bull; {goodQty - addToInv} units received but held (waiting for other components)</p>
         )}
         {sdQty > 0 && sdProduct && (
           <p>&bull; <strong>{sdQty}</strong> scratch & dent units will be added to <strong>{sdProduct.name}</strong></p>
@@ -742,7 +742,7 @@ function ConfirmArrivalForm({ po, products, onClose, onConfirmed, siblings }: {
         </button>
         {nextPending && (
           <button onClick={handleConfirmAndNext} disabled={saving || total === 0}
-            className="px-4 py-2 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50">
+            className="px-4 py-2 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700 disabled:opacity-50">
             {saving ? 'Saving…' : (isEdit ? 'Save & Next →' : 'Confirm & Next →')}
           </button>
         )}

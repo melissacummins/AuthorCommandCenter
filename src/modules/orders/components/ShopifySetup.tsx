@@ -151,7 +151,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             value={storeUrl}
             onChange={(e) => setStoreUrl(e.target.value)}
             placeholder="your-store.myshopify.com"
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
 
@@ -164,7 +164,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             value={clientId}
             onChange={(e) => setClientId(e.target.value)}
             placeholder="Paste your Client ID from the Dev Dashboard"
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
 
@@ -177,7 +177,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             value={clientSecret}
             onChange={(e) => setClientSecret(e.target.value)}
             placeholder="Paste your Client Secret from the Dev Dashboard"
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm font-mono focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
           <p className="text-xs text-content-muted mt-1">
             Both are found in your Shopify Dev Dashboard &rarr; Settings &rarr; Credentials
@@ -205,7 +205,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
           <button
             onClick={handleSaveAndAuthorize}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ExternalLink className="w-4 h-4" />}
             Save & Authorize with Shopify
@@ -216,7 +216,7 @@ export default function ShopifySetup({ settings, onSaved }: Props) {
             <button
               onClick={handleTest}
               disabled={testing}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
             >
               {testing && <Loader2 className="w-4 h-4 animate-spin" />}
               Test Connection

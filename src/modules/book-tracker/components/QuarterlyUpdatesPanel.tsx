@@ -80,7 +80,7 @@ export default function QuarterlyUpdatesPanel({ book, updates, onAdd, onDelete }
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-600 text-white font-medium rounded-control hover:bg-purple-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
         >
           <Plus className="w-4 h-4" /> {busy ? 'Saving…' : 'Add'}
         </button>

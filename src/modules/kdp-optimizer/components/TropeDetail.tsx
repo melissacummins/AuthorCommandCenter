@@ -125,7 +125,7 @@ export default function TropeDetail({ trope, allTropes, keywords, onBack, onChan
             <button
               onClick={() => fileInputRef.current?.click()}
               disabled={busy}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control shadow-sm"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control shadow-sm"
             >
               <Upload className="w-4 h-4" /> Upload Publisher Rocket CSV
             </button>
@@ -137,8 +137,8 @@ export default function TropeDetail({ trope, allTropes, keywords, onBack, onChan
 
       {/* Bulk actions */}
       {selected.size > 0 && (
-        <div className="bg-indigo-50 border border-indigo-200 rounded-card p-3 flex flex-wrap items-center gap-3 text-sm">
-          <span className="font-medium text-indigo-800">{selected.size} selected</span>
+        <div className="bg-brand-50 border border-brand-200 rounded-card p-3 flex flex-wrap items-center gap-3 text-sm">
+          <span className="font-medium text-brand-800">{selected.size} selected</span>
           <button
             onClick={deleteSelected}
             disabled={busy}
@@ -160,7 +160,7 @@ export default function TropeDetail({ trope, allTropes, keywords, onBack, onChan
             <button
               onClick={copySelectedTo}
               disabled={busy || !copyTarget}
-              className="inline-flex items-center gap-1 px-3 py-1.5 text-indigo-700 bg-surface border border-indigo-200 hover:bg-indigo-50 disabled:opacity-50 rounded-control"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-brand-700 bg-surface border border-brand-200 hover:bg-brand-50 disabled:opacity-50 rounded-control"
             >
               <Copy className="w-3.5 h-3.5" /> Copy
             </button>
@@ -202,7 +202,7 @@ export default function TropeDetail({ trope, allTropes, keywords, onBack, onChan
               </thead>
               <tbody className="divide-y divide-edge-soft">
                 {sorted.map(k => (
-                  <tr key={k.id} className={selected.has(k.id) ? 'bg-indigo-50' : ''}>
+                  <tr key={k.id} className={selected.has(k.id) ? 'bg-brand-50' : ''}>
                     <td className="px-3 py-2">
                       <input type="checkbox" checked={selected.has(k.id)} onChange={() => toggle(k.id)} />
                     </td>

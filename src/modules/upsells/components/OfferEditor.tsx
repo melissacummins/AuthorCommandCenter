@@ -163,7 +163,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                 value={triggerQuery}
                 onChange={e => setTriggerQuery(e.target.value)}
                 placeholder="Search your products…"
-                className="w-full pl-9 pr-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+                className="w-full pl-9 pr-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 autoFocus
               />
               {triggerMatches.length > 0 && (
@@ -194,7 +194,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
             value={heading}
             onChange={e => setHeading(e.target.value)}
             placeholder="Add to your order"
-            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+            className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
           />
         </div>
 
@@ -219,7 +219,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                       value={a.label}
                       onChange={e => setAddons(prev => prev.map((x, xi) => xi === i ? { ...x, label: e.target.value } : x))}
                       placeholder={`Shown as: ${a.title}`}
-                      className="mt-1 w-full px-2 py-1 border border-edge rounded text-xs text-content-secondary focus:outline-none focus:ring-1 focus:ring-sky-500"
+                      className="mt-1 w-full px-2 py-1 border border-edge rounded text-xs text-content-secondary focus:outline-none focus:ring-1 focus:ring-brand-500"
                     />
                   </div>
                   <div className="flex flex-col gap-0.5">
@@ -245,7 +245,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
               value={addonQuery}
               onChange={e => { setAddonQuery(e.target.value); setExpandedProduct(null); }}
               placeholder="Search a product to add as an add-on…"
-              className="w-full pl-9 pr-3 py-2 border border-dashed border-edge-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 focus:border-transparent"
+              className="w-full pl-9 pr-3 py-2 border border-dashed border-edge-strong rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
             />
             {addonMatches.length > 0 && (
               <div className="absolute z-10 mt-1 w-full bg-surface border border-edge rounded-card shadow-lg overflow-hidden max-h-72 overflow-y-auto">
@@ -268,7 +268,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                         <button
                           key={v.id}
                           onClick={() => addAddon(p, v)}
-                          className="flex items-center gap-2 w-full pl-14 pr-3 py-1.5 text-left hover:bg-sky-50"
+                          className="flex items-center gap-2 w-full pl-14 pr-3 py-1.5 text-left hover:bg-brand-50"
                         >
                           <span className="text-xs text-content-secondary flex-1">{v.title}</span>
                           <span className="text-xs text-content-muted">{formatPrice(v.price)}</span>
@@ -289,9 +289,9 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
               type="checkbox"
               checked={discountEnabled}
               onChange={e => setDiscountEnabled(e.target.checked)}
-              className="w-4 h-4 accent-sky-600"
+              className="w-4 h-4 accent-brand-600"
             />
-            <BadgePercent className="w-4 h-4 text-sky-600" />
+            <BadgePercent className="w-4 h-4 text-brand-600" />
             <span className="text-sm font-medium text-content">Discount on add-ons</span>
           </label>
           <p className="text-xs text-content-muted mt-1 ml-6">
@@ -307,7 +307,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                   <select
                     value={discountType}
                     onChange={e => setDiscountType(e.target.value as DiscountType)}
-                    className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="fixed">Fixed value ($)</option>
@@ -322,7 +322,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                     value={discountValue}
                     onChange={e => setDiscountValue(e.target.value)}
                     placeholder={discountType === 'percentage' ? '15' : '5.00'}
-                    className="w-28 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    className="w-28 px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   />
                 </div>
               </div>
@@ -334,7 +334,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                   value={discountText}
                   onChange={e => setDiscountText(e.target.value)}
                   placeholder="Save when you bundle"
-                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
 
@@ -343,7 +343,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                   type="checkbox"
                   checked={includesTrigger}
                   onChange={e => setIncludesTrigger(e.target.checked)}
-                  className="w-4 h-4 accent-sky-600 mt-0.5"
+                  className="w-4 h-4 accent-brand-600 mt-0.5"
                 />
                 <span>
                   Bundle-style: discount also applies to the main product
@@ -367,7 +367,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
                         type="checkbox"
                         checked={value}
                         onChange={e => setter(e.target.checked)}
-                        className="w-4 h-4 accent-sky-600"
+                        className="w-4 h-4 accent-brand-600"
                       />
                       {label}
                     </label>
@@ -398,7 +398,7 @@ export default function OfferEditor({ open, onClose, catalog, existing, takenPro
           <button
             onClick={handleSave}
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
           >
             {saving && <Loader2 className="w-4 h-4 animate-spin" />}
             {saving ? 'Saving to Shopify…' : 'Save offer'}

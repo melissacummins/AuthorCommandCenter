@@ -151,7 +151,7 @@ export default function AnalyticsDashboard({ links, clicks, bioViews = [], range
 
       <div className="bg-surface rounded-card border border-edge p-5 shadow-sm">
         <h3 className="text-sm font-semibold text-content mb-4 flex items-center gap-2">
-          <Layout className="w-4 h-4 text-indigo-500" /> Bio page
+          <Layout className="w-4 h-4 text-brand-500" /> Bio page
         </h3>
         <div className="grid grid-cols-3 gap-4">
           <BioMetric icon={<Eye className="w-4 h-4" />} label="Page views" value={formatNumber(bio.views)} />
@@ -217,7 +217,7 @@ function StatCard({ icon, label, value, sub }: { icon: ReactNode; label: string;
   return (
     <div className="bg-surface rounded-card border border-edge p-4 shadow-sm">
       <div className="flex items-center gap-2 text-content-secondary text-xs font-medium uppercase tracking-wide">
-        <span className="text-indigo-500">{icon}</span>
+        <span className="text-brand-500">{icon}</span>
         {label}
       </div>
       <div className="mt-2 text-2xl font-semibold text-content truncate">{value}</div>
@@ -230,7 +230,7 @@ function BioMetric({ icon, label, value }: { icon: ReactNode; label: string; val
   return (
     <div className="rounded-card bg-surface-hover border border-edge-soft p-3">
       <div className="flex items-center gap-1.5 text-content-secondary text-[11px] font-medium uppercase tracking-wide">
-        <span className="text-indigo-500">{icon}</span>
+        <span className="text-brand-500">{icon}</span>
         {label}
       </div>
       <div className="mt-1.5 text-xl font-semibold text-content">{value}</div>
@@ -257,7 +257,7 @@ function TabbedCard({ tabs }: TabbedCardProps) {
             onClick={() => setActiveKey(tab.key)}
             className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition ${
               tab.key === activeKey
-                ? 'border-indigo-500 text-indigo-700'
+                ? 'border-brand-500 text-brand-700'
                 : 'border-transparent text-content-secondary hover:text-content'
             }`}
           >
@@ -277,7 +277,7 @@ function TabbedCard({ tabs }: TabbedCardProps) {
                   <div className="w-44 truncate text-content" title={item.label}>{item.label}</div>
                   <div className="flex-1 h-2 bg-surface-sunken rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-indigo-500 rounded-full transition-all"
+                      className="h-full bg-brand-500 rounded-full transition-all"
                       style={{ width: `${Math.max(pct, 2)}%` }}
                     />
                   </div>

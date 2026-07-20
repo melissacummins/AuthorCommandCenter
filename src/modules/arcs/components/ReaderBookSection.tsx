@@ -44,7 +44,7 @@ export default function ReaderBookSection({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-700"
+            className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700"
           >
             <Plus className="w-3 h-3" /> Add book
           </button>
@@ -61,14 +61,14 @@ export default function ReaderBookSection({
           return (
             <span
               key={id}
-              className="inline-flex items-center gap-1.5 text-xs pl-2 pr-1 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-full"
+              className="inline-flex items-center gap-1.5 text-xs pl-2 pr-1 py-1 bg-brand-100 text-brand-800 border border-brand-200 rounded-full"
             >
               {b?.title ?? '(deleted book)'}
               {pn && <PenNameChip name={pn.name} color={pn.color} />}
               <button
                 type="button"
                 onClick={() => onRemove(id)}
-                className="ml-0.5 p-0.5 hover:bg-indigo-200 rounded-full"
+                className="ml-0.5 p-0.5 hover:bg-brand-200 rounded-full"
                 aria-label={`Remove ${b?.title ?? 'book'}`}
               >
                 <X className="w-3 h-3" />

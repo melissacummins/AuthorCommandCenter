@@ -68,7 +68,7 @@ export default function StockModal({ product, onClose, onRefetch }: StockModalPr
           type="button"
           onClick={() => setInventoryType('book')}
           className={`flex-1 px-3 py-2 rounded-control text-sm font-medium border-2 transition-colors ${
-            inventoryType === 'book' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-edge text-content-secondary'
+            inventoryType === 'book' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-edge text-content-secondary'
           }`}
         >
           Book
@@ -77,7 +77,7 @@ export default function StockModal({ product, onClose, onRefetch }: StockModalPr
           type="button"
           onClick={() => setInventoryType('bundle')}
           className={`flex-1 px-3 py-2 rounded-control text-sm font-medium border-2 transition-colors ${
-            inventoryType === 'bundle' ? 'border-purple-500 bg-purple-50 text-purple-700' : 'border-edge text-content-secondary'
+            inventoryType === 'bundle' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-edge text-content-secondary'
           }`}
         >
           Bundle
@@ -91,7 +91,7 @@ export default function StockModal({ product, onClose, onRefetch }: StockModalPr
           min="1"
           value={quantity}
           onChange={e => setQuantity(Number(e.target.value))}
-          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
         />
       </div>
 
@@ -112,7 +112,7 @@ export default function StockModal({ product, onClose, onRefetch }: StockModalPr
           type="text"
           value={source}
           onChange={e => setSource(e.target.value)}
-          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400"
+          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400"
         />
       </div>
 
@@ -122,7 +122,7 @@ export default function StockModal({ product, onClose, onRefetch }: StockModalPr
           value={notes}
           onChange={e => setNotes(e.target.value)}
           rows={2}
-          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400 resize-none"
+          className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400 resize-none"
         />
       </div>
 

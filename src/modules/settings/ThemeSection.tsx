@@ -40,7 +40,7 @@ export default function ThemeSection() {
                 {t.label}
               </span>
               {selected && (
-                <span className="absolute top-2 right-2 inline-flex items-center justify-center w-4.5 h-4.5 rounded-full bg-brand-500 text-white">
+                <span className="absolute top-2 right-2 inline-flex items-center justify-center w-4.5 h-4.5 rounded-full bg-brand-500 text-brand-fg">
                   <Check className="w-3 h-3" />
                 </span>
               )}

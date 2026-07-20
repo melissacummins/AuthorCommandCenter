@@ -44,7 +44,7 @@ export function TimerButton({
       onClick={toggle}
       title={running ? 'Stop timer' : base > 0 ? `Resume timer · ${formatMinutes(base)} tracked` : 'Start timer'}
       className={`inline-flex items-center gap-1 text-xs font-medium shrink-0 ${
-        running ? 'text-rose-600' : base > 0 ? 'text-content-secondary hover:text-teal-600' : 'text-content-faint hover:text-teal-600'
+        running ? 'text-rose-600' : base > 0 ? 'text-content-secondary hover:text-brand-600' : 'text-content-faint hover:text-brand-600'
       }`}
     >
       {running

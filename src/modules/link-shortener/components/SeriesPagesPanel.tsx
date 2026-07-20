@@ -57,7 +57,7 @@ export default function SeriesPagesPanel() {
         <button
           onClick={() => setEditing('new')}
           disabled={books.length === 0}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-brand-600 hover:bg-brand-700 text-brand-fg text-sm font-medium disabled:opacity-50"
         >
           <Plus className="w-4 h-4" /> New series
         </button>
@@ -81,7 +81,7 @@ export default function SeriesPagesPanel() {
                 <p className="text-sm font-medium text-content truncate">{s.title || `/${s.slug}`}</p>
                 <p className="text-xs text-content-muted font-mono truncate">/{s.slug} · {s.page_ids?.length ?? 0} books</p>
               </div>
-              <a href={buildShortUrl(s.slug)} target="_blank" rel="noreferrer" className="p-1.5 text-content-muted hover:text-indigo-600 rounded-control hover:bg-surface-hover" title="Open page">
+              <a href={buildShortUrl(s.slug)} target="_blank" rel="noreferrer" className="p-1.5 text-content-muted hover:text-brand-600 rounded-control hover:bg-surface-hover" title="Open page">
                 <ExternalLink className="w-4 h-4" />
               </a>
               <button onClick={() => setEditing(s)} className="px-2.5 py-1.5 text-xs font-medium text-content-secondary border border-edge rounded-control hover:bg-surface-hover">Edit</button>
@@ -182,16 +182,16 @@ function SeriesEditor({
             value={slug}
             onChange={(e) => setSlug(e.target.value.replace(/\s+/g, '-'))}
             placeholder="darkling-series"
-            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong font-mono focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong font-mono focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
         </Field>
 
         <Field label="Title">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="The Darkling Series" className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="The Darkling Series" className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong focus:outline-none focus:ring-2 focus:ring-brand-300" />
         </Field>
 
         <Field label="Description">
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short intro shown above the books." className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong resize-none focus:outline-none focus:ring-2 focus:ring-indigo-300" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} placeholder="A short intro shown above the books." className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong resize-none focus:outline-none focus:ring-2 focus:ring-brand-300" />
         </Field>
 
         {/* Books in the series */}
@@ -228,7 +228,7 @@ function SeriesEditor({
             <select
               value=""
               onChange={(e) => { if (e.target.value) setSelectedIds((ids) => [...ids, e.target.value]); }}
-              className="w-full px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              className="w-full px-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300"
             >
               <option value="">+ Add a book…</option>
               {available.map((b) => (
@@ -245,7 +245,7 @@ function SeriesEditor({
           <select
             value={cardTextMode}
             onChange={(e) => setCardTextMode(e.target.value as 'headline' | 'description' | 'none')}
-            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full px-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300"
           >
             <option value="description">Each book's description</option>
             <option value="headline">Each book's headline</option>
@@ -261,7 +261,7 @@ function SeriesEditor({
               const active = theme === th.id;
               return (
                 <button key={th.id} type="button" onClick={() => setTheme(th.id)} aria-label={th.name}
-                  className={`relative w-[78px] rounded-card overflow-hidden border-2 transition ${active ? 'border-indigo-500' : 'border-transparent hover:border-edge-strong'}`}>
+                  className={`relative w-[78px] rounded-card overflow-hidden border-2 transition ${active ? 'border-brand-500' : 'border-transparent hover:border-edge-strong'}`}>
                   <div style={{ background: th.bg }} className="h-10 flex items-end justify-center px-2 pb-1.5">
                     <span style={{ background: th.surface }} className="block w-full h-2.5 rounded-sm shadow-sm" />
                   </div>
@@ -269,7 +269,7 @@ function SeriesEditor({
                     <span className="text-[10px] font-medium text-content">{th.name}</span>
                     <span style={{ background: th.accent }} className="w-2 h-2 rounded-full" />
                   </div>
-                  {active && <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-indigo-500 text-white grid place-items-center"><Check className="w-2.5 h-2.5" /></span>}
+                  {active && <span className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-brand-500 text-brand-fg grid place-items-center"><Check className="w-2.5 h-2.5" /></span>}
                 </button>
               );
             })}
@@ -284,7 +284,7 @@ function SeriesEditor({
         {error && <div className="px-3 py-2 rounded-control bg-rose-50 border border-rose-200 text-rose-700 text-sm">{error}</div>}
 
         <div className="flex items-center gap-2 pt-1">
-          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
             {series ? 'Save changes' : 'Create series'}
           </button>

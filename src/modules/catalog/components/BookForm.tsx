@@ -103,7 +103,7 @@ function logDayLabel(day: string): string {
 
 const labelCls = 'block text-sm font-medium text-content mb-1';
 const inputCls =
-  'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none bg-surface';
+  'w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none bg-surface';
 const sectionCls = 'bg-surface rounded-card border border-edge p-5 space-y-4';
 const sectionTitle = 'text-sm font-semibold text-content uppercase tracking-wide';
 
@@ -316,11 +316,11 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
       <div className={sectionCls}>
         <h3 className={sectionTitle}>Cover</h3>
         <div className="flex items-start gap-4">
-          <div className="w-28 h-40 rounded-control bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden border border-edge">
+          <div className="w-28 h-40 rounded-control bg-gradient-to-br from-brand-100 to-brand-100 flex items-center justify-center shrink-0 overflow-hidden border border-edge">
             {previewUrl ? (
               <img src={previewUrl} alt="Cover preview" className="w-full h-full object-cover" />
             ) : (
-              <BookOpen className="w-8 h-8 text-indigo-400" />
+              <BookOpen className="w-8 h-8 text-brand-400" />
             )}
           </div>
           <div className="flex-1 space-y-2">
@@ -404,7 +404,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           <label className={labelCls}>Pen name</label>
           {penNames.length === 0 ? (
             <p className="text-xs text-content-secondary">
-              No pen names yet — add one in <a href="/settings" className="text-indigo-600 hover:underline">Settings</a>.
+              No pen names yet — add one in <a href="/settings" className="text-brand-600 hover:underline">Settings</a>.
             </p>
           ) : (
             <select
@@ -441,7 +441,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           </label>
 
           {translationSuggestion && (
-            <div className="mb-2 flex items-start gap-2 bg-indigo-50 border border-indigo-200 rounded-control p-2.5 text-xs text-indigo-800">
+            <div className="mb-2 flex items-start gap-2 bg-brand-50 border border-brand-200 rounded-control p-2.5 text-xs text-brand-800">
               <Link2 className="w-3.5 h-3.5 mt-0.5 shrink-0" />
               <div className="flex-1">
                 Looks like a {languageLabel(translationSuggestion.languageCode)} translation of{' '}
@@ -454,7 +454,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
                   parent_book_id: translationSuggestion.parent.id,
                   language: translationSuggestion.languageCode,
                 }))}
-                className="px-2 py-1 text-xs bg-indigo-600 text-white rounded-control hover:bg-indigo-700"
+                className="px-2 py-1 text-xs bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700"
               >
                 Link it
               </button>
@@ -617,7 +617,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
 
         {linkedManuscript && (
           <div className="flex items-center gap-2 text-sm">
-            <PenTool className="w-4 h-4 text-lime-500 shrink-0" />
+            <PenTool className="w-4 h-4 text-brand-500 shrink-0" />
             <span className="text-content-secondary">Linked manuscript:</span>
             <span className="font-medium text-content">{linkedManuscript.title}</span>
             <span className={`text-xs px-2 py-0.5 rounded-full ${MANUSCRIPT_STATUS_COLORS[linkedManuscript.status]}`}>
@@ -649,7 +649,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
         {/* Hours worked — rolled up from any planner lists linked to this book. */}
         {trackedMinutes > 0 && (
           <div className="flex items-center gap-2 text-sm text-content-secondary">
-            <Clock className="w-4 h-4 text-teal-500 shrink-0" />
+            <Clock className="w-4 h-4 text-brand-500 shrink-0" />
             <span className="font-semibold">{formatHm(trackedMinutes)}</span>
             <span className="text-content-muted text-xs">worked — tracked via linked planner lists</span>
           </div>
@@ -682,7 +682,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
                     title={`${logDayLabel(l.day)} · ${l.word_count.toLocaleString()} words`}
                   >
                     <div
-                      className="w-full rounded-t bg-indigo-400 hover:bg-indigo-500 transition-colors"
+                      className="w-full rounded-t bg-brand-400 hover:bg-brand-500 transition-colors"
                       style={{ height: `${Math.max(4, (l.word_count / max) * 100)}%` }}
                     />
                   </div>
@@ -734,7 +734,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
             <h3 className={sectionTitle}>Amazon keywords (from KDP Optimizer)</h3>
             <Link
               to="/kdp-optimizer"
-              className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800"
+              className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-800"
             >
               <ExternalLink className="w-3.5 h-3.5" /> Open KDP Optimizer
             </Link>
@@ -840,7 +840,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           <button
             type="button"
             onClick={addReview}
-            className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-800"
+            className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800"
           >
             <Plus className="w-4 h-4" /> Add review
           </button>
@@ -914,7 +914,7 @@ export default function BookForm({ initial, onSubmit, onCancel, onDelete, saving
           <button
             type="submit"
             disabled={saving || !draft.title.trim()}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+            className="px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
           >
             {saving ? 'Saving…' : initial ? 'Save changes' : 'Add book'}
           </button>
@@ -943,7 +943,7 @@ function KdpBoxRow({ index, content }: { index: number; content: string }) {
         value={content}
         placeholder="Empty"
         className={`flex-1 px-3 py-1.5 rounded-control font-mono text-xs border ${
-          isEmpty ? 'bg-surface-hover border-edge' : 'bg-surface border-indigo-200'
+          isEmpty ? 'bg-surface-hover border-edge' : 'bg-surface border-brand-200'
         }`}
       />
       <span className="text-[10px] font-mono text-content-muted w-12 text-right">
@@ -954,7 +954,7 @@ function KdpBoxRow({ index, content }: { index: number; content: string }) {
         onClick={copy}
         disabled={isEmpty}
         title="Copy"
-        className="p-1.5 text-content-muted hover:text-indigo-600 disabled:opacity-30 disabled:hover:text-content-muted"
+        className="p-1.5 text-content-muted hover:text-brand-600 disabled:opacity-30 disabled:hover:text-content-muted"
       >
         {copied ? <span className="text-[10px] text-emerald-600">Copied</span> : <Copy className="w-3.5 h-3.5" />}
       </button>

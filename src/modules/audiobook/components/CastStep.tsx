@@ -58,7 +58,7 @@ export default function CastStep({
           const v = voiceFor(role);
           return (
             <div key={role} className="flex items-center gap-3 p-3 rounded-card border border-edge">
-              <div className={`inline-flex items-center justify-center w-9 h-9 rounded-control ${role === 'female' ? 'bg-pink-100 text-pink-600' : role === 'male' ? 'bg-blue-100 text-blue-600' : 'bg-amber-100 text-amber-600'}`}>
+              <div className={`inline-flex items-center justify-center w-9 h-9 rounded-control ${role === 'female' ? 'bg-brand-100 text-brand-600' : role === 'male' ? 'bg-brand-100 text-brand-600' : 'bg-amber-100 text-amber-600'}`}>
                 {role === 'narrator' ? <Mic2 className="w-4 h-4" /> : <UserCircle2 className="w-4 h-4" />}
               </div>
               <div className="flex-1 min-w-0">
@@ -70,7 +70,7 @@ export default function CastStep({
                 )}
               </div>
               <button onClick={() => setPicking(role)}
-                className="px-3 py-1.5 text-sm font-medium rounded-control border border-violet-200 text-violet-700 hover:bg-violet-50">
+                className="px-3 py-1.5 text-sm font-medium rounded-control border border-brand-200 text-brand-700 hover:bg-brand-50">
                 {v.id ? 'Change' : 'Assign'}
               </button>
             </div>

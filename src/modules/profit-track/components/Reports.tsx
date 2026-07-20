@@ -50,12 +50,12 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
     <div className="space-y-6 animate-fade-in">
       
       {/* Controls */}
-      <div className="flex flex-col sm:flex-row justify-between items-center bg-surface p-4 rounded-card shadow-sm border border-gray-100">
-        <div className="flex bg-gray-100 p-1 rounded-control mb-4 sm:mb-0">
+      <div className="flex flex-col sm:flex-row justify-between items-center bg-surface p-4 rounded-card shadow-sm border border-edge-soft">
+        <div className="flex bg-surface-sunken p-1 rounded-control mb-4 sm:mb-0">
           <button
             onClick={() => setActiveTab('monthly')}
             className={`px-4 py-2 text-sm font-medium rounded-control transition-all ${
-              activeTab === 'monthly' ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              activeTab === 'monthly' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             Month by Month
@@ -63,7 +63,7 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
           <button
             onClick={() => setActiveTab('yearly')}
             className={`px-4 py-2 text-sm font-medium rounded-control transition-all ${
-              activeTab === 'yearly' ? 'bg-surface text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              activeTab === 'yearly' ? 'bg-surface text-content shadow-sm' : 'text-content-secondary hover:text-content'
             }`}
           >
             Yearly Overview
@@ -75,12 +75,12 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="appearance-none bg-surface border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-control leading-tight focus:outline-none focus:bg-surface focus:border-blue-500"
+              className="appearance-none bg-surface border border-edge-strong text-content py-2 px-4 pr-8 rounded-control leading-tight focus:outline-none focus:bg-surface focus:border-brand-500"
             >
               <option value="All">All Years</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-content">
               <ChevronDown className="w-4 h-4" />
             </div>
           </div>
@@ -94,21 +94,21 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
             value={formatNumber(viewAggregates.units)}
             subValue="Calculated using bundle multipliers"
             icon={Layers}
-            colorClass="text-blue-600"
+            colorClass="text-brand-600"
          />
          <SummaryCard 
             title="Total Page Reads" 
             value={formatNumber(viewAggregates.reads)}
             subValue="KENP & Kobo Plus"
             icon={BookOpen}
-            colorClass="text-indigo-600"
+            colorClass="text-brand-600"
          />
       </div>
 
       {activeTab === 'monthly' && (
         <>
-          <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Financial Overview</h3>
+          <div className="bg-surface p-6 rounded-card shadow-sm border border-edge-soft">
+            <h3 className="text-lg font-bold text-content mb-6">Financial Overview</h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={filteredMonthlyData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -130,26 +130,26 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
             </div>
           </div>
 
-          <div className="bg-surface rounded-card shadow-sm border border-gray-100 overflow-hidden">
-             <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+          <div className="bg-surface rounded-card shadow-sm border border-edge-soft overflow-hidden">
+             <table className="min-w-full divide-y divide-edge">
+                <thead className="bg-surface-hover">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Month</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Spend</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net Profit</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ROAS</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Units Sold</th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Page Reads</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">Month</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Revenue</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Spend</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Net Profit</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">ROAS</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Units Sold</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Page Reads</th>
                   </tr>
                 </thead>
-                <tbody className="bg-surface divide-y divide-gray-200">
+                <tbody className="bg-surface divide-y divide-edge">
                   {filteredMonthlyData.map((row) => (
-                    <tr key={row.monthKey} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {row.monthName} <span className="text-gray-400 font-normal">{row.year}</span>
+                    <tr key={row.monthKey} className="hover:bg-surface-hover">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-content">
+                        {row.monthName} <span className="text-content-muted font-normal">{row.year}</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-content">
                         {formatCurrency(row.totalRevenue)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
@@ -158,13 +158,13 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
                       <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${row.netRevenue >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                         {formatCurrency(row.netRevenue)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-content">
                         {row.roas.toFixed(2)}x
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-blue-700 bg-blue-50/50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-brand-700 bg-brand-50/50">
                         {formatNumber(row.unitsSold)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-content-secondary">
                         {formatNumber(row.pageReads)}
                       </td>
                     </tr>
@@ -177,8 +177,8 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
 
       {activeTab === 'yearly' && (
         <div className="grid grid-cols-1 gap-6">
-           <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-6">Yearly Growth</h3>
+           <div className="bg-surface p-6 rounded-card shadow-sm border border-edge-soft">
+            <h3 className="text-lg font-bold text-content mb-6">Yearly Growth</h3>
             <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={[...yearlyData].reverse()} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -194,26 +194,26 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
             </div>
           </div>
 
-          <div className="bg-surface rounded-card shadow-sm border border-gray-100 overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+          <div className="bg-surface rounded-card shadow-sm border border-edge-soft overflow-hidden">
+            <table className="min-w-full divide-y divide-edge">
+              <thead className="bg-surface-hover">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Revenue</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Spend</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Net Profit</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ROAS</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Units Sold</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Page Reads</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">Year</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Revenue</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Spend</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Net Profit</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">ROAS</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Units Sold</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-content-secondary uppercase tracking-wider">Page Reads</th>
                 </tr>
               </thead>
-              <tbody className="bg-surface divide-y divide-gray-200">
+              <tbody className="bg-surface divide-y divide-edge">
                 {yearlyData.map((row) => (
-                  <tr key={row.year} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap text-lg font-bold text-gray-900">
+                  <tr key={row.year} className="hover:bg-surface-hover">
+                    <td className="px-6 py-4 whitespace-nowrap text-lg font-bold text-content">
                       {row.year}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-content">
                       {formatCurrency(row.totalRevenue)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600">
@@ -222,13 +222,13 @@ export const Reports: React.FC<ReportsProps> = ({ data, sources, monthlyOrders, 
                     <td className={`px-6 py-4 whitespace-nowrap text-sm text-right font-bold ${row.netRevenue >= 0 ? 'text-green-600' : 'text-red-500'}`}>
                       {formatCurrency(row.netRevenue)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-content">
                         {row.roas.toFixed(2)}x
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-blue-700 bg-blue-50/50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-brand-700 bg-brand-50/50">
                         {formatNumber(row.unitsSold)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-content-secondary">
                         {formatNumber(row.pageReads)}
                     </td>
                   </tr>

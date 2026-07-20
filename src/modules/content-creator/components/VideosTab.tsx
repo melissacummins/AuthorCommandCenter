@@ -84,7 +84,7 @@ export default function VideosTab({ book }: { book: Book }) {
             </p>
           </div>
           <button onClick={() => setCreating(true)} disabled={!approved.length}
-            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2">
+            className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-40 flex items-center gap-2">
             <Plus className="w-4 h-4" /> New video
           </button>
         </div>
@@ -191,7 +191,7 @@ function NewVideoForm({ userId, book, approvedHooks, onCancel, onCreated }: {
         <div className="flex gap-2 ml-auto">
           <button onClick={onCancel} className="px-3 py-2 text-sm text-content-secondary hover:text-content">Cancel</button>
           <button onClick={generate} disabled={busy || !hookId}
-            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+            className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />} Write script
           </button>
         </div>
@@ -374,13 +374,13 @@ function VideoEditor({ userId, creative, onBack, onChanged }: {
           {payload.music_url && <audio ref={audioRef} src={payload.music_url} loop />}
 
           <div className="flex flex-wrap gap-2 text-xs">
-            <label className="flex items-center gap-1 text-content-secondary hover:text-pink-600 cursor-pointer">
+            <label className="flex items-center gap-1 text-content-secondary hover:text-brand-600 cursor-pointer">
               <UploadIcon className="w-3.5 h-3.5" /> Upload video
               <input type="file" accept="video/*" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) pickUpload(f, 'video'); e.target.value = ''; }} />
             </label>
             <button onClick={async () => { setLibraryOpen(true); if (!library) setLibrary(await listLibraryVideos(userId).catch(() => [])); }}
-              className="flex items-center gap-1 text-content-secondary hover:text-pink-600">
+              className="flex items-center gap-1 text-content-secondary hover:text-brand-600">
               <FolderOpen className="w-3.5 h-3.5" /> Library
             </button>
             {busy === 'video' && <Loader2 className="w-3.5 h-3.5 animate-spin text-content-muted" />}
@@ -399,7 +399,7 @@ function VideoEditor({ userId, creative, onBack, onChanged }: {
                   className="w-full rounded-control border border-edge-strong px-2 py-1.5 text-xs" />
                 <div className="flex gap-2">
                   <button onClick={makeMusic} disabled={busy === 'music'}
-                    className="px-2.5 py-1.5 rounded-control bg-pink-600 text-white text-xs hover:bg-pink-700 disabled:opacity-50 flex items-center gap-1">
+                    className="px-2.5 py-1.5 rounded-control bg-brand-600 text-brand-fg text-xs hover:bg-brand-700 disabled:opacity-50 flex items-center gap-1">
                     {busy === 'music' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />} ElevenLabs
                   </button>
                   <label className="px-2.5 py-1.5 rounded-control border border-edge-strong text-xs text-content-secondary hover:bg-surface-hover cursor-pointer">
@@ -429,13 +429,13 @@ function VideoEditor({ userId, creative, onBack, onChanged }: {
           </div>
 
           {payload.lines.map((line, i) => (
-            <div key={i} className={`bg-surface rounded-card border p-3 flex items-start gap-2 ${active === line ? 'border-pink-300' : 'border-edge'}`}>
+            <div key={i} className={`bg-surface rounded-card border p-3 flex items-start gap-2 ${active === line ? 'border-brand-300' : 'border-edge'}`}>
               <span className="text-[10px] text-content-muted pt-2.5 w-4">{i + 1}</span>
               <textarea
                 rows={1}
                 value={line.text}
                 onChange={e => patchLine(i, { text: e.target.value })}
-                className="flex-1 rounded-control border border-edge px-2 py-1.5 text-sm resize-none focus:border-pink-500 outline-none"
+                className="flex-1 rounded-control border border-edge px-2 py-1.5 text-sm resize-none focus:border-brand-500 outline-none"
               />
               <select value={line.seconds} onChange={e => patchLine(i, { seconds: Number(e.target.value) })}
                 className="rounded border border-edge px-1.5 py-1.5 bg-surface text-xs">
@@ -446,7 +446,7 @@ function VideoEditor({ userId, creative, onBack, onChanged }: {
             </div>
           ))}
           <button onClick={() => commit({ ...payload, lines: [...payload.lines, { text: '', seconds: 3 }] })}
-            className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"><Plus className="w-4 h-4" /> Add line</button>
+            className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1"><Plus className="w-4 h-4" /> Add line</button>
         </div>
       </div>
 
@@ -466,7 +466,7 @@ function VideoEditor({ userId, creative, onBack, onChanged }: {
                 {library.map(v => (
                   <button key={v.id} title={v.prompt}
                     onClick={() => { commit({ ...payload, bg_url: v.url }); setLibraryOpen(false); }}
-                    className="aspect-[9/16] rounded-control overflow-hidden border border-edge hover:ring-2 hover:ring-pink-400 bg-black">
+                    className="aspect-[9/16] rounded-control overflow-hidden border border-edge hover:ring-2 hover:ring-brand-400 bg-black">
                     <video src={v.url} muted className="w-full h-full object-cover" />
                   </button>
                 ))}

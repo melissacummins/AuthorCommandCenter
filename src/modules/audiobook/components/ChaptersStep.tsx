@@ -87,7 +87,7 @@ export default function ChaptersStep({
         <div className="grid sm:grid-cols-2 gap-2.5">
           {modes.map(m => (
             <button key={m.id} onClick={() => onChange({ narration_mode: m.id })}
-              className={`text-left p-3 rounded-card border ${project.narration_mode === m.id ? 'border-violet-400 bg-violet-50' : 'border-edge hover:border-edge-strong'}`}>
+              className={`text-left p-3 rounded-card border ${project.narration_mode === m.id ? 'border-brand-400 bg-brand-50' : 'border-edge hover:border-edge-strong'}`}>
               <p className="text-sm font-medium text-content">{m.label}</p>
               <p className="text-xs text-content-secondary mt-0.5">{m.desc}</p>
             </button>
@@ -111,7 +111,7 @@ export default function ChaptersStep({
           <label className="block text-xs font-medium text-content-secondary">Manuscript</label>
           <div className="flex items-center gap-3">
             <span className="text-xs text-content-muted">{text.length.toLocaleString()} characters</span>
-            <label className="inline-flex items-center gap-1 text-xs text-violet-600 hover:underline cursor-pointer">
+            <label className="inline-flex items-center gap-1 text-xs text-brand-600 hover:underline cursor-pointer">
               {busy === 'file' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />} Upload .txt / .docx
               <input type="file" accept=".txt,.md,.docx,text/plain" className="hidden"
                 onChange={e => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
@@ -125,11 +125,11 @@ export default function ChaptersStep({
 
       <div className="flex flex-wrap items-center gap-2">
         <button onClick={scanHeadings} disabled={!!busy}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-50">
           <ScanLine className="w-4 h-4" /> Scan into chapters
         </button>
         <button onClick={scanAI} disabled={!!busy}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-control border border-violet-200 text-violet-700 hover:bg-violet-50 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium rounded-control border border-brand-200 text-brand-700 hover:bg-brand-50 disabled:opacity-50">
           {busy === 'ai' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />} Rescan with AI
         </button>
         {chapters.length > 0 && drafts === null && (
@@ -178,7 +178,7 @@ export default function ChaptersStep({
                   <span className="text-[11px] text-content-muted">{d.source_text.length.toLocaleString()} chars</span>
                 </div>
                 {i > 0 && (
-                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-content-faint hover:text-violet-600 mt-1">
+                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-content-faint hover:text-brand-600 mt-1">
                     <ArrowUpToLine className="w-4 h-4" />
                   </button>
                 )}

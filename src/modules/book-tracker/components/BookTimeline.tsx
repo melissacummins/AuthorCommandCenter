@@ -65,7 +65,7 @@ export default function BookTimeline({ book, updates }: Props) {
                     className={`absolute inset-0 rounded-t-control transition-colors ${
                       paid
                         ? 'bg-gradient-to-t from-emerald-500 to-emerald-400'
-                        : 'bg-gradient-to-t from-purple-500 to-purple-400'
+                        : 'bg-gradient-to-t from-brand-500 to-brand-400'
                     }`}
                   />
                   <div className="absolute -top-6 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap bg-slate-900 text-white text-[10px] px-2 py-1 rounded z-20">

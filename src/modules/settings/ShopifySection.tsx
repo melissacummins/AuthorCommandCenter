@@ -44,39 +44,39 @@ export default function ShopifySection() {
 
           <button
             onClick={() => setShowHelp(!showHelp)}
-            className="mt-6 flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800"
+            className="mt-6 flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-800"
           >
             {showHelp ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
             How to get your API credentials
           </button>
 
           {showHelp && (
-            <div className="mt-3 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-card p-6">
-              <ol className="space-y-2 text-sm text-indigo-700">
+            <div className="mt-3 bg-gradient-to-r from-brand-50 to-brand-50 border border-brand-200 rounded-card p-6">
+              <ol className="space-y-2 text-sm text-brand-700">
                 <li className="flex gap-2">
-                  <span className="font-bold text-indigo-500 shrink-0">1.</span>
+                  <span className="font-bold text-brand-500 shrink-0">1.</span>
                   Go to your <strong>Shopify Dev Dashboard</strong> and create or select an app
                 </li>
                 <li className="flex gap-2">
-                  <span className="font-bold text-indigo-500 shrink-0">2.</span>
+                  <span className="font-bold text-brand-500 shrink-0">2.</span>
                   <span>
                     Under <strong>Versions</strong>, create a new version with these scopes:{' '}
-                    <code className="bg-indigo-100 px-1 rounded">read_orders</code>,{' '}
-                    <code className="bg-indigo-100 px-1 rounded">read_products</code>,{' '}
-                    <code className="bg-indigo-100 px-1 rounded">write_products</code>,{' '}
-                    <code className="bg-indigo-100 px-1 rounded">write_discounts</code>,{' '}
-                    <code className="bg-indigo-100 px-1 rounded">read_locations</code>
+                    <code className="bg-brand-100 px-1 rounded">read_orders</code>,{' '}
+                    <code className="bg-brand-100 px-1 rounded">read_products</code>,{' '}
+                    <code className="bg-brand-100 px-1 rounded">write_products</code>,{' '}
+                    <code className="bg-brand-100 px-1 rounded">write_discounts</code>,{' '}
+                    <code className="bg-brand-100 px-1 rounded">read_locations</code>
                   </span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="font-bold text-indigo-500 shrink-0">3.</span>
+                  <span className="font-bold text-brand-500 shrink-0">3.</span>
                   <span>
                     Set the redirect URL to:{' '}
-                    <code className="bg-indigo-100 px-1 rounded text-xs">{window.location.origin}/shopify/callback</code>
+                    <code className="bg-brand-100 px-1 rounded text-xs">{window.location.origin}/shopify/callback</code>
                   </span>
                 </li>
                 <li className="flex gap-2">
-                  <span className="font-bold text-indigo-500 shrink-0">4.</span>
+                  <span className="font-bold text-brand-500 shrink-0">4.</span>
                   Copy the <strong>Client ID</strong> and <strong>Client Secret</strong> from Settings &rarr; Credentials
                 </li>
               </ol>

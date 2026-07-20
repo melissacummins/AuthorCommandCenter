@@ -210,7 +210,7 @@ export default function CatalogModule() {
       <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-bold text-content flex items-center gap-2">
-            <Library className="w-6 h-6 text-indigo-500" /> Catalog
+            <Library className="w-6 h-6 text-brand-500" /> Catalog
           </h1>
           <p className="text-content-secondary mt-1 text-sm">
             Every book in one place — status, covers, ISBNs, series, tropes, and marketing copy.
@@ -218,7 +218,7 @@ export default function CatalogModule() {
         </div>
         <button
           onClick={() => setView({ mode: 'new' })}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control shadow-sm shrink-0"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control shadow-sm shrink-0"
         >
           <Plus className="w-4 h-4" /> Add book
         </button>
@@ -258,7 +258,7 @@ export default function CatalogModule() {
                 value={query}
                 onChange={e => setQuery(e.target.value)}
                 placeholder="Search by title, series, or trope"
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none"
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge-strong bg-surface focus:border-brand-500 focus:ring-1 focus:ring-brand-500 outline-none"
               />
             </div>
           )}
@@ -291,7 +291,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
         active
-          ? 'border-indigo-500 text-indigo-600'
+          ? 'border-brand-500 text-brand-600'
           : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
@@ -318,17 +318,17 @@ function BookCard({
         onClick={onClick}
         className="text-left p-5 w-full flex gap-4 items-center"
       >
-        <div className="w-16 h-24 rounded-control bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center shrink-0 overflow-hidden">
+        <div className="w-16 h-24 rounded-control bg-gradient-to-br from-brand-100 to-brand-100 flex items-center justify-center shrink-0 overflow-hidden">
           {book.cover_url ? (
             <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
           ) : (
-            <BookOpen className="w-6 h-6 text-indigo-400" />
+            <BookOpen className="w-6 h-6 text-brand-400" />
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2 mb-1">
             {seriesLine && (
-              <p className="text-xs text-indigo-600 font-medium truncate">{seriesLine}</p>
+              <p className="text-xs text-brand-600 font-medium truncate">{seriesLine}</p>
             )}
             <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${STATUS_COLORS[book.status]}`}>
               {STATUS_LABELS[book.status]}
@@ -373,7 +373,7 @@ function BookCard({
 function EmptyState({ onAdd, hasBooks }: { onAdd: () => void; hasBooks: boolean }) {
   return (
     <div className="text-center py-16 bg-surface rounded-card border border-dashed border-edge-strong">
-      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-card shadow-lg shadow-indigo-500/25 mb-4">
+      <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-brand-500 to-brand-600 rounded-card shadow-lg shadow-brand-500/25 mb-4">
         <Library className="w-8 h-8 text-white" />
       </div>
       <h3 className="text-lg font-semibold text-content mb-1">
@@ -387,7 +387,7 @@ function EmptyState({ onAdd, hasBooks }: { onAdd: () => void; hasBooks: boolean 
       {!hasBooks && (
         <button
           onClick={onAdd}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-control shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control shadow-sm"
         >
           <Plus className="w-4 h-4" /> Add your first book
         </button>

@@ -54,7 +54,7 @@ function EditableCell({ id, field, value, format, suffix, placeholder }: { id: s
       <div className="flex items-center gap-1">
         <input type="text" value={ctx.editValue} onChange={e => ctx.setEditValue(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') ctx.saveEdit(id, field); if (e.key === 'Escape') ctx.cancelEdit(); }}
-          className="w-32 px-1 py-0.5 border border-blue-400 rounded text-sm focus:outline-none" autoFocus />
+          className="w-32 px-1 py-0.5 border border-brand-400 rounded text-sm focus:outline-none" autoFocus />
         <button onClick={() => ctx.saveEdit(id, field)} className="text-green-600"><Check className="w-3 h-3" /></button>
         <button onClick={ctx.cancelEdit} className="text-content-muted"><X className="w-3 h-3" /></button>
       </div>
@@ -64,8 +64,8 @@ function EditableCell({ id, field, value, format, suffix, placeholder }: { id: s
   const isEmpty = value === '' || value === null || value === undefined;
   const display = isEmpty && placeholder ? placeholder : rawDisplay;
   return (
-    <span className={`cursor-pointer hover:bg-blue-50 px-1 py-0.5 rounded group inline-flex items-center gap-1 ${isEmpty && placeholder ? 'italic text-content-muted' : ''}`} onClick={() => ctx.startEdit(id, field, value)} title="Click to edit">
-      {display}<Edit2 className="w-3 h-3 text-content-faint group-hover:text-blue-400 opacity-0 group-hover:opacity-100" />
+    <span className={`cursor-pointer hover:bg-brand-50 px-1 py-0.5 rounded group inline-flex items-center gap-1 ${isEmpty && placeholder ? 'italic text-content-muted' : ''}`} onClick={() => ctx.startEdit(id, field, value)} title="Click to edit">
+      {display}<Edit2 className="w-3 h-3 text-content-faint group-hover:text-brand-400 opacity-0 group-hover:opacity-100" />
     </span>
   );
 }
@@ -310,7 +310,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
       'Good': 'bg-green-50 text-green-700 border border-green-200',
       'REORDER NOW': 'bg-red-50 text-red-700 border border-red-200',
       'OUT OF STOCK': 'bg-red-100 text-red-800 border border-red-300',
-      'BUNDLE': 'bg-blue-50 text-blue-700 border border-blue-200',
+      'BUNDLE': 'bg-brand-50 text-brand-700 border border-brand-200',
       'TRACKING ONLY': 'bg-surface-hover text-content-secondary border border-edge',
     };
     return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors[status] || 'bg-surface-sunken'}`}>{status}</span>;
@@ -369,15 +369,15 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-content-muted" />
           <input type="text" placeholder="Search by name or SKU..." value={search} onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400" />
+            className="w-full pl-10 pr-4 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400" />
         </div>
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-          className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400">
+          className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400">
           <option value="">All Categories</option>
           {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-blue-400">
+          className="px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:border-brand-400">
           <option value="">All Statuses</option>
           {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
@@ -397,39 +397,39 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
 
       {/* Bulk Edit Panel — appears when rows are selected */}
       {selectedIds.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-card p-3 flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-blue-800">
+        <div className="bg-brand-50 border border-brand-200 rounded-card p-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-brand-800">
             {selectedIds.size} selected
           </span>
-          <span className="text-blue-300">|</span>
-          <span className="text-sm text-blue-700">Set</span>
+          <span className="text-brand-300">|</span>
+          <span className="text-sm text-brand-700">Set</span>
           <select
             value={bulkField}
             onChange={e => setBulkField(e.target.value)}
-            className="px-2 py-1.5 border border-blue-200 rounded-control text-sm bg-surface focus:outline-none focus:border-blue-400"
+            className="px-2 py-1.5 border border-brand-200 rounded-control text-sm bg-surface focus:outline-none focus:border-brand-400"
           >
             {BULK_FIELDS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
           </select>
-          <span className="text-sm text-blue-700">to</span>
+          <span className="text-sm text-brand-700">to</span>
           <input
             type="number"
             step="0.01"
             value={bulkValue}
             onChange={e => setBulkValue(e.target.value)}
             placeholder="0.00"
-            className="w-28 px-2 py-1.5 border border-blue-200 rounded-control text-sm bg-surface focus:outline-none focus:border-blue-400"
+            className="w-28 px-2 py-1.5 border border-brand-200 rounded-control text-sm bg-surface focus:outline-none focus:border-brand-400"
           />
           <button
             onClick={applyBulkEdit}
             disabled={bulkSaving || bulkValue.trim() === ''}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-control hover:bg-blue-700 disabled:opacity-50"
+            className="px-3 py-1.5 text-sm bg-brand-600 text-brand-fg rounded-control hover:bg-brand-700 disabled:opacity-50"
           >
             {bulkSaving ? 'Applying…' : `Apply to ${selectedIds.size}`}
           </button>
           <button
             onClick={clearSelection}
             disabled={bulkSaving}
-            className="px-3 py-1.5 text-sm text-blue-700 hover:bg-blue-100 rounded-control disabled:opacity-50"
+            className="px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-100 rounded-control disabled:opacity-50"
           >
             Clear selection
           </button>
@@ -474,7 +474,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                 const memberBundles = getProductBundles(product);
                 return (
                 <>
-                  <tr key={product.id} className={`border-b border-edge-soft hover:bg-surface-hover transition-colors ${selectedIds.has(product.id) ? 'bg-blue-50/40' : ''}`}>
+                  <tr key={product.id} className={`border-b border-edge-soft hover:bg-surface-hover transition-colors ${selectedIds.has(product.id) ? 'bg-brand-50/40' : ''}`}>
                     <td className="px-3 py-3">
                       <input
                         type="checkbox"
@@ -511,7 +511,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                     <td className="px-3 py-3 text-xs text-content-secondary">{product.metrics.action}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => onAdjustStock(product)} className="p-1.5 text-blue-500 hover:bg-blue-50 rounded-control" title="Adjust Stock">
+                        <button onClick={() => onAdjustStock(product)} className="p-1.5 text-brand-500 hover:bg-brand-50 rounded-control" title="Adjust Stock">
                           <Plus className="w-4 h-4" />
                         </button>
                         {onDuplicate && (
@@ -543,17 +543,17 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                             {editingField?.id === product.id && editingField?.field === 'category' ? (
                               <div className="flex items-center gap-1">
                                 <select value={editValue} onChange={e => setEditValue(e.target.value)}
-                                  className="px-1 py-0.5 border border-blue-400 rounded text-sm focus:outline-none">
+                                  className="px-1 py-0.5 border border-brand-400 rounded text-sm focus:outline-none">
                                   {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
                                 <button onClick={() => saveEdit(product.id, 'category')} className="text-green-600"><Check className="w-3 h-3" /></button>
                                 <button onClick={() => setEditingField(null)} className="text-content-muted"><X className="w-3 h-3" /></button>
                               </div>
                             ) : (
-                              <span className="cursor-pointer hover:bg-blue-50 px-1 py-0.5 rounded group inline-flex items-center gap-1"
+                              <span className="cursor-pointer hover:bg-brand-50 px-1 py-0.5 rounded group inline-flex items-center gap-1"
                                 onClick={() => startEdit(product.id, 'category', product.category)} title="Click to edit">
                                 {product.category}
-                                <Edit2 className="w-3 h-3 text-content-faint group-hover:text-blue-400 opacity-0 group-hover:opacity-100" />
+                                <Edit2 className="w-3 h-3 text-content-faint group-hover:text-brand-400 opacity-0 group-hover:opacity-100" />
                               </span>
                             )}
                           </div>
@@ -843,7 +843,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                                     key={book.id}
                                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-control text-xs font-medium cursor-pointer transition-colors ${
                                       isIn
-                                        ? 'bg-blue-50 border border-blue-200 text-blue-700'
+                                        ? 'bg-brand-50 border border-brand-200 text-brand-700'
                                         : 'bg-surface-hover border border-edge text-content-secondary hover:bg-surface-sunken'
                                     }`}
                                   >
@@ -851,7 +851,7 @@ export default function ProductTable({ products, onRefetch, onAdjustStock, onDup
                                       type="checkbox"
                                       checked={isIn}
                                       onChange={() => toggleBookInBundle(product, book.name, isIn)}
-                                      className="rounded text-blue-600 w-3 h-3"
+                                      className="rounded text-brand-600 w-3 h-3"
                                     />
                                     {book.name}
                                   </label>

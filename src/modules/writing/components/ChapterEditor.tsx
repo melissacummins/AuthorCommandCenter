@@ -253,10 +253,10 @@ function ChapterEditor({
 
         <div className="flex-1" />
 
-        <button onClick={manualSnapshot} title="Save a labeled snapshot" className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-lime-600 px-2 py-1.5 rounded-control hover:bg-surface-hover">
+        <button onClick={manualSnapshot} title="Save a labeled snapshot" className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-brand-600 px-2 py-1.5 rounded-control hover:bg-surface-hover">
           <Camera className="w-3.5 h-3.5" /> Snapshot
         </button>
-        <button onClick={requestSplit} title="Split into a new chapter at the cursor" className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-lime-600 px-2 py-1.5 rounded-control hover:bg-surface-hover">
+        <button onClick={requestSplit} title="Split into a new chapter at the cursor" className="inline-flex items-center gap-1 text-xs text-content-secondary hover:text-brand-600 px-2 py-1.5 rounded-control hover:bg-surface-hover">
           <Scissors className="w-3.5 h-3.5" /> Split here
         </button>
         <span className="text-xs text-content-muted w-14 text-right">
@@ -268,7 +268,7 @@ function ChapterEditor({
         <button
           onClick={runContinue}
           disabled={!!aiPanel?.loading}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control disabled:opacity-50"
         >
           <Wand2 className="w-3.5 h-3.5" /> Continue writing
         </button>
@@ -294,9 +294,9 @@ function ChapterEditor({
       {splitHint && <p className="text-xs text-amber-600 mb-3">{splitHint}</p>}
 
       {aiPanel && (
-        <div className="mb-4 rounded-card border border-lime-200 bg-lime-50/50 p-4">
+        <div className="mb-4 rounded-card border border-brand-200 bg-brand-50/50 p-4">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-xs font-medium text-lime-800 flex items-center gap-1.5">
+            <p className="text-xs font-medium text-brand-800 flex items-center gap-1.5">
               <Wand2 className="w-3.5 h-3.5" />
               {aiPanel.action === 'continue' ? 'AI continuation' : `AI: ${SELECTION_LABELS[aiPanel.action]}`}
             </p>
@@ -367,7 +367,7 @@ function ToolbarButton({
       onClick={onClick}
       title={label}
       aria-label={label}
-      className={`p-1.5 rounded-control ${active ? 'bg-lime-100 text-lime-700' : 'text-content-secondary hover:bg-surface-sunken'}`}
+      className={`p-1.5 rounded-control ${active ? 'bg-brand-100 text-brand-700' : 'text-content-secondary hover:bg-surface-sunken'}`}
     >
       {children}
     </button>
@@ -388,7 +388,7 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-control disabled:opacity-50 ${
-        secondary ? 'border border-edge-strong text-content-secondary hover:bg-surface' : 'bg-lime-600 text-white hover:bg-lime-700'
+        secondary ? 'border border-edge-strong text-content-secondary hover:bg-surface' : 'bg-brand-600 text-brand-fg hover:bg-brand-700'
       }`}
     >
       {icon} {children}

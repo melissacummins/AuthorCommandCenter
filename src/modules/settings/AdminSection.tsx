@@ -178,7 +178,7 @@ export default function AdminSection() {
           {/* Custom domains */}
           <div>
             <h3 className="font-medium text-content mb-1 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-indigo-600" /> Custom domains
+              <Globe className="w-4 h-4 text-brand-600" /> Custom domains
             </h3>
             <p className="text-xs text-content-secondary mb-3">
               When a member connects a domain, attach it in the Vercel dashboard, confirm their DNS

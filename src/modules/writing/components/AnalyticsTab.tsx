@@ -69,7 +69,7 @@ export default function AnalyticsTab({
 
       <div className="bg-surface rounded-card border border-edge p-5">
         <h3 className="text-sm font-semibold text-content flex items-center gap-1.5 mb-3">
-          <Target className="w-4 h-4 text-lime-500" /> Goal
+          <Target className="w-4 h-4 text-brand-500" /> Goal
         </h3>
         <div className="flex items-center gap-3 mb-2">
           <input
@@ -88,7 +88,7 @@ export default function AnalyticsTab({
         </div>
         {target ? (
           <div className="h-2.5 bg-surface-sunken rounded-full overflow-hidden">
-            <div className="h-full bg-lime-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+            <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
           </div>
         ) : (
           <p className="text-xs text-content-muted">Set a target word count to track progress toward it.</p>
@@ -97,7 +97,7 @@ export default function AnalyticsTab({
 
       <div className="bg-surface rounded-card border border-edge p-5">
         <h3 className="text-sm font-semibold text-content flex items-center gap-1.5 mb-3">
-          <BarChart3 className="w-4 h-4 text-lime-500" /> Daily words — last 30 days
+          <BarChart3 className="w-4 h-4 text-brand-500" /> Daily words — last 30 days
         </h3>
         {recent.length > 1 ? (
           <div className="h-32">
@@ -134,7 +134,7 @@ export default function AnalyticsTab({
                 <span className="text-xs text-content-secondary w-40 truncate shrink-0">{c.title || 'Untitled chapter'}</span>
                 <div className="flex-1 h-3 bg-surface-sunken rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-lime-400 rounded-full"
+                    className="h-full bg-brand-400 rounded-full"
                     style={{ width: `${Math.max(2, ((c.word_count ?? 0) / maxChapterWords) * 100)}%` }}
                   />
                 </div>
@@ -147,7 +147,7 @@ export default function AnalyticsTab({
 
       <div className="bg-surface rounded-card border border-edge p-5">
         <h3 className="text-sm font-semibold text-content flex items-center gap-1.5 mb-1">
-          <Link2 className="w-4 h-4 text-lime-500" /> Connections
+          <Link2 className="w-4 h-4 text-brand-500" /> Connections
         </h3>
         <p className="text-xs text-content-secondary mb-3">Status and word count sync to this book in Catalog.</p>
         <div className="max-w-sm">

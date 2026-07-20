@@ -31,7 +31,7 @@ interface Provider {
 
 const PROVIDERS: Provider[] = [
   {
-    id: 'fal', name: 'Fal.AI', Icon: ImagePlus, iconColor: 'text-fuchsia-600',
+    id: 'fal', name: 'Fal.AI', Icon: ImagePlus, iconColor: 'text-brand-600',
     placeholder: 'key_xxxx…', minLength: 16,
     helpUrl: 'https://fal.ai/dashboard/keys', helpLabel: 'Get a Fal key',
     description: 'Powers most media-generation models. Each generation is billed directly to your Fal account.',
@@ -46,14 +46,14 @@ const PROVIDERS: Provider[] = [
     getStatus: getOpenaiKeyStatus, saveKey: setOpenaiKey, removeKey: removeOpenaiKey,
   },
   {
-    id: 'ideogram', name: 'Ideogram', Icon: ImagePlus, iconColor: 'text-indigo-600',
+    id: 'ideogram', name: 'Ideogram', Icon: ImagePlus, iconColor: 'text-brand-600',
     placeholder: 'Ideogram API key (40+ chars)', minLength: 20,
     helpUrl: 'https://ideogram.ai/manage-api', helpLabel: 'Get an Ideogram key',
     description: 'Optional. Routes Ideogram v3/v4 directly to Ideogram — unlocks the Turbo speed (~half Fal’s price) and the Quality tier Fal doesn’t expose.',
     getStatus: getIdeogramKeyStatus, saveKey: setIdeogramKey, removeKey: removeIdeogramKey,
   },
   {
-    id: 'anthropic', name: 'Claude (AI)', Icon: Sparkles, iconColor: 'text-violet-600',
+    id: 'anthropic', name: 'Claude (AI)', Icon: Sparkles, iconColor: 'text-brand-600',
     placeholder: 'sk-ant-…', minLength: 20,
     validate: k => k.startsWith('sk-ant-') ? null : 'Anthropic keys start with "sk-ant-".',
     helpUrl: 'https://console.anthropic.com/settings/keys', helpLabel: 'Get an Anthropic key',
@@ -62,14 +62,14 @@ const PROVIDERS: Provider[] = [
     onTest: async () => { await plannerComplete({ prompt: 'Reply with the single word: ok', maxTokens: 16 }); },
   },
   {
-    id: 'elevenlabs', name: 'ElevenLabs', Icon: AudioLines, iconColor: 'text-fuchsia-600',
+    id: 'elevenlabs', name: 'ElevenLabs', Icon: AudioLines, iconColor: 'text-brand-600',
     placeholder: 'ElevenLabs API key', minLength: 20,
     helpUrl: 'https://elevenlabs.io/app/settings/api-keys', helpLabel: 'Get an ElevenLabs key',
     description: 'Powers the Audiobook module — voice creation, cloning, and multi-voice narration. Billed to your own ElevenLabs account.',
     getStatus: getElevenlabsKeyStatus, saveKey: setElevenlabsKey, removeKey: removeElevenlabsKey,
   },
   {
-    id: 'openrouter', name: 'OpenRouter', Icon: Zap, iconColor: 'text-lime-600',
+    id: 'openrouter', name: 'OpenRouter', Icon: Zap, iconColor: 'text-brand-600',
     placeholder: 'sk-or-…', minLength: 20,
     validate: k => k.startsWith('sk-or-') ? null : 'OpenRouter keys start with "sk-or-".',
     helpUrl: 'https://openrouter.ai/keys', helpLabel: 'Get an OpenRouter key',
@@ -84,7 +84,7 @@ function InfoTip({ text, href, label }: { text: string; href: string; label: str
       <Info className="w-4 h-4 text-content-faint hover:text-content-secondary cursor-help" />
       <span className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-6 z-20 w-72 rounded-control border border-edge bg-surface p-3 text-xs leading-relaxed text-content-secondary shadow-lg">
         {text}{' '}
-        <a href={href} target="_blank" rel="noreferrer" className="text-violet-600 hover:underline whitespace-nowrap">{label} →</a>
+        <a href={href} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline whitespace-nowrap">{label} →</a>
         <span className="block mt-1.5 text-content-muted">Encrypted server-side; never shown again after you save it.</span>
       </span>
     </span>
@@ -159,7 +159,7 @@ function KeyRow({ p }: { p: Provider }) {
             <>
               {p.onTest && (
                 <button onClick={runTest} disabled={test === 'run'}
-                  className="text-xs font-medium text-content-secondary hover:text-violet-600 disabled:opacity-50 inline-flex items-center gap-1">
+                  className="text-xs font-medium text-content-secondary hover:text-brand-600 disabled:opacity-50 inline-flex items-center gap-1">
                   {test === 'run' ? <Loader2 className="w-3 h-3 animate-spin" /> : test === 'ok' ? <Check className="w-3 h-3 text-emerald-600" /> : null}
                   {test === 'ok' ? 'Working' : test === 'run' ? 'Testing…' : 'Test'}
                 </button>
@@ -179,7 +179,7 @@ function KeyRow({ p }: { p: Provider }) {
                 className="w-44 sm:w-56 px-2.5 py-1.5 border border-edge-strong rounded-control text-sm font-mono"
               />
               <button onClick={save} disabled={busy || raw.trim().length < p.minLength}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-white font-medium rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm text-brand-fg font-medium rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-50">
                 {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />} Save
               </button>
             </>
@@ -199,7 +199,7 @@ export default function ApiKeysSection() {
   return (
     <section className="bg-surface rounded-card border border-edge p-6 mb-6">
       <div className="flex items-center gap-3 mb-1.5">
-        <KeyRound className="w-5 h-5 text-violet-600" />
+        <KeyRound className="w-5 h-5 text-brand-600" />
         <h2 className="text-lg font-semibold text-content">API Keys</h2>
       </div>
       <p className="text-sm text-content-secondary mb-3">

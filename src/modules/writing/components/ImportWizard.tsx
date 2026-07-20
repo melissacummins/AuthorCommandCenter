@@ -110,7 +110,7 @@ export default function ImportWizard({
 
       {drafts === null && (
         <div className="flex flex-wrap items-center gap-2.5">
-          <label className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white rounded-control bg-lime-600 hover:bg-lime-700 cursor-pointer disabled:opacity-50">
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700 cursor-pointer disabled:opacity-50">
             {busy === 'file' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             Import a file
             <input
@@ -140,7 +140,7 @@ export default function ImportWizard({
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-content flex items-center gap-1.5">
-              <ScanLine className="w-4 h-4 text-lime-500" />
+              <ScanLine className="w-4 h-4 text-brand-500" />
               {drafts.length} chapter{drafts.length === 1 ? '' : 's'} detected — review & accept
             </p>
             <button
@@ -169,7 +169,7 @@ export default function ImportWizard({
                   </p>
                 </div>
                 {i > 0 && (
-                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-content-faint hover:text-lime-600 mt-1">
+                  <button onClick={() => mergeUp(i)} title="Merge into previous" className="text-content-faint hover:text-brand-600 mt-1">
                     <ArrowUpToLine className="w-4 h-4" />
                   </button>
                 )}

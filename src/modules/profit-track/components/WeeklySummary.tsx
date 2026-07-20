@@ -41,7 +41,7 @@ const AutoResizeTextarea = ({ value, onChange, placeholder, minHeight = '38px', 
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       rows={1}
-      className="w-full text-sm border border-gray-300 bg-surface focus:border-blue-500 focus:ring-2 focus:ring-blue-200 rounded-control px-3 py-2 transition-all placeholder-gray-400 resize-none overflow-hidden leading-relaxed shadow-sm"
+      className="w-full text-sm border border-edge-strong bg-surface focus:border-brand-500 focus:ring-2 focus:ring-brand-200 rounded-control px-3 py-2 transition-all placeholder-gray-400 resize-none overflow-hidden leading-relaxed shadow-sm"
       style={{ minHeight }}
     />
   );
@@ -80,49 +80,49 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data, notes, categ
   };
 
   if (weeklyData.length === 0) {
-    return <div className="p-8 text-center text-gray-500">No data available to generate weekly summary.</div>;
+    return <div className="p-8 text-center text-content-secondary">No data available to generate weekly summary.</div>;
   }
 
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Year Filter Controls */}
-      <div className="flex justify-between items-center bg-surface p-4 rounded-card shadow-sm border border-gray-100">
-         <h2 className="text-lg font-bold text-gray-800">Weekly Performance</h2>
+      <div className="flex justify-between items-center bg-surface p-4 rounded-card shadow-sm border border-edge-soft">
+         <h2 className="text-lg font-bold text-content">Weekly Performance</h2>
          
          <div className="relative">
             <select
               value={selectedYear}
               onChange={(e) => setSelectedYear(e.target.value)}
-              className="appearance-none bg-surface border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-control leading-tight focus:outline-none focus:bg-surface focus:border-blue-500 cursor-pointer"
+              className="appearance-none bg-surface border border-edge-strong text-content py-2 px-4 pr-8 rounded-control leading-tight focus:outline-none focus:bg-surface focus:border-brand-500 cursor-pointer"
             >
               <option value="All">All Years</option>
               {years.map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-content">
               <ChevronDown className="w-4 h-4" />
             </div>
          </div>
       </div>
 
-      <div className="bg-surface rounded-card shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-surface rounded-card shadow-sm border border-edge-soft overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-full divide-y divide-edge">
+            <thead className="bg-surface-hover">
               <tr>
-                <th className="px-2 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider border-r border-gray-200">Week</th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start</th>
-                <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r border-gray-200">End</th>
+                <th className="px-2 py-3 text-center text-xs font-bold text-content-secondary uppercase tracking-wider border-r border-edge">Week</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider">Start</th>
+                <th className="px-2 py-3 text-left text-xs font-medium text-content-secondary uppercase tracking-wider border-r border-edge">End</th>
 
-                <th className="px-2 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200 bg-gray-100">Total Spend</th>
+                <th className="px-2 py-3 text-right text-xs font-bold text-content uppercase tracking-wider border-r border-edge bg-surface-sunken">Total Spend</th>
                 
-                <th className="px-2 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Revenue</th>
-                <th className="px-2 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Net</th>
-                <th className="px-2 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider border-r border-gray-200">ROAS</th>
+                <th className="px-2 py-3 text-right text-xs font-bold text-content uppercase tracking-wider">Revenue</th>
+                <th className="px-2 py-3 text-right text-xs font-bold text-content uppercase tracking-wider">Net</th>
+                <th className="px-2 py-3 text-right text-xs font-bold text-content uppercase tracking-wider border-r border-edge">ROAS</th>
                 
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Notes</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-content-secondary uppercase tracking-wider">Notes</th>
               </tr>
             </thead>
-            <tbody className="bg-surface divide-y divide-gray-200">
+            <tbody className="bg-surface divide-y divide-edge">
               {filteredData.map((row) => {
                 const start = new Date(row.weekStart + 'T00:00:00');
                 const end = new Date(row.weekEnd + 'T00:00:00');
@@ -135,56 +135,56 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data, notes, categ
                 return (
                   <React.Fragment key={row.weekStart}>
                     <tr 
-                        className={`transition-colors group ${isExpanded ? 'bg-blue-50/30' : 'hover:bg-gray-50'}`}
+                        className={`transition-colors group ${isExpanded ? 'bg-brand-50/30' : 'hover:bg-surface-hover'}`}
                         onClick={() => toggleRow(row.weekStart)}
                     >
-                        <td className="px-2 py-3 text-center text-sm font-medium text-gray-500 border-r border-gray-200 align-middle">
+                        <td className="px-2 py-3 text-center text-sm font-medium text-content-secondary border-r border-edge align-middle">
                         {row.weekNumber}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-900 align-middle">
+                        <td className="px-2 py-3 whitespace-nowrap text-sm text-content align-middle">
                         {fmtDate(start)}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap text-sm text-gray-900 border-r border-gray-200 align-middle">
+                        <td className="px-2 py-3 whitespace-nowrap text-sm text-content border-r border-edge align-middle">
                         {fmtDate(end)}
                         </td>
 
-                        <td className="px-2 py-3 whitespace-nowrap text-sm text-right font-medium text-red-600 border-r border-gray-200 bg-gray-50/50 align-middle">
+                        <td className="px-2 py-3 whitespace-nowrap text-sm text-right font-medium text-red-600 border-r border-edge bg-surface-hover/50 align-middle">
                         {formatCurrency(row.totalAds)}
                         </td>
 
                         <td className="px-2 py-3 whitespace-nowrap text-sm text-right font-medium text-emerald-600 align-middle">
                         {formatCurrency(row.totalRevenue)}
                         </td>
-                        <td className={`px-2 py-3 whitespace-nowrap text-sm text-right font-bold ${row.netRevenue >= 0 ? 'text-gray-900' : 'text-red-500'} align-middle`}>
+                        <td className={`px-2 py-3 whitespace-nowrap text-sm text-right font-bold ${row.netRevenue >= 0 ? 'text-content' : 'text-red-500'} align-middle`}>
                         {formatCurrency(row.netRevenue)}
                         </td>
-                        <td className="px-2 py-3 whitespace-nowrap text-sm text-right text-gray-600 border-r border-gray-200 align-middle">
+                        <td className="px-2 py-3 whitespace-nowrap text-sm text-right text-content-secondary border-r border-edge align-middle">
                         {row.roas.toFixed(2)}x
                         </td>
 
-                        <td className="px-4 py-3 cursor-pointer group-hover:bg-gray-100/50 transition-colors">
-                            <div className="flex items-center justify-between text-sm text-gray-600">
+                        <td className="px-4 py-3 cursor-pointer group-hover:bg-surface-sunken/50 transition-colors">
+                            <div className="flex items-center justify-between text-sm text-content-secondary">
                                 <div className="flex items-center truncate max-w-[200px]">
                                     {note ? (
                                         <>
-                                            <FileText className="w-4 h-4 mr-2 text-blue-500 flex-shrink-0" />
+                                            <FileText className="w-4 h-4 mr-2 text-brand-500 flex-shrink-0" />
                                             <span className="truncate">{note}</span>
                                         </>
                                     ) : (
-                                        <span className="text-gray-400 italic pl-1">Add note...</span>
+                                        <span className="text-content-muted italic pl-1">Add note...</span>
                                     )}
                                 </div>
-                                {isExpanded ? <ChevronUp className="w-4 h-4 text-blue-500" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                                {isExpanded ? <ChevronUp className="w-4 h-4 text-brand-500" /> : <ChevronDown className="w-4 h-4 text-content-muted" />}
                             </div>
                         </td>
                     </tr>
                     
                     {/* Expandable Details Row */}
                     {isExpanded && (
-                        <tr className="bg-blue-50/30 animate-fade-in">
-                            <td colSpan={8} className="px-4 py-4 border-b border-blue-100">
+                        <tr className="bg-brand-50/30 animate-fade-in">
+                            <td colSpan={8} className="px-4 py-4 border-b border-brand-100">
                                 <div className="max-w-4xl mx-auto">
-                                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">
+                                    <label className="block text-xs font-bold text-content-secondary uppercase tracking-wider mb-2">
                                         Notes for Week {row.weekNumber} ({fmtDate(start)} - {fmtDate(end)})
                                     </label>
                                     <AutoResizeTextarea 
@@ -197,7 +197,7 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data, notes, categ
                                     <div className="flex justify-end mt-2">
                                         <button 
                                             onClick={() => toggleRow(row.weekStart)}
-                                            className="text-xs text-blue-600 hover:text-blue-800 font-medium px-3 py-1 bg-blue-100 hover:bg-blue-200 rounded-full transition-colors"
+                                            className="text-xs text-brand-600 hover:text-brand-800 font-medium px-3 py-1 bg-brand-100 hover:bg-brand-200 rounded-full transition-colors"
                                         >
                                             Done
                                         </button>
@@ -213,7 +213,7 @@ export const WeeklySummary: React.FC<WeeklySummaryProps> = ({ data, notes, categ
           </table>
           
           {filteredData.length === 0 && (
-             <div className="p-12 text-center text-gray-500">
+             <div className="p-12 text-center text-content-secondary">
                 <p>No data available for {selectedYear}.</p>
              </div>
           )}

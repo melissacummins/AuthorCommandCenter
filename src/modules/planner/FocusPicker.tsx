@@ -65,8 +65,8 @@ export function FocusPicker({
               <li key={t.id} className="px-2">
                 <div className="flex items-center gap-2 px-2 py-2 rounded-control hover:bg-surface-hover">
                   <button onClick={() => { onStart(t.id); onClose(); }} className="flex items-center gap-2 flex-1 min-w-0 text-left" title="Start a timer">
-                    <Play className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                    {orbitEnabled && t.in_orbit && <OrbitIcon className="w-3.5 h-3.5 text-violet-500 shrink-0" />}
+                    <Play className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                    {orbitEnabled && t.in_orbit && <OrbitIcon className="w-3.5 h-3.5 text-brand-500 shrink-0" />}
                     <span className="flex-1 truncate text-sm text-content">{t.title || 'Untitled'}</span>
                   </button>
                   {list && <span className="text-xs text-content-muted truncate max-w-[7rem] shrink-0">{list.title.trim() || 'Untitled list'}</span>}
@@ -78,7 +78,7 @@ export function FocusPicker({
                   ) : (
                     <button
                       onClick={() => setLogId(logging ? null : t.id)}
-                      className={`shrink-0 inline-flex items-center gap-0.5 text-xs rounded px-1.5 py-1 ${logging ? 'text-teal-600' : 'text-content-muted hover:text-teal-600'}`}
+                      className={`shrink-0 inline-flex items-center gap-0.5 text-xs rounded px-1.5 py-1 ${logging ? 'text-brand-600' : 'text-content-muted hover:text-brand-600'}`}
                       title="Log time you already worked"
                     >
                       <Plus className="w-3.5 h-3.5" /> log
@@ -91,7 +91,7 @@ export function FocusPicker({
                       <button
                         key={m}
                         onClick={() => log(t.id, m)}
-                        className="text-xs font-medium text-content-secondary border border-edge rounded-control px-2 py-1 hover:border-teal-400 hover:text-teal-600"
+                        className="text-xs font-medium text-content-secondary border border-edge rounded-control px-2 py-1 hover:border-brand-400 hover:text-brand-600"
                       >
                         +{formatMinutes(m)}
                       </button>
@@ -124,9 +124,9 @@ function CustomLog({ onLog }: { onLog: (minutes: number) => void }) {
         onChange={e => setValue(e.target.value)}
         onKeyDown={e => { if (e.key === 'Enter') submit(); }}
         placeholder="min"
-        className="w-14 text-xs border border-edge rounded-control px-1.5 py-1 outline-none focus:border-teal-400"
+        className="w-14 text-xs border border-edge rounded-control px-1.5 py-1 outline-none focus:border-brand-400"
       />
-      <button onClick={submit} disabled={!value.trim()} className={`text-xs font-medium rounded-control px-2 py-1 ${value.trim() ? 'bg-teal-600 text-white hover:bg-teal-700' : 'text-content-faint'}`}>
+      <button onClick={submit} disabled={!value.trim()} className={`text-xs font-medium rounded-control px-2 py-1 ${value.trim() ? 'bg-brand-600 text-brand-fg hover:bg-brand-700' : 'text-content-faint'}`}>
         Log
       </button>
     </span>

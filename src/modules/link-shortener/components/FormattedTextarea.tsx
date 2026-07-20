@@ -32,7 +32,7 @@ export default function FormattedTextarea({
   }
 
   return (
-    <div className="rounded-control border border-edge-strong focus-within:ring-2 focus-within:ring-indigo-300 overflow-hidden">
+    <div className="rounded-control border border-edge-strong focus-within:ring-2 focus-within:ring-brand-300 overflow-hidden">
       <div className="flex items-center gap-1 px-2 py-1 border-b border-edge bg-surface-hover">
         <ToolbarButton onClick={() => apply('**', 'bold text')} title="Bold"><Bold className="w-3.5 h-3.5" /></ToolbarButton>
         <ToolbarButton onClick={() => apply('*', 'italic text')} title="Italic"><Italic className="w-3.5 h-3.5" /></ToolbarButton>

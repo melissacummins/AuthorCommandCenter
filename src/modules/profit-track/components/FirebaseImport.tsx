@@ -61,7 +61,7 @@ export default function FirebaseImport() {
   const cancel = () => setPhase({ kind: 'idle' });
 
   return (
-    <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100 space-y-6">
+    <div className="bg-surface p-6 rounded-card shadow-sm border border-edge-soft space-y-6">
       <div className="flex items-start gap-3">
         <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
         <div>

@@ -53,7 +53,7 @@ export function AiSuggestPanel({
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 sm:pt-24 bg-black/30" onClick={onClose}>
       <div className="w-full max-w-lg bg-surface rounded-card shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-2 px-4 py-3 border-b border-edge-soft">
-          <Sparkles className="w-4 h-4 text-violet-600 shrink-0" />
+          <Sparkles className="w-4 h-4 text-brand-600 shrink-0" />
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-content truncate">{title}</h3>
             <p className="text-xs text-content-muted truncate">{intro}</p>
@@ -63,7 +63,7 @@ export function AiSuggestPanel({
 
         {loading ? (
           <div className="flex items-center justify-center gap-2 px-4 py-12 text-sm text-content-secondary">
-            <Loader2 className="w-4 h-4 text-violet-600 animate-spin" /> Thinking…
+            <Loader2 className="w-4 h-4 text-brand-600 animate-spin" /> Thinking…
           </div>
         ) : error ? (
           <div className="px-4 py-6">
@@ -89,13 +89,13 @@ export function AiSuggestPanel({
                           type="checkbox"
                           checked={on}
                           onChange={() => toggle(s.id)}
-                          className="mt-0.5 w-4 h-4 rounded border-edge-strong text-violet-600 focus:ring-violet-500 shrink-0"
+                          className="mt-0.5 w-4 h-4 rounded border-edge-strong text-brand-600 focus:ring-brand-500 shrink-0"
                         />
                         <span className="flex-1 min-w-0">
                           <span className="flex items-center gap-2">
                             <span className="flex-1 text-sm text-content truncate">{task.title || 'Untitled'}</span>
                             {showDates && s.date && (
-                              <span className="text-xs font-medium text-violet-600 shrink-0">{shortDate(s.date)}</span>
+                              <span className="text-xs font-medium text-brand-600 shrink-0">{shortDate(s.date)}</span>
                             )}
                           </span>
                           {s.reason && <span className="block text-xs text-content-muted mt-0.5">{s.reason}</span>}
@@ -113,7 +113,7 @@ export function AiSuggestPanel({
                   onClick={apply}
                   disabled={applyCount === 0}
                   className={`inline-flex items-center gap-1 rounded-control px-3 py-1.5 text-sm font-medium ${
-                    applyCount > 0 ? 'bg-violet-600 text-white hover:bg-violet-700' : 'bg-surface-sunken text-content-faint cursor-default'
+                    applyCount > 0 ? 'bg-brand-600 text-brand-fg hover:bg-brand-700' : 'bg-surface-sunken text-content-faint cursor-default'
                   }`}
                 >
                   Apply {applyCount}

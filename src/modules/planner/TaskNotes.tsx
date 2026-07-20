@@ -39,7 +39,7 @@ export function TaskNotes({
       onChange={e => setValue(e.target.value)}
       onBlur={commit}
       placeholder="Notes, a draft, links…"
-      className="w-full text-sm text-content-secondary bg-surface-hover border border-edge rounded-control px-3 py-2 outline-none focus:border-teal-400 resize-none placeholder:text-content-faint leading-relaxed min-h-[4.5rem]"
+      className="w-full text-sm text-content-secondary bg-surface-hover border border-edge rounded-control px-3 py-2 outline-none focus:border-brand-400 resize-none placeholder:text-content-faint leading-relaxed min-h-[4.5rem]"
     />
   );
 }

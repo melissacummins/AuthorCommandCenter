@@ -144,7 +144,7 @@ export default function LinksTable({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by short link or URL"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-indigo-300"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-control border border-edge bg-surface focus:outline-none focus:ring-2 focus:ring-brand-300"
           />
         </div>
       </div>
@@ -231,7 +231,7 @@ function DropOption({ active, onClick, children }: DropOptionProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left px-3 py-1.5 ${active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-content hover:bg-surface-hover'}`}
+      className={`w-full text-left px-3 py-1.5 ${active ? 'bg-brand-50 text-brand-700 font-medium' : 'text-content hover:bg-surface-hover'}`}
     >
       {children}
     </button>

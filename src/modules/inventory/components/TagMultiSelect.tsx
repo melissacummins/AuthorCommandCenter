@@ -12,11 +12,11 @@ const COLOR_CLASSES: Record<TagColor, { chip: string; swatch: string }> = {
   orange: { chip: 'bg-orange-100 text-orange-700 border-orange-200', swatch: 'bg-orange-400' },
   amber:  { chip: 'bg-amber-100 text-amber-700 border-amber-200',   swatch: 'bg-amber-400' },
   green:  { chip: 'bg-green-100 text-green-700 border-green-200',   swatch: 'bg-green-400' },
-  teal:   { chip: 'bg-teal-100 text-teal-700 border-teal-200',      swatch: 'bg-teal-400' },
-  blue:   { chip: 'bg-blue-100 text-blue-700 border-blue-200',      swatch: 'bg-blue-400' },
-  indigo: { chip: 'bg-indigo-100 text-indigo-700 border-indigo-200', swatch: 'bg-indigo-400' },
-  purple: { chip: 'bg-purple-100 text-purple-700 border-purple-200', swatch: 'bg-purple-400' },
-  pink:   { chip: 'bg-pink-100 text-pink-700 border-pink-200',      swatch: 'bg-pink-400' },
+  teal:   { chip: 'bg-brand-100 text-brand-700 border-brand-200',      swatch: 'bg-brand-400' },
+  blue:   { chip: 'bg-brand-100 text-brand-700 border-brand-200',      swatch: 'bg-brand-400' },
+  indigo: { chip: 'bg-brand-100 text-brand-700 border-brand-200', swatch: 'bg-brand-400' },
+  purple: { chip: 'bg-brand-100 text-brand-700 border-brand-200', swatch: 'bg-brand-400' },
+  pink:   { chip: 'bg-brand-100 text-brand-700 border-brand-200',      swatch: 'bg-brand-400' },
 };
 
 // Deterministic fallback color for tags that haven't been customized yet —
@@ -111,7 +111,7 @@ export default function TagMultiSelect({ value, onChange, allTags, colorMap, onS
   return (
     <div ref={containerRef} className="relative">
       <div
-        className="flex flex-wrap items-center gap-1 min-h-[34px] px-1.5 py-1 border border-transparent hover:border-edge focus-within:border-blue-400 rounded cursor-text"
+        className="flex flex-wrap items-center gap-1 min-h-[34px] px-1.5 py-1 border border-transparent hover:border-edge focus-within:border-brand-400 rounded cursor-text"
         onClick={() => setOpen(true)}
       >
         {tags.map(t => {

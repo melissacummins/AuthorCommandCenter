@@ -93,7 +93,7 @@ export default function WidgetDesignTab({ offers }: Props) {
   if (!settings) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-6 h-6 text-sky-500 animate-spin" />
+        <Loader2 className="w-6 h-6 text-brand-500 animate-spin" />
       </div>
     );
   }
@@ -110,7 +110,7 @@ export default function WidgetDesignTab({ offers }: Props) {
       {/* Controls */}
       <div className="bg-surface rounded-card border border-edge p-5 space-y-5">
         <div className="flex items-center gap-2">
-          <Paintbrush className="w-4 h-4 text-sky-600" />
+          <Paintbrush className="w-4 h-4 text-brand-600" />
           <h3 className="font-semibold text-content">Widget design</h3>
         </div>
         <p className="text-xs text-content-secondary -mt-3">
@@ -178,7 +178,7 @@ export default function WidgetDesignTab({ offers }: Props) {
             max={24}
             value={settings.radius}
             onChange={e => set({ radius: Number(e.target.value) })}
-            className="w-full accent-sky-600"
+            className="w-full accent-brand-600"
           />
         </div>
 
@@ -187,7 +187,7 @@ export default function WidgetDesignTab({ offers }: Props) {
             type="checkbox"
             checked={settings.show_plus}
             onChange={e => set({ show_plus: e.target.checked })}
-            className="w-4 h-4 rounded border-edge-strong text-sky-600"
+            className="w-4 h-4 rounded border-edge-strong text-brand-600"
           />
           Show &ldquo;+&rdquo; between products
         </label>
@@ -197,7 +197,7 @@ export default function WidgetDesignTab({ offers }: Props) {
             type="checkbox"
             checked={settings.popup}
             onChange={e => set({ popup: e.target.checked })}
-            className="w-4 h-4 rounded border-edge-strong text-sky-600"
+            className="w-4 h-4 rounded border-edge-strong text-brand-600"
           />
           Pop-up product preview on click
         </label>
@@ -207,7 +207,7 @@ export default function WidgetDesignTab({ offers }: Props) {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700 disabled:opacity-50"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
         >
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : saved ? <Check className="w-4 h-4" /> : null}
           {saving ? 'Saving…' : saved ? 'Live on your store' : 'Save & apply to store'}

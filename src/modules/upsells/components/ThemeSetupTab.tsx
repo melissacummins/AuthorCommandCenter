@@ -40,12 +40,12 @@ export default function ThemeSetupTab() {
   return (
     <div className="space-y-6">
       {/* Recommended: publish as a theme snippet, blocks hold one line */}
-      <div className="bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-200 rounded-card p-6">
+      <div className="bg-gradient-to-r from-brand-50 to-brand-50 border border-brand-200 rounded-card p-6">
         <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-4 h-4 text-sky-600" />
-          <h3 className="font-semibold text-sky-800">Recommended: one-click updates</h3>
+          <Sparkles className="w-4 h-4 text-brand-600" />
+          <h3 className="font-semibold text-brand-800">Recommended: one-click updates</h3>
         </div>
-        <p className="text-sm text-sky-700/90 mb-4">
+        <p className="text-sm text-brand-700/90 mb-4">
           Publish the widget into your live theme as a snippet file. Your Custom Liquid blocks then
           hold a single line that never changes — and every future widget update is just this one
           button, no pasting.
@@ -54,7 +54,7 @@ export default function ThemeSetupTab() {
           <button
             onClick={handlePublish}
             disabled={publishing}
-            className="flex items-center gap-2 px-4 py-2 bg-sky-600 text-white text-sm font-medium rounded-control hover:bg-sky-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
           >
             {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <UploadCloud className="w-4 h-4" />}
             {publishing ? 'Publishing…' : 'Publish widget to live theme'}
@@ -66,16 +66,16 @@ export default function ThemeSetupTab() {
           )}
         </div>
         {publishError && <p className="text-sm text-red-600 mb-4">{publishError}</p>}
-        <ol className="space-y-2 text-sm text-sky-800">
-          <li className="flex gap-2"><span className="font-bold text-sky-500">1.</span>
+        <ol className="space-y-2 text-sm text-brand-800">
+          <li className="flex gap-2"><span className="font-bold text-brand-500">1.</span>
             <span>Click <strong>Publish widget to live theme</strong> above (first time may need a quick
             re-authorize in Settings to grant theme access).</span></li>
-          <li className="flex gap-2"><span className="font-bold text-sky-500">2.</span>
+          <li className="flex gap-2"><span className="font-bold text-brand-500">2.</span>
             <span>In the theme editor, put this single line in each product template&rsquo;s Custom
             Liquid block (replacing the old pasted code):</span></li>
         </ol>
         <div className="flex items-center gap-2 mt-2 ml-6">
-          <code className="px-3 py-1.5 bg-surface border border-sky-200 rounded-control text-sm text-content">{RENDER_LINE}</code>
+          <code className="px-3 py-1.5 bg-surface border border-brand-200 rounded-control text-sm text-content">{RENDER_LINE}</code>
           <button
             onClick={() => copyText(RENDER_LINE, setCopiedLine)}
             className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface border border-edge rounded-control text-xs font-medium text-content hover:bg-surface-hover"
@@ -84,7 +84,7 @@ export default function ThemeSetupTab() {
             {copiedLine ? 'Copied!' : 'Copy'}
           </button>
         </div>
-        <p className="text-sm text-sky-700/90 mt-3 ml-6">
+        <p className="text-sm text-brand-700/90 mt-3 ml-6">
           That&rsquo;s it — from then on, widget updates are step 1 only. Offer and design changes
           don&rsquo;t even need that; they apply live automatically.
         </p>
@@ -105,7 +105,7 @@ export default function ThemeSetupTab() {
             <ol className="space-y-3 text-sm text-content">
               {INSTALL_STEPS.map((step, i) => (
                 <li key={i} className="flex gap-3">
-                  <span className="font-bold text-sky-500 shrink-0">{i + 1}.</span>
+                  <span className="font-bold text-brand-500 shrink-0">{i + 1}.</span>
                   <div>
                     <p className="font-medium">{step.title}</p>
                     <p className="text-content-secondary">{step.detail}</p>

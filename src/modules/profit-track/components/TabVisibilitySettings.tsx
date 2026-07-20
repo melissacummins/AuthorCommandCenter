@@ -28,9 +28,9 @@ export default function TabVisibilitySettings({ uiPrefs, onUpdate }: TabVisibili
   };
 
   return (
-    <div className="bg-surface p-6 rounded-card shadow-sm border border-gray-100">
+    <div className="bg-surface p-6 rounded-card shadow-sm border border-edge-soft">
       <h3 className="text-lg font-semibold text-content mb-1 flex items-center gap-2">
-        <Layout className="w-5 h-5 text-indigo-500" />
+        <Layout className="w-5 h-5 text-brand-500" />
         Profit Tabs
       </h3>
       <p className="text-sm text-content-secondary mb-6">

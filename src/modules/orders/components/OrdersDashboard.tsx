@@ -385,7 +385,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
               <select
                 value={selectedLocationId}
                 onChange={(e) => handleLocationChange(e.target.value)}
-                className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 <option value="">All locations</option>
                 {locations.map(loc => (
@@ -404,7 +404,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -417,7 +417,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-edge rounded-control text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
 
@@ -426,7 +426,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
             <button
               onClick={handleSync}
               disabled={syncing}
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
             >
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               {syncing ? 'Syncing...' : 'Sync & Update Inventory'}
@@ -459,8 +459,8 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard icon={ShoppingCart} label="Total Orders" value={totalOrders} color="text-blue-600" bg="bg-blue-50" />
-        <StatCard icon={Package} label="Total Items Sold" value={totalItems} color="text-indigo-600" bg="bg-indigo-50" />
+        <StatCard icon={ShoppingCart} label="Total Orders" value={totalOrders} color="text-brand-600" bg="bg-brand-50" />
+        <StatCard icon={Package} label="Total Items Sold" value={totalItems} color="text-brand-600" bg="bg-brand-50" />
         <StatCard icon={Package} label="Matched SKUs" value={matchedProducts} color="text-emerald-600" bg="bg-emerald-50" />
         <StatCard icon={AlertCircle} label="Unmatched SKUs" value={unmatchedProducts} color="text-amber-600" bg="bg-amber-50" />
       </div>
@@ -485,7 +485,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
           <button
             onClick={handlePushToShopify}
             disabled={pushing || !selectedLocationId || mappedCount === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
           >
             {pushing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
             {pushing ? 'Pushing...' : 'Push to Shopify'}
@@ -526,7 +526,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search SKU or product..."
-                className="pl-9 pr-3 py-1.5 text-sm border border-edge rounded-control focus:outline-none focus:ring-2 focus:ring-indigo-500 w-56"
+                className="pl-9 pr-3 py-1.5 text-sm border border-edge rounded-control focus:outline-none focus:ring-2 focus:ring-brand-500 w-56"
               />
             </div>
           </div>
@@ -568,8 +568,8 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
                       {match.category ? (
                         <span className={`inline-flex px-2 py-0.5 text-xs rounded-full ${
                           match.isBundle
-                            ? 'bg-purple-100 text-purple-700'
-                            : 'bg-blue-100 text-blue-700'
+                            ? 'bg-brand-100 text-brand-700'
+                            : 'bg-brand-100 text-brand-700'
                         }`}>
                           {match.category}
                         </span>
@@ -664,7 +664,7 @@ export default function OrdersDashboard({ settings, onSettingsRefresh }: Props) 
 
       {loadingOrders && (
         <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-brand-500 animate-spin" />
         </div>
       )}
     </div>
@@ -735,7 +735,7 @@ function LinkedProductsTable({ products }: { products: Product[] }) {
     <div className="mt-3">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+        className="text-xs text-brand-600 hover:text-brand-700 font-medium flex items-center gap-1"
       >
         {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
         {expanded ? 'Hide' : 'Show'} linked products ({linked.length})
@@ -764,7 +764,7 @@ function LinkedProductsTable({ products }: { products: Product[] }) {
                     <td className="px-3 py-2 font-mono text-content-secondary">{p.sku}</td>
                     <td className="px-3 py-2">
                       <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                        isBundle ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                        isBundle ? 'bg-brand-100 text-brand-700' : 'bg-brand-100 text-brand-700'
                       }`}>{p.category}</span>
                     </td>
                     <td className="px-3 py-2 text-right font-semibold text-content">{willPush}</td>

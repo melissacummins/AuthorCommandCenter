@@ -55,7 +55,7 @@ export default function RevisionsPanel({
       <div className="bg-surface rounded-card shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-edge-soft shrink-0">
           <h3 className="font-semibold text-content flex items-center gap-2">
-            <History className="w-4 h-4 text-lime-500" /> Version history — {chapter.title || 'Untitled chapter'}
+            <History className="w-4 h-4 text-brand-500" /> Version history — {chapter.title || 'Untitled chapter'}
           </h3>
           <button onClick={onClose} className="text-content-muted hover:text-content-secondary">
             <X className="w-5 h-5" />
@@ -72,7 +72,7 @@ export default function RevisionsPanel({
                 <button
                   key={r.id}
                   onClick={() => setPreviewId(r.id)}
-                  className={`w-full text-left px-4 py-2.5 border-b border-edge-soft text-sm ${previewId === r.id ? 'bg-lime-50' : 'hover:bg-surface-hover'}`}
+                  className={`w-full text-left px-4 py-2.5 border-b border-edge-soft text-sm ${previewId === r.id ? 'bg-brand-50' : 'hover:bg-surface-hover'}`}
                 >
                   <p className="font-medium text-content">{r.label || 'Snapshot'}</p>
                   <p className="text-xs text-content-muted">{new Date(r.created_at).toLocaleString()} · {r.word_count.toLocaleString()} words</p>
@@ -91,7 +91,7 @@ export default function RevisionsPanel({
                 <button
                   onClick={() => restore(preview)}
                   disabled={restoring}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control disabled:opacity-50"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control disabled:opacity-50"
                 >
                   <RotateCcw className="w-4 h-4" /> {restoring ? 'Restoring…' : 'Restore this version'}
                 </button>

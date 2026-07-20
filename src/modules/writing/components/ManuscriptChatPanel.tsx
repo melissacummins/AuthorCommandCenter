@@ -131,7 +131,7 @@ export default function ManuscriptChatPanel({
     <div className="w-[380px] shrink-0 h-full flex flex-col bg-surface border-l border-edge">
       <div className="flex items-center justify-between px-4 py-3 border-b border-edge-soft shrink-0">
         <h3 className="font-semibold text-content flex items-center gap-2 text-sm">
-          <MessageSquare className="w-4 h-4 text-lime-500" /> Manuscript chat
+          <MessageSquare className="w-4 h-4 text-brand-500" /> Manuscript chat
         </h3>
         <div className="flex items-center gap-1">
           <AiSettingsPanel />
@@ -175,7 +175,7 @@ export default function ManuscriptChatPanel({
           messages.map(m => (
             <div key={m.id} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`max-w-[92%] rounded-card px-3.5 py-2.5 text-sm whitespace-pre-wrap ${
-                m.role === 'user' ? 'bg-lime-600 text-white' : 'bg-surface-sunken text-content'
+                m.role === 'user' ? 'bg-brand-600 text-brand-fg' : 'bg-surface-sunken text-content'
               }`}>
                 {m.content}
               </div>
@@ -189,7 +189,7 @@ export default function ManuscriptChatPanel({
                     onClick={() => insertMessage(m)}
                     disabled={!canInsert}
                     title={canInsert ? 'Insert into draft' : 'Switch to Edit to insert'}
-                    className="inline-flex items-center gap-1 text-[11px] text-content-muted hover:text-lime-600 disabled:opacity-40 disabled:hover:text-content-muted"
+                    className="inline-flex items-center gap-1 text-[11px] text-content-muted hover:text-brand-600 disabled:opacity-40 disabled:hover:text-content-muted"
                   >
                     <MousePointerClick className="w-3 h-3" /> Insert into draft
                   </button>
@@ -222,7 +222,7 @@ export default function ManuscriptChatPanel({
           <button
             onClick={send}
             disabled={sending || !input.trim()}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-lime-600 hover:bg-lime-700 rounded-control disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control disabled:opacity-50"
           >
             <Send className="w-4 h-4" />
           </button>

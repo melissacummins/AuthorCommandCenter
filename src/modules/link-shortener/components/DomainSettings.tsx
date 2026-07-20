@@ -67,7 +67,7 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
   return (
     <div className="max-w-2xl">
       <div className="flex items-center gap-3 mb-2">
-        <Globe className="w-5 h-5 text-indigo-600" />
+        <Globe className="w-5 h-5 text-brand-600" />
         <h2 className="text-lg font-semibold text-content">Your domain</h2>
       </div>
       <p className="text-sm text-content-secondary mb-6">
@@ -89,7 +89,7 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
         <button
           onClick={handleAdd}
           disabled={busy || !newDomain.trim()}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white font-medium rounded-control hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700 disabled:opacity-50"
         >
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
           Add
@@ -104,7 +104,7 @@ export default function DomainSettings({ onPrimaryChange }: { onPrimaryChange?: 
           <li>Add the domain above.</li>
           <li>
             At your domain registrar, point it with a <span className="font-mono">CNAME</span> record to{' '}
-            <button onClick={copyTarget} className="inline-flex items-center gap-1 font-mono text-indigo-700 hover:underline">
+            <button onClick={copyTarget} className="inline-flex items-center gap-1 font-mono text-brand-700 hover:underline">
               {CNAME_TARGET}
               {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             </button>

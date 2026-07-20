@@ -107,14 +107,14 @@ export default function StatsView({
   return (
     <div className="p-6 lg:p-8 max-w-3xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
-        <BarChart3 className="w-6 h-6 text-indigo-500" />
+        <BarChart3 className="w-6 h-6 text-brand-500" />
         <h2 className="text-2xl font-bold text-content">Stats</h2>
         <div className="ml-auto inline-flex rounded-control border border-edge overflow-hidden">
           {RANGES.map(r => (
             <button
               key={r}
               onClick={() => setDays(r)}
-              className={`px-3 py-1.5 text-sm font-medium transition-colors ${days === r ? 'bg-teal-600 text-white' : 'text-content-secondary hover:bg-surface-sunken'}`}
+              className={`px-3 py-1.5 text-sm font-medium transition-colors ${days === r ? 'bg-brand-600 text-brand-fg' : 'text-content-secondary hover:bg-surface-sunken'}`}
             >
               {r}d
             </button>
@@ -223,7 +223,7 @@ export default function StatsView({
             <span className="text-xs font-medium text-content-secondary w-28 text-center">{weekLabel(tsWeek)}</span>
             <button onClick={() => setTsWeek(w => addDaysISO(w, 7))} className="p-1 rounded-control text-content-muted hover:bg-surface-sunken" title="Next week"><ChevronRight className="w-4 h-4" /></button>
             {tsWeek !== weekStartISO(today) && (
-              <button onClick={() => setTsWeek(weekStartISO(today))} className="text-xs font-medium text-teal-600 hover:text-teal-700 ml-1">This week</button>
+              <button onClick={() => setTsWeek(weekStartISO(today))} className="text-xs font-medium text-brand-600 hover:text-brand-700 ml-1">This week</button>
             )}
           </div>
         </div>
@@ -238,11 +238,11 @@ export default function StatsView({
                   {tsDays.map(d => {
                     const dt = new Date(d + 'T00:00:00');
                     return (
-                      <th key={d} className={`px-2 py-1.5 text-right font-medium whitespace-nowrap ${d === today ? 'text-teal-600' : ''}`}>
+                      <th key={d} className={`px-2 py-1.5 text-right font-medium whitespace-nowrap ${d === today ? 'text-brand-600' : ''}`}>
                         <button
                           onClick={() => onOpenDay?.(d)}
                           disabled={!onOpenDay}
-                          className={onOpenDay ? 'hover:text-teal-600 cursor-pointer' : ''}
+                          className={onOpenDay ? 'hover:text-brand-600 cursor-pointer' : ''}
                           title={onOpenDay ? 'See this day in the Logbook' : undefined}
                         >
                           <div>{dt.toLocaleDateString(undefined, { weekday: 'short' })} {dt.getDate()}</div>
@@ -261,7 +261,7 @@ export default function StatsView({
                       <button
                         onClick={() => { const t = tasksById[r.id]; if (t && onOpenTask) onOpenTask(t); }}
                         disabled={!(onOpenTask && tasksById[r.id])}
-                        className={`text-left ${onOpenTask && tasksById[r.id] ? 'hover:text-teal-600 cursor-pointer' : ''}`}
+                        className={`text-left ${onOpenTask && tasksById[r.id] ? 'hover:text-brand-600 cursor-pointer' : ''}`}
                         title={onOpenTask && tasksById[r.id] ? 'Open this to-do' : undefined}
                       >
                         <div className="text-content truncate max-w-[12rem]">{r.title}</div>

@@ -95,7 +95,7 @@ export default function FoldersSidebar({ folders, links, selectedFolderId, onSel
             setCreating(true);
             setEditingId(null);
           }}
-          className="text-content-muted hover:text-indigo-600 p-1 rounded"
+          className="text-content-muted hover:text-brand-600 p-1 rounded"
           title="New folder"
         >
           <FolderPlus className="w-4 h-4" />
@@ -165,7 +165,7 @@ function NavItem({ active, onClick, icon, label, count }: NavItemProps) {
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-control text-sm transition-colors ${
-        active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-content-secondary hover:bg-surface-sunken'
+        active ? 'bg-brand-50 text-brand-700 font-medium' : 'text-content-secondary hover:bg-surface-sunken'
       }`}
     >
       {icon}
@@ -191,7 +191,7 @@ function FolderRow({ folder, count, active, onClick, onEdit, onDelete }: FolderR
       <button
         onClick={onClick}
         className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-control text-sm transition-colors ${
-          active ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-content-secondary hover:bg-surface-sunken'
+          active ? 'bg-brand-50 text-brand-700 font-medium' : 'text-content-secondary hover:bg-surface-sunken'
         }`}
       >
         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: folder.color }} />
@@ -248,7 +248,7 @@ function EditRow({ name, color, onName, onColor, onSave, onCancel, busy, placeho
           if (e.key === 'Escape') onCancel();
         }}
         placeholder={placeholder ?? 'Folder name'}
-        className="w-full px-2 py-1 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-indigo-300"
+        className="w-full px-2 py-1 text-sm rounded border border-edge focus:outline-none focus:ring-2 focus:ring-brand-300"
       />
       <div className="flex items-center justify-between">
         <div className="flex gap-1">

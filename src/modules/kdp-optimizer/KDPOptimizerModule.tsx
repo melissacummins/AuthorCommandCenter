@@ -181,7 +181,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
     <button
       onClick={onClick}
       className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-        active ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-content-secondary hover:text-content'
+        active ? 'border-brand-500 text-brand-600' : 'border-transparent text-content-secondary hover:text-content'
       }`}
     >
       {children}
@@ -209,8 +209,8 @@ function Overview({
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="Tropes" value={tropes.length} icon={Tag} color="text-rose-600" />
-        <StatCard label="Keywords researched" value={keywords.length} icon={Search} color="text-indigo-600" />
-        <StatCard label="KDP books" value={kdpBooks.length} icon={BookOpen} color="text-purple-600" />
+        <StatCard label="Keywords researched" value={keywords.length} icon={Search} color="text-brand-600" />
+        <StatCard label="KDP books" value={kdpBooks.length} icon={BookOpen} color="text-brand-600" />
         <StatCard label="With selections" value={booksWithSelections.length} icon={BookOpen} color="text-emerald-600" />
       </div>
 
@@ -235,7 +235,7 @@ function Overview({
                   >
                     <div className="min-w-0">
                       <div className="text-sm font-medium text-content truncate">{b.title}</div>
-                      {b.series && <div className="text-xs text-indigo-600">{b.series}</div>}
+                      {b.series && <div className="text-xs text-brand-600">{b.series}</div>}
                     </div>
                     <span className="text-xs text-content-secondary">
                       {b.assigned_trope_ids.length} tropes
@@ -322,7 +322,7 @@ function BooksTab({
         {!adding && (
           <button
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-indigo-600 text-white font-medium rounded-control hover:bg-indigo-700"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-brand-600 text-brand-fg font-medium rounded-control hover:bg-brand-700"
           >
             <Plus className="w-4 h-4" /> Optimize a new book
           </button>
@@ -385,7 +385,7 @@ function BooksTab({
                   )}
                 </div>
                 {displaySubtitle && <p className="text-xs text-content-secondary line-clamp-1">{displaySubtitle}</p>}
-                {displaySeries && <p className="text-xs text-indigo-600 font-medium mt-1">{displaySeries}</p>}
+                {displaySeries && <p className="text-xs text-brand-600 font-medium mt-1">{displaySeries}</p>}
                 {penName && (
                   <div className="mt-2">
                     <PenNameChip name={penName.name} color={penName.color} />
@@ -498,7 +498,7 @@ function TropesTab({
         <button
           onClick={add}
           disabled={busy || !newName.trim()}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
         >
           <Plus className="w-4 h-4" /> Add
         </button>
@@ -631,7 +631,7 @@ function TropeRow({
           className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm"
         />
         <div className="flex gap-2">
-          <button onClick={save} disabled={busy} className="px-3 py-1.5 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-control">
+          <button onClick={save} disabled={busy} className="px-3 py-1.5 text-sm text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control">
             Save
           </button>
           <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-sm text-content-secondary hover:bg-surface-sunken rounded-control">

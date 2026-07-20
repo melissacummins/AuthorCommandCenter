@@ -235,7 +235,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy || !effectiveBook}
-            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
           >
             <Upload className="w-4 h-4" /> {busy ? 'Parsing…' : 'Choose applicant CSV'}
           </button>
@@ -251,7 +251,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
           <div className="flex flex-wrap items-center gap-3 text-sm">
             <div>
               <strong>{previews.length}</strong> applicants for{' '}
-              <span className="text-indigo-700 font-medium">{effectiveBook}</span>
+              <span className="text-brand-700 font-medium">{effectiveBook}</span>
             </div>
             <div className="text-xs text-content-secondary">
               {counts.create} new · {counts.merge} merging · {counts.skip} skipping
@@ -259,7 +259,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
             <button
               onClick={apply}
               disabled={busy}
-              className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-edge-strong rounded-control"
+              className="ml-auto inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 disabled:bg-edge-strong rounded-control"
             >
               {busy ? 'Applying…' : 'Apply decisions'}
               <ArrowRight className="w-4 h-4" />
@@ -364,7 +364,7 @@ export default function AddApplicantsPanel({ userId, catalogBooks, onImported }:
           </ul>
           <button
             onClick={reset}
-            className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-700 bg-surface border border-indigo-200 hover:bg-indigo-50 rounded-control"
+            className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-brand-700 bg-surface border border-brand-200 hover:bg-brand-50 rounded-control"
           >
             <Users className="w-4 h-4" /> Import another batch
           </button>

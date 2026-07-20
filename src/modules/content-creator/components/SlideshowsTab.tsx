@@ -107,7 +107,7 @@ export default function SlideshowsTab({ book }: { book: Book }) {
           <button
             onClick={() => setCreating(true)}
             disabled={!approved.length}
-            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-40 flex items-center gap-2"
+            className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-40 flex items-center gap-2"
           >
             <Plus className="w-4 h-4" /> New slideshow
           </button>
@@ -223,7 +223,7 @@ function NewSlideshowForm({ userId, book, approvedHooks, onCancel, onCreated }: 
         <div className="flex gap-2 ml-auto">
           <button onClick={onCancel} className="px-3 py-2 text-sm text-content-secondary hover:text-content">Cancel</button>
           <button onClick={generate} disabled={busy || !hookId}
-            className="px-4 py-2 rounded-control bg-pink-600 text-white text-sm font-medium hover:bg-pink-700 disabled:opacity-50 flex items-center gap-2">
+            className="px-4 py-2 rounded-control bg-brand-600 text-brand-fg text-sm font-medium hover:bg-brand-700 disabled:opacity-50 flex items-center gap-2">
             {busy && <Loader2 className="w-4 h-4 animate-spin" />} Generate slides
           </button>
         </div>
@@ -238,7 +238,7 @@ function FormatToggle({ value, onChange }: { value: SlideFormat; onChange: (f: S
     <div className="inline-flex rounded-control border border-edge overflow-hidden">
       {(Object.keys(SLIDE_FORMATS) as SlideFormat[]).map(f => (
         <button key={f} onClick={() => onChange(f)} title={SLIDE_FORMATS[f].hint}
-          className={`px-3 py-2 text-xs font-medium ${value === f ? 'bg-pink-600 text-white' : 'bg-surface text-content-secondary hover:bg-surface-hover'}`}>
+          className={`px-3 py-2 text-xs font-medium ${value === f ? 'bg-brand-600 text-brand-fg' : 'bg-surface text-content-secondary hover:bg-surface-hover'}`}>
           {SLIDE_FORMATS[f].label}
         </button>
       ))}
@@ -396,7 +396,7 @@ function SlideshowEditor({ userId, creative, bannedActive, onBack, onChanged }: 
       </div>
       <button
         onClick={() => commit({ ...payload, slides: [...payload.slides, { text: '', bg_url: null, style: { ...DEFAULT_SLIDE_STYLE } }] })}
-        className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1"
+        className="text-sm text-brand-600 hover:text-brand-700 flex items-center gap-1"
       >
         <Plus className="w-4 h-4" /> Add slide
       </button>
@@ -486,8 +486,8 @@ function SlideRow({ index, total, slide, format, guides, bannedActive, imageMode
         {slide.bg_url && <div className="absolute inset-0 bg-black/20" />}
         {guides && format === '9:16' && (
           <>
-            <div className="absolute inset-x-0 top-0 bg-sky-400/20 border-b border-sky-400/50" style={{ height: '10%' }} />
-            <div className="absolute inset-x-0 bottom-0 bg-sky-400/20 border-t border-sky-400/50" style={{ height: '16%' }} />
+            <div className="absolute inset-x-0 top-0 bg-brand-400/20 border-b border-brand-400/50" style={{ height: '10%' }} />
+            <div className="absolute inset-x-0 bottom-0 bg-brand-400/20 border-t border-brand-400/50" style={{ height: '16%' }} />
           </>
         )}
         <div
@@ -513,7 +513,7 @@ function SlideRow({ index, total, slide, format, guides, bannedActive, imageMode
           rows={2}
           value={slide.text}
           onChange={e => onPatch({ text: e.target.value })}
-          className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-pink-500 outline-none"
+          className="w-full rounded-control border border-edge-strong px-3 py-2 text-sm focus:border-brand-500 outline-none"
           placeholder="Slide text…"
         />
         {matches.length > 0 && (
@@ -534,13 +534,13 @@ function SlideRow({ index, total, slide, format, guides, bannedActive, imageMode
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <StylePicker style={slide.style} onChange={style => onPatch({ style })} />
           <span className="text-content-faint">|</span>
-          <button onClick={generateBg} disabled={bgBusy} className="flex items-center gap-1 text-content-secondary hover:text-pink-600 disabled:opacity-50">
+          <button onClick={generateBg} disabled={bgBusy} className="flex items-center gap-1 text-content-secondary hover:text-brand-600 disabled:opacity-50">
             {bgBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Generate bg
           </button>
-          <button onClick={openLibrary} className="flex items-center gap-1 text-content-secondary hover:text-pink-600">
+          <button onClick={openLibrary} className="flex items-center gap-1 text-content-secondary hover:text-brand-600">
             <FolderOpen className="w-3.5 h-3.5" /> Library
           </button>
-          <label className="flex items-center gap-1 text-content-secondary hover:text-pink-600 cursor-pointer">
+          <label className="flex items-center gap-1 text-content-secondary hover:text-brand-600 cursor-pointer">
             <UploadIcon className="w-3.5 h-3.5" /> Upload
             <input type="file" accept="image/*" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) uploadBg(f); e.target.value = ''; }} />
@@ -584,7 +584,7 @@ function SlideRow({ index, total, slide, format, guides, bannedActive, imageMode
                 {library.map(img => (
                   <button key={img.id} title={img.prompt}
                     onClick={() => { onPatch({ bg_url: img.url }); setLibraryOpen(false); }}
-                    className="aspect-square rounded-control overflow-hidden border border-edge hover:ring-2 hover:ring-pink-400">
+                    className="aspect-square rounded-control overflow-hidden border border-edge hover:ring-2 hover:ring-brand-400">
                     <img src={img.url} alt="" className="w-full h-full object-cover" loading="lazy" />
                   </button>
                 ))}

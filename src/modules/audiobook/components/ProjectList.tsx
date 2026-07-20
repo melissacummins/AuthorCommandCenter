@@ -36,13 +36,13 @@ export default function ProjectList({
           onKeyDown={e => { if (e.key === 'Enter') create(); }}
           className="flex-1 px-3 py-2.5 border border-edge-strong rounded-control text-sm" />
         <button onClick={create} disabled={creating}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white rounded-control bg-violet-600 hover:bg-violet-700 disabled:opacity-50">
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-brand-fg rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-50">
           {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />} New
         </button>
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-violet-500 animate-spin" /></div>
+        <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 text-brand-500 animate-spin" /></div>
       ) : projects.length === 0 ? (
         <div className="text-center py-12 bg-surface rounded-card border border-edge">
           <AudioLines className="w-8 h-8 text-content-faint mx-auto mb-2" />
