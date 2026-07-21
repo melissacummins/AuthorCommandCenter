@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Check, Circle, Trash2, Repeat, Clock, CalendarClock, CalendarPlus, Link2Off,
   Star, Moon, Orbit as OrbitIcon, MoreHorizontal, Plus, ChevronRight, ChevronLeft, ChevronDown,
-  Pencil, ListPlus, Inbox, History, Zap, Heart,
+  Pencil, ListPlus, Inbox, History, Zap, Heart, Lock,
 } from 'lucide-react';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
@@ -54,6 +54,10 @@ export interface TaskRowProps {
   onLogTime?: (minutes: number, day: string) => void;
   // Overdue rows: a small "→ Today" affordance.
   onMoveToToday?: () => void;
+  // True when this to-do is blocked by an unfinished dependency (shows a badge).
+  blocked?: boolean;
+  // Open the dependency editor for this to-do (adds a "Dependencies…" action).
+  onEditDependencies?: () => void;
   // Keyboard add flow (list views).
   focusId?: string | null;
   onFocused?: () => void;
@@ -65,7 +69,7 @@ export function TaskRow(props: TaskRowProps) {
     task, today, onPatch, onDelete, lists, listName, onOpenList, dragHandle,
     showTimer = false, canFlag = false, orbitEnabled = false, canSomeday = false,
     enableRecurrence = false, enableChecklist = false, calConnected = false,
-    onTimeBlock, onUnblock, onLogTime, onMoveToToday, focusId, onFocused, onEnter,
+    onTimeBlock, onUnblock, onLogTime, onMoveToToday, blocked = false, onEditDependencies, focusId, onFocused, onEnter,
   } = props;
 
   const [expanded, setExpanded] = useState(false);
@@ -172,6 +176,11 @@ export function TaskRow(props: TaskRowProps) {
             {progress.total > 0 && (
               <span className="text-[11px] font-medium text-content-muted tabular-nums">{progress.done}/{progress.total}</span>
             )}
+            {blocked && !task.done && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 bg-amber-50 rounded px-1 py-0.5" title="Blocked — waiting on another to-do">
+                <Lock className="w-2.5 h-2.5" /> Blocked
+              </span>
+            )}
             {listName && (
               <button
                 onClick={onOpenList}
@@ -224,6 +233,7 @@ export function TaskRow(props: TaskRowProps) {
             onTimeBlock={onTimeBlock}
             onUnblock={onUnblock}
             onLogTime={onLogTime}
+            onEditDependencies={onEditDependencies}
           />
         )}
 
@@ -282,7 +292,7 @@ type SubView = 'root' | 'schedule' | 'estimate' | 'repeat' | 'list' | 'logtime';
 export function TaskActionsMenu({
   task, today, onPatch, onDelete, onEditDetails, lists,
   canFlag = false, orbitEnabled = false, canSomeday = false, enableRecurrence = false,
-  calConnected = false, onTimeBlock, onUnblock, onLogTime,
+  calConnected = false, onTimeBlock, onUnblock, onLogTime, onEditDependencies,
 }: {
   task: PlannerTask;
   today: string;
@@ -298,6 +308,7 @@ export function TaskActionsMenu({
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
   onLogTime?: (minutes: number, day: string) => void;
+  onEditDependencies?: () => void;
 }) {
   return (
     <Popover
@@ -321,6 +332,7 @@ export function TaskActionsMenu({
           onTimeBlock={onTimeBlock}
           onUnblock={onUnblock}
           onLogTime={onLogTime}
+          onEditDependencies={onEditDependencies}
           close={close}
         />
       )}
@@ -330,7 +342,7 @@ export function TaskActionsMenu({
 
 function MenuBody({
   task, today, onPatch, onDelete, onEditDetails, lists,
-  canFlag, orbitEnabled, canSomeday, enableRecurrence, calConnected, onTimeBlock, onUnblock, onLogTime, close,
+  canFlag, orbitEnabled, canSomeday, enableRecurrence, calConnected, onTimeBlock, onUnblock, onLogTime, onEditDependencies, close,
 }: {
   task: PlannerTask;
   today: string;
@@ -346,6 +358,7 @@ function MenuBody({
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
   onLogTime?: (minutes: number, day: string) => void;
+  onEditDependencies?: () => void;
   close: () => void;
 }) {
   const [view, setView] = useState<SubView>('root');
@@ -389,6 +402,9 @@ function MenuBody({
       )}
       {lists && (
         <MenuItem icon={<ListPlus className="w-4 h-4" />} label="Move to list…" onClick={() => setView('list')} chevron />
+      )}
+      {onEditDependencies && (
+        <MenuItem icon={<Lock className="w-4 h-4" />} label="Dependencies…" onClick={() => { onEditDependencies(); close(); }} />
       )}
       {canFlag && (
         <MenuItem

@@ -17,7 +17,7 @@ import {
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
   CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
-  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid,
+  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid, Lock,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -38,6 +38,7 @@ import {
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
   listTimeSessions, createTimeSessions, deleteTimeSession, reorderNotes,
   createTaskEvent,
+  listTaskDependencies, addTaskDependency, removeTaskDependency,
   getWeeklyReset, upsertWeeklyReset,
 } from './api';
 import { listPenNames, type PenName } from '../../lib/penNames';
@@ -46,7 +47,7 @@ import {
   bucketForTask, formatMinutes, formatDue, nextDueDate, sumEstimate, todayISO,
   elapsedMinutes, localDay, weekStartISO, addDaysISO, parseCapture, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
-  type PlannerSettings, type PlannerTimeBlock, type PlannerTimeSession,
+  type PlannerSettings, type PlannerTimeBlock, type PlannerTimeSession, type PlannerTaskDependency,
   dedupeResetDraft, resetSectionFor, QUICK_TASK_MINUTES,
   type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
@@ -86,6 +87,9 @@ export default function PlannerModule() {
   const [tasks, setTasks] = useState<PlannerTask[]>([]);
   const [blocks, setBlocks] = useState<PlannerTimeBlock[]>([]);
   const [sessions, setSessions] = useState<PlannerTimeSession[]>([]);
+  const [deps, setDeps] = useState<PlannerTaskDependency[]>([]);
+  // The to-do whose dependencies are being edited (opens the modal), or null.
+  const [depEditId, setDepEditId] = useState<string | null>(null);
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [penNames, setPenNames] = useState<PenName[]>([]);
   // Whole-planner pen-name focus: null = All (show everything, today's behavior).
@@ -131,13 +135,14 @@ export default function PlannerModule() {
     Promise.all([
       listNotes(user.id, true), listTasks(user.id), listTimeBlocks(user.id),
       getSettings(user.id), listTimeSessions(user.id),
-      listPenNames(user.id),
+      listPenNames(user.id), listTaskDependencies(user.id),
     ])
-      .then(([n, t, b, s, ts, pn]) => {
+      .then(([n, t, b, s, ts, pn, deps]) => {
         if (!active) return;
         setNotes(n); setTasks(t); setBlocks(b); setSessions(ts);
         setSettings(s);
         setPenNames(pn);
+        setDeps(deps);
       })
       .catch(e => { if (active) setError(e?.message ?? 'Could not load your planner.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -196,6 +201,46 @@ export default function PlannerModule() {
   }, [user, resetWeek, selection.kind]);
 
   const notesById = useMemo(() => Object.fromEntries(notes.map(n => [n.id, n])), [notes]);
+
+  // Dependency lookups. `blockersOf` = every to-do a given one is blocked by;
+  // `openBlockersByTask` keeps only the blockers that aren't done yet — those are
+  // what actually make a to-do "blocked" right now.
+  const blockersOf = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    for (const d of deps) (m[d.task_id] ??= []).push(d.depends_on_id);
+    return m;
+  }, [deps]);
+  const openBlockersByTask = useMemo(() => {
+    const byId: Record<string, PlannerTask> = {};
+    for (const t of tasks) byId[t.id] = t;
+    const m: Record<string, PlannerTask[]> = {};
+    for (const d of deps) {
+      const blocker = byId[d.depends_on_id];
+      if (blocker && !blocker.done) (m[d.task_id] ??= []).push(blocker);
+    }
+    return m;
+  }, [deps, tasks]);
+  const blockedTaskIds = useMemo(() => new Set(Object.keys(openBlockersByTask)), [openBlockersByTask]);
+
+  // Add a blocker (dependsOnId blocks taskId), guarding self-links, duplicates,
+  // and the obvious 2-cycle (A blocks B while B blocks A).
+  async function addDependency(taskId: string, dependsOnId: string) {
+    if (!user || taskId === dependsOnId) return;
+    if (deps.some(d => d.task_id === taskId && d.depends_on_id === dependsOnId)) return;
+    if (deps.some(d => d.task_id === dependsOnId && d.depends_on_id === taskId)) {
+      setError('Those two would block each other — pick a different one.');
+      return;
+    }
+    try {
+      const row = await addTaskDependency(user.id, taskId, dependsOnId);
+      setDeps(prev => [...prev, row]);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not add that dependency.'); }
+  }
+  async function removeDependency(id: string) {
+    setDeps(prev => prev.filter(d => d.id !== id));
+    try { await removeTaskDependency(id); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not remove that dependency.'); }
+  }
   // The rail shows non-archived lists, pinned ones floated to the top. Archived
   // lists live in their own collapsible section so archive stays recoverable.
   const activeNotes = useMemo(
@@ -1279,6 +1324,8 @@ export default function PlannerModule() {
             onLogTime={logManualMinutes}
             onOpenNote={id => setSelection({ kind: 'note', id })}
             cal={cal}
+            blockedIds={blockedTaskIds}
+            onEditDependencies={setDepEditId}
           />
         ) : selectedNote ? (
           <NotePane
@@ -1299,6 +1346,8 @@ export default function PlannerModule() {
             onPatch={patchTask}
             onDelete={removeTask}
             onReorder={reorder}
+            blockedIds={blockedTaskIds}
+            onEditDependencies={setDepEditId}
           />
         ) : (
           <div className="p-8 text-content-muted">Select a note or view.</div>
@@ -1383,6 +1432,151 @@ export default function PlannerModule() {
           onClose={() => setDurOpen(false)}
         />
       )}
+
+      {depEditId && (() => {
+        const t = tasks.find(x => x.id === depEditId);
+        if (!t) return null;
+        return (
+          <DependencyModal
+            task={t}
+            tasks={tasks}
+            notesById={notesById}
+            deps={deps}
+            onAdd={depId => addDependency(t.id, depId)}
+            onRemove={removeDependency}
+            onClose={() => setDepEditId(null)}
+          />
+        );
+      })()}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dependencies — set what a to-do is "blocked by" (and see what it "blocks").
+// A to-do is blocked while any of its blockers is still open. Guards against
+// self-links and the obvious A↔B cycle live in the parent handler.
+// ---------------------------------------------------------------------------
+
+function DependencyModal({
+  task, tasks, notesById, deps, onAdd, onRemove, onClose,
+}: {
+  task: PlannerTask;
+  tasks: PlannerTask[];
+  notesById: Record<string, PlannerNote>;
+  deps: PlannerTaskDependency[];
+  onAdd: (dependsOnId: string) => void;
+  onRemove: (depId: string) => void;
+  onClose: () => void;
+}) {
+  const byId = useMemo(() => {
+    const m: Record<string, PlannerTask> = {};
+    for (const t of tasks) m[t.id] = t;
+    return m;
+  }, [tasks]);
+  const [query, setQuery] = useState('');
+
+  const blockers = deps.filter(d => d.task_id === task.id);       // this to-do is blocked by …
+  const dependents = deps.filter(d => d.depends_on_id === task.id); // … which in turn block these
+  const blockerIds = new Set(blockers.map(d => d.depends_on_id));
+  const dependentIds = new Set(dependents.map(d => d.task_id));
+
+  const listName = (t: PlannerTask) => (t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled list') : 'No list');
+
+  // Candidates to add as a blocker: any other open to-do not already linked
+  // either way (which would create a cycle).
+  const q = query.trim().toLowerCase();
+  const candidates = tasks
+    .filter(t => t.kind === 'task' && !t.done && t.id !== task.id && !blockerIds.has(t.id) && !dependentIds.has(t.id))
+    .filter(t => !q || (t.title || '').toLowerCase().includes(q))
+    .slice(0, 8);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-card border border-edge bg-surface shadow-2xl my-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-edge-soft">
+          <Lock className="w-4 h-4 text-amber-500" />
+          <h3 className="text-sm font-bold text-content">Dependencies</h3>
+          <button onClick={onClose} className="ml-auto text-content-muted hover:text-content" title="Close"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-content break-words"><span className="text-content-muted">For:</span> <span className="font-medium">{task.title || 'Untitled'}</span></p>
+
+          {/* Blocked by */}
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-content-muted mb-1.5">Blocked by</p>
+            {blockers.length === 0 ? (
+              <p className="text-xs text-content-muted mb-2">Nothing — this to-do isn’t waiting on anything.</p>
+            ) : (
+              <ul className="space-y-1 mb-2">
+                {blockers.map(d => {
+                  const b = byId[d.depends_on_id];
+                  return (
+                    <li key={d.id} className="flex items-center gap-2 rounded-control border border-edge px-2.5 py-1.5">
+                      {b?.done
+                        ? <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                        : <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm text-content break-words">{b?.title || 'Untitled'}</span>
+                        <span className="block text-[11px] text-content-muted">{b ? listName(b) : ''}{b?.done ? ' · done (not blocking)' : ''}</span>
+                      </span>
+                      <button onClick={() => onRemove(d.id)} className="text-content-faint hover:text-rose-500 shrink-0" title="Remove blocker"><X className="w-3.5 h-3.5" /></button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+            <div className="flex items-center gap-2 bg-surface-sunken/60 border border-edge rounded-control px-2.5 py-1.5">
+              <Search className="w-3.5 h-3.5 text-content-muted shrink-0" />
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Add a blocker — search your to-dos…"
+                className="flex-1 min-w-0 text-sm bg-transparent outline-none placeholder:text-content-muted text-content"
+              />
+            </div>
+            {query.trim() && (
+              <ul className="mt-1 rounded-control border border-edge divide-y divide-edge-soft overflow-hidden">
+                {candidates.length === 0 ? (
+                  <li className="px-2.5 py-2 text-xs text-content-muted">No matching open to-dos.</li>
+                ) : candidates.map(c => (
+                  <li key={c.id}>
+                    <button onClick={() => { onAdd(c.id); setQuery(''); }} className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-surface-hover">
+                      <Plus className="w-3.5 h-3.5 text-brand-600 shrink-0" />
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm text-content break-words">{c.title || 'Untitled'}</span>
+                        <span className="block text-[11px] text-content-muted">{listName(c)}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Blocking (read-only-ish: this to-do is a blocker for these) */}
+          {dependents.length > 0 && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-content-muted mb-1.5">This blocks</p>
+              <ul className="space-y-1">
+                {dependents.map(d => {
+                  const dep = byId[d.task_id];
+                  return (
+                    <li key={d.id} className="flex items-center gap-2 rounded-control border border-edge px-2.5 py-1.5">
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm text-content break-words">{dep?.title || 'Untitled'}</span>
+                        <span className="block text-[11px] text-content-muted">{dep ? listName(dep) : ''}</span>
+                      </span>
+                      <button onClick={() => onRemove(d.id)} className="text-content-faint hover:text-rose-500 shrink-0" title="Remove"><X className="w-3.5 h-3.5" /></button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -1751,7 +1945,7 @@ function BulkBar({
 // ---------------------------------------------------------------------------
 
 function ViewPane({
-  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onLogTime, onOpenNote, cal,
+  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onLogTime, onOpenNote, cal, blockedIds, onEditDependencies,
 }: {
   bucket?: Bucket;
   inbox?: boolean;
@@ -1768,6 +1962,8 @@ function ViewPane({
   onLogTime: (taskId: string, minutes: number, day: string) => void;
   onOpenNote: (id: string) => void;
   cal: CalendarBridge;
+  blockedIds: Set<string>;
+  onEditDependencies: (id: string) => void;
 }) {
   const meta = orbit
     ? { label: 'Orbit', icon: OrbitIcon, color: 'text-brand-500' }
@@ -1851,7 +2047,9 @@ function ViewPane({
         enableRecurrence enableChecklist
         calConnected={gc.connected}
         onTimeBlock={time => onTimeBlock(t, time)}
-        onUnblock={() => onUnblock(t)} />
+        onUnblock={() => onUnblock(t)}
+        blocked={blockedIds.has(t.id)}
+        onEditDependencies={() => onEditDependencies(t.id)} />
     );
   }
 
@@ -2164,7 +2362,7 @@ function ListMenuItem({ label, onClick }: { label: string; onClick: () => void }
 }
 
 function NotePane({
-  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onMergeInto, onSortTasks, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
+  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onMergeInto, onSortTasks, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false, blockedIds, onEditDependencies,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
@@ -2182,6 +2380,8 @@ function NotePane({
   onDelete: (id: string) => void;
   onReorder: (updates: { id: string; sort_order: number }[]) => void;
   orbitEnabled?: boolean;
+  blockedIds: Set<string>;
+  onEditDependencies: (id: string) => void;
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
@@ -2572,6 +2772,8 @@ function NotePane({
                 orbitEnabled={orbitEnabled}
                 onPatch={onPatch}
                 onDelete={onDelete}
+                blocked={blockedIds.has(t.id)}
+                onEditDependencies={() => onEditDependencies(t.id)}
               />
             ))}
           </ul>
@@ -2600,6 +2802,8 @@ function NotePane({
                 onEnter={() => createAfter(t.id)}
                 onPatch={onPatch}
                 onDelete={onDelete}
+                blocked={blockedIds.has(t.id)}
+                onEditDependencies={() => onEditDependencies(t.id)}
               />
             ))}
           </ul>
@@ -2614,6 +2818,8 @@ function NotePane({
                   task={t}
                   today={today}
                   lists={lists}
+                  blockedIds={blockedIds}
+                  onEditDependencies={onEditDependencies}
                   collapsed={collapsed.has(t.id)}
                   childCount={childCount[t.id] ?? 0}
                   orbitEnabled={orbitEnabled}
@@ -2663,7 +2869,7 @@ function useSortableStyle(id: string) {
 }
 
 function SortableNoteItem({
-  task, today, lists, collapsed, childCount, focusId, onFocused, onToggleCollapse, onAddUnder, onEnter, onPatch, onDelete, orbitEnabled = false,
+  task, today, lists, collapsed, childCount, focusId, onFocused, onToggleCollapse, onAddUnder, onEnter, onPatch, onDelete, orbitEnabled = false, blockedIds, onEditDependencies,
 }: {
   task: PlannerTask;
   today: string;
@@ -2678,6 +2884,8 @@ function SortableNoteItem({
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
   onDelete: (id: string) => void;
   orbitEnabled?: boolean;
+  blockedIds: Set<string>;
+  onEditDependencies: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, style } = useSortableStyle(task.id);
   const handle = (
@@ -2725,6 +2933,8 @@ function SortableNoteItem({
         onEnter={onEnter}
         onPatch={onPatch}
         onDelete={onDelete}
+        blocked={blockedIds.has(task.id)}
+        onEditDependencies={() => onEditDependencies(task.id)}
       />
     </li>
   );

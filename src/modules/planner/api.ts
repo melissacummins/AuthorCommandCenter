@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  ChecklistItem, PlannerNote, PlannerSettings, PlannerTask, PlannerTaskEvent, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
+  ChecklistItem, PlannerNote, PlannerSettings, PlannerTask, PlannerTaskDependency, PlannerTaskEvent, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
 } from './types';
 import { DEFAULT_DAILY_CAPACITY } from './types';
 
@@ -252,6 +252,34 @@ export async function reorderNotes(updates: { id: string; sort_order: number }[]
 
 export function newChecklistItem(title: string): ChecklistItem {
   return { id: crypto.randomUUID(), title, done: false };
+}
+
+// ---- Task dependencies ----------------------------------------------------
+
+// Every dependency edge for the user (task_id is blocked by depends_on_id), so
+// the client can compute blocked states across all views in one pass.
+export async function listTaskDependencies(userId: string): Promise<PlannerTaskDependency[]> {
+  const { data, error } = await supabase
+    .from('planner_task_dependencies')
+    .select('id, task_id, depends_on_id')
+    .eq('user_id', userId);
+  if (error) throw error;
+  return (data ?? []) as PlannerTaskDependency[];
+}
+
+export async function addTaskDependency(userId: string, taskId: string, dependsOnId: string): Promise<PlannerTaskDependency> {
+  const { data, error } = await supabase
+    .from('planner_task_dependencies')
+    .insert({ user_id: userId, task_id: taskId, depends_on_id: dependsOnId })
+    .select('id, task_id, depends_on_id')
+    .single();
+  if (error) throw error;
+  return data as PlannerTaskDependency;
+}
+
+export async function removeTaskDependency(id: string): Promise<void> {
+  const { error } = await supabase.from('planner_task_dependencies').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ---- Task activity log ----------------------------------------------------
