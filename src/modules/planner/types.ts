@@ -139,6 +139,15 @@ export interface PlannerTimeBlock {
 
 // One start→stop run of a to-do's timer. Lets Stats place tracked time on the
 // day it was worked, regardless of whether the to-do is ever completed.
+// One entry in a to-do's activity history (created, edited, completed, …).
+export interface PlannerTaskEvent {
+  id: string;
+  task_id: string;
+  type: string;
+  detail: string | null;
+  created_at: string;
+}
+
 export interface PlannerTimeSession {
   id: string;
   user_id: string;

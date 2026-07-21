@@ -37,6 +37,7 @@ import {
   getSettings, updateSettings,
   listTimeBlocks, createTimeBlock, updateTimeBlock, deleteTimeBlock,
   listTimeSessions, createTimeSessions, deleteTimeSession, reorderNotes,
+  createTaskEvent,
   getWeeklyReset, upsertWeeklyReset,
 } from './api';
 import { listPenNames, type PenName } from '../../lib/penNames';
@@ -441,6 +442,13 @@ export default function PlannerModule() {
     }
   }
 
+  // Append one entry to a to-do's activity history — fire-and-forget so a failed
+  // log never blocks or surfaces over the real change.
+  function logEvent(taskId: string, type: string, detail?: string | null) {
+    if (!user) return;
+    createTaskEvent(user.id, taskId, type, detail ?? null).catch(() => { /* non-critical */ });
+  }
+
   async function addTask(input: {
     title: string; note_id?: string | null; due_date?: string | null; someday?: boolean;
     kind?: 'task' | 'heading'; sort_order?: number; block_id?: string | null; estimate_minutes?: number | null; in_orbit?: boolean;
@@ -449,6 +457,7 @@ export default function PlannerModule() {
     try {
       const task = await createTask(user.id, { ...input, title: input.title.trim() });
       setTasks(prev => [...prev, task]);
+      if (task.kind === 'task') logEvent(task.id, 'created');
     } catch (e) { setError((e as Error)?.message ?? 'Could not add item.'); }
   }
 
@@ -559,6 +568,24 @@ export default function PlannerModule() {
       }
       return t;
     }));
+
+    // Record meaningful changes to the to-do's activity history (skipping purely
+    // mechanical ones — timer ticks, block links, sort order). A recurring
+    // completion is a "repeated", not a "completed".
+    if (task && task.kind === 'task') {
+      const isRoll = patch.done === true && !!task.recurrence && !!task.due_date;
+      if (isRoll) logEvent(id, 'repeated', nextDueDate(task.due_date!, task.recurrence!));
+      else if ('done' in patch) logEvent(id, patch.done ? 'completed' : 'reopened');
+      if ('due_date' in patch && !isRoll) {
+        if (patch.due_date) logEvent(id, 'scheduled', formatDue(patch.due_date, today));
+        else logEvent(id, 'unscheduled');
+      }
+      if ('note_id' in patch) logEvent(id, 'moved', patch.note_id ? (notesById[patch.note_id]?.title?.trim() || 'a list') : 'Inbox');
+      if ('flagged' in patch) logEvent(id, patch.flagged ? 'flagged' : 'unflagged');
+      if ('estimate_minutes' in patch && patch.estimate_minutes) logEvent(id, 'estimated', formatMinutes(patch.estimate_minutes));
+      if ('title' in patch && patch.title && patch.title !== task.title) logEvent(id, 'renamed');
+      if ('recurrence' in patch && patch.recurrence) logEvent(id, 'edited', 'set to repeat');
+    }
     try {
       await updateTask(id, effective);
       await Promise.all(others.map(t =>
