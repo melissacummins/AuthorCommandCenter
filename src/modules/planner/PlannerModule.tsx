@@ -17,12 +17,13 @@ import {
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
   CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
-  Loader2, Zap, Heart, Dices, Play, CalendarPlus,
+  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
 import { suggestOrbitPicks, findDuplicateGroups, suggestDurations, type AiResult, type DuplicateGroup, type DurationSuggestion } from './aiAssist';
 import StatsView from './StatsView';
+import ProjectsView from './ProjectsView';
 import LogbookView from './LogbookView';
 import SettingsView from './SettingsView';
 import PlanView from './PlanView';
@@ -59,6 +60,7 @@ type Selection =
   | { kind: 'stats' }
   | { kind: 'logbook' }
   | { kind: 'reset' }
+  | { kind: 'projects' }
   | { kind: 'settings' };
 
 // Everything a list/calendar view needs to show Google events and turn to-dos
@@ -1047,6 +1049,15 @@ export default function PlannerModule() {
             <span className="flex-1 text-left">Logbook</span>
           </button>
           <button
+            onClick={() => choose({ kind: 'projects' })}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+              selection.kind === 'projects' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4 text-brand-500" />
+            <span className="flex-1 text-left">Projects</span>
+          </button>
+          <button
             onClick={() => choose({ kind: 'stats' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
               selection.kind === 'stats' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
@@ -1183,6 +1194,8 @@ export default function PlannerModule() {
             onOpenList={id => choose({ kind: 'note', id })}
             onPatch={patchTask}
           />
+        ) : selection.kind === 'projects' ? (
+          <ProjectsView notes={railNotes} tasks={scopedTasks} sessions={sessions} onOpenList={id => choose({ kind: 'note', id })} />
         ) : selection.kind === 'stats' ? (
           <StatsView tasks={scopedTasks} sessions={sessions} today={today} notesById={notesById} onOpenDay={openReview} onOpenTask={openTask} />
         ) : selection.kind === 'logbook' ? (
