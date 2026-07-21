@@ -26,7 +26,7 @@ const REFLECTIVE: { key: 'wins' | 'not_done' | 'drained' | 'feel_more'; label: s
 const EMPTY_DRAFT: ResetTranscription = { wins: '', not_done: '', drained: '', feel_more: '', items: [] };
 
 export default function WeeklyResetView({
-  weekStart, today, reset, onPrevWeek, onNextWeek, onThisWeek, onSaveReflective, onCreateTasks,
+  weekStart, today, reset, onPrevWeek, onNextWeek, onThisWeek, onSaveReflective, onCreateTasks, onFindDuplicates,
 }: {
   weekStart: string;
   today: string;
@@ -36,6 +36,8 @@ export default function WeeklyResetView({
   onThisWeek: () => void;
   onSaveReflective: (patch: Partial<Pick<WeeklyReset, 'wins' | 'not_done' | 'drained' | 'feel_more'>>) => void;
   onCreateTasks: (draft: ResetTranscription) => Promise<number>;
+  // Open the AI duplicate-finder (scans all open to-dos, not just this reset).
+  onFindDuplicates: () => void;
 }) {
   const [refl, setRefl] = useState({
     wins: reset?.wins ?? '', not_done: reset?.not_done ?? '', drained: reset?.drained ?? '', feel_more: reset?.feel_more ?? '',
@@ -138,6 +140,13 @@ export default function WeeklyResetView({
       <div className="flex items-center gap-3 mb-1">
         <RotateCcw className="w-6 h-6 text-brand-500" />
         <h2 className="text-2xl font-bold text-content">Weekly Reset</h2>
+        <button
+          onClick={onFindDuplicates}
+          className="ml-auto inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
+          title="Let Claude find duplicate to-dos across all your lists"
+        >
+          <Sparkles className="w-3.5 h-3.5" /> Find duplicates
+        </button>
       </div>
       <p className="text-sm text-content-muted mb-5">Reflect on last week and set up this one. Snap a photo of your handwritten page or fill it in here.</p>
 

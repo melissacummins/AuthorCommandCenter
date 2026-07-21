@@ -17,10 +17,11 @@ import {
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
   CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
+  Loader2, Zap, Heart,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
-import { suggestOrbitPicks, type AiResult } from './aiAssist';
+import { suggestOrbitPicks, findDuplicateGroups, type AiResult, type DuplicateGroup } from './aiAssist';
 import StatsView from './StatsView';
 import LogbookView from './LogbookView';
 import SettingsView from './SettingsView';
@@ -40,7 +41,7 @@ import {
 import { listPenNames, type PenName } from '../../lib/penNames';
 import { penNameClasses } from '../../components/PenNameChip';
 import {
-  bucketForTask, formatMinutes, nextDueDate, sumEstimate, todayISO,
+  bucketForTask, formatMinutes, formatDue, nextDueDate, sumEstimate, todayISO,
   elapsedMinutes, localDay, weekStartISO, addDaysISO, parseCapture, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerTimeBlock, type PlannerTimeSession,
@@ -90,6 +91,11 @@ export default function PlannerModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selection, setSelection] = useState<Selection>({ kind: 'myday' });
+  // AI duplicate-finder (scans all open to-dos for likely-same items to merge).
+  const [dedupOpen, setDedupOpen] = useState(false);
+  const [dedupLoading, setDedupLoading] = useState(false);
+  const [dedupError, setDedupError] = useState<string | null>(null);
+  const [dedupGroups, setDedupGroups] = useState<DuplicateGroup[] | null>(null);
   // The planner rail is a slide-over on mobile; always-on from md up.
   const [railOpen, setRailOpen] = useState(false);
   // The search-and-start focus picker (a modal).
@@ -361,6 +367,42 @@ export default function PlannerModule() {
     }));
     try { await reorderTasks(updates); }
     catch (e) { setError((e as Error)?.message ?? 'Could not sort the list.'); }
+  }
+
+  // Merge a set of duplicate to-dos into one survivor: the survivor absorbs the
+  // others' tags (priority, feel-good, orbit), the largest estimate, and the
+  // earliest due date; the rest are deleted. Used by the AI duplicate-finder.
+  async function mergeDuplicates(survivorId: string, otherIds: string[]) {
+    if (!user || !otherIds.length) return;
+    const survivor = tasks.find(t => t.id === survivorId);
+    if (!survivor) return;
+    const group = [survivor, ...tasks.filter(t => otherIds.includes(t.id))];
+    const estimates = group.map(t => t.estimate_minutes).filter((m): m is number => typeof m === 'number' && m > 0);
+    const dues = group.map(t => t.due_date).filter((d): d is string => !!d).sort();
+    const patch: Partial<PlannerTask> = {
+      flagged: group.some(t => t.flagged),
+      feel_good: group.some(t => t.feel_good),
+      in_orbit: group.some(t => t.in_orbit),
+      estimate_minutes: estimates.length ? Math.max(...estimates) : survivor.estimate_minutes,
+      due_date: dues.length ? dues[0] : survivor.due_date,
+    };
+    setTasks(prev => prev.filter(t => !otherIds.includes(t.id)).map(t => (t.id === survivorId ? { ...t, ...patch } : t)));
+    try {
+      await updateTask(survivorId, patch);
+      await Promise.all(otherIds.map(id => deleteTask(id)));
+    } catch (e) { setError((e as Error)?.message ?? 'Could not merge those to-dos.'); }
+  }
+
+  // Ask Claude to group likely-duplicate open to-dos across all lists.
+  async function runDedup() {
+    setDedupOpen(true); setDedupLoading(true); setDedupError(null); setDedupGroups(null);
+    try {
+      setDedupGroups(await findDuplicateGroups(tasks, notesById));
+    } catch (e) {
+      setDedupError(e instanceof Error ? e.message : 'Could not scan for duplicates.');
+    } finally {
+      setDedupLoading(false);
+    }
   }
 
   async function addTask(input: {
@@ -1136,6 +1178,7 @@ export default function PlannerModule() {
               onThisWeek={() => setResetWeek(weekStartISO(today))}
               onSaveReflective={saveReflective}
               onCreateTasks={createResetTasks}
+              onFindDuplicates={runDedup}
             />
           )
         ) : selection.kind === 'settings' ? (
@@ -1218,6 +1261,132 @@ export default function PlannerModule() {
           onClose={() => setFocusOpen(false)}
         />
       )}
+
+      {dedupOpen && (
+        <DuplicateFinderModal
+          loading={dedupLoading}
+          error={dedupError}
+          groups={dedupGroups}
+          tasks={tasks}
+          notesById={notesById}
+          onMerge={mergeDuplicates}
+          onRescan={runDedup}
+          onClose={() => setDedupOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI duplicate-finder — shows the groups Claude flagged as the same to-do.
+// For each group you pick which one to keep; merging folds the others' tags,
+// estimate, and due date into the keeper and deletes them. "Not duplicates"
+// dismisses a group untouched.
+// ---------------------------------------------------------------------------
+
+function DuplicateFinderModal({
+  loading, error, groups, tasks, notesById, onMerge, onRescan, onClose,
+}: {
+  loading: boolean;
+  error: string | null;
+  groups: DuplicateGroup[] | null;
+  tasks: PlannerTask[];
+  notesById: Record<string, PlannerNote>;
+  onMerge: (survivorId: string, otherIds: string[]) => void;
+  onRescan: () => void;
+  onClose: () => void;
+}) {
+  const byId = useMemo(() => {
+    const m: Record<string, PlannerTask> = {};
+    for (const t of tasks) m[t.id] = t;
+    return m;
+  }, [tasks]);
+  const [remaining, setRemaining] = useState<DuplicateGroup[]>([]);
+  const [survivors, setSurvivors] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!groups) { setRemaining([]); return; }
+    setRemaining(groups);
+    setSurvivors(Object.fromEntries(groups.map(g => [g.ids.join('|'), g.ids[0]])));
+  }, [groups]);
+
+  function keyOf(g: DuplicateGroup) { return g.ids.join('|'); }
+  function drop(g: DuplicateGroup) { setRemaining(prev => prev.filter(x => keyOf(x) !== keyOf(g))); }
+  function merge(g: DuplicateGroup) {
+    const survivorId = survivors[keyOf(g)] ?? g.ids[0];
+    onMerge(survivorId, g.ids.filter(id => id !== survivorId));
+    drop(g);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-card border border-edge bg-surface shadow-2xl my-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-edge-soft">
+          <Sparkles className="w-4 h-4 text-violet-500" />
+          <h3 className="text-sm font-bold text-content">Find duplicates</h3>
+          <button onClick={onClose} className="ml-auto text-content-muted hover:text-content" title="Close"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="p-4">
+          {loading ? (
+            <div className="flex items-center gap-2 py-8 justify-center text-sm text-content-muted">
+              <Loader2 className="w-4 h-4 animate-spin" /> Scanning your to-dos for duplicates…
+            </div>
+          ) : error ? (
+            <div className="py-6 text-center">
+              <p className="text-sm text-rose-600 mb-3">{error}</p>
+              <button onClick={onRescan} className="text-sm font-medium text-brand-600 hover:text-brand-700">Try again</button>
+            </div>
+          ) : remaining.length === 0 ? (
+            <div className="py-8 text-center text-sm text-content-muted">
+              {groups === null ? 'Nothing to review.' : 'No duplicates found — your to-dos are tidy. 🎉'}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-content-muted">Pick which to keep in each set; merging folds the others’ tags, estimate, and due date into it and deletes them.</p>
+              {remaining.map(g => (
+                <div key={keyOf(g)} className="rounded-card border border-edge bg-surface-hover/40 p-3">
+                  {g.reason && <p className="text-[11px] font-medium uppercase tracking-wide text-content-muted mb-2">{g.reason}</p>}
+                  <div className="space-y-1.5">
+                    {g.ids.map(id => {
+                      const t = byId[id];
+                      if (!t) return null;
+                      const list = t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled list') : 'No list';
+                      const chosen = (survivors[keyOf(g)] ?? g.ids[0]) === id;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => setSurvivors(prev => ({ ...prev, [keyOf(g)]: id }))}
+                          className={`w-full flex items-start gap-2 text-left rounded-control px-2 py-1.5 border transition-colors ${chosen ? 'border-brand-400 bg-brand-50/50' : 'border-edge hover:bg-surface-sunken'}`}
+                        >
+                          <span className={`mt-0.5 shrink-0 w-3.5 h-3.5 rounded-full border ${chosen ? 'border-brand-500 bg-brand-500' : 'border-content-faint'}`} />
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm text-content break-words">{t.title || 'Untitled'}</span>
+                            <span className="flex items-center gap-1.5 mt-0.5 text-[11px] text-content-muted">
+                              <span className="truncate max-w-[10rem]">{list}</span>
+                              {t.flagged && <Star className="w-3 h-3 text-amber-400" fill="currentColor" />}
+                              {t.estimate_minutes === QUICK_TASK_MINUTES && <Zap className="w-3 h-3 text-teal-500" fill="currentColor" />}
+                              {t.feel_good && <Heart className="w-3 h-3 text-rose-400" fill="currentColor" />}
+                              {t.due_date && <span>· {formatDue(t.due_date)}</span>}
+                            </span>
+                          </span>
+                          {chosen && <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-600 shrink-0">Keep</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex items-center gap-2 mt-2.5">
+                    <button onClick={() => merge(g)} className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-3 py-1.5">
+                      <GitMerge className="w-3.5 h-3.5" /> Merge {g.ids.length} into 1
+                    </button>
+                    <button onClick={() => drop(g)} className="text-sm font-medium text-content-muted hover:text-content">Not duplicates</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

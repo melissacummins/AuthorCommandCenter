@@ -194,7 +194,64 @@ export async function suggestOrbitPicks(
   return ask(prompt, candidates);
 }
 
-// 4. Weekly Reset transcription — read photo(s) of a handwritten weekly reset
+// 4. Find duplicates — group open to-dos that refer to the SAME task, across
+// lists, so the user can merge them. Solves the reset problem where the same
+// item gets captured again week after week. Returns groups of 2+ ids; an id
+// never appears in more than one group.
+export interface DuplicateGroup { ids: string[]; reason: string }
+
+const DEDUP_SYSTEM =
+  'You find DUPLICATE or near-duplicate to-dos in a personal planner. '
+  + 'Respond with ONLY a JSON object — no prose, no markdown fences — matching: '
+  + '{"groups": [{"ids": [string, string], "reason": string}]}. '
+  + 'Each group is 2 or more to-dos that describe the SAME underlying task or intent, even if worded differently or filed in different lists. '
+  + 'Use ONLY ids from the provided list. Never place an id in more than one group. '
+  + 'Be conservative: only group items you are confident are the same — when in doubt, leave them ungrouped. '
+  + 'Keep each "reason" to a short phrase (8 words max). If nothing is a duplicate, return {"groups": []}.';
+
+export async function findDuplicateGroups(
+  tasks: PlannerTask[],
+  notesById: Record<string, PlannerNote> = {},
+): Promise<DuplicateGroup[]> {
+  const candidates = tasks.filter(t => t.kind === 'task' && !t.done);
+  if (candidates.length < 2) return [];
+  const prompt = [
+    'These are the open to-dos, one per line, each prefixed with its id in brackets. '
+      + 'Find sets that are the same task (duplicates or near-duplicates), including across different lists.',
+    '',
+    candidates.map(t => serializeTask(t, notesById)).join('\n'),
+  ].join('\n');
+  const text = await plannerComplete({ prompt, system: DEDUP_SYSTEM, maxTokens: 4096 });
+  return parseGroups(text, new Set(candidates.map(t => t.id)));
+}
+
+// Parse Claude's dedup reply defensively: keep only groups whose ids are all
+// real candidates, drop groups smaller than 2, and never let an id land in two
+// groups (first group wins).
+function parseGroups(raw: string, validIds: Set<string>): DuplicateGroup[] {
+  const stripped = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const first = stripped.indexOf('{');
+  const last = stripped.lastIndexOf('}');
+  if (first === -1 || last <= first) return [];
+  let data: { groups?: unknown };
+  try { data = JSON.parse(stripped.slice(first, last + 1)) as { groups?: unknown }; }
+  catch { return []; }
+  if (!data || !Array.isArray(data.groups)) return [];
+  const seen = new Set<string>();
+  const out: DuplicateGroup[] = [];
+  for (const g of data.groups) {
+    if (!g || typeof g !== 'object') continue;
+    const gg = g as { ids?: unknown; reason?: unknown };
+    if (!Array.isArray(gg.ids)) continue;
+    const ids = gg.ids.filter((x): x is string => typeof x === 'string' && validIds.has(x) && !seen.has(x));
+    if (ids.length < 2) continue;
+    ids.forEach(id => seen.add(id));
+    out.push({ ids, reason: typeof gg.reason === 'string' ? gg.reason : '' });
+  }
+  return out;
+}
+
+// 5. Weekly Reset transcription — read photo(s) of a handwritten weekly reset
 // and return its sections as structured JSON. Reflective sections come back as
 // prose; actionable sections as item lists. Anything guessed is flagged
 // `uncertain` so the user can confirm it before it becomes a to-do.
