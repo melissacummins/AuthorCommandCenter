@@ -1,4 +1,7 @@
 {
+  "crons": [
+    { "path": "/api/planner/ai?action=reminders", "schedule": "*/15 * * * *" }
+  ],
   "rewrites": [
     {
       "source": "/.well-known/oauth-protected-resource",

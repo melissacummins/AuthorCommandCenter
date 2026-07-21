@@ -77,6 +77,11 @@ export interface PlannerTask {
   // timer is going (null when stopped). Only one to-do runs at a time.
   actual_minutes: number;
   timer_started_at: string | null;
+  // Optional reminder: an absolute time (ISO/UTC) to be nudged about this to-do,
+  // and when that nudge was actually sent (null until sent; cleared when the
+  // reminder time changes so it can fire again). null remind_at = no reminder.
+  remind_at?: string | null;
+  reminder_sent_at?: string | null;
   // When this to-do was captured from a Weekly Reset: the Monday of that reset's
   // week and which section it came from. null for ordinary to-dos.
   reset_week?: string | null;

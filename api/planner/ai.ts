@@ -89,6 +89,71 @@ async function resolveUserKey(supabase: SupabaseClient, userId: string, secret: 
   return decryptKey(data, secret);
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+}
+
+// Send one reminder email via Resend's REST API (no SDK needed). Returns whether
+// it was accepted, so the caller only marks a reminder sent when it actually was.
+async function sendReminderEmail(apiKey: string, from: string, to: string, title: string): Promise<boolean> {
+  const name = escapeHtml(title || 'Your to-do');
+  try {
+    const r = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to,
+        subject: `Reminder: ${title || 'Your to-do'}`,
+        html: `<div style="font-family:system-ui,-apple-system,sans-serif;color:#0f172a">`
+          + `<p style="margin:0 0 8px;color:#64748b">Your reminder for:</p>`
+          + `<p style="margin:0 0 16px;font-size:18px;font-weight:600">${name}</p>`
+          + `<p style="margin:0;color:#94a3b8;font-size:13px">— Author Command Center</p></div>`,
+      }),
+    });
+    return r.ok;
+  } catch { return false; }
+}
+
+// Scheduled sweep: email owners about to-dos whose reminder time has passed, then
+// stamp reminder_sent_at so each fires exactly once. Authorized by CRON_SECRET as
+// the bearer (Vercel Cron sets it) — NOT a user session. No-ops cleanly until the
+// email provider env vars are set, so shipping this doesn't require them yet.
+async function handleReminders(req: VercelRequest, res: VercelResponse, supabase: SupabaseClient): Promise<void> {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret || bearer(req) !== cronSecret) { res.status(401).json({ error: 'Unauthorized.' }); return; }
+  const resendKey = process.env.RESEND_API_KEY;
+  const from = process.env.REMINDER_FROM_EMAIL;
+  if (!resendKey || !from) { res.status(200).json({ ok: true, sent: 0, note: 'Email not configured (set RESEND_API_KEY and REMINDER_FROM_EMAIL).' }); return; }
+
+  const nowIso = new Date().toISOString();
+  const { data: due, error } = await supabase
+    .from('planner_tasks')
+    .select('id, user_id, title')
+    .lte('remind_at', nowIso)
+    .is('reminder_sent_at', null)
+    .not('remind_at', 'is', null)
+    .eq('done', false)
+    .limit(100);
+  if (error) { res.status(500).json({ error: error.message }); return; }
+
+  const emailByUser: Record<string, string | null> = {};
+  let sent = 0;
+  for (const t of (due ?? []) as { id: string; user_id: string; title: string }[]) {
+    if (!(t.user_id in emailByUser)) {
+      const { data: u } = await supabase.auth.admin.getUserById(t.user_id);
+      emailByUser[t.user_id] = u?.user?.email ?? null;
+    }
+    const email = emailByUser[t.user_id];
+    if (!email) continue;
+    if (await sendReminderEmail(resendKey, from, email, t.title)) {
+      await supabase.from('planner_tasks').update({ reminder_sent_at: new Date().toISOString() }).eq('id', t.id);
+      sent++;
+    }
+  }
+  res.status(200).json({ ok: true, sent });
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -102,6 +167,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const token = bearer(req);
   if (!token) { res.status(401).json({ error: 'Missing authorization.' }); return; }
   const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
+
+  // Scheduled reminder sweep — authorized by CRON_SECRET, not a user session, so
+  // it must be handled before the getUser() check below.
+  if (queryParam(req, 'action') === 'reminders') { await handleReminders(req, res, supabase); return; }
+
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   if (userErr || !userData?.user) { res.status(401).json({ error: 'Invalid session.' }); return; }
   const userId = userData.user.id;
