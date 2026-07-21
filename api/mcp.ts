@@ -22,7 +22,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { getBusinessSnapshot } from '../src/lib/dashboardCore';
+// Runtime value comes from a self-contained pre-bundle (scripts/bundle-mcp-core.mjs);
+// importing ../src directly threw ERR_MODULE_NOT_FOUND under Node ESM on Vercel.
+// Types resolve via the sibling api/_generated/dashboardCore.d.ts.
+import { getBusinessSnapshot } from './_generated/dashboardCore.js';
 
 export const maxDuration = 30;
 
