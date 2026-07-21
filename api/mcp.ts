@@ -52,7 +52,11 @@ function trimTrailingSlash(url: string): string {
 
 export function buildProtectedResourceMetadata(origin: string, supabaseUrl: string) {
   return {
-    resource: `${trimTrailingSlash(origin)}/api/mcp`,
+    // Must equal the URL the client actually connects to (the branded /mcp,
+    // per vercel.json), not the internal /api/mcp rewrite target. RFC 9728
+    // clients reject metadata whose `resource` doesn't match the MCP server
+    // URL they were given — which silently aborts OAuth before registration.
+    resource: `${trimTrailingSlash(origin)}/mcp`,
     authorization_servers: [`${trimTrailingSlash(supabaseUrl)}/auth/v1`],
     bearer_methods_supported: ['header'],
     resource_name: 'Author Command Center',
