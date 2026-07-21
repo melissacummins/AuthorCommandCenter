@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Check, Circle, Trash2, Repeat, Clock, CalendarClock, CalendarPlus, Link2Off,
   Star, Moon, Orbit as OrbitIcon, MoreHorizontal, Plus, ChevronRight, ChevronLeft, ChevronDown,
-  Pencil, ListPlus, Inbox, History, Zap, Heart, Lock,
+  Pencil, ListPlus, Inbox, History, Zap, Heart, Lock, Bell,
 } from 'lucide-react';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
@@ -169,6 +169,11 @@ export function TaskRow(props: TaskRowProps) {
             )}
             {task.feel_good && (
               <Heart className="w-3.5 h-3.5 text-rose-400" fill="currentColor" />
+            )}
+            {task.remind_at && !task.done && (
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-violet-500" title={`Reminder set for ${new Date(task.remind_at).toLocaleString()}`}>
+                <Bell className="w-3 h-3" /> {reminderLabel(task.remind_at)}
+              </span>
             )}
             {orbitEnabled && task.in_orbit && (
               <OrbitIcon className="w-3.5 h-3.5 text-brand-400" />
@@ -569,6 +574,77 @@ export function EstimateOptions({
   );
 }
 
+// Set an absolute reminder time. Quick presets cover the common cases; the
+// datetime field is there for anything specific. Setting a time clears any
+// prior "sent" stamp so a rescheduled reminder fires again.
+function ReminderOptions({
+  task, onPatch, onDone,
+}: {
+  task: PlannerTask;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDone: () => void;
+}) {
+  const [val, setVal] = useState(task.remind_at ? toLocalInput(task.remind_at) : '');
+  function apply(d: Date) { onPatch(task.id, { remind_at: d.toISOString(), reminder_sent_at: null }); onDone(); }
+  const presets: [string, () => Date][] = [
+    ['In 1 hour', () => new Date(Date.now() + 60 * 60_000)],
+    ['This evening (6pm)', () => { const d = new Date(); d.setHours(18, 0, 0, 0); if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1); return d; }],
+    ['Tomorrow 9am', () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d; }],
+    ['Next week', () => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(9, 0, 0, 0); return d; }],
+  ];
+  return (
+    <div className="p-2 w-60">
+      {presets.map(([label, mk]) => (
+        <button key={label} onClick={() => apply(mk())} className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken text-content">
+          {label}
+        </button>
+      ))}
+      <div className="mt-1 pt-2 border-t border-edge-soft px-1">
+        <input
+          type="datetime-local"
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          className="w-full text-sm rounded-control border border-edge bg-surface px-2 py-1 text-content"
+        />
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={() => { if (val) apply(new Date(val)); }}
+            disabled={!val}
+            className={`text-xs font-medium rounded-control px-2.5 py-1 ${val ? 'bg-brand-600 text-brand-fg hover:bg-brand-700' : 'text-content-faint cursor-default'}`}
+          >
+            Set
+          </button>
+          {task.remind_at && (
+            <button
+              onClick={() => { onPatch(task.id, { remind_at: null, reminder_sent_at: null }); onDone(); }}
+              className="text-xs font-medium text-content-muted hover:text-rose-500"
+            >
+              Clear reminder
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ISO (UTC) → the value a <input type="datetime-local"> expects (local, no zone).
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+// A compact chip label for a set reminder: "Bell · Fri 3:00 PM" style, trimmed.
+function reminderLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  if (sameDay) return time;
+  return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
+}
+
 // Retroactively log time actually worked: pick the day (defaults to the to-do's
 // own day) and a duration. Lands in the Logbook + Stats like a timer run would.
 function LogTimeOptions({
@@ -816,6 +892,14 @@ export function TaskDetail({
           label={task.estimate_minutes ? formatMinutes(task.estimate_minutes) : 'Estimate'}
         >
           {close => <EstimateOptions task={task} onPatch={onPatch} onDone={close} />}
+        </ChipPicker>
+
+        <ChipPicker
+          active={!!task.remind_at}
+          icon={<Bell className="w-3.5 h-3.5" />}
+          label={task.remind_at ? reminderLabel(task.remind_at) : 'Remind'}
+        >
+          {close => <ReminderOptions task={task} onPatch={onPatch} onDone={close} />}
         </ChipPicker>
 
         {enableRecurrence && (
