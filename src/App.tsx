@@ -5,6 +5,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { PenNameProvider } from './contexts/PenNameContext';
 import { GATED_MODULES } from './lib/access';
 import Layout from './components/Layout';
+import OAuthConsent from './pages/OAuthConsent';
 import Login from './pages/Login';
 import AccessGate from './pages/AccessGate';
 import Home from './pages/Home';
@@ -117,6 +118,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
+      {/* OAuth 2.1 consent (MCP connector) — standalone, outside the app shell. */}
+      <Route path="/oauth/consent" element={<OAuthConsent />} />
       <Route path="/*" element={<ProtectedRoutes />} />
     </Routes>
   );

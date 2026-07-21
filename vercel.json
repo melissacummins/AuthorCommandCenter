@@ -1,6 +1,24 @@
 {
   "rewrites": [
-    { "source": "/l/:slug", "destination": "/api/l/:slug" },
-    { "source": "/((?!api/|l/).*)", "destination": "/index.html" }
+    {
+      "source": "/.well-known/oauth-protected-resource",
+      "destination": "/api/mcp?meta=prm"
+    },
+    {
+      "source": "/.well-known/oauth-protected-resource/:path*",
+      "destination": "/api/mcp?meta=prm"
+    },
+    {
+      "source": "/mcp",
+      "destination": "/api/mcp"
+    },
+    {
+      "source": "/l/:slug",
+      "destination": "/api/l/:slug"
+    },
+    {
+      "source": "/((?!api/|l/).*)",
+      "destination": "/index.html"
+    }
   ]
 }

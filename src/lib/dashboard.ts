@@ -10,15 +10,10 @@
 //  - No UI in this file; Phase 2 builds the widgets on top of these.
 
 import { supabase } from './supabase';
+import { getInventoryAlertsCore, getMonthPnlCore, getUpcomingDatesCore } from './dashboardCore';
 import type { Book } from '../modules/catalog/types';
 import { STATUS_LABELS } from '../modules/catalog/types';
 import type { Manuscript } from '../modules/writing/types';
-import { getProducts } from '../modules/inventory/api';
-import { getSalesRates } from '../modules/inventory/api/salesRates';
-import { getPendingByProduct } from '../modules/inventory/api/purchaseOrders';
-import { calculateProductMetrics } from '../modules/inventory/utils';
-import { calculateMetrics } from '../modules/profit-track/utils/calculations';
-import { dailyRecordFromDb, profitCategoryFromDb } from '../modules/profit-track/utils/mappers';
 import {
   deriveOpportunities,
   pipelinePercent,
@@ -29,98 +24,22 @@ import {
 } from './opportunities';
 
 // ---------------------------------------------------------------------------
-// Inventory alerts
+// Inventory alerts / Month P&L / Upcoming — implemented in dashboardCore.ts
+// (client-injected so the MCP server reuses the exact same logic under the
+// caller's RLS); these wrappers bind the browser singleton.
 
-export interface InventoryAlert {
-  productId: string;
-  name: string;
-  sku: string;
-  bookInventory: number;
-  daysRemaining: number;
-  reorderQty: number;
-  reorderCost: number;
-  status: 'REORDER NOW' | 'OUT OF STOCK';
+export type { InventoryAlert, MonthPnl, UpcomingItem, UpcomingKind } from './dashboardCore';
+
+export function getInventoryAlerts() {
+  return getInventoryAlertsCore(supabase);
 }
 
-/** Products at/below their reorder point, excluding do-not-reorder products
-    and those already fully covered by a pending purchase order. Sorted most
-    urgent first. */
-export async function getInventoryAlerts(): Promise<InventoryAlert[]> {
-  const [products, salesRates, pendingByProduct] = await Promise.all([
-    getProducts(),
-    getSalesRates(180),
-    getPendingByProduct(),
-  ]);
-
-  const alerts: InventoryAlert[] = [];
-  for (const p of products) {
-    if (p.do_not_reorder) continue;
-    const sku = (p.sku || '').trim().toUpperCase();
-    const shopifyDaily = sku ? salesRates.get(sku)?.avgDaily : undefined;
-    const m = calculateProductMetrics(p, products, shopifyDaily);
-    if (m.status !== 'REORDER NOW' && m.status !== 'OUT OF STOCK') continue;
-    const pending = pendingByProduct.get(p.id) ?? 0;
-    if (m.reorderQty > 0 && pending >= m.reorderQty) continue; // already on order
-    alerts.push({
-      productId: p.id,
-      name: p.name,
-      sku: p.sku,
-      bookInventory: m.bookInventory,
-      daysRemaining: m.daysRemaining,
-      reorderQty: Math.max(0, m.reorderQty - pending),
-      reorderCost: m.reorderCost,
-      status: m.status,
-    });
-  }
-  return alerts.sort((a, b) => a.daysRemaining - b.daysRemaining);
+export function getMonthPnl(now: Date = new Date()) {
+  return getMonthPnlCore(supabase, now);
 }
 
-// ---------------------------------------------------------------------------
-// Month P&L
-
-export interface MonthPnl {
-  monthRevenue: number;
-  monthAdSpend: number;
-  monthNet: number;
-  prevMonthNet: number;
-  /** Latest daily-record date in range — the "as of" the widget must show,
-      since Profit is manually entered. Null when nothing is entered yet. */
-  lastEntryDate: string | null;
-}
-
-/** Current + previous month only — never the full history. */
-export async function getMonthPnl(now: Date = new Date()): Promise<MonthPnl> {
-  const first = new Date(now.getFullYear(), now.getMonth(), 1);
-  const prevFirst = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
-  const [recordsRes, categoriesRes] = await Promise.all([
-    supabase.from('daily_records').select('*').gte('date', iso(prevFirst)).order('date'),
-    supabase.from('profit_categories').select('*'),
-  ]);
-  if (recordsRes.error) throw recordsRes.error;
-  if (categoriesRes.error) throw categoriesRes.error;
-
-  const categories = (categoriesRes.data ?? []).map(profitCategoryFromDb);
-  const records = (recordsRes.data ?? []).map(dailyRecordFromDb);
-  const firstIso = iso(first);
-
-  let monthRevenue = 0;
-  let monthAdSpend = 0;
-  let prevMonthNet = 0;
-  let lastEntryDate: string | null = null;
-  for (const r of records) {
-    const m = calculateMetrics(r, categories);
-    if (r.date >= firstIso) {
-      monthRevenue += m.totalRevenue;
-      monthAdSpend += m.totalAdSpend;
-      if (!lastEntryDate || r.date > lastEntryDate) lastEntryDate = r.date;
-    } else {
-      prevMonthNet += m.totalRevenue - m.totalAdSpend;
-    }
-  }
-  return { monthRevenue, monthAdSpend, monthNet: monthRevenue - monthAdSpend, prevMonthNet, lastEntryDate };
+export function getUpcomingDates(userId: string, days = 14, now: Date = new Date()) {
+  return getUpcomingDatesCore(supabase, userId, days, now);
 }
 
 // ---------------------------------------------------------------------------
@@ -203,70 +122,6 @@ export async function getOpenProjects(userId: string): Promise<OpenProjectsResul
     }));
 
   return { projects, resume };
-}
-
-// ---------------------------------------------------------------------------
-// Upcoming dates
-
-export type UpcomingKind = 'release' | 'pre_order' | 'manuscript_due' | 'task';
-
-export interface UpcomingItem {
-  date: string; // YYYY-MM-DD
-  label: string;
-  kind: UpcomingKind;
-  href: string;
-}
-
-export async function getUpcomingDates(userId: string, days = 14, now: Date = new Date()): Promise<UpcomingItem[]> {
-  const iso = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  const todayIso = iso(now);
-  const end = new Date(now);
-  end.setDate(end.getDate() + days);
-  const endIso = iso(end);
-
-  const [booksRes, tasksRes] = await Promise.all([
-    supabase
-      .from('books')
-      .select('id, title, publish_date, pre_order_date, manuscript_due_date')
-      .eq('user_id', userId)
-      .or(
-        `and(publish_date.gte.${todayIso},publish_date.lte.${endIso}),` +
-        `and(pre_order_date.gte.${todayIso},pre_order_date.lte.${endIso}),` +
-        `and(manuscript_due_date.gte.${todayIso},manuscript_due_date.lte.${endIso})`,
-      ),
-    supabase
-      .from('planner_tasks')
-      .select('id, title, due_date')
-      .eq('user_id', userId)
-      .eq('done', false)
-      .eq('kind', 'task')
-      .eq('someday', false)
-      .gte('due_date', todayIso)
-      .lte('due_date', endIso)
-      .order('due_date')
-      .limit(30),
-  ]);
-  if (booksRes.error) throw booksRes.error;
-  if (tasksRes.error) throw tasksRes.error;
-
-  const items: UpcomingItem[] = [];
-  const inRange = (d: string | null): d is string => !!d && d >= todayIso && d <= endIso;
-  for (const b of booksRes.data ?? []) {
-    if (inRange(b.publish_date)) {
-      items.push({ date: b.publish_date, label: `“${b.title}” releases`, kind: 'release', href: '/catalog' });
-    }
-    if (inRange(b.pre_order_date)) {
-      items.push({ date: b.pre_order_date, label: `“${b.title}” pre-order goes live`, kind: 'pre_order', href: '/catalog' });
-    }
-    if (inRange(b.manuscript_due_date)) {
-      items.push({ date: b.manuscript_due_date, label: `“${b.title}” manuscript due`, kind: 'manuscript_due', href: '/writing' });
-    }
-  }
-  for (const t of tasksRes.data ?? []) {
-    items.push({ date: t.due_date as string, label: t.title, kind: 'task', href: '/planner' });
-  }
-  return items.sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // ---------------------------------------------------------------------------
