@@ -139,6 +139,13 @@ export interface PlannerTimeBlock {
 
 // One start→stop run of a to-do's timer. Lets Stats place tracked time on the
 // day it was worked, regardless of whether the to-do is ever completed.
+// A dependency edge: `task_id` is blocked by `depends_on_id`.
+export interface PlannerTaskDependency {
+  id: string;
+  task_id: string;
+  depends_on_id: string;
+}
+
 // One entry in a to-do's activity history (created, edited, completed, …).
 export interface PlannerTaskEvent {
   id: string;
