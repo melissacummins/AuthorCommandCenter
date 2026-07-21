@@ -80,9 +80,14 @@ export async function restoreBackup(
   const user = userData?.user;
   if (!user) throw new Error('Not signed in');
 
-  if (backup.schema_version !== BACKUP_SCHEMA_VERSION) {
+  // Accept this version and any OLDER one. A v1 file simply carries fewer
+  // tables than v2 knows about; restore already tolerates tables a file
+  // doesn't contain, so an older backup restores cleanly. We only refuse a
+  // NEWER file than this build understands, since it may contain tables or
+  // shapes we can't place safely.
+  if (backup.schema_version > BACKUP_SCHEMA_VERSION) {
     throw new Error(
-      `Backup schema version ${backup.schema_version} is not supported by this app (expects ${BACKUP_SCHEMA_VERSION}).`,
+      `This backup was made by a newer version of the app (schema v${backup.schema_version}, this build understands up to v${BACKUP_SCHEMA_VERSION}). Update the app, then restore.`,
     );
   }
 

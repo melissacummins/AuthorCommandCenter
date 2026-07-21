@@ -1,0 +1,91 @@
+name: Repo backup
+
+# Off-GitHub mirror of the whole repository. Belt-and-suspenders against the
+# "GitHub itself is gone / the repo got force-pushed or deleted" tail risk that
+# branch protection alone can't cover.
+#
+# Every run produces a `git bundle` — a SINGLE file containing the COMPLETE
+# history of every branch, from which the entire repo can be reconstructed with
+# `git clone <file>.bundle`. It is:
+#   1) always uploaded as a GitHub Actions artifact (retained 90 days), and
+#   2) uploaded to Dropbox as well, IF the Dropbox secrets below are set.
+#
+# Optional Dropbox secrets (Settings → Secrets and variables → Actions):
+#   DROPBOX_APP_KEY, DROPBOX_APP_SECRET, DROPBOX_REFRESH_TOKEN
+# Without them the job still runs and keeps the GitHub artifact.
+
+on:
+  schedule:
+    - cron: '0 7 * * 0' # Sundays 07:00 UTC
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build repo bundle
+        id: bundle
+        run: |
+          set -euo pipefail
+          # Make sure every remote branch is a local ref so --all captures them.
+          git fetch --all --tags --quiet || true
+          STAMP="$(date -u +%Y-%m-%d)"
+          NAME="authorcommandcenter_${STAMP}.bundle"
+          git bundle create "$NAME" --all
+          git bundle verify "$NAME"
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          ls -lh "$NAME"
+
+      - name: Upload GitHub artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: repo-bundle-${{ github.run_id }}
+          path: ${{ steps.bundle.outputs.name }}
+          retention-days: 90
+
+      - name: Mirror to Dropbox
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+          BUNDLE: ${{ steps.bundle.outputs.name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DROPBOX_APP_KEY:-}" ] || [ -z "${DROPBOX_APP_SECRET:-}" ] || [ -z "${DROPBOX_REFRESH_TOKEN:-}" ]; then
+            echo "Dropbox secrets not set — keeping the GitHub artifact only. See docs/BACKUP_AND_RECOVERY.md to enable the Dropbox mirror."
+            exit 0
+          fi
+
+          ACCESS_TOKEN="$(curl -sS -X POST https://api.dropboxapi.com/oauth2/token \
+            -d grant_type=refresh_token \
+            -d "refresh_token=${DROPBOX_REFRESH_TOKEN}" \
+            -d "client_id=${DROPBOX_APP_KEY}" \
+            -d "client_secret=${DROPBOX_APP_SECRET}" | jq -r '.access_token')"
+
+          if [ -z "$ACCESS_TOKEN" ] || [ "$ACCESS_TOKEN" = "null" ]; then
+            echo "::error::Could not mint a Dropbox access token — check the DROPBOX_* secrets."
+            exit 1
+          fi
+
+          DEST="/Author Command Center/Code Backups/${BUNDLE}"
+          ARG="$(jq -nc --arg path "$DEST" '{path:$path, mode:"add", autorename:true, mute:true}')"
+
+          HTTP="$(curl -sS -w '%{http_code}' -o /tmp/dbx_resp.json -X POST \
+            https://content.dropboxapi.com/2/files/upload \
+            --header "Authorization: Bearer ${ACCESS_TOKEN}" \
+            --header "Dropbox-API-Arg: ${ARG}" \
+            --header "Content-Type: application/octet-stream" \
+            --data-binary @"${BUNDLE}")"
+
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::Dropbox upload failed (HTTP $HTTP)"; cat /tmp/dbx_resp.json; exit 1
+          fi
+          echo "Mirrored ${BUNDLE} to Dropbox: ${DEST}"

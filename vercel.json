@@ -1,4 +1,7 @@
 {
+  "crons": [
+    { "path": "/api/backup/cron", "schedule": "0 8 * * *" }
+  ],
   "rewrites": [
     {
       "source": "/.well-known/oauth-protected-resource",

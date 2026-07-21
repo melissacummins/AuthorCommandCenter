@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Download,
   Upload,
@@ -6,6 +6,7 @@ import {
   CheckCircle,
   Loader2,
   ShieldCheck,
+  CloudUpload,
 } from 'lucide-react';
 import {
   createBackup,
@@ -16,6 +17,12 @@ import {
   daysSinceLastBackup,
 } from './backup';
 import type { BackupFile } from './tables';
+import {
+  runCloudBackup,
+  connectedBackupServices,
+  getLastCloudBackupAt,
+} from '../../lib/cloudBackup';
+import { type CloudService, SERVICE_LABELS } from '../../lib/cloudExport';
 import ApiKeysSection from './ApiKeysSection';
 import PenNamesSection from './PenNamesSection';
 import MySidebarSection from './MySidebarSection';
@@ -29,9 +36,41 @@ type Status = { kind: 'idle' } | { kind: 'busy'; msg: string } | { kind: 'ok'; m
 export default function SettingsModule() {
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const [lastBackup, setLastBackup] = useState<Date | null>(getLastBackupAt());
+  const [cloudServices, setCloudServices] = useState<CloudService[] | null>(null);
+  const [lastCloudBackup, setLastCloudBackup] = useState<Date | null>(getLastCloudBackupAt());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const daysAgo = daysSinceLastBackup();
+
+  // Which clouds are connected decides what the "Back up to cloud" buttons show.
+  useEffect(() => {
+    let alive = true;
+    connectedBackupServices()
+      .then((s) => { if (alive) setCloudServices(s); })
+      .catch(() => { if (alive) setCloudServices([]); });
+    return () => { alive = false; };
+  }, []);
+
+  const handleCloudBackup = async (service: CloudService) => {
+    setStatus({ kind: 'busy', msg: `Backing up to ${SERVICE_LABELS[service]}…` });
+    try {
+      const result = await runCloudBackup({
+        service,
+        includeFiles: true,
+        onProgress: (msg) => setStatus({ kind: 'busy', msg }),
+      });
+      setLastCloudBackup(new Date());
+      const skipNote = result.skipped.length
+        ? ` (${result.skipped.length} large file${result.skipped.length === 1 ? '' : 's'} skipped)`
+        : '';
+      setStatus({
+        kind: 'ok',
+        msg: `Backed up ${result.totalRows.toLocaleString()} rows and ${result.totalFiles.toLocaleString()} files to ${SERVICE_LABELS[service]} → Author Command Center/Backups/backup_${result.stamp}${skipNote}.`,
+      });
+    } catch (err: any) {
+      setStatus({ kind: 'error', msg: err.message || 'Cloud backup failed.' });
+    }
+  };
 
   const handleDownload = async () => {
     setStatus({ kind: 'busy', msg: 'Preparing backup…' });
@@ -179,6 +218,47 @@ export default function SettingsModule() {
             <span>{status.msg}</span>
           </div>
         )}
+
+        {/* Back up to cloud */}
+        <div className="border border-edge rounded-card p-5 mb-4">
+          <div className="flex items-center gap-2 mb-1">
+            <CloudUpload className="w-4 h-4 text-brand-600" />
+            <h3 className="font-medium text-content">Back up to the cloud</h3>
+          </div>
+          <p className="text-xs text-content-secondary mb-4">
+            Sends a full backup — every table plus your uploaded files (book covers,
+            audiobook audio, generated media) — to an{' '}
+            <strong>Author Command Center/Backups</strong> folder, dated so each run is its own
+            snapshot.{' '}
+            {lastCloudBackup
+              ? `Last cloud backup ${lastCloudBackup.toLocaleString()}.`
+              : 'No cloud backup yet.'}
+          </p>
+          {cloudServices === null ? (
+            <p className="text-xs text-content-muted flex items-center gap-1.5">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Checking connections…
+            </p>
+          ) : cloudServices.length === 0 ? (
+            <p className="text-xs text-content-muted">
+              Connect Google Drive or Dropbox in <strong>Cloud Export</strong> above to enable
+              cloud backups.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-3">
+              {cloudServices.map((service) => (
+                <button
+                  key={service}
+                  onClick={() => handleCloudBackup(service)}
+                  disabled={isBusy}
+                  className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-brand-fg text-sm font-medium rounded-control hover:bg-brand-500 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                >
+                  <CloudUpload className="w-4 h-4" />
+                  Back up to {SERVICE_LABELS[service]}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Backup */}

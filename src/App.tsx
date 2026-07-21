@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { PenNameProvider } from './contexts/PenNameContext';
 import { GATED_MODULES } from './lib/access';
+import { useAutoCloudBackup } from './lib/useAutoCloudBackup';
 import Layout from './components/Layout';
 import OAuthConsent from './pages/OAuthConsent';
 import Login from './pages/Login';
@@ -53,6 +54,9 @@ const GATED_ELEMENTS: Record<string, ReactElement> = {
 
 function ProtectedRoutes() {
   const { user, loading, accessLoading, hasAccess, visibleModules } = useAuth();
+
+  // Opportunistic background backup once the user is signed in and in.
+  useAutoCloudBackup(!!user && hasAccess);
 
   if (loading || (user && accessLoading)) {
     return (
