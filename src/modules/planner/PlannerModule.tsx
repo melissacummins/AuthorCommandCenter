@@ -17,7 +17,7 @@ import {
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
   CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
-  Loader2, Zap, Heart,
+  Loader2, Zap, Heart, Dices, Play, CalendarPlus,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -105,6 +105,9 @@ export default function PlannerModule() {
   const [railOpen, setRailOpen] = useState(false);
   // The search-and-start focus picker (a modal).
   const [focusOpen, setFocusOpen] = useState(false);
+  // "Surprise me" — a random open to-do to break decision paralysis (the dice).
+  const [spinTask, setSpinTask] = useState<PlannerTask | null>(null);
+  const [spinOpen, setSpinOpen] = useState(false);
   // A nudge to open a specific day in My Day (e.g. from the Plan view). The
   // bumping counter lets the same day be re-opened.
   const [dayJump, setDayJump] = useState<{ iso: string; n: number }>(() => ({ iso: todayISO(), n: 0 }));
@@ -408,6 +411,19 @@ export default function PlannerModule() {
     } finally {
       setDedupLoading(false);
     }
+  }
+
+  // "Surprise me": pick a random actionable to-do (open, not Someday) to work on
+  // next — a low-stakes way past decision paralysis. Avoids repeating the last
+  // pick when there's more than one to choose from.
+  function spin() {
+    const pool = tasks.filter(t => t.kind === 'task' && !t.done && !t.someday);
+    if (!pool.length) { setSpinTask(null); setSpinOpen(true); return; }
+    let pick = pool[Math.floor(Math.random() * pool.length)];
+    if (pool.length > 1 && spinTask && pick.id === spinTask.id) {
+      pick = pool[(pool.indexOf(pick) + 1) % pool.length];
+    }
+    setSpinTask(pick); setSpinOpen(true);
   }
 
   // Ask Claude to estimate durations for open to-dos that don't have one.
@@ -1261,13 +1277,22 @@ export default function PlannerModule() {
           }}
         />
       ) : (
-        <button
-          onClick={() => setFocusOpen(true)}
-          className="fixed bottom-4 right-4 z-40 inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-xl px-4 py-2.5 text-sm font-medium"
-          title="Start a focus timer on any to-do"
-        >
-          <Target className="w-4 h-4" /> Focus
-        </button>
+        <div className="fixed bottom-4 right-4 z-40 flex items-center gap-2">
+          <button
+            onClick={spin}
+            className="inline-flex items-center justify-center w-11 h-11 bg-violet-600 hover:bg-violet-700 text-white rounded-full shadow-xl"
+            title="Surprise me — pick a random to-do to work on"
+          >
+            <Dices className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => setFocusOpen(true)}
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full shadow-xl px-4 py-2.5 text-sm font-medium"
+            title="Start a focus timer on any to-do"
+          >
+            <Target className="w-4 h-4" /> Focus
+          </button>
+        </div>
       )}
 
       {focusOpen && (
@@ -1278,6 +1303,18 @@ export default function PlannerModule() {
           onStart={id => patchTask(id, { timer_started_at: new Date().toISOString() })}
           onLogTime={logManualMinutes}
           onClose={() => setFocusOpen(false)}
+        />
+      )}
+
+      {spinOpen && (
+        <SurpriseModal
+          task={spinTask}
+          notesById={notesById}
+          onSpinAgain={spin}
+          onStart={() => { if (spinTask) patchTask(spinTask.id, { timer_started_at: new Date().toISOString() }); setSpinOpen(false); }}
+          onToday={() => { if (spinTask) patchTask(spinTask.id, { due_date: today, someday: false }); setSpinOpen(false); }}
+          onOpen={() => { if (spinTask) openTask(spinTask); setSpinOpen(false); }}
+          onClose={() => setSpinOpen(false)}
         />
       )}
 
@@ -1512,6 +1549,64 @@ function DuplicateFinderModal({
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Surprise me — rolls a random open to-do to break decision paralysis. From the
+// pick you can start a focus timer, pull it onto today, open it, or roll again.
+// ---------------------------------------------------------------------------
+
+function SurpriseModal({
+  task, notesById, onSpinAgain, onStart, onToday, onOpen, onClose,
+}: {
+  task: PlannerTask | null;
+  notesById: Record<string, PlannerNote>;
+  onSpinAgain: () => void;
+  onStart: () => void;
+  onToday: () => void;
+  onOpen: () => void;
+  onClose: () => void;
+}) {
+  const list = task?.note_id ? (notesById[task.note_id]?.title.trim() || 'Untitled list') : 'No list';
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-card border border-edge bg-surface shadow-2xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-edge-soft">
+          <Dices className="w-4 h-4 text-violet-500" />
+          <h3 className="text-sm font-bold text-content">Surprise me</h3>
+          <button onClick={onClose} className="ml-auto text-content-muted hover:text-content" title="Close"><X className="w-4 h-4" /></button>
+        </div>
+        <div className="p-5">
+          {!task ? (
+            <p className="py-6 text-center text-sm text-content-muted">Nothing to pick — every to-do is done or parked in Someday. 🎉</p>
+          ) : (
+            <>
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-content-muted mb-1">Why not…</p>
+              <p className="text-lg font-semibold text-content break-words">{task.title || 'Untitled'}</p>
+              <p className="mt-1 flex items-center gap-2 text-xs text-content-muted">
+                <span className="truncate">{list}</span>
+                {task.flagged && <Star className="w-3 h-3 text-amber-400" fill="currentColor" />}
+                {task.feel_good && <Heart className="w-3 h-3 text-rose-400" fill="currentColor" />}
+                {task.estimate_minutes ? <span>· {formatMinutes(task.estimate_minutes)}</span> : null}
+              </p>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button onClick={onStart} className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-3 py-1.5">
+                  <Play className="w-3.5 h-3.5" /> Start
+                </button>
+                <button onClick={onToday} className="inline-flex items-center gap-1.5 text-sm font-medium text-content-secondary border border-edge hover:bg-surface-sunken rounded-control px-3 py-1.5">
+                  <CalendarPlus className="w-3.5 h-3.5" /> Do today
+                </button>
+                <button onClick={onOpen} className="text-sm font-medium text-content-secondary hover:text-content px-2 py-1.5">Open</button>
+                <button onClick={onSpinAgain} className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-700 px-2 py-1.5">
+                  <Dices className="w-3.5 h-3.5" /> Roll again
+                </button>
+              </div>
+            </>
           )}
         </div>
       </div>
