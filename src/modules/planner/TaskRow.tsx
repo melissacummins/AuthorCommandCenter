@@ -7,11 +7,11 @@ import {
 } from 'lucide-react';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
-import { newChecklistItem } from './api';
+import { newChecklistItem, listTaskEvents } from './api';
 import {
   checklistProgress, formatDue, formatMinutes, ESTIMATE_PRESETS, QUICK_TASK_MINUTES,
   RECURRENCE_PRESETS, recurrenceLabel, parseCustomRecurrence, customRecurrence,
-  type ChecklistItem, type PlannerNote, type PlannerTask, type Recurrence, type RecurrenceUnit,
+  type ChecklistItem, type PlannerNote, type PlannerTask, type PlannerTaskEvent, type Recurrence, type RecurrenceUnit,
 } from './types';
 
 // ---------------------------------------------------------------------------
@@ -840,8 +840,91 @@ export function TaskDetail({
       {enableChecklist && (
         <ChecklistEditor items={task.checklist ?? []} onChange={setChecklist} />
       )}
+
+      {/* Activity history — created / edited / completed / repeated, newest first. */}
+      <ActivitySection taskId={task.id} version={task.updated_at} />
     </div>
   );
+}
+
+// A collapsible "Activity" feed for a to-do: its recorded history (created,
+// scheduled, completed, repeated, …), newest first. Lazily loaded when opened,
+// and refreshed whenever the to-do changes (its updated_at moves).
+function ActivitySection({ taskId, version }: { taskId: string; version: string }) {
+  const [open, setOpen] = useState(false);
+  const [events, setEvents] = useState<PlannerTaskEvent[] | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    let alive = true;
+    setLoading(true);
+    listTaskEvents(taskId)
+      .then(e => { if (alive) setEvents(e); })
+      .catch(() => { if (alive) setEvents([]); })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, [open, taskId, version]);
+
+  return (
+    <div className="border-t border-edge-soft pt-2">
+      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-1.5 text-xs font-medium text-content-muted hover:text-content">
+        {open ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        <History className="w-3.5 h-3.5" /> Activity
+      </button>
+      {open && (
+        <div className="mt-2 pl-1">
+          {loading && !events ? (
+            <p className="text-xs text-content-muted">Loading…</p>
+          ) : !events || events.length === 0 ? (
+            <p className="text-xs text-content-muted">No activity recorded yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {events.map(ev => (
+                <li key={ev.id} className="flex items-baseline gap-2 text-xs">
+                  <span className="text-content-secondary">{activityLabel(ev)}</span>
+                  <span className="ml-auto shrink-0 text-content-muted" title={new Date(ev.created_at).toLocaleString()}>{relativeTime(ev.created_at)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// A human phrase for an activity event.
+function activityLabel(ev: PlannerTaskEvent): string {
+  switch (ev.type) {
+    case 'created': return 'Created';
+    case 'completed': return 'Completed';
+    case 'reopened': return 'Marked not done';
+    case 'repeated': return ev.detail ? `Repeated → next ${ev.detail}` : 'Repeated';
+    case 'scheduled': return ev.detail ? `Scheduled for ${ev.detail}` : 'Scheduled';
+    case 'unscheduled': return 'Unscheduled';
+    case 'moved': return ev.detail ? `Moved to ${ev.detail}` : 'Moved to another list';
+    case 'flagged': return 'Flagged as Important';
+    case 'unflagged': return 'Unflagged';
+    case 'estimated': return ev.detail ? `Estimate set to ${ev.detail}` : 'Estimate set';
+    case 'renamed': return 'Renamed';
+    case 'edited': return ev.detail ? `Edited (${ev.detail})` : 'Edited';
+    default: return ev.type;
+  }
+}
+
+// Compact "3h ago" / "2d ago" relative time; falls back to a date for older.
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (secs < 60) return 'just now';
+  const mins = Math.round(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.round(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 // A small chip button that opens a picker popover beneath it.

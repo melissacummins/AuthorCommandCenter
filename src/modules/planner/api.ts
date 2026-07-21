@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  ChecklistItem, PlannerNote, PlannerSettings, PlannerTask, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
+  ChecklistItem, PlannerNote, PlannerSettings, PlannerTask, PlannerTaskEvent, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
 } from './types';
 import { DEFAULT_DAILY_CAPACITY } from './types';
 
@@ -252,6 +252,29 @@ export async function reorderNotes(updates: { id: string; sort_order: number }[]
 
 export function newChecklistItem(title: string): ChecklistItem {
   return { id: crypto.randomUUID(), title, done: false };
+}
+
+// ---- Task activity log ----------------------------------------------------
+
+// A to-do's recent activity, newest first, for the detail panel.
+export async function listTaskEvents(taskId: string): Promise<PlannerTaskEvent[]> {
+  const { data, error } = await supabase
+    .from('planner_task_events')
+    .select('id, task_id, type, detail, created_at')
+    .eq('task_id', taskId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data ?? []) as PlannerTaskEvent[];
+}
+
+// Record one activity event. Fire-and-forget from the caller — a failed log
+// should never block or surface over the actual task change.
+export async function createTaskEvent(userId: string, taskId: string, type: string, detail?: string | null): Promise<void> {
+  const { error } = await supabase
+    .from('planner_task_events')
+    .insert({ user_id: userId, task_id: taskId, type, detail: detail ?? null });
+  if (error) throw error;
 }
 
 // ---- Time-tracking sessions -----------------------------------------------
