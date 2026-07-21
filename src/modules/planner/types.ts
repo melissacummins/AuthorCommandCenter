@@ -59,6 +59,9 @@ export interface PlannerTask {
   estimate_minutes: number | null;
   // True when the to-do is flagged "Important" (a Things-3-style priority star).
   flagged: boolean;
+  // The Weekly Reset "feel-good" ♥ tag, now available on any to-do: something
+  // that would feel good to do, distinct from important. false = untagged.
+  feel_good: boolean;
   // True when the to-do is "in orbit" — currently relevant, surfaced first in
   // Focus and easy to pull into the day.
   in_orbit: boolean;

@@ -3,13 +3,13 @@ import { createPortal } from 'react-dom';
 import {
   Check, Circle, Trash2, Repeat, Clock, CalendarClock, CalendarPlus, Link2Off,
   Star, Moon, Orbit as OrbitIcon, MoreHorizontal, Plus, ChevronRight, ChevronLeft, ChevronDown,
-  Pencil, ListPlus, Inbox, History,
+  Pencil, ListPlus, Inbox, History, Zap, Heart,
 } from 'lucide-react';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
 import { newChecklistItem } from './api';
 import {
-  checklistProgress, formatDue, formatMinutes, ESTIMATE_PRESETS,
+  checklistProgress, formatDue, formatMinutes, ESTIMATE_PRESETS, QUICK_TASK_MINUTES,
   RECURRENCE_PRESETS, recurrenceLabel, parseCustomRecurrence, customRecurrence,
   type ChecklistItem, type PlannerNote, type PlannerTask, type Recurrence, type RecurrenceUnit,
 } from './types';
@@ -152,7 +152,9 @@ export function TaskRow(props: TaskRowProps) {
                 {formatDue(task.due_date, today)}
               </span>
             )}
-            {task.estimate_minutes ? (
+            {task.estimate_minutes === QUICK_TASK_MINUTES ? (
+              <span title="Quick task"><Zap className="w-3.5 h-3.5 text-teal-500" fill="currentColor" /></span>
+            ) : task.estimate_minutes ? (
               <span className="text-[11px] font-medium text-content-muted">{formatMinutes(task.estimate_minutes)}</span>
             ) : null}
             {enableRecurrence && task.recurrence && (
@@ -160,6 +162,9 @@ export function TaskRow(props: TaskRowProps) {
             )}
             {canFlag && task.flagged && (
               <Star className="w-3.5 h-3.5 text-amber-400" fill="currentColor" />
+            )}
+            {task.feel_good && (
+              <Heart className="w-3.5 h-3.5 text-rose-400" fill="currentColor" />
             )}
             {orbitEnabled && task.in_orbit && (
               <OrbitIcon className="w-3.5 h-3.5 text-brand-400" />
@@ -390,6 +395,20 @@ function MenuBody({
           icon={<Star className="w-4 h-4" fill={task.flagged ? 'currentColor' : 'none'} />}
           label={task.flagged ? 'Unflag' : 'Flag as Important'}
           onClick={() => { onPatch(task.id, { flagged: !task.flagged }); close(); }}
+        />
+      )}
+      {canFlag && (
+        <MenuItem
+          icon={<Zap className="w-4 h-4" fill={task.estimate_minutes === QUICK_TASK_MINUTES ? 'currentColor' : 'none'} />}
+          label={task.estimate_minutes === QUICK_TASK_MINUTES ? 'Not a quick task' : 'Quick task (15 min)'}
+          onClick={() => { onPatch(task.id, { estimate_minutes: task.estimate_minutes === QUICK_TASK_MINUTES ? null : QUICK_TASK_MINUTES }); close(); }}
+        />
+      )}
+      {canFlag && (
+        <MenuItem
+          icon={<Heart className="w-4 h-4" fill={task.feel_good ? 'currentColor' : 'none'} />}
+          label={task.feel_good ? 'Remove feel-good' : 'Feel-good'}
+          onClick={() => { onPatch(task.id, { feel_good: !task.feel_good }); close(); }}
         />
       )}
       {orbitEnabled && (
