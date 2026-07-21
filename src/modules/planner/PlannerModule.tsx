@@ -657,6 +657,7 @@ export default function PlannerModule() {
           title: it.text.trim(), note_id: listId, kind: 'task', sort_order: sort++,
           due_date: it.date ?? null, reset_week: resetWeek, reset_section: g.key,
           flagged: !!it.priority,
+          feel_good: !!it.feel_good,
           estimate_minutes: it.quick ? QUICK_TASK_MINUTES : (it.estimate_minutes ?? null),
         }));
       }

@@ -143,6 +143,7 @@ export async function createTask(
     estimate_minutes?: number | null;
     in_orbit?: boolean;
     flagged?: boolean;
+    feel_good?: boolean;
     reset_week?: string | null;
     reset_section?: string | null;
   },
@@ -161,6 +162,7 @@ export async function createTask(
       estimate_minutes: input.estimate_minutes ?? null,
       in_orbit: input.in_orbit ?? false,
       ...(input.flagged != null ? { flagged: input.flagged } : {}),
+      ...(input.feel_good != null ? { feel_good: input.feel_good } : {}),
       ...(input.reset_week !== undefined ? { reset_week: input.reset_week } : {}),
       ...(input.reset_section !== undefined ? { reset_section: input.reset_section } : {}),
     })
