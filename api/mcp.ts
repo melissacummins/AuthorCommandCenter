@@ -36,23 +36,31 @@ type VercelResponse = ServerResponse & {
   send: (body: string) => void;
 };
 
-const SUPABASE_URL = process.env.SUPABASE_URL ?? '';
+// Strip any trailing slash: a SUPABASE_URL entered as "https://ref.supabase.co/"
+// would otherwise produce "https://ref.supabase.co//auth/v1" (double slash),
+// which breaks the client's discovery of the Supabase authorization server.
+const SUPABASE_URL = (process.env.SUPABASE_URL ?? '').replace(/\/+$/, '');
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? '';
 
 // ---------------------------------------------------------------------------
 // Pure helpers (unit-tested in src/lib/mcpAuth.test.ts)
 
+/** Normalize a base URL for safe path concatenation (no trailing slash). */
+function trimTrailingSlash(url: string): string {
+  return url.replace(/\/+$/, '');
+}
+
 export function buildProtectedResourceMetadata(origin: string, supabaseUrl: string) {
   return {
-    resource: `${origin}/api/mcp`,
-    authorization_servers: [`${supabaseUrl}/auth/v1`],
+    resource: `${trimTrailingSlash(origin)}/api/mcp`,
+    authorization_servers: [`${trimTrailingSlash(supabaseUrl)}/auth/v1`],
     bearer_methods_supported: ['header'],
     resource_name: 'Author Command Center',
   };
 }
 
 export function wwwAuthenticateHeader(origin: string): string {
-  return `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`;
+  return `Bearer resource_metadata="${trimTrailingSlash(origin)}/.well-known/oauth-protected-resource"`;
 }
 
 /** Mirrors AuthContext's hasAccess: admins always; members only while active.
