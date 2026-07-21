@@ -16,7 +16,7 @@ import {
   CalendarClock, Layers, Inbox, X, GripVertical,
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
-  CopyPlus, Check, Users as UsersIcon, RotateCcw, Search,
+  CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -310,6 +310,57 @@ export default function PlannerModule() {
       setTasks(prev => [...prev, ...copied]);
       setSelection({ kind: 'note', id: copy.id });
     } catch (e) { setError((e as Error)?.message ?? 'Could not duplicate the list.'); }
+  }
+
+  // Combine two lists: move all of the source list's to-dos into the target
+  // (appended, order preserved), then archive the now-empty source. This is how
+  // you fold an old Weekly Reset into the current one, or tidy scattered lists.
+  // Headings stay behind (they'd duplicate the target's sections); only to-dos
+  // move.
+  async function mergeList(sourceId: string, targetId: string) {
+    if (!user || sourceId === targetId) return;
+    const moving = tasks
+      .filter(t => t.note_id === sourceId && t.kind === 'task')
+      .sort((a, b) => (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at));
+    const targetMax = tasks.filter(t => t.note_id === targetId).reduce((m, t) => Math.max(m, t.sort_order), -1);
+    const updates = moving.map((t, i) => ({ id: t.id, sort_order: targetMax + 1 + i }));
+    const movingIds = new Set(updates.map(u => u.id));
+    setTasks(prev => prev.map(t => {
+      const u = updates.find(x => x.id === t.id);
+      return u ? { ...t, note_id: targetId, sort_order: u.sort_order } : t;
+    }));
+    setNotes(prev => prev.map(n => (n.id === sourceId ? { ...n, archived: true } : n)));
+    setSelection({ kind: 'note', id: targetId });
+    try {
+      await Promise.all([...movingIds].map(id => {
+        const u = updates.find(x => x.id === id)!;
+        return updateTask(id, { note_id: targetId, sort_order: u.sort_order });
+      }));
+      await updateNote(sourceId, { archived: true });
+    } catch (e) { setError((e as Error)?.message ?? 'Could not merge the lists.'); }
+  }
+
+  // Tidy a list by rewriting its to-dos' order: A–Z, by due date (undated last),
+  // or tag-first (priority, then feel-good, then the rest). Headings are left
+  // where they are; only the plain to-dos are reordered around them.
+  async function sortListTasks(noteId: string, mode: 'alpha' | 'due' | 'tag') {
+    const items = tasks.filter(t => t.note_id === noteId && t.kind === 'task');
+    if (items.length < 2) return;
+    const base = tasks.filter(t => t.note_id === noteId).reduce((m, t) => Math.min(m, t.sort_order), 0);
+    const cmp: Record<typeof mode, (a: PlannerTask, b: PlannerTask) => number> = {
+      alpha: (a, b) => (a.title || '').localeCompare(b.title || ''),
+      due: (a, b) => (a.due_date ?? '9999').localeCompare(b.due_date ?? '9999') || (a.title || '').localeCompare(b.title || ''),
+      tag: (a, b) => (rank(b) - rank(a)) || (a.title || '').localeCompare(b.title || ''),
+    };
+    function rank(t: PlannerTask) { return (t.flagged ? 2 : 0) + (t.feel_good ? 1 : 0); }
+    const sorted = [...items].sort(cmp[mode]);
+    const updates = sorted.map((t, i) => ({ id: t.id, sort_order: base + i }));
+    setTasks(prev => prev.map(t => {
+      const u = updates.find(x => x.id === t.id);
+      return u ? { ...t, sort_order: u.sort_order } : t;
+    }));
+    try { await reorderTasks(updates); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not sort the list.'); }
   }
 
   async function addTask(input: {
@@ -1123,6 +1174,8 @@ export default function PlannerModule() {
             onSaveNote={saveNote}
             onDeleteNote={removeNote}
             onDuplicateNote={duplicateNote}
+            onMergeInto={mergeList}
+            onSortTasks={sortListTasks}
             onAdd={addTask}
             onCreate={createTaskReturning}
             onPatch={patchTask}
@@ -1639,8 +1692,47 @@ function serializeJournal(sections: JournalSection[]): string {
   return sections.filter(s => s.text.trim()).map(s => `${s.label}:\n${s.text.trim()}`).join('\n\n');
 }
 
+// A small header dropdown (Sort / Merge) — a button that opens a menu with a
+// click-away backdrop. `children` renders the menu body and gets a `close`.
+function ListMenuButton({
+  icon, title, children,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: (close: () => void) => ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className={`p-2 rounded-control ${open ? 'text-brand-600 bg-surface-sunken' : 'text-content-muted hover:bg-surface-sunken hover:text-brand-600'}`}
+        title={title}
+      >
+        {icon}
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 top-full mt-1 z-50 w-56 max-h-72 overflow-y-auto rounded-card border border-edge bg-surface shadow-lg py-1">
+            {children(() => setOpen(false))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ListMenuItem({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex w-full items-center px-3 py-1.5 text-sm text-content text-left hover:bg-surface-sunken">
+      <span className="flex-1 truncate">{label}</span>
+    </button>
+  );
+}
+
 function NotePane({
-  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
+  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onMergeInto, onSortTasks, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
@@ -1650,6 +1742,8 @@ function NotePane({
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
   onDuplicateNote: (note: PlannerNote) => void;
+  onMergeInto: (sourceId: string, targetId: string) => void;
+  onSortTasks: (noteId: string, mode: 'alpha' | 'due' | 'tag') => void;
   onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number; due_date?: string }) => void;
   onCreate: (i: { title?: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number }) => Promise<PlannerTask | undefined>;
   onPatch: (id: string, patch: Partial<PlannerTask>) => void;
@@ -1809,6 +1903,38 @@ function NotePane({
           >
             {note.pinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
           </button>
+          <ListMenuButton icon={<ArrowUpDown className="w-4 h-4" />} title="Sort this list">
+            {close => (
+              <>
+                <ListMenuItem label="Sort A–Z" onClick={() => { onSortTasks(note.id, 'alpha'); close(); }} />
+                <ListMenuItem label="Sort by due date" onClick={() => { onSortTasks(note.id, 'due'); close(); }} />
+                <ListMenuItem label="Sort by tags (★ ♥ first)" onClick={() => { onSortTasks(note.id, 'tag'); close(); }} />
+              </>
+            )}
+          </ListMenuButton>
+          <ListMenuButton icon={<GitMerge className="w-4 h-4" />} title="Merge this list into another">
+            {close => {
+              const targets = lists.filter(l => l.id !== note.id);
+              return targets.length === 0
+                ? <div className="px-3 py-2 text-xs text-content-muted">No other lists to merge into.</div>
+                : (
+                  <>
+                    <div className="px-3 pt-1.5 pb-1 text-[11px] font-semibold uppercase tracking-wide text-content-muted">Move all to-dos into…</div>
+                    {targets.map(l => (
+                      <ListMenuItem
+                        key={l.id}
+                        label={l.title.trim() || 'Untitled list'}
+                        onClick={() => {
+                          if (confirm(`Move every to-do from “${note.title.trim() || 'this list'}” into “${l.title.trim() || 'Untitled list'}”, then archive this list?`)) {
+                            onMergeInto(note.id, l.id); close();
+                          }
+                        }}
+                      />
+                    ))}
+                  </>
+                );
+            }}
+          </ListMenuButton>
           <button onClick={() => onDuplicateNote(note)} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken hover:text-brand-600" title="Duplicate this list (copy its to-dos, reset completion)">
             <CopyPlus className="w-4 h-4" />
           </button>
