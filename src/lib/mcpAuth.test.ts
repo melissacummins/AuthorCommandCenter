@@ -16,6 +16,12 @@ console.log('Test 1: protected resource metadata points at the Supabase auth ser
   assert(prm.resource === 'https://app.example.com/api/mcp');
   assert.deepEqual(prm.authorization_servers, ['https://ref.supabase.co/auth/v1']);
   assert(prm.bearer_methods_supported.includes('header'));
+
+  // Trailing slashes on either base must not produce a double slash — a
+  // SUPABASE_URL entered as "…supabase.co/" broke auth-server discovery.
+  const prmSlash = buildProtectedResourceMetadata('https://app.example.com/', 'https://ref.supabase.co/');
+  assert(prmSlash.resource === 'https://app.example.com/api/mcp', 'origin slash trimmed');
+  assert.deepEqual(prmSlash.authorization_servers, ['https://ref.supabase.co/auth/v1'], 'supabase slash trimmed');
 }
 
 console.log('Test 2: WWW-Authenticate advertises the metadata URL');
