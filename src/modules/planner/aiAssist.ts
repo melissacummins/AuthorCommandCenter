@@ -251,7 +251,62 @@ function parseGroups(raw: string, validIds: Set<string>): DuplicateGroup[] {
   return out;
 }
 
-// 5. Weekly Reset transcription — read photo(s) of a handwritten weekly reset
+// 5. Suggest durations — estimate how long each un-estimated open to-do will
+// take, so the capacity bar and planning have numbers to work with. Only looks
+// at to-dos that don't already have an estimate.
+export interface DurationSuggestion { id: string; minutes: number; reason: string }
+
+const DURATION_SYSTEM =
+  'You estimate how long each to-do will take for an indie author. '
+  + 'Respond with ONLY a JSON object — no prose, no markdown fences — matching: '
+  + '{"suggestions": [{"id": string, "minutes": number, "reason": string}]}. '
+  + 'Use ONLY ids from the provided list. `minutes` is a realistic whole number of minutes, rounded to the nearest 5 (typical range 5–240). '
+  + 'Base it on the wording; assume a focused work session. Keep each "reason" to a short phrase (6 words max). Include every id exactly once.';
+
+export async function suggestDurations(
+  tasks: PlannerTask[],
+  settings: PlannerSettings,
+  today: string,
+  notesById: Record<string, PlannerNote> = {},
+): Promise<DurationSuggestion[]> {
+  const candidates = tasks.filter(t => t.kind === 'task' && !t.done && !(t.estimate_minutes && t.estimate_minutes > 0));
+  if (!candidates.length) return [];
+  const prompt = [
+    contextHeader(settings, today),
+    '',
+    'Estimate a realistic duration (minutes) for each to-do below. These have no estimate yet.',
+    '',
+    'To-dos:',
+    candidates.map(t => serializeTask(t, notesById)).join('\n'),
+  ].join('\n');
+  const text = await plannerComplete({ prompt, system: DURATION_SYSTEM, maxTokens: 4096 });
+  return parseDurations(text, new Set(candidates.map(t => t.id)));
+}
+
+function parseDurations(raw: string, validIds: Set<string>): DurationSuggestion[] {
+  const stripped = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+  const first = stripped.indexOf('{');
+  const last = stripped.lastIndexOf('}');
+  if (first === -1 || last <= first) return [];
+  let data: { suggestions?: unknown };
+  try { data = JSON.parse(stripped.slice(first, last + 1)) as { suggestions?: unknown }; }
+  catch { return []; }
+  if (!data || !Array.isArray(data.suggestions)) return [];
+  const seen = new Set<string>();
+  const out: DurationSuggestion[] = [];
+  for (const s of data.suggestions) {
+    if (!s || typeof s !== 'object') continue;
+    const ss = s as { id?: unknown; minutes?: unknown; reason?: unknown };
+    if (typeof ss.id !== 'string' || !validIds.has(ss.id) || seen.has(ss.id)) continue;
+    const mins = typeof ss.minutes === 'number' && ss.minutes > 0 ? Math.round(ss.minutes) : 0;
+    if (mins <= 0) continue;
+    seen.add(ss.id);
+    out.push({ id: ss.id, minutes: mins, reason: typeof ss.reason === 'string' ? ss.reason : '' });
+  }
+  return out;
+}
+
+// 6. Weekly Reset transcription — read photo(s) of a handwritten weekly reset
 // and return its sections as structured JSON. Reflective sections come back as
 // prose; actionable sections as item lists. Anything guessed is flagged
 // `uncertain` so the user can confirm it before it becomes a to-do.

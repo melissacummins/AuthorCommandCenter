@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
-import { suggestOrbitPicks, findDuplicateGroups, type AiResult, type DuplicateGroup } from './aiAssist';
+import { suggestOrbitPicks, findDuplicateGroups, suggestDurations, type AiResult, type DuplicateGroup, type DurationSuggestion } from './aiAssist';
 import StatsView from './StatsView';
 import LogbookView from './LogbookView';
 import SettingsView from './SettingsView';
@@ -96,6 +96,11 @@ export default function PlannerModule() {
   const [dedupLoading, setDedupLoading] = useState(false);
   const [dedupError, setDedupError] = useState<string | null>(null);
   const [dedupGroups, setDedupGroups] = useState<DuplicateGroup[] | null>(null);
+  // AI duration suggestions (estimates time for to-dos that have none).
+  const [durOpen, setDurOpen] = useState(false);
+  const [durLoading, setDurLoading] = useState(false);
+  const [durError, setDurError] = useState<string | null>(null);
+  const [durSuggestions, setDurSuggestions] = useState<DurationSuggestion[] | null>(null);
   // The planner rail is a slide-over on mobile; always-on from md up.
   const [railOpen, setRailOpen] = useState(false);
   // The search-and-start focus picker (a modal).
@@ -402,6 +407,19 @@ export default function PlannerModule() {
       setDedupError(e instanceof Error ? e.message : 'Could not scan for duplicates.');
     } finally {
       setDedupLoading(false);
+    }
+  }
+
+  // Ask Claude to estimate durations for open to-dos that don't have one.
+  async function runDurations() {
+    if (!settings) return;
+    setDurOpen(true); setDurLoading(true); setDurError(null); setDurSuggestions(null);
+    try {
+      setDurSuggestions(await suggestDurations(tasks, settings, today, notesById));
+    } catch (e) {
+      setDurError(e instanceof Error ? e.message : 'Could not estimate durations.');
+    } finally {
+      setDurLoading(false);
     }
   }
 
@@ -1179,6 +1197,7 @@ export default function PlannerModule() {
               onSaveReflective={saveReflective}
               onCreateTasks={createResetTasks}
               onFindDuplicates={runDedup}
+              onEstimateDurations={runDurations}
             />
           )
         ) : selection.kind === 'settings' ? (
@@ -1274,6 +1293,115 @@ export default function PlannerModule() {
           onClose={() => setDedupOpen(false)}
         />
       )}
+
+      {durOpen && (
+        <DurationSuggestModal
+          loading={durLoading}
+          error={durError}
+          suggestions={durSuggestions}
+          tasks={tasks}
+          notesById={notesById}
+          onApply={(id, minutes) => patchTask(id, { estimate_minutes: minutes })}
+          onRescan={runDurations}
+          onClose={() => setDurOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI duration suggestions — proposes a time estimate for each to-do that has
+// none. Apply one (or all) to set its estimate so the capacity bar and planning
+// have real numbers. You can nudge a value before applying.
+// ---------------------------------------------------------------------------
+
+function DurationSuggestModal({
+  loading, error, suggestions, tasks, notesById, onApply, onRescan, onClose,
+}: {
+  loading: boolean;
+  error: string | null;
+  suggestions: DurationSuggestion[] | null;
+  tasks: PlannerTask[];
+  notesById: Record<string, PlannerNote>;
+  onApply: (id: string, minutes: number) => void;
+  onRescan: () => void;
+  onClose: () => void;
+}) {
+  const byId = useMemo(() => {
+    const m: Record<string, PlannerTask> = {};
+    for (const t of tasks) m[t.id] = t;
+    return m;
+  }, [tasks]);
+  // Local, editable copy so you can tweak a number before applying, and rows
+  // disappear as they're applied.
+  const [rows, setRows] = useState<DurationSuggestion[]>([]);
+  useEffect(() => { setRows(suggestions ?? []); }, [suggestions]);
+
+  function applyOne(r: DurationSuggestion) {
+    onApply(r.id, r.minutes);
+    setRows(prev => prev.filter(x => x.id !== r.id));
+  }
+  function applyAll() {
+    rows.forEach(r => onApply(r.id, r.minutes));
+    setRows([]);
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/40 p-4 sm:p-8" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-card border border-edge bg-surface shadow-2xl my-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-5 py-3 border-b border-edge-soft">
+          <Sparkles className="w-4 h-4 text-violet-500" />
+          <h3 className="text-sm font-bold text-content">Estimate durations</h3>
+          {rows.length > 0 && (
+            <button onClick={applyAll} className="ml-auto text-xs font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-2.5 py-1">Apply all</button>
+          )}
+          <button onClick={onClose} className={`text-content-muted hover:text-content ${rows.length > 0 ? 'ml-2' : 'ml-auto'}`} title="Close"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="p-4">
+          {loading ? (
+            <div className="flex items-center gap-2 py-8 justify-center text-sm text-content-muted">
+              <Loader2 className="w-4 h-4 animate-spin" /> Estimating how long your to-dos will take…
+            </div>
+          ) : error ? (
+            <div className="py-6 text-center">
+              <p className="text-sm text-rose-600 mb-3">{error}</p>
+              <button onClick={onRescan} className="text-sm font-medium text-brand-600 hover:text-brand-700">Try again</button>
+            </div>
+          ) : rows.length === 0 ? (
+            <div className="py-8 text-center text-sm text-content-muted">
+              {suggestions === null ? 'Nothing to estimate.' : 'Every to-do already has an estimate. 🎉'}
+            </div>
+          ) : (
+            <ul className="space-y-1.5">
+              {rows.map(r => {
+                const t = byId[r.id];
+                if (!t) return null;
+                const list = t.note_id ? (notesById[t.note_id]?.title.trim() || 'Untitled list') : 'No list';
+                return (
+                  <li key={r.id} className="flex items-center gap-2 rounded-control border border-edge px-2.5 py-2">
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm text-content break-words">{t.title || 'Untitled'}</span>
+                      <span className="block text-[11px] text-content-muted truncate">{list}{r.reason && <> · {r.reason}</>}</span>
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      step={5}
+                      value={r.minutes}
+                      onChange={e => { const v = Math.max(0, Math.round(Number(e.target.value) || 0)); setRows(prev => prev.map(x => (x.id === r.id ? { ...x, minutes: v } : x))); }}
+                      className="w-16 shrink-0 text-sm text-right rounded-control border border-edge bg-surface px-1.5 py-1 text-content"
+                    />
+                    <span className="text-xs text-content-muted shrink-0">min</span>
+                    <button onClick={() => applyOne(r)} className="shrink-0 text-xs font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-2.5 py-1.5" title="Set this estimate">Set</button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
