@@ -329,6 +329,12 @@ function buildServer(client: SupabaseClient, user: User): McpServer {
       })),
   );
   server.tool(
+    'create_list',
+    "Create a new named planner list (a to-do list / brain-dump) for the author. Additive — never deletes or overwrites. Returns the created list, whose id can be passed as list_id to create_task/add_tasks.",
+    { title: z.string(), pinned: z.boolean().optional() },
+    async ({ title, pinned }) => json(await core.createList(client, uid, { title, pinned })),
+  );
+  server.tool(
     'complete_task',
     "Mark one planner to-do as done (non-destructive — it is not deleted).",
     { task_id: z.string() },
