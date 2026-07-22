@@ -861,7 +861,7 @@ function LooseZone({
 // it can be dragged between time blocks and the loose zone. The drag handle is
 // passed into TaskRow; everything else (chips, ⋯ menu, expand card) is shared.
 function DraggableTaskRow({
-  task, today, onPatch, onDelete, draggable = true, onMoveToToday, lists = [], orbitEnabled = false, onLogTime,
+  task, today, onPatch, onDelete, draggable = true, onMoveToToday, lists = [], orbitEnabled = false, onLogTime, blocked = false, onEditDependencies,
 }: {
   task: PlannerTask;
   today: string;
@@ -872,6 +872,8 @@ function DraggableTaskRow({
   lists?: PlannerNote[];
   orbitEnabled?: boolean;
   onLogTime?: (taskId: string, minutes: number, day: string) => void;
+  blocked?: boolean;
+  onEditDependencies?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id, disabled: !draggable });
   const style = transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`, zIndex: 50 } : undefined;
@@ -913,6 +915,8 @@ function DraggableTaskRow({
         enableChecklist
         onMoveToToday={onMoveToToday}
         onLogTime={onLogTime ? (m, d) => onLogTime(task.id, m, d) : undefined}
+        blocked={blocked}
+        onEditDependencies={onEditDependencies}
       />
     </li>
   );

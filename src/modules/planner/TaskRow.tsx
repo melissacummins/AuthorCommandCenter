@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Check, Circle, Trash2, Repeat, Clock, CalendarClock, CalendarPlus, Link2Off,
   Star, Moon, Orbit as OrbitIcon, MoreHorizontal, Plus, ChevronRight, ChevronLeft, ChevronDown,
-  Pencil, ListPlus, Inbox, History, Zap, Heart,
+  Pencil, ListPlus, Inbox, History, Zap, Heart, Lock, Bell,
 } from 'lucide-react';
 import { TimerButton } from './TimerButton';
 import { TaskNotes } from './TaskNotes';
@@ -54,6 +54,10 @@ export interface TaskRowProps {
   onLogTime?: (minutes: number, day: string) => void;
   // Overdue rows: a small "→ Today" affordance.
   onMoveToToday?: () => void;
+  // True when this to-do is blocked by an unfinished dependency (shows a badge).
+  blocked?: boolean;
+  // Open the dependency editor for this to-do (adds a "Dependencies…" action).
+  onEditDependencies?: () => void;
   // Keyboard add flow (list views).
   focusId?: string | null;
   onFocused?: () => void;
@@ -65,7 +69,7 @@ export function TaskRow(props: TaskRowProps) {
     task, today, onPatch, onDelete, lists, listName, onOpenList, dragHandle,
     showTimer = false, canFlag = false, orbitEnabled = false, canSomeday = false,
     enableRecurrence = false, enableChecklist = false, calConnected = false,
-    onTimeBlock, onUnblock, onLogTime, onMoveToToday, focusId, onFocused, onEnter,
+    onTimeBlock, onUnblock, onLogTime, onMoveToToday, blocked = false, onEditDependencies, focusId, onFocused, onEnter,
   } = props;
 
   const [expanded, setExpanded] = useState(false);
@@ -166,11 +170,21 @@ export function TaskRow(props: TaskRowProps) {
             {task.feel_good && (
               <Heart className="w-3.5 h-3.5 text-rose-400" fill="currentColor" />
             )}
+            {task.remind_at && !task.done && (
+              <span className="inline-flex items-center gap-0.5 text-[11px] font-medium text-violet-500" title={`Reminder set for ${new Date(task.remind_at).toLocaleString()}`}>
+                <Bell className="w-3 h-3" /> {reminderLabel(task.remind_at)}
+              </span>
+            )}
             {orbitEnabled && task.in_orbit && (
               <OrbitIcon className="w-3.5 h-3.5 text-brand-400" />
             )}
             {progress.total > 0 && (
               <span className="text-[11px] font-medium text-content-muted tabular-nums">{progress.done}/{progress.total}</span>
+            )}
+            {blocked && !task.done && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-600 bg-amber-50 rounded px-1 py-0.5" title="Blocked — waiting on another to-do">
+                <Lock className="w-2.5 h-2.5" /> Blocked
+              </span>
             )}
             {listName && (
               <button
@@ -224,6 +238,7 @@ export function TaskRow(props: TaskRowProps) {
             onTimeBlock={onTimeBlock}
             onUnblock={onUnblock}
             onLogTime={onLogTime}
+            onEditDependencies={onEditDependencies}
           />
         )}
 
@@ -282,7 +297,7 @@ type SubView = 'root' | 'schedule' | 'estimate' | 'repeat' | 'list' | 'logtime';
 export function TaskActionsMenu({
   task, today, onPatch, onDelete, onEditDetails, lists,
   canFlag = false, orbitEnabled = false, canSomeday = false, enableRecurrence = false,
-  calConnected = false, onTimeBlock, onUnblock, onLogTime,
+  calConnected = false, onTimeBlock, onUnblock, onLogTime, onEditDependencies,
 }: {
   task: PlannerTask;
   today: string;
@@ -298,6 +313,7 @@ export function TaskActionsMenu({
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
   onLogTime?: (minutes: number, day: string) => void;
+  onEditDependencies?: () => void;
 }) {
   return (
     <Popover
@@ -321,6 +337,7 @@ export function TaskActionsMenu({
           onTimeBlock={onTimeBlock}
           onUnblock={onUnblock}
           onLogTime={onLogTime}
+          onEditDependencies={onEditDependencies}
           close={close}
         />
       )}
@@ -330,7 +347,7 @@ export function TaskActionsMenu({
 
 function MenuBody({
   task, today, onPatch, onDelete, onEditDetails, lists,
-  canFlag, orbitEnabled, canSomeday, enableRecurrence, calConnected, onTimeBlock, onUnblock, onLogTime, close,
+  canFlag, orbitEnabled, canSomeday, enableRecurrence, calConnected, onTimeBlock, onUnblock, onLogTime, onEditDependencies, close,
 }: {
   task: PlannerTask;
   today: string;
@@ -346,6 +363,7 @@ function MenuBody({
   onTimeBlock?: (time: string) => void;
   onUnblock?: () => void;
   onLogTime?: (minutes: number, day: string) => void;
+  onEditDependencies?: () => void;
   close: () => void;
 }) {
   const [view, setView] = useState<SubView>('root');
@@ -389,6 +407,9 @@ function MenuBody({
       )}
       {lists && (
         <MenuItem icon={<ListPlus className="w-4 h-4" />} label="Move to list…" onClick={() => setView('list')} chevron />
+      )}
+      {onEditDependencies && (
+        <MenuItem icon={<Lock className="w-4 h-4" />} label="Dependencies…" onClick={() => { onEditDependencies(); close(); }} />
       )}
       {canFlag && (
         <MenuItem
@@ -551,6 +572,77 @@ export function EstimateOptions({
       </button>
     </div>
   );
+}
+
+// Set an absolute reminder time. Quick presets cover the common cases; the
+// datetime field is there for anything specific. Setting a time clears any
+// prior "sent" stamp so a rescheduled reminder fires again.
+function ReminderOptions({
+  task, onPatch, onDone,
+}: {
+  task: PlannerTask;
+  onPatch: (id: string, patch: Partial<PlannerTask>) => void;
+  onDone: () => void;
+}) {
+  const [val, setVal] = useState(task.remind_at ? toLocalInput(task.remind_at) : '');
+  function apply(d: Date) { onPatch(task.id, { remind_at: d.toISOString(), reminder_sent_at: null }); onDone(); }
+  const presets: [string, () => Date][] = [
+    ['In 1 hour', () => new Date(Date.now() + 60 * 60_000)],
+    ['This evening (6pm)', () => { const d = new Date(); d.setHours(18, 0, 0, 0); if (d.getTime() < Date.now()) d.setDate(d.getDate() + 1); return d; }],
+    ['Tomorrow 9am', () => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(9, 0, 0, 0); return d; }],
+    ['Next week', () => { const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(9, 0, 0, 0); return d; }],
+  ];
+  return (
+    <div className="p-2 w-60">
+      {presets.map(([label, mk]) => (
+        <button key={label} onClick={() => apply(mk())} className="block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-surface-sunken text-content">
+          {label}
+        </button>
+      ))}
+      <div className="mt-1 pt-2 border-t border-edge-soft px-1">
+        <input
+          type="datetime-local"
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          className="w-full text-sm rounded-control border border-edge bg-surface px-2 py-1 text-content"
+        />
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={() => { if (val) apply(new Date(val)); }}
+            disabled={!val}
+            className={`text-xs font-medium rounded-control px-2.5 py-1 ${val ? 'bg-brand-600 text-brand-fg hover:bg-brand-700' : 'text-content-faint cursor-default'}`}
+          >
+            Set
+          </button>
+          {task.remind_at && (
+            <button
+              onClick={() => { onPatch(task.id, { remind_at: null, reminder_sent_at: null }); onDone(); }}
+              className="text-xs font-medium text-content-muted hover:text-rose-500"
+            >
+              Clear reminder
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ISO (UTC) → the value a <input type="datetime-local"> expects (local, no zone).
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
+// A compact chip label for a set reminder: "Bell · Fri 3:00 PM" style, trimmed.
+function reminderLabel(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  if (sameDay) return time;
+  return `${d.toLocaleDateString(undefined, { weekday: 'short' })} ${time}`;
 }
 
 // Retroactively log time actually worked: pick the day (defaults to the to-do's
@@ -800,6 +892,14 @@ export function TaskDetail({
           label={task.estimate_minutes ? formatMinutes(task.estimate_minutes) : 'Estimate'}
         >
           {close => <EstimateOptions task={task} onPatch={onPatch} onDone={close} />}
+        </ChipPicker>
+
+        <ChipPicker
+          active={!!task.remind_at}
+          icon={<Bell className="w-3.5 h-3.5" />}
+          label={task.remind_at ? reminderLabel(task.remind_at) : 'Remind'}
+        >
+          {close => <ReminderOptions task={task} onPatch={onPatch} onDone={close} />}
         </ChipPicker>
 
         {enableRecurrence && (
