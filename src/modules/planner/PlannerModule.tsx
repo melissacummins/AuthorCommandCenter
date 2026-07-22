@@ -1014,6 +1014,8 @@ export default function PlannerModule() {
     onLogTime: logManualMinutes,
     onLogBlockWorked: logBlockWorked,
     onResolveBlockReview: resolveBlockReview,
+    onEstimateDurations: runDurations,
+    onFindDuplicates: runDedup,
   };
 
   // Pick a view and dismiss the mobile rail in one go.
@@ -1040,7 +1042,7 @@ export default function PlannerModule() {
       {/* Left rail: smart views + lists. Static from md up; a slide-over on
           mobile so the day/list has full width for adding to-dos. */}
       <aside
-        className={`w-64 shrink-0 border-r border-edge bg-surface-sunken flex-col overflow-y-auto nice-scrollbar
+        className={`w-64 shrink-0 border-r border-edge bg-surface flex-col overflow-y-auto nice-scrollbar
           md:static md:flex
           ${railOpen ? 'fixed inset-y-0 left-0 z-50 flex shadow-2xl' : 'hidden md:flex'}`}
       >
@@ -1053,7 +1055,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'myday' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'myday' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'myday' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <Sun className="w-4 h-4 text-amber-500" />
@@ -1064,7 +1066,7 @@ export default function PlannerModule() {
             <button
               onClick={() => choose({ kind: 'orbit' })}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-                selection.kind === 'orbit' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+                selection.kind === 'orbit' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
               }`}
             >
               <OrbitIcon className="w-4 h-4 text-brand-500" />
@@ -1075,7 +1077,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'inbox' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'inbox' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'inbox' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <Inbox className="w-4 h-4 text-content-muted" />
@@ -1091,7 +1093,7 @@ export default function PlannerModule() {
                 key={v.bucket}
                 onClick={() => choose({ kind: 'view', bucket: v.bucket })}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-                  active ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+                  active ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${v.color}`} />
@@ -1103,7 +1105,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'plan' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'plan' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'plan' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <CalendarRange className="w-4 h-4 text-brand-500" />
@@ -1112,7 +1114,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'reset' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'reset' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'reset' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <RotateCcw className="w-4 h-4 text-brand-500" />
@@ -1121,7 +1123,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'logbook' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'logbook' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'logbook' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <BookCheck className="w-4 h-4 text-emerald-500" />
@@ -1130,7 +1132,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'projects' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'projects' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'projects' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <LayoutGrid className="w-4 h-4 text-brand-500" />
@@ -1139,7 +1141,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'stats' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'stats' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'stats' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <BarChart3 className="w-4 h-4 text-brand-500" />
@@ -1148,7 +1150,7 @@ export default function PlannerModule() {
           <button
             onClick={() => choose({ kind: 'settings' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'settings' ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+              selection.kind === 'settings' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
             }`}
           >
             <SettingsIcon className="w-4 h-4 text-content-muted" />
@@ -1213,7 +1215,7 @@ export default function PlannerModule() {
               {showArchived && (
                 <div className="mt-0.5 space-y-0.5">
                   {archivedNotes.map(n => (
-                    <div key={n.id} className="group/arch flex items-center gap-2 px-3 py-1.5 rounded-control text-sm text-content-secondary hover:bg-surface/70">
+                    <div key={n.id} className="group/arch flex items-center gap-2 px-3 py-1.5 rounded-control text-sm text-content-secondary hover:bg-surface-sunken">
                       <Archive className="w-3.5 h-3.5 text-content-faint shrink-0" />
                       <span className="flex-1 truncate">{n.title.trim() || 'Untitled list'}</span>
                       <button onClick={() => saveNote(n.id, { archived: false })} className="text-content-faint hover:text-brand-600 shrink-0" title="Restore list">
@@ -1955,30 +1957,6 @@ function BulkBar({
 // Smart views
 // ---------------------------------------------------------------------------
 
-// Two compact AI actions shown in every list/view header, so "Estimate
-// durations" and "Find duplicates" are reachable anywhere — not only in the
-// Weekly Reset. Both scan across all your open to-dos.
-function AiTools({ onEstimateDurations, onFindDuplicates }: { onEstimateDurations: () => void; onFindDuplicates: () => void }) {
-  return (
-    <>
-      <button
-        onClick={onEstimateDurations}
-        className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
-        title="Let Claude estimate a duration for to-dos that have none"
-      >
-        <Sparkles className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Durations</span>
-      </button>
-      <button
-        onClick={onFindDuplicates}
-        className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
-        title="Let Claude find duplicate to-dos across all your lists"
-      >
-        <Sparkles className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Duplicates</span>
-      </button>
-    </>
-  );
-}
-
 function ViewPane({
   bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onLogTime, onOpenNote, cal, blockedIds, onEditDependencies, onEstimateDurations, onFindDuplicates,
 }: {
@@ -2164,7 +2142,6 @@ function ViewPane({
               <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
             </span>
           )}
-          <AiTools onEstimateDurations={onEstimateDurations} onFindDuplicates={onFindDuplicates} />
           {items.length > 0 && !selectMode && (
             <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-1.5">Select</button>
           )}
@@ -2561,7 +2538,6 @@ function NotePane({
           className="flex-1 text-2xl font-bold text-content bg-transparent outline-none placeholder:text-content-faint"
         />
         <div className="flex items-center gap-1 pt-2">
-          <AiTools onEstimateDurations={onEstimateDurations} onFindDuplicates={onFindDuplicates} />
           {penNames.length > 0 && (
             <NotePenNamePicker
               penNames={penNames}
@@ -3208,7 +3184,7 @@ function SortableListItem({
       <button
         onClick={onChoose}
         className={`flex-1 min-w-0 flex items-center gap-2 pr-3 py-2 rounded-control text-sm transition-colors ${
-          active ? 'bg-surface shadow-sm text-content font-medium' : 'text-content-secondary hover:bg-surface/70'
+          active ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
         }`}
       >
         {note.pinned ? <Pin className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <NotebookPen className="w-3.5 h-3.5 text-content-muted shrink-0" />}

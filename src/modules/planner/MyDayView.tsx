@@ -38,6 +38,9 @@ export interface MyDayHandlers {
   // whether you worked on each. Worked (+ already-done) to-dos split the block's
   // time; worked ones stay open and carry to today.
   onResolveBlockReview: (blockId: string, worked: Record<string, boolean>) => void;
+  // Planner-wide AI tools (scan every open to-do), surfaced from the My Day header.
+  onEstimateDurations: () => void;
+  onFindDuplicates: () => void;
 }
 
 export default function MyDayView({
@@ -291,6 +294,20 @@ export default function MyDayView({
             title="Let Claude spread your overdue and unscheduled to-dos across the next few days"
           >
             <Sparkles className="w-3.5 h-3.5" /> Catch up
+          </button>
+          <button
+            onClick={handlers.onEstimateDurations}
+            className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-control px-2.5 py-1.5"
+            title="Let Claude estimate a duration for to-dos that have none (across all lists)"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Durations
+          </button>
+          <button
+            onClick={handlers.onFindDuplicates}
+            className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-control px-2.5 py-1.5"
+            title="Let Claude find duplicate to-dos across all your lists"
+          >
+            <Sparkles className="w-3.5 h-3.5" /> Duplicates
           </button>
           {/* What the two AI assists do — hover to learn without clicking. */}
           <span className="relative group">
