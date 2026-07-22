@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   DndContext, PointerSensor, useSensor, useSensors, useDraggable, useDroppable,
   type DragEndEvent,
@@ -351,71 +351,27 @@ export default function MyDayView({
           Tapping the date (or the calendar button) drops a compact month picker
           right below it — dots mark the days you actually worked — and it closes
           the moment you choose a day, so it never takes over the page. */}
-      <div className="mb-4">
-        <div className="relative">
-          <button onClick={() => setShowMonth(s => !s)} className="block w-full text-center group" title="Pick a day">
-            <div className="text-base font-medium text-content-secondary">{sel.toLocaleDateString(undefined, { weekday: 'long' })}</div>
-            <div className="text-6xl font-bold text-content leading-none my-1 group-hover:text-brand-600 transition-colors">{sel.getDate()}</div>
-            <div className="text-sm text-content-muted">
-              {sel.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-              {selected === today && <span className="ml-2 text-xs font-semibold uppercase tracking-wide text-brand-600">Today</span>}
-            </div>
-          </button>
-          {showMonth && (
-            <>
-              {/* Click-anywhere-else backdrop closes the picker. */}
-              <div className="fixed inset-0 z-40" onClick={() => setShowMonth(false)} />
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-50 w-72 rounded-card shadow-xl">
-                <MonthGrid selected={selected} today={today} activeDays={activeDays} onSelect={goToDay} />
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center justify-center gap-6 mt-3">
-          <button onClick={() => shiftDay(-1)} className="flex items-center gap-1 text-sm font-medium text-content-secondary hover:text-brand-600">
-            <ChevronLeft className="w-4 h-4" /> Previous
-          </button>
-          <button
-            onClick={() => setShowMonth(s => !s)}
-            className={`p-2 rounded-control transition-colors ${showMonth ? 'bg-brand-50 text-brand-600' : 'text-content-muted hover:bg-surface-sunken hover:text-brand-600'}`}
-            title={showMonth ? 'Back to the day' : 'Pick a day from the month'}
-          >
-            <CalendarDays className="w-5 h-5" />
-          </button>
-          <button onClick={() => shiftDay(1)} className="flex items-center gap-1 text-sm font-medium text-content-secondary hover:text-brand-600">
-            Next <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
-        {selected !== today && (
-          <div className="text-center mt-1">
-            <button onClick={() => goToDay(today)} className="text-xs font-medium text-brand-600 hover:text-brand-700">Jump to today</button>
-          </div>
-        )}
-
-        <div className="mt-3">
-          <CapacityBar
-            planned={plannedMinutes}
-            target={effectiveTarget}
-            baseTarget={baseTarget}
-            carryDeduction={carryDeduction}
-            onSetTarget={handlers.onUpdateCapacity}
-          />
-          {goal != null && goal > 0 && <GoalBar done={completedCount} goal={goal} />}
-          {workedMinutes > 0 && (
-            <div className="mt-1.5 flex items-center gap-1 text-[11px] text-content-muted">
-              <Clock className="w-3 h-3" /> {formatMinutes(workedMinutes)} worked {selected === today ? 'today' : 'this day'}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {phase && (
-        <div className="mb-4">
-          <PhaseBanner phase={phase} target={phaseTarget!} planned={plannedMinutes} daysIn={daysInPhase} />
-        </div>
-      )}
+      <DayCommandBar
+        sel={sel}
+        isToday={selected === today}
+        showMonth={showMonth}
+        setShowMonth={setShowMonth}
+        monthGrid={<MonthGrid selected={selected} today={today} activeDays={activeDays} onSelect={goToDay} />}
+        onPrev={() => shiftDay(-1)}
+        onNext={() => shiftDay(1)}
+        onToday={() => goToDay(today)}
+        planned={plannedMinutes}
+        target={effectiveTarget}
+        baseTarget={baseTarget}
+        carryDeduction={carryDeduction}
+        onSetTarget={handlers.onUpdateCapacity}
+        goal={goal}
+        done={completedCount}
+        worked={workedMinutes}
+        phase={phase}
+        phaseTarget={phaseTarget}
+        daysInPhase={daysInPhase}
+      />
 
       {/* Full-width schedule so the day's to-dos have the whole width. */}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -486,91 +442,170 @@ export default function MyDayView({
 }
 
 // ---------------------------------------------------------------------------
-// Capacity bar
+// Day command bar — the whole My Day header on one row: the date (with arrows +
+// month picker), an Hours meter (planned vs an editable target, with the target
+// marked as a notch so "over" reads at a glance), a Tasks meter, and — only when
+// a Working Phase is on — a tappable phase chip at the far right that reveals its
+// tagline. Optional pieces sit at the end so a user without them sees no gap.
 // ---------------------------------------------------------------------------
 
-function CapacityBar({
+function DayCommandBar({
+  sel, isToday, showMonth, setShowMonth, monthGrid, onPrev, onNext, onToday,
   planned, target, baseTarget, carryDeduction, onSetTarget,
+  goal, done, worked, phase, phaseTarget, daysInPhase,
 }: {
+  sel: Date;
+  isToday: boolean;
+  showMonth: boolean;
+  setShowMonth: (fn: (s: boolean) => boolean) => void;
+  monthGrid: ReactNode;
+  onPrev: () => void;
+  onNext: () => void;
+  onToday: () => void;
   planned: number;
-  target: number; // effective target the bar measures against (after phase + carry-over)
-  baseTarget: number; // the saved daily target; what the editable field shows/sets
-  carryDeduction: number; // minutes shaved off today because yesterday ran over
+  target: number;
+  baseTarget: number;
+  carryDeduction: number;
   onSetTarget: (m: number) => void;
+  goal: number | null;
+  done: number;
+  worked: number;
+  phase: PhaseInfo | null;
+  phaseTarget: number | null;
+  daysInPhase: number;
 }) {
   const [editing, setEditing] = useState(false);
   const [hours, setHours] = useState((baseTarget / 60).toString());
-  const pct = target > 0 ? Math.min(100, Math.round((planned / target) * 100)) : 0;
-  const over = planned > target;
-  const reduced = carryDeduction > 0;
+  const [phaseOpen, setPhaseOpen] = useState(false);
 
-  function commit() {
+  const over = planned > target;
+  const nearing = target > 0 && planned / target > 0.8;
+  // The bar spans 0…max(planned,target): the coloured fill is the planned share,
+  // and the notch marks where the target sits. Under target the notch lands at
+  // the right end; over target it sits back where the target was, so the red
+  // overflow past it is obvious.
+  const span = Math.max(planned, target, 1);
+  const fillPct = Math.min(100, (planned / span) * 100);
+  const notchPct = Math.min(100, (target / span) * 100);
+  const barColor = over ? 'bg-rose-500' : nearing ? 'bg-amber-500' : 'bg-brand-500';
+
+  function commitTarget() {
     setEditing(false);
     const h = parseFloat(hours);
     if (!isNaN(h) && h > 0) onSetTarget(Math.round(h * 60));
     else setHours((baseTarget / 60).toString());
   }
 
+  const goalDots = goal != null && goal > 0 && goal <= 8;
+
   return (
-    <div className="mt-2">
-      <div className="flex items-center gap-2 text-xs mb-1">
-        <span className={`font-medium ${over ? 'text-rose-600' : 'text-content-secondary'}`}>
-          {formatMinutes(planned) || '0m'} planned
-        </span>
-        <span className="text-content-muted">of</span>
-        {editing ? (
-          <span className="inline-flex items-center gap-1">
-            <input
-              autoFocus
-              type="number"
-              min="0.5"
-              step="0.5"
-              value={hours}
-              onChange={e => setHours(e.target.value)}
-              onBlur={commit}
-              onKeyDown={e => { if (e.key === 'Enter') commit(); }}
-              className="w-14 text-xs border border-edge rounded px-1.5 py-0.5"
-            />
-            <span className="text-content-muted">h target</span>
-          </span>
-        ) : (
-          <button onClick={() => { setHours((baseTarget / 60).toString()); setEditing(true); }} className="font-medium text-content-secondary hover:text-brand-600 underline decoration-dotted">
-            {formatMinutes(target)} target
-          </button>
+    <div className="mb-4 rounded-card border border-edge bg-surface/60 px-3 py-2.5 flex items-center gap-x-5 gap-y-3 flex-wrap">
+      {/* Date */}
+      <div className="relative flex items-center gap-1.5 shrink-0">
+        <button onClick={onPrev} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken hover:text-brand-600" title="Previous day" aria-label="Previous day"><ChevronLeft className="w-4 h-4" /></button>
+        <button onClick={() => setShowMonth(s => !s)} className="text-left px-1 group" title="Pick a day">
+          <div className="text-[15px] font-semibold text-content group-hover:text-brand-600 transition-colors whitespace-nowrap">
+            {sel.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}
+          </div>
+          {isToday
+            ? <div className="text-[10px] font-bold uppercase tracking-wide text-brand-600">Today</div>
+            : <div className="text-[11px] font-medium text-content-muted">{sel.toLocaleDateString(undefined, { year: 'numeric' })}</div>}
+        </button>
+        <button onClick={onNext} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken hover:text-brand-600" title="Next day" aria-label="Next day"><ChevronRight className="w-4 h-4" /></button>
+        <button onClick={() => setShowMonth(s => !s)} className={`p-1.5 rounded-control transition-colors ${showMonth ? 'bg-brand-50 text-brand-600' : 'text-content-muted hover:bg-surface-sunken hover:text-brand-600'}`} title="Pick a day from the month"><CalendarDays className="w-4 h-4" /></button>
+        {!isToday && <button onClick={onToday} className="text-[11px] font-medium text-brand-600 hover:text-brand-700 ml-0.5 whitespace-nowrap">Today ›</button>}
+        {showMonth && (
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setShowMonth(() => false)} />
+            <div className="absolute left-0 top-full mt-2 z-50 w-72 rounded-card shadow-xl">{monthGrid}</div>
+          </>
         )}
-        {over && <span className="ml-auto text-rose-600 font-medium">Over by {formatMinutes(planned - target)}</span>}
       </div>
-      <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${over ? 'bg-rose-500' : pct > 80 ? 'bg-amber-500' : 'bg-brand-500'}`} style={{ width: `${pct}%` }} />
+
+      {/* Hours */}
+      <div className="min-w-[10rem] flex-1">
+        <div className="flex items-baseline justify-between gap-2 mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">Hours</span>
+          <span className="text-[11px] tabular-nums">
+            <span className={over ? 'text-rose-600 font-semibold' : 'text-content-secondary font-medium'}>{formatMinutes(planned) || '0m'}</span>
+            <span className="text-content-muted"> / </span>
+            {editing ? (
+              <input
+                autoFocus type="number" min="0.5" step="0.5" value={hours}
+                onChange={e => setHours(e.target.value)} onBlur={commitTarget}
+                onKeyDown={e => { if (e.key === 'Enter') commitTarget(); }}
+                className="w-12 text-[11px] border border-edge rounded px-1 py-0.5 bg-surface"
+              />
+            ) : (
+              <button onClick={() => { setHours((baseTarget / 60).toString()); setEditing(true); }} className="text-content-secondary hover:text-brand-600 underline decoration-dotted" title="Set your daily hour target">{formatMinutes(target)}</button>
+            )}
+          </span>
+        </div>
+        <div className="relative h-2 rounded-full bg-surface-sunken overflow-visible">
+          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${fillPct}%` }} />
+          <div className="absolute top-[-3px] w-[2px] h-[14px] rounded-sm" style={{ left: `calc(${notchPct}% - 1px)`, background: 'var(--color-content)', opacity: 0.6 }} title={`Target ${formatMinutes(target)}`} />
+        </div>
+        <div className="mt-1 flex items-center gap-2 text-[10px] text-content-muted">
+          {over && <span className="text-rose-600 font-medium">Over by {formatMinutes(planned - target)}</span>}
+          {carryDeduction > 0 && <span className="text-amber-600">−{formatMinutes(carryDeduction)} carried over</span>}
+          {worked > 0 && <span className="inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(worked)} worked</span>}
+        </div>
       </div>
-      {reduced && (
-        <div className="mt-1.5 text-[11px] text-amber-600">
-          −{formatMinutes(carryDeduction)} carried over from yesterday ({formatMinutes(target + carryDeduction)} → {formatMinutes(target)})
+
+      {/* Tasks */}
+      <div className="min-w-[8rem] flex-1">
+        <div className="flex items-baseline justify-between gap-2 mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">Tasks</span>
+          <span className="text-[11px] tabular-nums font-medium text-content-secondary">
+            {goal != null && goal > 0 ? <>{done} of {goal} done</> : <>{done} done</>}
+          </span>
+        </div>
+        {goal != null && goal > 0 ? (
+          goalDots ? (
+            <div className="flex items-center gap-1 h-2">
+              {Array.from({ length: goal }, (_, i) => (
+                <span key={i} className={`h-2 flex-1 rounded-full ${i < done ? (done >= goal ? 'bg-emerald-500' : 'bg-brand-500') : 'bg-surface-sunken'}`} />
+              ))}
+            </div>
+          ) : (
+            <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
+              <div className={`h-full rounded-full transition-all ${done >= goal ? 'bg-emerald-500' : 'bg-brand-500'}`} style={{ width: `${Math.min(100, Math.round((done / goal) * 100))}%` }} />
+            </div>
+          )
+        ) : (
+          <div className="h-2 rounded-full bg-surface-sunken" />
+        )}
+        {goal != null && goal > 0 && done >= goal && <div className="mt-1 text-[10px] text-emerald-600 font-medium">🎉 Goal met</div>}
+      </div>
+
+      {/* Working phase (optional) — tappable for its tagline. Sits at the end so
+          users without a phase see no gap. */}
+      {phase && (
+        <div className="relative shrink-0 ml-auto">
+          <button
+            onClick={() => setPhaseOpen(o => !o)}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-xs font-medium border transition-colors ${over ? 'border-transparent bg-rose-50 text-rose-600' : `border-edge ${phase.accent} hover:bg-surface-sunken`}`}
+            title="What this phase means"
+          >
+            <span className={`w-2 h-2 rounded-full ${phase.dot}`} />
+            {phase.label}
+          </button>
+          {phaseOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setPhaseOpen(false)} />
+              <div className="absolute right-0 top-full mt-2 z-50 w-64 rounded-card border border-edge bg-surface shadow-xl p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`w-2.5 h-2.5 rounded-full ${phase.dot}`} />
+                  <span className={`text-sm font-semibold ${phase.accent}`}>You're in {phase.label}</span>
+                </div>
+                <p className="text-xs text-content-secondary">{phase.tagline}</p>
+                <p className="text-[11px] text-content-muted mt-2">Suggests {formatMinutes(phaseTarget ?? target)} · day {daysInPhase + 1}</p>
+                {over && <p className="text-[11px] text-rose-600 mt-2 font-medium">Today's plan is {formatMinutes(planned)} — more than {phase.label} can hold.</p>}
+              </div>
+            </>
+          )}
         </div>
       )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Daily goal — a count-based companion to the capacity bar: not "have I done
-// enough hours" but "did I finish the things I set out to."
-// ---------------------------------------------------------------------------
-
-function GoalBar({ done, goal }: { done: number; goal: number }) {
-  const hit = done >= goal;
-  const pct = Math.min(100, Math.round((done / goal) * 100));
-  return (
-    <div className="mt-2">
-      <div className="flex items-center gap-2 text-xs mb-1">
-        <span className={`font-medium ${hit ? 'text-emerald-600' : 'text-content-secondary'}`}>
-          {done} of {goal} done
-        </span>
-        {hit && <span className="ml-auto text-emerald-600 font-medium">🎉 Goal met — nice work!</span>}
-      </div>
-      <div className="h-2 rounded-full bg-surface-sunken overflow-hidden">
-        <div className={`h-full rounded-full transition-all ${hit ? 'bg-emerald-500' : 'bg-brand-400'}`} style={{ width: `${pct}%` }} />
-      </div>
     </div>
   );
 }
@@ -674,30 +709,6 @@ function BlockReviewCard({
             : <>Nothing logged; all move to today.</>}
         </span>
       </div>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Working Phase banner — the forcing function: names the season you're in and
-// flags when the day you've planned outruns what that phase can hold.
-// ---------------------------------------------------------------------------
-
-function PhaseBanner({ phase, target, planned, daysIn }: { phase: PhaseInfo; target: number; planned: number; daysIn: number }) {
-  const over = planned > target && target > 0;
-  return (
-    <div className={`rounded-card border p-4 ${over ? 'border-rose-200 bg-rose-50/60' : 'border-edge bg-surface-hover/70'}`}>
-      <div className="flex items-center gap-2">
-        <span className={`w-2.5 h-2.5 rounded-full ${phase.dot} shrink-0`} />
-        <span className={`text-sm font-semibold ${phase.accent}`}>You're in {phase.label}</span>
-        <span className="ml-auto text-xs font-medium text-content-secondary">suggests {formatMinutes(target)} · day {daysIn + 1}</span>
-      </div>
-      <p className="text-xs text-content-secondary mt-1">{phase.tagline}</p>
-      {over && (
-        <p className="text-xs text-rose-600 mt-2 font-medium">
-          Today's plan is {formatMinutes(planned)} — more than {phase.label} can hold. What can move or wait?
-        </p>
-      )}
     </div>
   );
 }
