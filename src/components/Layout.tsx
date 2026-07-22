@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { moduleKeyForPath } from '../lib/access';
 import {
   LogOut, BookOpen, Package, BarChart3, DollarSign,
-  Clapperboard, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Settings, Link2, Library, Users, ImagePlus, Share2, NotebookPen, AudioLines, Gift, PenTool
+  Clapperboard, Wallet, Search, Home, Menu, X, ChevronRight, PanelLeftClose, PanelLeftOpen, Settings, Link2, Library, Users, ImagePlus, Share2, NotebookPen, AudioLines, Gift, PenTool, Banknote
 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 
@@ -15,6 +15,7 @@ const modules = [
   { name: 'Book Tracker', path: '/book-tracker', icon: BookOpen, color: 'text-purple-400' },
   { name: 'Profit', path: '/profit-track', icon: DollarSign, color: 'text-green-400' },
   { name: 'Transactions', path: '/finstream', icon: Wallet, color: 'text-cyan-400' },
+  { name: 'Cash Flow', path: '/cashflow', icon: Banknote, color: 'text-emerald-400' },
   { name: 'Inventory', path: '/inventory', icon: Package, color: 'text-blue-400' },
   { name: 'Cross-Sell Analyzer', path: '/cross-sell', icon: BarChart3, color: 'text-emerald-400' },
   { name: 'Upsells', path: '/upsells', icon: Gift, color: 'text-sky-400' },
@@ -32,7 +33,7 @@ const modules = [
 // follow it. Home and Settings live outside any section.
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/writing'] },
-  { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
+  { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream', '/cashflow'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
   { label: 'Marketing',  paths: ['/content-creator', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];
