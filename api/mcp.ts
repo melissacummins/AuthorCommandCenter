@@ -373,6 +373,83 @@ function buildServer(client: SupabaseClient, user: User): McpServer {
       json(await core.setOpportunityDecision(client, uid, { bookId: book_id, opportunityKey: opportunity_key, decision })),
   );
 
+  // --- Transactions: bulk import ------------------------------------------
+  server.tool(
+    'import_transactions',
+    "Bulk-import a bank CSV's worth of transactions into the finance tracker in one call. Duplicates are detected and skipped, so re-importing overlapping CSVs is safe. Returns how many were inserted vs. skipped.",
+    {
+      rows: z.array(z.object({
+        date: z.string(),
+        amount: z.number(),
+        type: z.enum(['income', 'expense']),
+        category: z.string().optional(),
+        description: z.string().optional(),
+        original_description: z.string().optional(),
+        source: z.string().optional(),
+      })).max(1000),
+    },
+    async ({ rows }) => json(await core.importTransactions(client, uid, rows)),
+  );
+
+  // --- Cash flow (weekly forecast, reconciled from transactions) -----------
+  server.tool(
+    'get_cash_flow',
+    "Get the author's weekly cash-flow: each week with its income and bill line items plus computed income/bill subtotals, worst-case ending (opening minus bills), and projected ending. Filter to a month (YYYY-MM) or a single week.",
+    { month: z.string().optional(), week_start: z.string().optional() },
+    async ({ month, week_start }) => json(await core.getCashFlow(client, uid, { month, weekStart: week_start })),
+  );
+  server.tool(
+    'upsert_cash_flow_week',
+    "Create or update a cash-flow week (keyed on its start date): set the opening balance, the actual ending balance, and a note.",
+    {
+      week_start: z.string(),
+      week_end: z.string(),
+      opening_balance: z.number().optional(),
+      actual_ending_balance: z.number().optional(),
+      note: z.string().optional(),
+    },
+    async ({ week_start, week_end, opening_balance, actual_ending_balance, note }) =>
+      json(await core.upsertCashFlowWeek(client, uid, {
+        weekStart: week_start, weekEnd: week_end,
+        openingBalance: opening_balance, actualEndingBalance: actual_ending_balance, note,
+      })),
+  );
+  server.tool(
+    'add_cash_flow_line',
+    "Add one planned income or bill line item to an existing cash-flow week (the week must already exist — create it with upsert_cash_flow_week first).",
+    {
+      week_start: z.string(),
+      kind: z.enum(['income', 'bill']),
+      source: z.string(),
+      amount: z.number(),
+      date: z.string().optional(),
+      settled: z.boolean().optional(),
+      notes: z.string().optional(),
+    },
+    async ({ week_start, kind, source, amount, date, settled, notes }) =>
+      json(await core.addCashFlowLine(client, uid, { weekStart: week_start, kind, source, amount, date, settled, notes })),
+  );
+  server.tool(
+    'update_cash_flow_line',
+    "Update a single cash-flow line item — e.g. mark a bill paid or income received (settled), or replace an estimate with the actual amount.",
+    {
+      line_id: z.string(),
+      source: z.string().optional(),
+      amount: z.number().optional(),
+      settled: z.boolean().optional(),
+      date: z.string().optional(),
+      notes: z.string().optional(),
+    },
+    async ({ line_id, source, amount, settled, date, notes }) =>
+      json(await core.updateCashFlowLine(client, uid, { lineId: line_id, source, amount, settled, date, notes })),
+  );
+  server.tool(
+    'delete_cash_flow_line',
+    "Delete a single cash-flow income or bill line item.",
+    { line_id: z.string() },
+    async ({ line_id }) => json(await core.deleteCashFlowLine(client, uid, { lineId: line_id })),
+  );
+
   return server;
 }
 

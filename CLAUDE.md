@@ -1,9 +1,9 @@
 # Author Command Center — Claude notes
 
 ## When adding a Supabase migration
-- Always include a clickable link to the Supabase SQL editor in the PR
-  description so Melissa can paste-and-run without hunting for it:
-  `https://supabase.com/dashboard/project/vinnvzmuuwmssijwdomt/sql/new`
+- Apply it to the production database directly (via the Supabase MCP
+  `apply_migration`) as part of merging the PR — do NOT ask Melissa to
+  paste-and-run SQL by hand. Confirm afterward that the change is live.
 - All new migrations must be idempotent (`IF NOT EXISTS`,
   `DROP POLICY/TRIGGER IF EXISTS` before `CREATE`). Supabase Preview
   Branching re-applies migrations against a preview database, and

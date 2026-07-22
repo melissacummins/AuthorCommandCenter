@@ -209,3 +209,149 @@ export async function saveCashFlowNote(
   if (error) throw error;
   return data as CashFlowNote;
 }
+
+// ---------------------------------------------------------------------------
+// WRITE: bulk import transactions (dedup-safe)
+//
+// INSERT-only, dedup-safe bank-CSV import. The FinStream app does NOT dedup on
+// import: both import paths do a plain, unconditional insert —
+//   - CSV import: src/modules/finstream/api.ts `importTransactions()`
+//       `const { error } = await supabase.from('transactions').insert(categorized);`
+//   - JSON import: src/modules/finstream/components/JsonImport.tsx
+//       `const { error } = await supabase.from('transactions').insert(batch);`
+// and the `transactions` table (supabase/migrations/001_initial_schema.sql) has
+// NO unique constraint / dedup-hash column — only `id UUID PRIMARY KEY`. So a DB
+// upsert with onConflict is impossible (there is no conflict target), and a
+// re-imported overlapping CSV would otherwise create duplicate rows.
+//
+// We therefore dedup APP-SIDE on a content key that captures a transaction's
+// identity across re-imports: date + absolute amount + type + normalized
+// description. `source` (the CSV filename) and `category` (derived) are
+// deliberately excluded so the same transaction re-imported from a differently
+// named file, or after being categorized, still dedups. We fetch only the
+// user's existing rows within the incoming date range (a bounded query, not the
+// whole history — TEXT YYYY-MM-DD dates sort lexically so gte/lte is valid),
+// build the key set, and insert only rows whose key is not already present.
+
+const MAX_IMPORT_ROWS = 1000;
+
+export interface ImportTransactionRow {
+  /** Transaction date, YYYY-MM-DD (stored as TEXT). */
+  date: string;
+  /** Amount; must be a finite number >= 0 (stored positive, mirroring the app). */
+  amount: number;
+  type: 'income' | 'expense';
+  category?: string;
+  description?: string;
+  /** Raw bank/import description; defaults to `description` when omitted. */
+  original_description?: string;
+  /** Free-text origin label (e.g. bank name / CSV file name). */
+  source?: string;
+}
+
+export interface ImportTransactionsResult {
+  inserted: number;
+  skipped: number;
+  insertedRows: Transaction[];
+}
+
+/** Content dedup key: date | abs(amount, 2dp) | type | normalized description.
+    Applied identically to incoming rows and existing DB rows. `original_description`
+    (the raw bank text) is preferred, falling back to `description`, mirroring how the
+    app's CSV import sets both fields to the same raw value. */
+function transactionDedupKey(t: {
+  date: string;
+  amount: number;
+  type: string;
+  description?: string | null;
+  original_description?: string | null;
+}): string {
+  const desc = String(t.original_description ?? t.description ?? '').trim().toLowerCase();
+  const amt = Math.abs(Number(t.amount)).toFixed(2);
+  return `${String(t.date).trim()}|${amt}|${t.type}|${desc}`;
+}
+
+export async function importTransactions(
+  client: SupabaseClient,
+  userId: string,
+  rows: ImportTransactionRow[],
+): Promise<ImportTransactionsResult> {
+  if (!Array.isArray(rows)) throw new Error('importTransactions: rows must be an array');
+  if (rows.length === 0) return { inserted: 0, skipped: 0, insertedRows: [] };
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw new Error(
+      `importTransactions: batch of ${rows.length} exceeds the ${MAX_IMPORT_ROWS}-row limit; split the CSV into smaller batches`,
+    );
+  }
+
+  // Validate + normalize every row up front (no silent drops).
+  const normalized = rows.map((r, i) => {
+    if (!r || typeof r !== 'object') throw new Error(`importTransactions: row ${i} is not an object`);
+    if (!r.date || typeof r.date !== 'string') {
+      throw new Error(`importTransactions: row ${i} is missing a date (YYYY-MM-DD)`);
+    }
+    if (r.type !== 'income' && r.type !== 'expense') {
+      throw new Error(`importTransactions: row ${i} has invalid type '${r.type}' (expected 'income' | 'expense')`);
+    }
+    const amount = Number(r.amount);
+    if (!Number.isFinite(amount)) {
+      throw new Error(`importTransactions: row ${i} has a non-finite amount`);
+    }
+    if (amount < 0) {
+      throw new Error(`importTransactions: row ${i} has a negative amount; amounts must be >= 0 (store positive, type decides income/expense)`);
+    }
+    const description = r.description ?? '';
+    return {
+      user_id: userId,
+      date: r.date,
+      description,
+      original_description: r.original_description ?? description,
+      amount: Math.abs(amount),
+      category: r.category ?? 'Uncategorized',
+      source: r.source ?? '',
+      type: r.type,
+    };
+  });
+
+  // Bounded fetch of existing rows in the incoming date range, scoped to the user.
+  let minDate = normalized[0].date;
+  let maxDate = normalized[0].date;
+  for (const n of normalized) {
+    if (n.date < minDate) minDate = n.date;
+    if (n.date > maxDate) maxDate = n.date;
+  }
+
+  const { data: existing, error: fetchError } = await client
+    .from('transactions')
+    .select('date, amount, type, description, original_description')
+    .eq('user_id', userId)
+    .gte('date', minDate)
+    .lte('date', maxDate);
+  if (fetchError) throw fetchError;
+
+  const seen = new Set<string>();
+  for (const e of existing ?? []) seen.add(transactionDedupKey(e));
+
+  // Dedup against the DB AND within the incoming batch itself.
+  const toInsert: typeof normalized = [];
+  let skipped = 0;
+  for (const n of normalized) {
+    const key = transactionDedupKey(n);
+    if (seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    toInsert.push(n);
+  }
+
+  if (toInsert.length === 0) {
+    return { inserted: 0, skipped, insertedRows: [] };
+  }
+
+  const { data, error } = await client.from('transactions').insert(toInsert).select();
+  if (error) throw error;
+
+  const insertedRows = (data ?? []) as Transaction[];
+  return { inserted: insertedRows.length, skipped, insertedRows };
+}
