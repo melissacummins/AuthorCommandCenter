@@ -67,7 +67,7 @@ export default function KDPOptimizerModule() {
 
   if (activeBook) {
     return (
-      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         <BookOptimizer
           book={activeBook}
           tropes={tropes}
@@ -86,7 +86,7 @@ export default function KDPOptimizerModule() {
   if (activeTrope) {
     const tropeKws = keywords.filter(k => k.trope_id === activeTrope.id);
     return (
-      <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+      <div className="p-6 lg:p-8 max-w-7xl mx-auto">
         <TropeDetail
           trope={activeTrope}
           allTropes={tropes}
@@ -99,7 +99,7 @@ export default function KDPOptimizerModule() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-6xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="flex items-start gap-3 mb-4">
         <div className="inline-flex items-center justify-center w-10 h-10 bg-gradient-to-br from-rose-500 to-rose-600 rounded-card shadow-lg shadow-rose-500/25 shrink-0">
           <Search className="w-5 h-5 text-white" />

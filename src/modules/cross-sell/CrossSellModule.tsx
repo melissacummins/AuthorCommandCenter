@@ -2,7 +2,7 @@ import { BarChart3, Upload, ArrowRight } from 'lucide-react';
 
 export default function CrossSellModule() {
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="text-center py-16">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-card shadow-lg shadow-emerald-500/25 mb-6">
           <BarChart3 className="w-10 h-10 text-white" />
