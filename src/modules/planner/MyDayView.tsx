@@ -545,19 +545,20 @@ function DayCommandBar({
           <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${fillPct}%` }} />
           <div className="absolute top-[-3px] w-[2px] h-[14px] rounded-sm" style={{ left: `calc(${notchPct}% - 1px)`, background: 'var(--color-content)', opacity: 0.6 }} title={`Target ${formatMinutes(target)}`} />
         </div>
-        <div className="mt-1 flex items-center gap-2 text-[10px] text-content-muted">
+        <div className="mt-1 flex items-center gap-2 text-[10px] text-content-muted min-h-[14px]">
           {over && <span className="text-rose-600 font-medium">Over by {formatMinutes(planned - target)}</span>}
           {carryDeduction > 0 && <span className="text-amber-600">−{formatMinutes(carryDeduction)} carried over</span>}
           {worked > 0 && <span className="inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(worked)} worked</span>}
         </div>
       </div>
 
-      {/* Tasks */}
+      {/* Tasks — mirrors the Hours block (compact value + a reserved caption row)
+          so its bar lines up with Hours'. */}
       <div className="min-w-[8rem] flex-1">
         <div className="flex items-baseline justify-between gap-2 mb-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">Tasks</span>
           <span className="text-[11px] tabular-nums font-medium text-content-secondary">
-            {goal != null && goal > 0 ? <>{done} of {goal} done</> : <>{done} done</>}
+            {goal != null && goal > 0 ? <>{done}/{goal}</> : <>{done} done</>}
           </span>
         </div>
         {goal != null && goal > 0 ? (
@@ -575,7 +576,9 @@ function DayCommandBar({
         ) : (
           <div className="h-2 rounded-full bg-surface-sunken" />
         )}
-        {goal != null && goal > 0 && done >= goal && <div className="mt-1 text-[10px] text-emerald-600 font-medium">🎉 Goal met</div>}
+        <div className="mt-1 text-[10px] font-medium text-emerald-600 min-h-[14px]">
+          {goal != null && goal > 0 && done >= goal ? '🎉 Goal met' : ''}
+        </div>
       </div>
 
       {/* Working phase (optional) — tappable for its tagline. Sits at the end so
@@ -600,7 +603,6 @@ function DayCommandBar({
                 </div>
                 <p className="text-xs text-content-secondary">{phase.tagline}</p>
                 <p className="text-[11px] text-content-muted mt-2">Suggests {formatMinutes(phaseTarget ?? target)} · day {daysInPhase + 1}</p>
-                {over && <p className="text-[11px] text-rose-600 mt-2 font-medium">Today's plan is {formatMinutes(planned)} — more than {phase.label} can hold.</p>}
               </div>
             </>
           )}

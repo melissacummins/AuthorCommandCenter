@@ -93,7 +93,7 @@ export default function ProjectsView({
             ))}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {sorted.map(r => (
               <button
                 key={r.note.id}
@@ -127,14 +127,14 @@ function Ring({ pct, empty }: { pct: number; empty: boolean }) {
   const dash = (pct / 100) * c;
   const color = empty ? 'var(--edge, #cbd5e1)' : pct >= 100 ? '#10b981' : pct >= 50 ? '#14b8a6' : pct > 0 ? '#f59e0b' : '#f43f5e';
   return (
-    <div className="relative w-[68px] h-[68px]">
+    <div className="relative w-[86px] h-[86px]">
       <svg viewBox="0 0 68 68" className="w-full h-full -rotate-90">
         <circle cx="34" cy="34" r={r} fill="none" stroke="currentColor" strokeWidth="6" className="text-edge-soft" strokeDasharray={empty ? '3 4' : undefined} />
         {!empty && (
           <circle cx="34" cy="34" r={r} fill="none" stroke={color} strokeWidth="6" strokeLinecap="round" strokeDasharray={`${dash} ${c}`} />
         )}
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-sm font-bold text-content">
+      <span className="absolute inset-0 flex items-center justify-center text-base font-bold text-content">
         {empty ? '—' : `${pct}%`}
       </span>
     </div>
