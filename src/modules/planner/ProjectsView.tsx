@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { LayoutGrid, Star, Clock } from 'lucide-react';
+import { LayoutGrid, Star, Clock, ArrowUp, ArrowDown } from 'lucide-react';
 import { formatMinutes, type PlannerNote, type PlannerTask, type PlannerTimeSession } from './types';
 
 // Project Overview: every list is a "project", shown as a progress ring (done vs
@@ -27,6 +27,14 @@ export default function ProjectsView({
   onOpenList: (noteId: string) => void;
 }) {
   const [sort, setSort] = useState<SortKey>('todo');
+  // Direction: 'desc' = most-to-do / highest-progress / Z–A; 'asc' = the reverse.
+  const [dir, setDir] = useState<'asc' | 'desc'>('desc');
+  // Click the active sort to flip its direction; a new sort starts at its
+  // natural default (A–Z ascending, everything else most/highest first).
+  function pickSort(k: SortKey) {
+    if (k === sort) setDir(d => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSort(k); setDir(k === 'name' ? 'asc' : 'desc'); }
+  }
 
   const rows = useMemo<Row[]>(() => {
     // Minutes tracked, per to-do, so a list can roll up its worked time.
@@ -51,11 +59,16 @@ export default function ProjectsView({
 
   const sorted = useMemo(() => {
     const r = [...rows];
-    if (sort === 'name') return r.sort((a, b) => (a.note.title || '').localeCompare(b.note.title || ''));
-    if (sort === 'progress') return r.sort((a, b) => a.pct - b.pct || b.open - a.open);
-    // 'todo' — the most remaining work first; empty lists sink to the bottom.
-    return r.sort((a, b) => (b.open - a.open) || (b.total - a.total) || (a.note.title || '').localeCompare(b.note.title || ''));
-  }, [rows, sort]);
+    // Base comparators are ascending (least / lowest / A–Z); 'desc' reverses.
+    const cmp = sort === 'name'
+      ? (a: Row, b: Row) => (a.note.title || '').localeCompare(b.note.title || '')
+      : sort === 'progress'
+        ? (a: Row, b: Row) => (a.pct - b.pct) || (a.open - b.open)
+        : (a: Row, b: Row) => (a.open - b.open) || (a.total - b.total) || (a.note.title || '').localeCompare(b.note.title || '');
+    r.sort(cmp);
+    if (dir === 'desc') r.reverse();
+    return r;
+  }, [rows, sort, dir]);
 
   const totals = useMemo(() => {
     let total = 0, done = 0;
@@ -82,13 +95,15 @@ export default function ProjectsView({
         <>
           <div className="flex items-center gap-1 mb-4">
             <span className="text-xs text-content-muted mr-1">Sort</span>
-            {([['todo', 'Most to do'], ['progress', 'Progress'], ['name', 'A–Z']] as [SortKey, string][]).map(([k, label]) => (
+            {([['todo', 'To do'], ['progress', 'Progress'], ['name', 'Name']] as [SortKey, string][]).map(([k, label]) => (
               <button
                 key={k}
-                onClick={() => setSort(k)}
-                className={`text-xs font-medium rounded-control px-2.5 py-1 transition-colors ${sort === k ? 'bg-brand-600 text-brand-fg' : 'text-content-secondary hover:bg-surface-sunken'}`}
+                onClick={() => pickSort(k)}
+                title={sort === k ? 'Click to reverse the order' : `Sort by ${label.toLowerCase()}`}
+                className={`inline-flex items-center gap-1 text-xs font-medium rounded-control px-2.5 py-1 transition-colors ${sort === k ? 'bg-brand-600 text-brand-fg' : 'text-content-secondary hover:bg-surface-sunken'}`}
               >
                 {label}
+                {sort === k && (dir === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />)}
               </button>
             ))}
           </div>

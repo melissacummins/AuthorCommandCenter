@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
-import { BookCheck, Search, RotateCcw, Trash2, Clock, Check } from 'lucide-react';
+import { BookCheck, Search, RotateCcw, Trash2, Clock, Check, CalendarDays, X } from 'lucide-react';
 import {
   formatMinutes, reviewDays,
   type PlannerNote, type PlannerTask, type PlannerTimeSession,
@@ -27,17 +27,23 @@ export default function LogbookView({
   onOpenDay: (iso: string) => void;
 }) {
   const [query, setQuery] = useState('');
+  // Optional single-day filter (YYYY-MM-DD) — pick a date to see just that day.
+  const [pickedDate, setPickedDate] = useState('');
 
   const allDays = useMemo(() => reviewDays(tasks, sessions), [tasks, sessions]);
 
-  // Search filters to days that still have a matching to-do.
+  // Filter by search text, then (if set) narrow to the picked date.
   const days = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return allDays;
-    return allDays
-      .map(d => ({ ...d, entries: d.entries.filter(e => e.task.title.toLowerCase().includes(q)) }))
-      .filter(d => d.entries.length > 0);
-  }, [allDays, query]);
+    let out = allDays;
+    if (q) {
+      out = out
+        .map(d => ({ ...d, entries: d.entries.filter(e => e.task.title.toLowerCase().includes(q)) }))
+        .filter(d => d.entries.length > 0);
+    }
+    if (pickedDate) out = out.filter(d => d.day === pickedDate);
+    return out;
+  }, [allDays, query, pickedDate]);
 
   const totals = useMemo(() => {
     let completed = 0, minutes = 0;
@@ -73,14 +79,29 @@ export default function LogbookView({
         {totals.minutes > 0 && <> · {formatMinutes(totals.minutes)} tracked</>}
       </p>
 
-      <div className="flex items-center gap-2 bg-surface border border-edge rounded-control px-3 py-2 mb-6">
-        <Search className="w-4 h-4 text-content-muted shrink-0" />
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search what you worked on…"
-          className="flex-1 text-sm bg-transparent outline-none placeholder:text-content-muted text-content"
-        />
+      <div className="flex items-center gap-2 mb-6">
+        <div className="flex-1 flex items-center gap-2 bg-surface border border-edge rounded-control px-3 py-2">
+          <Search className="w-4 h-4 text-content-muted shrink-0" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search what you worked on…"
+            className="flex-1 text-sm bg-transparent outline-none placeholder:text-content-muted text-content"
+          />
+        </div>
+        <div className="flex items-center gap-1.5 bg-surface border border-edge rounded-control px-2.5 py-2 shrink-0" title="Show just one day">
+          <CalendarDays className="w-4 h-4 text-content-muted shrink-0" />
+          <input
+            type="date"
+            value={pickedDate}
+            max={today}
+            onChange={e => setPickedDate(e.target.value)}
+            className="text-sm bg-transparent outline-none text-content"
+          />
+          {pickedDate && (
+            <button onClick={() => setPickedDate('')} className="text-content-faint hover:text-content-secondary" title="Clear date"><X className="w-4 h-4" /></button>
+          )}
+        </div>
       </div>
 
       {missing && (
@@ -92,7 +113,9 @@ export default function LogbookView({
 
       {days.length === 0 ? (
         <div className="rounded-card border border-dashed border-edge p-10 text-center text-sm text-content-muted">
-          {query ? 'Nothing matches that search.' : 'Nothing yet. Check a to-do off — or track time on one — and it’ll land here.'}
+          {pickedDate
+            ? <>Nothing was completed or tracked on <span className="font-medium text-content">{dayLabel(pickedDate, today)}</span>.</>
+            : query ? 'Nothing matches that search.' : 'Nothing yet. Check a to-do off — or track time on one — and it’ll land here.'}
         </div>
       ) : (
         <div className="space-y-6">
