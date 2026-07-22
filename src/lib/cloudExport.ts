@@ -423,20 +423,22 @@ export async function openCloudBackup(service: CloudService, stamp: string): Pro
   return { service: 'drive', folderCache: cache };
 }
 
-async function resolveDriveDir(token: string, dest: DriveBackupDest, segments: string[]): Promise<string> {
+// Resolves (creating and caching) the Drive folder id for a relative path,
+// walking down from the folder cached under '' (the run root, or the files
+// mirror root). Shared by the dated-run uploads and the persistent mirror.
+async function resolveDriveDir(token: string, folderCache: Map<string, string>, segments: string[]): Promise<string> {
   const key = segments.join('/');
-  const cached = dest.folderCache.get(key);
+  const cached = folderCache.get(key);
   if (cached) return cached;
-  // Walk down from the run root, creating (and caching) each missing segment.
-  let parentId = dest.folderCache.get('')!;
+  let parentId = folderCache.get('')!;
   const acc: string[] = [];
   for (const seg of segments) {
     acc.push(seg);
     const k = acc.join('/');
-    let id = dest.folderCache.get(k);
+    let id = folderCache.get(k);
     if (!id) {
       id = await ensureDriveSubfolder(token, parentId, seg);
-      dest.folderCache.set(k, id);
+      folderCache.set(k, id);
     }
     parentId = id;
   }
@@ -474,7 +476,7 @@ export async function uploadToCloudBackup(
   }
 
   const token = await driveToken();
-  const folderId = await resolveDriveDir(token, dest, dirs);
+  const folderId = await resolveDriveDir(token, dest.folderCache, dirs);
   const metadata = { name: filename, parents: [folderId] };
   const form = new FormData();
   form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
@@ -497,4 +499,198 @@ export async function uploadToCloudBackup(
 export function backupStamp(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
+
+// --- Persistent, incremental file mirror ------------------------------------
+//
+// Storage files (media, covers, audio) live in ONE shared, additive mirror:
+//   Author Command Center/Backups/files/<bucket>/<path…>
+// rather than a fresh full copy inside every dated run. Each backup lists
+// what's already in the mirror and only uploads files that are new or whose
+// size changed — so media uploads once, and an interrupted run just resumes
+// (the mirror is the source of truth, not a local index). The dated
+// backup_<stamp>/ folder keeps only the small data.json + manifest.json.
+//
+// Trade-off: the mirror holds the LATEST version of each file, not a separate
+// copy per snapshot. That's the right call for append-mostly assets like
+// covers and audio, and it's what keeps storage flat.
+
+const FILES_MIRROR_NAME = 'files';
+
+// Dropbox-API-Arg must be ASCII; escape any non-ASCII per their spec. Built
+// via RegExp(string) so no raw control characters appear in this source file.
+const NON_ASCII = new RegExp('[\\u007f-\\uffff]', 'g');
+function dropboxArg(obj: unknown): string {
+  return JSON.stringify(obj).replace(NON_ASCII, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`);
+}
+
+export interface MirrorEntry {
+  size: number;
+  driveId?: string; // present for Drive; lets us overwrite a changed file in place
+}
+
+interface DriveMirror {
+  service: 'drive';
+  filesFolderId: string;
+  folderCache: Map<string, string>; // '' → filesFolderId, then '<bucket>/…' → id
+}
+interface DropboxMirror {
+  service: 'dropbox';
+  basePath: string; // /Author Command Center/Backups/files
+}
+export type CloudMirror = DriveMirror | DropboxMirror;
+
+// Opens (creating as needed) the persistent files-mirror folder.
+export async function openCloudMirror(service: CloudService): Promise<CloudMirror> {
+  if (service === 'dropbox') {
+    await dropboxToken();
+    return { service: 'dropbox', basePath: `/${CLOUD_FOLDER_NAME}/${BACKUPS_FOLDER_NAME}/${FILES_MIRROR_NAME}` };
+  }
+  const token = await driveToken();
+  const appFolder = await ensureDriveFolder(token);
+  const backups = await ensureDriveSubfolder(token, appFolder, BACKUPS_FOLDER_NAME);
+  const filesFolder = await ensureDriveSubfolder(token, backups, FILES_MIRROR_NAME);
+  const folderCache = new Map<string, string>();
+  folderCache.set('', filesFolder);
+  return { service: 'drive', filesFolderId: filesFolder, folderCache };
+}
+
+// Lists every file already in the mirror, keyed by its path relative to the
+// mirror root (i.e. "<bucket>/<path…>") → { size, driveId? }. This is the
+// truth we diff against, which is what makes a re-run resume cleanly.
+export async function listCloudMirror(mirror: CloudMirror): Promise<Map<string, MirrorEntry>> {
+  const out = new Map<string, MirrorEntry>();
+
+  if (mirror.service === 'dropbox') {
+    const token = await dropboxToken();
+    const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+    let res = await fetch('https://api.dropboxapi.com/2/files/list_folder', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ path: mirror.basePath, recursive: true, limit: 2000 }),
+    });
+    // 409 = path not found → mirror doesn't exist yet, so nothing is stored.
+    if (res.status === 409) return out;
+    if (!res.ok) return out;
+    const basePrefix = `${mirror.basePath}/`;
+    const collect = (entries: any[]) => {
+      for (const e of entries) {
+        if (e['.tag'] !== 'file') continue;
+        const disp: string = e.path_display ?? '';
+        const rel = disp.length > basePrefix.length && disp.slice(0, basePrefix.length).toLowerCase() === basePrefix.toLowerCase()
+          ? disp.slice(basePrefix.length)
+          : disp;
+        out.set(rel, { size: e.size ?? 0 });
+      }
+    };
+    let data = (await res.json().catch(() => ({}))) as { entries?: any[]; has_more?: boolean; cursor?: string };
+    collect(data.entries ?? []);
+    while (data.has_more && data.cursor) {
+      res = await fetch('https://api.dropboxapi.com/2/files/list_folder/continue', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ cursor: data.cursor }),
+      });
+      if (!res.ok) break;
+      data = (await res.json().catch(() => ({}))) as { entries?: any[]; has_more?: boolean; cursor?: string };
+      collect(data.entries ?? []);
+    }
+    return out;
+  }
+
+  // Drive: walk the mirror folder tree, caching folder ids as we go.
+  const token = await driveToken();
+  const walk = async (folderId: string, prefix: string): Promise<void> => {
+    let pageToken: string | undefined;
+    do {
+      const params = new URLSearchParams({
+        q: `'${folderId}' in parents and trashed = false`,
+        fields: 'nextPageToken,files(id,name,mimeType,size)',
+        pageSize: '1000',
+      });
+      if (pageToken) params.set('pageToken', pageToken);
+      const r = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok) return;
+      const j = (await r.json().catch(() => ({}))) as { files?: Array<{ id: string; name: string; mimeType: string; size?: string }>; nextPageToken?: string };
+      for (const f of j.files ?? []) {
+        const rel = prefix ? `${prefix}/${f.name}` : f.name;
+        if (f.mimeType === 'application/vnd.google-apps.folder') {
+          mirror.folderCache.set(rel, f.id);
+          await walk(f.id, rel);
+        } else {
+          out.set(rel, { size: Number(f.size ?? 0), driveId: f.id });
+        }
+      }
+      pageToken = j.nextPageToken;
+    } while (pageToken);
+  };
+  await walk(mirror.filesFolderId, '');
+  return out;
+}
+
+// Uploads (or overwrites) one file into the mirror at "<...relSegments>/filename".
+// Pass the existing Drive id to overwrite a changed file in place; otherwise a
+// new file is created. Returns the entry to record for future diffs.
+export async function uploadToCloudMirror(
+  mirror: CloudMirror,
+  relSegments: string[],
+  filename: string,
+  blob: Blob,
+  existingDriveId?: string,
+): Promise<MirrorEntry> {
+  const dirs = relSegments.filter(Boolean);
+
+  if (mirror.service === 'dropbox') {
+    const token = await dropboxToken();
+    const path = [mirror.basePath, ...dirs, filename].join('/');
+    const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Dropbox-API-Arg': dropboxArg({ path, mode: 'overwrite', mute: true }),
+        'Content-Type': 'application/octet-stream',
+      },
+      body: blob,
+    });
+    if (!res.ok) {
+      if (res.status === 401) clearTokenCache('dropbox');
+      const body = await res.text().catch(() => '');
+      throw new Error(`Dropbox upload failed (${res.status})${body ? `: ${body.slice(0, 160)}` : ''}`);
+    }
+    return { size: blob.size };
+  }
+
+  const token = await driveToken();
+  if (existingDriveId) {
+    // Same path, changed bytes → update the existing file's content in place.
+    const res = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${existingDriveId}?uploadType=media&fields=id`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}` },
+      body: blob,
+    });
+    if (!res.ok) {
+      if (res.status === 401) clearTokenCache('drive');
+      const body = await res.text().catch(() => '');
+      throw new Error(`Drive update failed (${res.status})${body ? `: ${body.slice(0, 160)}` : ''}`);
+    }
+    return { size: blob.size, driveId: existingDriveId };
+  }
+  const folderId = await resolveDriveDir(token, mirror.folderCache, dirs);
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify({ name: filename, parents: [folderId] })], { type: 'application/json' }));
+  form.append('file', blob);
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    if (res.status === 401) clearTokenCache('drive');
+    const body = await res.text().catch(() => '');
+    throw new Error(`Drive upload failed (${res.status})${body ? `: ${body.slice(0, 160)}` : ''}`);
+  }
+  const created = (await res.json().catch(() => ({}))) as { id?: string };
+  return { size: blob.size, driveId: created.id };
 }

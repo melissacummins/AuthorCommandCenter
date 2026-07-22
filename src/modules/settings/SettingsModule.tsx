@@ -61,11 +61,14 @@ export default function SettingsModule() {
       });
       setLastCloudBackup(new Date());
       const skipNote = result.skipped.length
-        ? ` (${result.skipped.length} large file${result.skipped.length === 1 ? '' : 's'} skipped)`
+        ? ` (${result.skipped.length} file${result.skipped.length === 1 ? '' : 's'} skipped)`
         : '';
+      const fileNote = result.filesUploaded > 0
+        ? `${result.filesUploaded.toLocaleString()} new/changed file${result.filesUploaded === 1 ? '' : 's'} uploaded, ${result.filesUnchanged.toLocaleString()} already up to date`
+        : `all ${result.filesUnchanged.toLocaleString()} files already up to date`;
       setStatus({
         kind: 'ok',
-        msg: `Backed up ${result.totalRows.toLocaleString()} rows and ${result.totalFiles.toLocaleString()} files to ${SERVICE_LABELS[service]} → Author Command Center/Backups/backup_${result.stamp}${skipNote}.`,
+        msg: `Backed up ${result.totalRows.toLocaleString()} rows to ${SERVICE_LABELS[service]} (backup_${result.stamp}); ${fileNote}${skipNote}.`,
       });
     } catch (err: any) {
       setStatus({ kind: 'error', msg: err.message || 'Cloud backup failed.' });
@@ -227,9 +230,10 @@ export default function SettingsModule() {
           </div>
           <p className="text-xs text-content-secondary mb-4">
             Sends a full backup — every table plus your uploaded files (book covers,
-            audiobook audio, generated media) — to an{' '}
-            <strong>Author Command Center/Backups</strong> folder, dated so each run is its own
-            snapshot.{' '}
+            audiobook audio, generated media) — to your{' '}
+            <strong>Author Command Center/Backups</strong> folder. Your data is saved as a fresh
+            dated snapshot each time; files upload once and then only new or changed ones are sent,
+            so re-running is quick and picks up where it left off.{' '}
             {lastCloudBackup
               ? `Last cloud backup ${lastCloudBackup.toLocaleString()}.`
               : 'No cloud backup yet.'}

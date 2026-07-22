@@ -20,10 +20,20 @@ cloud, one folder per run:
 | **Auto-on-open** | Database rows only (light, silent) | First app open after 7+ days since the last cloud backup | Browser → Dropbox/Drive |
 | **Daily cron** | Database rows only | Every day, ~08:00 UTC, whether or not you open the app | Server → Dropbox/Drive |
 
-Each backup folder contains:
-- `data.json` — every user-scoped table (see `src/modules/settings/tables.ts`).
-- `manifest.json` — counts, timestamp, and any files that were skipped.
-- `files/<bucket>/…` — the raw Storage files (manual backups only).
+Layout in the cloud:
+- `Backups/backup_<date>/data.json` — every user-scoped table (see
+  `src/modules/settings/tables.ts`), a fresh full snapshot each run.
+- `Backups/backup_<date>/manifest.json` — counts, timestamp, and which files
+  were uploaded / unchanged / skipped this run.
+- `Backups/files/<bucket>/…` — a single **shared, incremental mirror** of your
+  Storage files (manual backups only). Each run lists what's already there and
+  only uploads files that are new or whose size changed, so media uploads once
+  and a re-run resumes cleanly instead of re-hauling everything.
+
+> Trade-off of the incremental mirror: it keeps the **latest** version of each
+> file, not a separate copy inside every dated snapshot. That's the right call
+> for append-mostly assets (covers, audio, generated media) and is what keeps
+> cloud storage from ballooning.
 
 **Why the cron is database-only:** a scheduled serverless function has a short
 execution limit. Table rows serialize in a fraction of a second, but pulling
