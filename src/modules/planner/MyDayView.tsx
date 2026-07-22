@@ -309,13 +309,15 @@ export default function MyDayView({
           >
             <Sparkles className="w-3.5 h-3.5" /> Duplicates
           </button>
-          {/* What the two AI assists do — hover to learn without clicking. */}
+          {/* What the AI assists do — hover to learn without clicking. */}
           <span className="relative group">
             <Info className="w-4 h-4 text-content-faint hover:text-brand-500 cursor-help" />
             <span className="pointer-events-none group-hover:pointer-events-auto opacity-0 group-hover:opacity-100 transition-opacity absolute right-0 top-7 z-30 w-72 rounded-control border border-edge bg-surface p-3 text-left text-xs leading-relaxed text-content-secondary shadow-lg">
               <span className="flex items-center gap-1 font-semibold text-content mb-1.5"><Sparkles className="w-3.5 h-3.5 text-brand-500" /> AI planning help</span>
               <span className="block"><span className="font-medium text-content">Suggest my day</span> — picks a realistic set of to-dos to tackle today, sized to your daily capacity and Working Phase.</span>
               <span className="block mt-1.5"><span className="font-medium text-content">Catch up</span> — when you're behind, spreads your overdue and unscheduled to-dos gently across the next few days.</span>
+              <span className="block mt-1.5"><span className="font-medium text-content">Durations</span> — estimates a time for any to-dos that don't have one yet, across all your lists.</span>
+              <span className="block mt-1.5"><span className="font-medium text-content">Duplicates</span> — scans all your lists for likely-duplicate to-dos so you can merge them.</span>
               <span className="block mt-1.5 text-content-muted">Uses your Claude key (Settings → API Keys). You review every suggestion before anything changes.</span>
             </span>
           </span>
