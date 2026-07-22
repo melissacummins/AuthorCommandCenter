@@ -121,3 +121,91 @@ export async function listCashFlowNotes(
   if (error) throw error;
   return (data ?? []) as CashFlowNote[];
 }
+
+// ---------------------------------------------------------------------------
+// WRITE: add a single transaction
+//
+// INSERT-only. Mirrors the FinStream module's addTransaction
+// (src/modules/finstream/api.ts) and the `transactions` table
+// (supabase/migrations/001_initial_schema.sql): columns are
+// date (TEXT, required), amount (NUMERIC), type ('income' | 'expense'),
+// category, description, original_description, source. Amount is stored
+// positive; `type` decides the income/expense bucket. Returns the created row.
+
+export interface AddTransactionArgs {
+  /** Transaction date, YYYY-MM-DD (stored as TEXT). */
+  date: string;
+  /** Amount; stored as an absolute value (positive). */
+  amount: number;
+  type: 'income' | 'expense';
+  category?: string;
+  description?: string;
+  /** Raw bank/import description; defaults to `description` when omitted. */
+  original_description?: string;
+  /** Free-text origin label (e.g. bank name, 'manual'). */
+  source?: string;
+}
+
+export async function addTransaction(
+  client: SupabaseClient,
+  userId: string,
+  args: AddTransactionArgs,
+): Promise<Transaction> {
+  if (!args.date) throw new Error('addTransaction: date is required (YYYY-MM-DD)');
+  if (args.type !== 'income' && args.type !== 'expense') {
+    throw new Error(`addTransaction: invalid type '${args.type}' (expected 'income' | 'expense')`);
+  }
+  const amount = Number(args.amount);
+  if (!Number.isFinite(amount)) throw new Error('addTransaction: amount must be a finite number');
+
+  const description = args.description ?? '';
+  const row = {
+    user_id: userId,
+    date: args.date,
+    description,
+    original_description: args.original_description ?? description,
+    amount: Math.abs(amount),
+    category: args.category ?? 'Uncategorized',
+    source: args.source ?? '',
+    type: args.type,
+  };
+
+  const { data, error } = await client
+    .from('transactions')
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Transaction;
+}
+
+// ---------------------------------------------------------------------------
+// WRITE: upsert a monthly cash-flow note
+//
+// UPSERT on the (user_id, month) unique key (see the cash_flow_notes table in
+// supabase/migrations/001_initial_schema.sql: UNIQUE(user_id, month)). Mirrors
+// FinStream's saveCashFlowNote but client-injected. Returns the stored row.
+
+export async function saveCashFlowNote(
+  client: SupabaseClient,
+  userId: string,
+  args: { month: string; note: string },
+): Promise<CashFlowNote> {
+  if (!args.month) throw new Error('saveCashFlowNote: month is required (YYYY-MM)');
+
+  const { data, error } = await client
+    .from('cash_flow_notes')
+    .upsert(
+      {
+        user_id: userId,
+        month: args.month,
+        note: args.note ?? '',
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,month' },
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return data as CashFlowNote;
+}

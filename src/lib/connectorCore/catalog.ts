@@ -8,6 +8,7 @@
 // src/modules/catalog/api.ts and src/lib/penNames.ts.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { OpportunityDecisionValue } from '../opportunities';
 
 // The subset of book columns shown in the Catalog list view. Kept narrow so
 // list payloads stay small; getBook returns the full row.
@@ -87,4 +88,42 @@ export async function listPenNames(client: SupabaseClient, userId: string): Prom
     .order('name', { ascending: true });
   if (error) throw error;
   return (data ?? []) as unknown as PenNameItem[];
+}
+
+// ---------------------------------------------------------------------------
+// WRITE: record an opportunity decision
+//
+// UPSERT on (user_id, book_id, opportunity_key) — see the
+// book_opportunity_decisions table (supabase/migrations/106…): the
+// decision CHECK constraint only allows 'dismissed' | 'planned', matching the
+// OpportunityDecisionValue union in src/lib/opportunities.ts. Mirrors
+// setOpportunityDecision in src/lib/dashboard.ts, but client-injected. We
+// validate the value up front so a bad enum fails before hitting the DB.
+
+const OPPORTUNITY_DECISION_VALUES: readonly OpportunityDecisionValue[] = ['dismissed', 'planned'];
+
+export async function setOpportunityDecision(
+  client: SupabaseClient,
+  userId: string,
+  args: { bookId: string; opportunityKey: string; decision: string },
+): Promise<void> {
+  if (!args.bookId) throw new Error('setOpportunityDecision: bookId is required');
+  if (!args.opportunityKey) throw new Error('setOpportunityDecision: opportunityKey is required');
+  if (!OPPORTUNITY_DECISION_VALUES.includes(args.decision as OpportunityDecisionValue)) {
+    throw new Error(
+      `setOpportunityDecision: invalid decision '${args.decision}' ` +
+        `(expected ${OPPORTUNITY_DECISION_VALUES.map((v) => `'${v}'`).join(' | ')})`,
+    );
+  }
+
+  const { error } = await client.from('book_opportunity_decisions').upsert(
+    {
+      user_id: userId,
+      book_id: args.bookId,
+      opportunity_key: args.opportunityKey,
+      decision: args.decision,
+    },
+    { onConflict: 'user_id,book_id,opportunity_key' },
+  );
+  if (error) throw error;
 }

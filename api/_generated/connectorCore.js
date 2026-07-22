@@ -62,6 +62,67 @@ ${stripHtml(c.content_html)}`;
     wordCount: countWords(text)
   };
 }
+function countWordsHtml(html) {
+  const text = (html ?? "").replace(/<[^>]+>/g, " ");
+  const matches = text.match(/\S+/g);
+  return matches ? matches.length : 0;
+}
+function escapeHtml(text) {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+function contentToHtml(content) {
+  const raw = content ?? "";
+  if (/<[a-z][^>]*>/i.test(raw)) return raw;
+  const paragraphs = raw.split(/\n\s*\n/).map((p) => p.trim()).filter((p) => p.length > 0);
+  if (paragraphs.length === 0) return "";
+  return paragraphs.map((p) => `<p>${escapeHtml(p).replace(/\n/g, "<br>")}</p>`).join("\n");
+}
+function todayISOLocal() {
+  const d = /* @__PURE__ */ new Date();
+  return new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+}
+async function createManuscript(client, userId, args) {
+  const { data, error } = await client.from("manuscripts").insert({
+    user_id: userId,
+    title: args.title,
+    status: "draft",
+    word_count: 0,
+    book_id: args.bookId ?? null
+  }).select("id, title, status, word_count, book_id, source_filename, updated_at").single();
+  if (error) throw error;
+  return data;
+}
+async function appendManuscriptChapter(client, userId, args) {
+  const { data: manuscript, error: mErr } = await client.from("manuscripts").select("id").eq("id", args.manuscriptId).eq("user_id", userId).maybeSingle();
+  if (mErr) throw mErr;
+  if (!manuscript) throw new Error(`Manuscript not found: ${args.manuscriptId}`);
+  const { data: idxRows, error: idxErr } = await client.from("manuscript_chapters").select("idx").eq("user_id", userId).eq("manuscript_id", args.manuscriptId).order("idx", { ascending: false }).limit(1);
+  if (idxErr) throw idxErr;
+  const nextIdx = idxRows && idxRows.length ? idxRows[0].idx + 1 : 0;
+  const contentHtml = contentToHtml(args.content);
+  const wordCount = countWordsHtml(contentHtml);
+  const { data: inserted, error: insErr } = await client.from("manuscript_chapters").insert({
+    manuscript_id: args.manuscriptId,
+    user_id: userId,
+    idx: nextIdx,
+    title: args.title,
+    content_html: contentHtml,
+    word_count: wordCount
+  }).select("id, manuscript_id, idx, title, content_html, word_count, created_at, updated_at").single();
+  if (insErr) throw insErr;
+  const chapter = inserted;
+  const { data: allChapters, error: sumErr } = await client.from("manuscript_chapters").select("word_count").eq("user_id", userId).eq("manuscript_id", args.manuscriptId);
+  if (sumErr) throw sumErr;
+  const total = (allChapters ?? []).reduce((sum, c) => sum + (c.word_count ?? 0), 0);
+  const { error: updErr } = await client.from("manuscripts").update({ word_count: total }).eq("id", args.manuscriptId).eq("user_id", userId);
+  if (updErr) throw updErr;
+  const { error: logErr } = await client.from("manuscript_word_logs").upsert(
+    { manuscript_id: args.manuscriptId, user_id: userId, day: todayISOLocal(), word_count: total },
+    { onConflict: "manuscript_id,day" }
+  );
+  if (logErr) throw logErr;
+  return chapter;
+}
 
 // src/lib/connectorCore/catalog.ts
 var BOOK_LIST_COLUMNS = "id, title, subtitle, series, series_position, status, language, parent_book_id, publish_date, pre_order_date, ebook_price, paperback_price, hardcover_price, audiobook_price, created_at, updated_at";
@@ -79,6 +140,26 @@ async function listPenNames(client, userId) {
   const { data, error } = await client.from("pen_names").select("id, name, color, notes, created_at, updated_at").eq("user_id", userId).order("name", { ascending: true });
   if (error) throw error;
   return data ?? [];
+}
+var OPPORTUNITY_DECISION_VALUES = ["dismissed", "planned"];
+async function setOpportunityDecision(client, userId, args) {
+  if (!args.bookId) throw new Error("setOpportunityDecision: bookId is required");
+  if (!args.opportunityKey) throw new Error("setOpportunityDecision: opportunityKey is required");
+  if (!OPPORTUNITY_DECISION_VALUES.includes(args.decision)) {
+    throw new Error(
+      `setOpportunityDecision: invalid decision '${args.decision}' (expected ${OPPORTUNITY_DECISION_VALUES.map((v) => `'${v}'`).join(" | ")})`
+    );
+  }
+  const { error } = await client.from("book_opportunity_decisions").upsert(
+    {
+      user_id: userId,
+      book_id: args.bookId,
+      opportunity_key: args.opportunityKey,
+      decision: args.decision
+    },
+    { onConflict: "user_id,book_id,opportunity_key" }
+  );
+  if (error) throw error;
 }
 
 // src/lib/connectorCore/arcs.ts
@@ -294,6 +375,42 @@ async function listCashFlowNotes(client, userId) {
   if (error) throw error;
   return data ?? [];
 }
+async function addTransaction(client, userId, args) {
+  if (!args.date) throw new Error("addTransaction: date is required (YYYY-MM-DD)");
+  if (args.type !== "income" && args.type !== "expense") {
+    throw new Error(`addTransaction: invalid type '${args.type}' (expected 'income' | 'expense')`);
+  }
+  const amount = Number(args.amount);
+  if (!Number.isFinite(amount)) throw new Error("addTransaction: amount must be a finite number");
+  const description = args.description ?? "";
+  const row = {
+    user_id: userId,
+    date: args.date,
+    description,
+    original_description: args.original_description ?? description,
+    amount: Math.abs(amount),
+    category: args.category ?? "Uncategorized",
+    source: args.source ?? "",
+    type: args.type
+  };
+  const { data, error } = await client.from("transactions").insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+async function saveCashFlowNote(client, userId, args) {
+  if (!args.month) throw new Error("saveCashFlowNote: month is required (YYYY-MM)");
+  const { data, error } = await client.from("cash_flow_notes").upsert(
+    {
+      user_id: userId,
+      month: args.month,
+      note: args.note ?? "",
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    },
+    { onConflict: "user_id,month" }
+  ).select().single();
+  if (error) throw error;
+  return data;
+}
 
 // src/lib/connectorCore/inventory.ts
 var PRODUCT_COLUMNS = "id, name, sku, category, base_price, production_cost, shipping_cost, book_inventory, bundles_inventory, six_month_book_sales, six_month_bundle_sales, lead_time, csv_avg_daily, csv_reorder_threshold, do_not_reorder";
@@ -399,7 +516,60 @@ async function getTaskCounts(client, userId, now = /* @__PURE__ */ new Date()) {
   }
   return { open, done, overdue, someday };
 }
+async function createTask(client, userId, args) {
+  const row = {
+    user_id: userId,
+    kind: "task",
+    title: args.title,
+    done: false,
+    note_id: args.listId ?? null,
+    due_date: args.dueDate ?? null,
+    someday: args.someday ?? false
+  };
+  if (args.priority != null) row.flagged = args.priority;
+  if (args.feelGood != null) row.feel_good = args.feelGood;
+  if (args.estimateMinutes != null) row.estimate_minutes = args.estimateMinutes;
+  const { data, error } = await client.from("planner_tasks").insert(row).select(TASK_COLUMNS).single();
+  if (error) throw error;
+  return toTaskSummary(data);
+}
+async function completeTask(client, userId, args) {
+  const { data, error } = await client.from("planner_tasks").update({
+    done: true,
+    done_at: (/* @__PURE__ */ new Date()).toISOString(),
+    updated_at: (/* @__PURE__ */ new Date()).toISOString()
+  }).eq("user_id", userId).eq("id", args.taskId).select(TASK_COLUMNS).single();
+  if (error) throw error;
+  return toTaskSummary(data);
+}
+var ADD_TASKS_MAX = 200;
+async function addTasks(client, userId, tasks) {
+  if (tasks.length === 0) return [];
+  if (tasks.length > ADD_TASKS_MAX) {
+    throw new Error(
+      `addTasks: too many tasks (${tasks.length}); cap is ${ADD_TASKS_MAX} per call. Split the import into smaller batches.`
+    );
+  }
+  const rows = tasks.map((t) => ({
+    user_id: userId,
+    kind: "task",
+    title: t.title,
+    done: false,
+    note_id: t.listId ?? null,
+    due_date: t.dueDate ?? null
+  }));
+  const { data, error } = await client.from("planner_tasks").insert(rows).select(TASK_COLUMNS);
+  if (error) throw error;
+  return (data ?? []).map(toTaskSummary);
+}
 export {
+  ADD_TASKS_MAX,
+  addTasks,
+  addTransaction,
+  appendManuscriptChapter,
+  completeTask,
+  createManuscript,
+  createTask,
   getArcStats,
   getBook,
   getChapter,
@@ -421,5 +591,7 @@ export {
   listSubscriptions,
   listTaskLists,
   listTasks,
-  listTransactions
+  listTransactions,
+  saveCashFlowNote,
+  setOpportunityDecision
 };

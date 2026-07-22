@@ -207,3 +207,115 @@ export async function getTaskCounts(
   }
   return { open, done, overdue, someday };
 }
+
+// ---------------------------------------------------------------------------
+// Writes
+//
+// These mirror the Planner module's create/update paths (src/modules/planner/
+// api.ts) but are client-injected: no browser singleton, no crypto/React.
+// Every write filters by user_id, sets only columns that exist in the schema,
+// throws on error, and returns the affected row(s) as plain TaskSummary objects.
+// Nothing here deletes — completing a task flips `done`, it never removes rows.
+
+/** Create one to-do. Inserts a single planner_tasks row (kind='task',
+    done=false). `listId` maps to note_id (the task's list), `priority` to the
+    `flagged` star, `estimateMinutes` to estimate_minutes, `feelGood` to
+    feel_good. Omitted flags fall back to the column defaults. Returns the
+    created row. */
+export async function createTask(
+  client: SupabaseClient,
+  userId: string,
+  args: {
+    title: string;
+    dueDate?: string;
+    listId?: string;
+    priority?: boolean;
+    someday?: boolean;
+    estimateMinutes?: number;
+    feelGood?: boolean;
+  },
+): Promise<TaskSummary> {
+  const row: Record<string, unknown> = {
+    user_id: userId,
+    kind: 'task',
+    title: args.title,
+    done: false,
+    note_id: args.listId ?? null,
+    due_date: args.dueDate ?? null,
+    someday: args.someday ?? false,
+  };
+  // Only set the optional booleans/number when provided, so their column
+  // defaults (flagged/feel_good = false, estimate_minutes = NULL) apply otherwise.
+  if (args.priority != null) row.flagged = args.priority;
+  if (args.feelGood != null) row.feel_good = args.feelGood;
+  if (args.estimateMinutes != null) row.estimate_minutes = args.estimateMinutes;
+
+  const { data, error } = await client
+    .from('planner_tasks')
+    .insert(row)
+    .select(TASK_COLUMNS)
+    .single();
+  if (error) throw error;
+  return toTaskSummary(data as unknown as TaskRow);
+}
+
+/** Mark a to-do complete: set done=true and done_at=now() for the given task,
+    scoped to the user. Non-destructive (no delete). Returns the updated row. */
+export async function completeTask(
+  client: SupabaseClient,
+  userId: string,
+  args: { taskId: string },
+): Promise<TaskSummary> {
+  const { data, error } = await client
+    .from('planner_tasks')
+    .update({
+      done: true,
+      done_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('user_id', userId)
+    .eq('id', args.taskId)
+    .select(TASK_COLUMNS)
+    .single();
+  if (error) throw error;
+  return toTaskSummary(data as unknown as TaskRow);
+}
+
+/** The most tasks addTasks will insert in a single call. Guards against a
+    runaway import (e.g. a giant paste from an old planning app) rather than
+    silently truncating the batch. */
+export const ADD_TASKS_MAX = 200;
+
+/** Bulk-create to-dos in one insert — powers importing a backlog from another
+    planning app. Each task inserts as kind='task', done=false; `listId` maps to
+    note_id, `dueDate` to due_date. Caps the batch at ADD_TASKS_MAX (200) and
+    throws if more are passed rather than dropping any. Returns the created rows. */
+export async function addTasks(
+  client: SupabaseClient,
+  userId: string,
+  tasks: Array<{ title: string; dueDate?: string; listId?: string }>,
+): Promise<TaskSummary[]> {
+  if (tasks.length === 0) return [];
+  if (tasks.length > ADD_TASKS_MAX) {
+    throw new Error(
+      `addTasks: too many tasks (${tasks.length}); cap is ${ADD_TASKS_MAX} per call. ` +
+        'Split the import into smaller batches.',
+    );
+  }
+
+  const rows = tasks.map((t) => ({
+    user_id: userId,
+    kind: 'task',
+    title: t.title,
+    done: false,
+    note_id: t.listId ?? null,
+    due_date: t.dueDate ?? null,
+  }));
+
+  const { data, error } = await client
+    .from('planner_tasks')
+    .insert(rows)
+    .select(TASK_COLUMNS);
+  if (error) throw error;
+  return ((data ?? []) as unknown as TaskRow[]).map(toTaskSummary);
+}
