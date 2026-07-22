@@ -11,7 +11,7 @@ import RecentActivityWidget from '../components/dashboard/RecentActivityWidget';
 import {
   Package, BarChart3, BookOpen, DollarSign,
   Clapperboard, Wallet, Search, ArrowRight, Library, Link2, Users, ImagePlus, Share2,
-  ChevronDown, ChevronRight, AudioLines, Gift, PenTool,
+  ChevronDown, ChevronRight, AudioLines, Gift, PenTool, Banknote,
 } from 'lucide-react';
 
 interface ModuleCard {
@@ -51,6 +51,12 @@ const moduleByPath: Record<string, ModuleCard> = {
     description: 'Import bank transactions, auto-categorize expenses, and track subscriptions.',
     path: '/finstream',
     icon: Wallet,
+  },
+  '/cashflow': {
+    name: 'Cash Flow',
+    description: 'A weekly board of planned income and bills, with a worst-case ending balance so you always know your safety number.',
+    path: '/cashflow',
+    icon: Banknote,
   },
   '/inventory': {
     name: 'Inventory & Orders',
@@ -116,7 +122,7 @@ const moduleByPath: Record<string, ModuleCard> = {
 
 const sections: { label: string; paths: string[] }[] = [
   { label: 'Catalog',    paths: ['/catalog', '/writing'] },
-  { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream'] },
+  { label: 'Finances',   paths: ['/book-tracker', '/profit-track', '/finstream', '/cashflow'] },
   { label: 'Operations', paths: ['/inventory', '/cross-sell', '/upsells'] },
   { label: 'Marketing',  paths: ['/content-creator', '/media', '/social-media', '/audiobook', '/kdp-optimizer', '/links', '/arcs'] },
 ];

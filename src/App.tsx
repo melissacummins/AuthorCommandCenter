@@ -23,6 +23,7 @@ const WritingModule = lazy(() => import('./modules/writing/WritingModule'));
 const ProfitTrackModule = lazy(() => import('./modules/profit-track/ProfitTrackModule'));
 const ContentCreatorModule = lazy(() => import('./modules/content-creator/ContentCreatorModule'));
 const FinStreamModule = lazy(() => import('./modules/finstream/FinStreamModule'));
+const CashFlowModule = lazy(() => import('./modules/cashflow/CashFlowModule'));
 const KDPOptimizerModule = lazy(() => import('./modules/kdp-optimizer/KDPOptimizerModule'));
 const LinkShortenerModule = lazy(() => import('./modules/link-shortener/LinkShortenerModule'));
 const ARCsModule = lazy(() => import('./modules/arcs/ARCsModule'));
@@ -40,6 +41,7 @@ const GATED_ELEMENTS: Record<string, ReactElement> = {
   'book-tracker': <BookTrackerModule />,
   'profit-track': <ProfitTrackModule />,
   'finstream': <FinStreamModule />,
+  'cashflow': <CashFlowModule />,
   'inventory': <InventoryModule />,
   'cross-sell': <CrossSellModule />,
   'upsells': <UpsellsModule />,
