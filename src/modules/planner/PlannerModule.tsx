@@ -17,7 +17,7 @@ import {
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
   CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
-  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid, Lock, CheckSquare, Pause, Square, Timer,
+  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid, Lock, CheckSquare, Pause, Square, Timer, LayoutTemplate,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -39,6 +39,7 @@ import {
   listTimeSessions, createTimeSessions, deleteTimeSession, reorderNotes,
   createTaskEvent,
   listTaskDependencies, addTaskDependency, removeTaskDependency,
+  listTemplates, createTemplate, deleteTemplate,
   getWeeklyReset, upsertWeeklyReset,
 } from './api';
 import { listPenNames, type PenName } from '../../lib/penNames';
@@ -48,6 +49,7 @@ import {
   elapsedMinutes, localDay, weekStartISO, addDaysISO, parseCapture, DEFAULT_DAILY_CAPACITY,
   type PlannerNote, type PlannerTask, type Bucket,
   type PlannerSettings, type PlannerTimeBlock, type PlannerTimeSession, type PlannerTaskDependency,
+  type PlannerTemplate, type TemplateItem,
   dedupeResetDraft, resetSectionFor, QUICK_TASK_MINUTES,
   type WeeklyReset, type ResetTranscription, type ResetSection, type ResetDraftItem,
 } from './types';
@@ -90,6 +92,9 @@ export default function PlannerModule() {
   const [deps, setDeps] = useState<PlannerTaskDependency[]>([]);
   // The to-do whose dependencies are being edited (opens the modal), or null.
   const [depEditId, setDepEditId] = useState<string | null>(null);
+  // Reusable list/task templates + whether the Templates manager is open.
+  const [templates, setTemplates] = useState<PlannerTemplate[]>([]);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [settings, setSettings] = useState<PlannerSettings | null>(null);
   const [penNames, setPenNames] = useState<PenName[]>([]);
   // Whole-planner pen-name focus: null = All (show everything, today's behavior).
@@ -143,13 +148,15 @@ export default function PlannerModule() {
       listTimeSessions(user.id).catch(() => [] as PlannerTimeSession[]),
       listPenNames(user.id).catch(() => [] as PenName[]),
       listTaskDependencies(user.id).catch(() => [] as PlannerTaskDependency[]),
+      listTemplates(user.id).catch(() => [] as PlannerTemplate[]),
     ])
-      .then(([n, t, b, s, ts, pn, deps]) => {
+      .then(([n, t, b, s, ts, pn, deps, tpls]) => {
         if (!active) return;
         setNotes(n); setTasks(t); setBlocks(b); setSessions(ts);
         setSettings(s);
         setPenNames(pn);
         setDeps(deps);
+        setTemplates(tpls);
       })
       .catch(e => { if (active) setError(e?.message ?? 'Could not load your planner.'); })
       .finally(() => { if (active) setLoading(false); });
@@ -386,6 +393,112 @@ export default function PlannerModule() {
       setTasks(prev => [...prev, ...copied]);
       setSelection({ kind: 'note', id: copy.id });
     } catch (e) { setError((e as Error)?.message ?? 'Could not duplicate the list.'); }
+  }
+
+  // ---- Templates (reusable lists + single to-dos) ----
+
+  // Snapshot a list — its title, headings, and open to-dos (with their
+  // estimates/tags/checklists) — as a reusable "list" template. Completed
+  // to-dos are left out so the template is a clean starting point.
+  async function saveListAsTemplate(note: PlannerNote) {
+    if (!user) return;
+    const name = prompt('Name this list template', note.title.trim() || 'Untitled list');
+    if (name == null) return;
+    const items: TemplateItem[] = tasks
+      .filter(t => t.note_id === note.id && (t.kind === 'heading' || !t.done))
+      .sort((a, b) => (a.sort_order - b.sort_order) || a.created_at.localeCompare(b.created_at))
+      .map(t => ({
+        title: t.title,
+        kind: t.kind,
+        estimate_minutes: t.estimate_minutes ?? null,
+        flagged: !!t.flagged,
+        feel_good: !!t.feel_good,
+        checklist: (t.checklist ?? []).map(c => ({ ...c, done: false })),
+      }));
+    try {
+      const tpl = await createTemplate(user.id, {
+        name: name.trim() || 'Untitled template',
+        kind: 'list',
+        payload: { title: note.title.trim(), items },
+      });
+      setTemplates(prev => [tpl, ...prev]);
+      setTemplatesOpen(true);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not save that template.'); }
+  }
+
+  // Spin up a fresh list from a "list" template: create the note, then its
+  // headings/to-dos in order (re-issuing checklist ids), and open it.
+  async function createListFromTemplate(tpl: PlannerTemplate) {
+    if (!user) return;
+    try {
+      const note = await createNote(user.id, tpl.payload.title?.trim() || tpl.name);
+      const created: PlannerTask[] = [];
+      let sort = 0;
+      for (const it of tpl.payload.items ?? []) {
+        const task = await createTask(user.id, {
+          title: it.title,
+          note_id: note.id,
+          kind: it.kind ?? 'task',
+          sort_order: sort++,
+          estimate_minutes: it.estimate_minutes ?? null,
+          flagged: !!it.flagged,
+          feel_good: !!it.feel_good,
+        });
+        // Checklists aren't a create-time column; patch them on after insert.
+        const checklist = (it.checklist ?? []).filter(c => c.title.trim());
+        if (checklist.length) {
+          const withIds = checklist.map(c => ({ id: crypto.randomUUID(), title: c.title, done: false }));
+          updateTask(task.id, { checklist: withIds }).catch(() => { /* best effort */ });
+          created.push({ ...task, checklist: withIds });
+        } else {
+          created.push(task);
+        }
+      }
+      setNotes(prev => [note, ...prev]);
+      setTasks(prev => [...prev, ...created]);
+      setTemplatesOpen(false);
+      setSelection({ kind: 'note', id: note.id });
+    } catch (e) { setError((e as Error)?.message ?? 'Could not create a list from that template.'); }
+  }
+
+  // Save a single reusable to-do (title + estimate/tags) as a "task" template.
+  async function createTaskTemplate(input: { name: string; title: string; estimate_minutes: number | null; flagged: boolean; feel_good: boolean }) {
+    if (!user || !input.title.trim()) return;
+    try {
+      const tpl = await createTemplate(user.id, {
+        name: input.name.trim() || input.title.trim(),
+        kind: 'task',
+        payload: { task: {
+          title: input.title.trim(), kind: 'task',
+          estimate_minutes: input.estimate_minutes, flagged: input.flagged, feel_good: input.feel_good,
+        } },
+      });
+      setTemplates(prev => [tpl, ...prev]);
+    } catch (e) { setError((e as Error)?.message ?? 'Could not save that template.'); }
+  }
+
+  // Drop a "task" template into the Inbox as a fresh open to-do, then jump there.
+  async function addTaskFromTemplate(tpl: PlannerTemplate) {
+    if (!user) return;
+    const t = tpl.payload.task;
+    if (!t) return;
+    try {
+      const task = await createTask(user.id, {
+        title: t.title, kind: 'task',
+        estimate_minutes: t.estimate_minutes ?? null,
+        flagged: !!t.flagged, feel_good: !!t.feel_good,
+      });
+      setTasks(prev => [...prev, task]);
+      logEvent(task.id, 'created');
+      setTemplatesOpen(false);
+      choose({ kind: 'inbox' });
+    } catch (e) { setError((e as Error)?.message ?? 'Could not add that to-do.'); }
+  }
+
+  async function removeTemplate(id: string) {
+    setTemplates(prev => prev.filter(t => t.id !== id));
+    try { await deleteTemplate(id); }
+    catch (e) { setError((e as Error)?.message ?? 'Could not delete that template.'); }
   }
 
   // Combine two lists: move all of the source list's to-dos into the target
@@ -1180,6 +1293,9 @@ export default function PlannerModule() {
         <div className="px-4 pt-3 pb-1 flex items-center justify-between">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">Lists</span>
           <div className="flex items-center gap-1">
+            <button onClick={() => setTemplatesOpen(true)} className="text-content-muted hover:text-brand-600" title="Templates — reusable lists & to-dos">
+              <LayoutTemplate className="w-4 h-4" />
+            </button>
             {railNotes.length > 1 && (
               <button onClick={sortNotesAZ} className="text-content-muted hover:text-brand-600" title="Sort lists A–Z">
                 <ArrowDownAZ className="w-4 h-4" />
@@ -1360,6 +1476,7 @@ export default function PlannerModule() {
             onSaveNote={saveNote}
             onDeleteNote={removeNote}
             onDuplicateNote={duplicateNote}
+            onSaveAsTemplate={saveListAsTemplate}
             onMergeInto={mergeList}
             onSortTasks={sortListTasks}
             onAdd={addTask}
@@ -1471,6 +1588,177 @@ export default function PlannerModule() {
           />
         );
       })()}
+
+      {templatesOpen && (
+        <TemplatesModal
+          templates={templates}
+          onUseList={createListFromTemplate}
+          onUseTask={addTaskFromTemplate}
+          onCreateTaskTemplate={createTaskTemplate}
+          onDelete={removeTemplate}
+          onClose={() => setTemplatesOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Templates — reusable lists and single to-dos. A "list" template spins up a
+// fresh list (headings + to-dos); a "task" template drops one to-do into the
+// Inbox. Save a list as a template from its header; save a to-do template from
+// the little form here.
+// ---------------------------------------------------------------------------
+
+function TemplatesModal({
+  templates, onUseList, onUseTask, onCreateTaskTemplate, onDelete, onClose,
+}: {
+  templates: PlannerTemplate[];
+  onUseList: (tpl: PlannerTemplate) => void;
+  onUseTask: (tpl: PlannerTemplate) => void;
+  onCreateTaskTemplate: (input: { name: string; title: string; estimate_minutes: number | null; flagged: boolean; feel_good: boolean }) => void;
+  onDelete: (id: string) => void;
+  onClose: () => void;
+}) {
+  const lists = templates.filter(t => t.kind === 'list');
+  const taskTemplates = templates.filter(t => t.kind === 'task');
+  const [adding, setAdding] = useState(false);
+  const [title, setTitle] = useState('');
+  const [name, setName] = useState('');
+  const [minutes, setMinutes] = useState('');
+  const [flagged, setFlagged] = useState(false);
+  const [feelGood, setFeelGood] = useState(false);
+
+  function submit() {
+    if (!title.trim()) return;
+    onCreateTaskTemplate({
+      name: name.trim() || title.trim(),
+      title: title.trim(),
+      estimate_minutes: minutes.trim() ? Math.max(0, parseInt(minutes, 10) || 0) || null : null,
+      flagged, feel_good: feelGood,
+    });
+    setAdding(false); setTitle(''); setName(''); setMinutes(''); setFlagged(false); setFeelGood(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 pt-[8vh] overflow-y-auto" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-card bg-surface shadow-2xl border border-edge" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-edge">
+          <LayoutTemplate className="w-5 h-5 text-brand-600" />
+          <h2 className="flex-1 text-base font-bold text-content">Templates</h2>
+          <button onClick={onClose} className="p-1.5 rounded-control text-content-muted hover:bg-surface-sunken" title="Close">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-5 space-y-6 max-h-[70vh] overflow-y-auto nice-scrollbar">
+          {/* List templates */}
+          <section>
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-content-muted mb-2">List templates</h3>
+            {lists.length === 0 ? (
+              <p className="text-sm text-content-muted">
+                None yet. Open a list and hit the <LayoutTemplate className="inline w-3.5 h-3.5 -mt-0.5" /> button in its header to save it as a reusable template.
+              </p>
+            ) : (
+              <ul className="space-y-1.5">
+                {lists.map(t => {
+                  const count = (t.payload.items ?? []).filter(i => i.kind === 'task').length;
+                  return (
+                    <li key={t.id} className="flex items-center gap-2 rounded-control border border-edge px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-content truncate">{t.name}</p>
+                        <p className="text-xs text-content-muted">{count} to-do{count === 1 ? '' : 's'}</p>
+                      </div>
+                      <button onClick={() => onUseList(t)} className="shrink-0 inline-flex items-center gap-1 rounded-control bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-2.5 py-1.5">
+                        <Plus className="w-3.5 h-3.5" /> Create list
+                      </button>
+                      <button onClick={() => { if (confirm(`Delete the “${t.name}” template?`)) onDelete(t.id); }} className="shrink-0 p-1.5 rounded-control text-content-muted hover:bg-rose-50 hover:text-rose-500" title="Delete template">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+
+          {/* Task templates */}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-content-muted">To-do templates</h3>
+              {!adding && (
+                <button onClick={() => setAdding(true)} className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700">
+                  <Plus className="w-3.5 h-3.5" /> New
+                </button>
+              )}
+            </div>
+
+            {adding && (
+              <div className="mb-3 rounded-control border border-edge bg-surface-sunken p-3 space-y-2.5">
+                <input
+                  value={title} onChange={e => setTitle(e.target.value)} autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') setAdding(false); }}
+                  placeholder="To-do (e.g. Draft newsletter)"
+                  className="w-full rounded-control border border-edge bg-surface px-2.5 py-1.5 text-sm text-content outline-none focus:border-brand-400"
+                />
+                <div className="flex items-center gap-2">
+                  <input
+                    value={name} onChange={e => setName(e.target.value)}
+                    placeholder="Template name (optional)"
+                    className="flex-1 rounded-control border border-edge bg-surface px-2.5 py-1.5 text-sm text-content outline-none focus:border-brand-400"
+                  />
+                  <input
+                    value={minutes} onChange={e => setMinutes(e.target.value.replace(/[^0-9]/g, ''))}
+                    inputMode="numeric" placeholder="min"
+                    className="w-20 rounded-control border border-edge bg-surface px-2.5 py-1.5 text-sm text-content outline-none focus:border-brand-400"
+                  />
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="inline-flex items-center gap-1.5 text-xs text-content-secondary cursor-pointer">
+                    <input type="checkbox" checked={flagged} onChange={e => setFlagged(e.target.checked)} className="accent-rose-500" />
+                    <Zap className="w-3.5 h-3.5 text-rose-500" /> Important
+                  </label>
+                  <label className="inline-flex items-center gap-1.5 text-xs text-content-secondary cursor-pointer">
+                    <input type="checkbox" checked={feelGood} onChange={e => setFeelGood(e.target.checked)} className="accent-emerald-500" />
+                    <Heart className="w-3.5 h-3.5 text-emerald-500" /> Feel-good
+                  </label>
+                  <div className="flex-1" />
+                  <button onClick={() => setAdding(false)} className="text-xs text-content-muted hover:text-content-secondary px-2 py-1">Cancel</button>
+                  <button onClick={submit} disabled={!title.trim()} className="rounded-control bg-brand-600 hover:bg-brand-700 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5">Save</button>
+                </div>
+              </div>
+            )}
+
+            {taskTemplates.length === 0 ? (
+              !adding && <p className="text-sm text-content-muted">None yet. Save a to-do you set up often to reuse it in one tap.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {taskTemplates.map(t => {
+                  const task = t.payload.task;
+                  return (
+                    <li key={t.id} className="flex items-center gap-2 rounded-control border border-edge px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-content truncate flex items-center gap-1.5">
+                          {task?.flagged && <Zap className="w-3.5 h-3.5 text-rose-500 shrink-0" />}
+                          {task?.feel_good && <Heart className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                          <span className="truncate">{t.name}</span>
+                        </p>
+                        {task?.estimate_minutes ? <p className="text-xs text-content-muted">{formatMinutes(task.estimate_minutes)}</p> : null}
+                      </div>
+                      <button onClick={() => onUseTask(t)} className="shrink-0 inline-flex items-center gap-1 rounded-control bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium px-2.5 py-1.5">
+                        <Plus className="w-3.5 h-3.5" /> Add to Inbox
+                      </button>
+                      <button onClick={() => { if (confirm(`Delete the “${t.name}” template?`)) onDelete(t.id); }} className="shrink-0 p-1.5 rounded-control text-content-muted hover:bg-rose-50 hover:text-rose-500" title="Delete template">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2514,7 +2802,7 @@ function ListMenuItem({ label, onClick }: { label: string; onClick: () => void }
 }
 
 function NotePane({
-  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onMergeInto, onSortTasks, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false, blockedIds, onEditDependencies, onEstimateDurations, onFindDuplicates,
+  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onSaveAsTemplate, onMergeInto, onSortTasks, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false, blockedIds, onEditDependencies, onEstimateDurations, onFindDuplicates,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
@@ -2524,6 +2812,7 @@ function NotePane({
   onSaveNote: (id: string, patch: Partial<PlannerNote>) => void;
   onDeleteNote: (id: string) => void;
   onDuplicateNote: (note: PlannerNote) => void;
+  onSaveAsTemplate: (note: PlannerNote) => void;
   onMergeInto: (sourceId: string, targetId: string) => void;
   onSortTasks: (noteId: string, mode: 'alpha' | 'due' | 'tag') => void;
   onAdd: (i: { title: string; note_id: string; kind?: 'task' | 'heading'; sort_order?: number; due_date?: string }) => void;
@@ -2723,6 +3012,9 @@ function NotePane({
           </ListMenuButton>
           <button onClick={() => onDuplicateNote(note)} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken hover:text-brand-600" title="Duplicate this list (copy its to-dos, reset completion)">
             <CopyPlus className="w-4 h-4" />
+          </button>
+          <button onClick={() => onSaveAsTemplate(note)} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken hover:text-brand-600" title="Save this list as a reusable template">
+            <LayoutTemplate className="w-4 h-4" />
           </button>
           <button onClick={() => onSaveNote(note.id, { archived: true })} className="p-2 rounded-control text-content-muted hover:bg-surface-sunken" title="Archive">
             <Archive className="w-4 h-4" />

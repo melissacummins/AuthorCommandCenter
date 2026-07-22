@@ -1,6 +1,6 @@
 import { supabase } from '../../lib/supabase';
 import type {
-  ChecklistItem, PlannerNote, PlannerSettings, PlannerTask, PlannerTaskDependency, PlannerTaskEvent, PlannerTimeBlock, PlannerTimeSession, TaskKind, WeeklyReset,
+  ChecklistItem, PlannerNote, PlannerSettings, PlannerTask, PlannerTaskDependency, PlannerTaskEvent, PlannerTemplate, PlannerTimeBlock, PlannerTimeSession, TaskKind, TemplatePayload, WeeklyReset,
 } from './types';
 import { DEFAULT_DAILY_CAPACITY } from './types';
 
@@ -252,6 +252,36 @@ export async function reorderNotes(updates: { id: string; sort_order: number }[]
 
 export function newChecklistItem(title: string): ChecklistItem {
   return { id: crypto.randomUUID(), title, done: false };
+}
+
+// ---- Templates ------------------------------------------------------------
+
+export async function listTemplates(userId: string): Promise<PlannerTemplate[]> {
+  const { data, error } = await supabase
+    .from('planner_templates')
+    .select('id, name, kind, payload, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as PlannerTemplate[];
+}
+
+export async function createTemplate(
+  userId: string,
+  input: { name: string; kind: 'list' | 'task'; payload: TemplatePayload },
+): Promise<PlannerTemplate> {
+  const { data, error } = await supabase
+    .from('planner_templates')
+    .insert({ user_id: userId, name: input.name, kind: input.kind, payload: input.payload })
+    .select('id, name, kind, payload, created_at')
+    .single();
+  if (error) throw error;
+  return data as PlannerTemplate;
+}
+
+export async function deleteTemplate(id: string): Promise<void> {
+  const { error } = await supabase.from('planner_templates').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ---- Task dependencies ----------------------------------------------------

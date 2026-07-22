@@ -148,6 +148,29 @@ export interface PlannerTimeBlock {
 
 // One start→stop run of a to-do's timer. Lets Stats place tracked time on the
 // day it was worked, regardless of whether the to-do is ever completed.
+// A reusable template: a whole list (title + items) or a single to-do.
+export interface TemplateItem {
+  title: string;
+  kind: TaskKind;
+  estimate_minutes?: number | null;
+  flagged?: boolean;
+  feel_good?: boolean;
+  checklist?: ChecklistItem[];
+  notes?: string | null;
+}
+export interface TemplatePayload {
+  title?: string;            // list templates: the list name
+  items?: TemplateItem[];    // list templates: the to-dos/headings
+  task?: TemplateItem;       // task templates: the single to-do
+}
+export interface PlannerTemplate {
+  id: string;
+  name: string;
+  kind: 'list' | 'task';
+  payload: TemplatePayload;
+  created_at: string;
+}
+
 // A dependency edge: `task_id` is blocked by `depends_on_id`.
 export interface PlannerTaskDependency {
   id: string;
