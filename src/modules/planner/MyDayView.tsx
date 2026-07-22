@@ -490,14 +490,20 @@ function DayCommandBar({
   const [hours, setHours] = useState((baseTarget / 60).toString());
   const [phaseOpen, setPhaseOpen] = useState(false);
 
-  const over = planned > target;
-  const nearing = target > 0 && planned / target > 0.8;
-  // The bar spans 0…max(planned,target): the coloured fill is the planned share,
-  // and the notch marks where the target sits. Under target the notch lands at
-  // the right end; over target it sits back where the target was, so the red
-  // overflow past it is obvious.
-  const span = Math.max(planned, target, 1);
+  // Two lenses on the day: what you PLANNED (estimates/blocks) and what you
+  // actually WORKED (tracked time). Both matter, and neither alone tells the
+  // truth — planning 3h but working 6h means your day really ran 6h. So the
+  // meter judges over/under against whichever is larger (they're not additive:
+  // worked time is usually spent on the very tasks you planned).
+  const used = Math.max(planned, worked);
+  const over = used > target;
+  const nearing = target > 0 && used / target > 0.8;
+  // The bar spans 0…max(planned,worked,target): a coloured fill for the planned
+  // share, an inset emerald bar for time actually worked, and a notch where the
+  // target sits — so overshooting on either planned or worked is obvious.
+  const span = Math.max(planned, worked, target, 1);
   const fillPct = Math.min(100, (planned / span) * 100);
+  const workedPct = Math.min(100, (worked / span) * 100);
   const notchPct = Math.min(100, (target / span) * 100);
   const barColor = over ? 'bg-rose-500' : nearing ? 'bg-amber-500' : 'bg-brand-500';
 
@@ -539,7 +545,7 @@ function DayCommandBar({
         <div className="flex items-baseline justify-between gap-2 mb-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-content-muted">Hours</span>
           <span className="text-[11px] tabular-nums">
-            <span className={over ? 'text-rose-600 font-semibold' : 'text-content-secondary font-medium'}>{formatMinutes(planned) || '0m'}</span>
+            <span className={over ? 'text-rose-600 font-semibold' : 'text-content-secondary font-medium'}>{formatMinutes(used) || '0m'}</span>
             <span className="text-content-muted"> / </span>
             {editing ? (
               <input
@@ -549,18 +555,25 @@ function DayCommandBar({
                 className="w-12 text-[11px] border border-edge rounded px-1 py-0.5 bg-surface"
               />
             ) : (
-              <button onClick={() => { setHours((baseTarget / 60).toString()); setEditing(true); }} className="text-content-secondary hover:text-brand-600 underline decoration-dotted" title="Set your daily hour target">{formatMinutes(target)}</button>
+              <button onClick={() => { setHours((baseTarget / 60).toString()); setEditing(true); }} className="text-content-secondary hover:text-brand-600 underline decoration-dotted" title={phase ? `${phase.label} proposes ${formatMinutes(target)} today — tap to set your own target` : 'Set your daily hour target'}>{formatMinutes(target)}{phase ? ' proposed' : ''}</button>
             )}
           </span>
         </div>
         <div className="relative h-2 rounded-full bg-surface-sunken overflow-visible">
-          <div className={`h-full rounded-full transition-all ${barColor}`} style={{ width: `${fillPct}%` }} />
+          {/* Planned load — the coloured fill. */}
+          <div className={`absolute inset-y-0 left-0 rounded-full transition-all ${barColor}`} style={{ width: `${fillPct}%` }} />
+          {/* Time actually worked — an inset emerald bar so planned and worked
+              read at once (worked past the notch = you ran over your target). */}
+          {worked > 0 && (
+            <div className="absolute top-[2px] bottom-[2px] left-0 rounded-full bg-emerald-500 transition-all" style={{ width: `${workedPct}%` }} title={`${formatMinutes(worked)} worked`} />
+          )}
           <div className="absolute top-[-3px] w-[2px] h-[14px] rounded-sm" style={{ left: `calc(${notchPct}% - 1px)`, background: 'var(--color-content)', opacity: 0.6 }} title={`Target ${formatMinutes(target)}`} />
         </div>
-        <div className="mt-1 flex items-center gap-2 text-[10px] text-content-muted min-h-[14px]">
-          {over && <span className="text-rose-600 font-medium">Over by {formatMinutes(planned - target)}</span>}
+        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-content-muted min-h-[14px]">
+          {over && <span className="text-rose-600 font-medium">Over by {formatMinutes(used - target)}</span>}
           {carryDeduction > 0 && <span className="text-amber-600">−{formatMinutes(carryDeduction)} carried over</span>}
-          {worked > 0 && <span className="inline-flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" />{formatMinutes(worked)} worked</span>}
+          <span>{formatMinutes(planned) || '0m'} planned</span>
+          {worked > 0 && <span className="inline-flex items-center gap-0.5 text-emerald-600 font-medium"><Clock className="w-2.5 h-2.5" />{formatMinutes(worked)} worked</span>}
         </div>
       </div>
 
