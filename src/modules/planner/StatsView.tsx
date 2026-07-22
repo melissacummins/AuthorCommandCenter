@@ -105,7 +105,7 @@ export default function StatsView({
   const net = totals.created - totals.done;
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <BarChart3 className="w-6 h-6 text-brand-500" />
         <h2 className="text-2xl font-bold text-content">Stats</h2>

@@ -276,7 +276,7 @@ export function TaskRow(props: TaskRowProps) {
       {!expanded && !task.done && hasNotes && (
         <button
           onClick={() => setExpanded(true)}
-          className="ml-7 mt-0.5 block text-left text-xs text-content-muted hover:text-content-secondary truncate max-w-full"
+          className="ml-7 mt-0.5 block text-left text-xs text-content-muted hover:text-content-secondary line-clamp-2 max-w-full break-words"
         >
           {task.notes!.trim().split('\n')[0]}
         </button>

@@ -42,7 +42,7 @@ export default function SettingsView({
   const daysIn = phase && settings.phase_started_on ? Math.max(0, daysBetweenISO(settings.phase_started_on, today)) : 0;
 
   return (
-    <div className="p-6 lg:p-8 max-w-2xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <SettingsIcon className="w-6 h-6 text-content-secondary" />
         <h2 className="text-2xl font-bold text-content">Settings</h2>
