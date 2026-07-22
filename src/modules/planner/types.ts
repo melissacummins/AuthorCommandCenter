@@ -112,6 +112,10 @@ export interface PlannerSettings {
   daily_goal_count: number | null;
   // Whether the Orbit staging area (rail view + per-to-do toggle) is shown.
   orbit_enabled: boolean;
+  // Feature switches (like Orbit): show the Weekly Reset, and use the Working
+  // Phases strategy. Both default on.
+  weekly_reset_enabled: boolean;
+  working_phases_enabled: boolean;
   created_at: string;
   updated_at: string;
 }

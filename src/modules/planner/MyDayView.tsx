@@ -212,7 +212,7 @@ export default function MyDayView({
   // from the plain baseline — e.g. Recovery proposes a gentle fraction. This
   // becomes the effective base the bar and carry-over work from.
   const baseTarget = settings.daily_capacity_minutes;
-  const phase = settings.working_phase ? phaseInfo(settings.working_phase) : null;
+  const phase = settings.working_phases_enabled !== false && settings.working_phase ? phaseInfo(settings.working_phase) : null;
   const daysInPhase = settings.working_phase && settings.phase_started_on
     ? Math.max(0, daysBetweenISO(settings.phase_started_on, selected)) : 0;
   const phaseTarget = phase ? phase.proposed(baseTarget, daysInPhase) : null;
