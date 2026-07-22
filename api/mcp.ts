@@ -289,6 +289,52 @@ function buildServer(client: SupabaseClient, user: User): McpServer {
     async () => json(await core.getTaskCounts(client, uid)),
   );
 
+  // --- Link Shortener & Bio Page reads ------------------------------------
+  server.tool(
+    'list_short_links',
+    "List the author's short links (bio-page cards, ARC signup URLs, channel variants, etc.), newest first. Filter by parent (pass null for top-level only), folder, active/archived state, or a search query that matches slug/label/destination/channel/bio_title.",
+    {
+      parent_id: z.string().nullable().optional().describe('Uuid of a parent link, or null to list only top-level links, or omit to include everything.'),
+      folder_id: z.string().nullable().optional(),
+      is_active: z.boolean().optional(),
+      include_archived: z.boolean().optional(),
+      show_on_bio_only: z.boolean().optional(),
+      search: z.string().optional(),
+      limit: z.number().int().positive().max(500).optional(),
+    },
+    async ({ parent_id, folder_id, is_active, include_archived, show_on_bio_only, search, limit }) =>
+      json(await core.listShortLinks(client, uid, {
+        parentId: parent_id,
+        folderId: folder_id,
+        isActive: is_active,
+        includeArchived: include_archived,
+        showOnBioOnly: show_on_bio_only,
+        search,
+        limit,
+      })),
+  );
+  server.tool(
+    'get_short_link',
+    "Get a single short link (with click_count / conversion totals / bio settings) by its id or its slug. Provide exactly one.",
+    { id: z.string().optional(), slug: z.string().optional() },
+    async ({ id, slug }) => json(await core.getShortLink(client, uid, { id, slug })),
+  );
+  server.tool(
+    'list_link_folders',
+    "List the author's link folders (for organizing short links), alphabetical.",
+    async () => json(await core.listLinkFolders(client, uid)),
+  );
+  server.tool(
+    'list_bio_blocks',
+    "List the author's bio-page blocks — section headers (title + body text) and image cards (clickable hero images) — ordered by bio_sort_order. These are the non-link items that interleave with short-link cards on the public bio page.",
+    async () => json(await core.listBioBlocks(client, uid)),
+  );
+  server.tool(
+    'get_bio_settings',
+    "Get the author's bio-page settings (currently: logo url). Returns null if the user hasn't customized anything yet.",
+    async () => json(await core.getBioSettings(client, uid)),
+  );
+
   // =========================================================================
   // WRITE tools — insert/append/upsert only, under the caller's RLS. No tool
   // deletes user content or does a destructive overwrite.
@@ -454,6 +500,121 @@ function buildServer(client: SupabaseClient, user: User): McpServer {
     "Delete a single cash-flow income or bill line item.",
     { line_id: z.string() },
     async ({ line_id }) => json(await core.deleteCashFlowLine(client, uid, { lineId: line_id })),
+  );
+
+  // --- Link Shortener & Bio Page writes -----------------------------------
+  server.tool(
+    'create_short_link',
+    "Create a new short link. The slug must be unique across this account's short_links, landing_pages, and series_pages. If show_on_bio is true (default) and this isn't a channel variant (no parent_id), the link is placed at the bottom of the bio order so existing arrangements aren't disrupted.",
+    {
+      slug: z.string(),
+      destination_url: z.string(),
+      label: z.string().optional().describe('Internal label — only the author sees this, not readers.'),
+      channel: z.string().optional().describe("Marketing channel tag, e.g. 'Facebook', 'Threads', 'Newsletter'."),
+      notes: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      is_active: z.boolean().optional(),
+      parent_id: z.string().nullable().optional().describe('Set to an existing short_link id to make this a channel variant of that link.'),
+      folder_id: z.string().nullable().optional(),
+      starts_at: z.string().nullable().optional().describe("ISO timestamp. Before this, readers see a 'Coming soon' branded page."),
+      expires_at: z.string().nullable().optional().describe("ISO timestamp. After this, readers see an 'Expired' page or the expired_redirect_url."),
+      expired_redirect_url: z.string().nullable().optional(),
+      show_on_bio: z.boolean().optional().describe('Include this link on the public bio page. Defaults to true.'),
+      bio_title: z.string().optional().describe("Public-facing card title on the bio page. Falls back to label if blank."),
+      bio_style: z.enum(['card', 'icon']).optional().describe("'card' = full-width card. 'icon' = compact social icon at top of bio page."),
+      thumbnail_url: z.string().nullable().optional().describe('Explicit thumbnail image URL for the bio card. Falls back to cached og:image otherwise.'),
+    },
+    async (args) => json(await core.createShortLink(client, uid, args)),
+  );
+  server.tool(
+    'update_short_link',
+    "Edit an existing short link. Any field left undefined is not touched. Common uses: swap destination_url when migrating a service (e.g. Klaviyo to a different newsletter host), change the public bio_title, move the link to a different folder, adjust bio_sort_order.",
+    {
+      id: z.string(),
+      label: z.string().optional(),
+      destination_url: z.string().optional(),
+      channel: z.string().optional(),
+      notes: z.string().optional(),
+      tags: z.array(z.string()).optional(),
+      is_active: z.boolean().optional(),
+      folder_id: z.string().nullable().optional(),
+      starts_at: z.string().nullable().optional(),
+      expires_at: z.string().nullable().optional(),
+      expired_redirect_url: z.string().nullable().optional(),
+      show_on_bio: z.boolean().optional(),
+      bio_title: z.string().optional(),
+      bio_style: z.enum(['card', 'icon']).optional(),
+      thumbnail_url: z.string().nullable().optional(),
+      bio_sort_order: z.number().int().nonnegative().optional(),
+    },
+    async (args) => json(await core.updateShortLink(client, uid, args)),
+  );
+  server.tool(
+    'archive_short_link',
+    "Soft-delete a short link: readers get the branded 'unavailable' page but click and conversion history is preserved. Pass unarchive: true to restore.",
+    { id: z.string(), unarchive: z.boolean().optional() },
+    async ({ id, unarchive }) => json(await core.archiveShortLink(client, uid, { id, unarchive })),
+  );
+  server.tool(
+    'create_link_folder',
+    "Create a new folder for organizing short links.",
+    { name: z.string(), color: z.string().optional().describe("Hex color like '#6366f1'.") },
+    async ({ name, color }) => json(await core.createLinkFolder(client, uid, { name, color })),
+  );
+  server.tool(
+    'update_link_folder',
+    "Rename a link folder or change its color / manual sort order.",
+    {
+      id: z.string(),
+      name: z.string().optional(),
+      color: z.string().optional(),
+      sort_order: z.number().int().optional(),
+    },
+    async (args) => json(await core.updateLinkFolder(client, uid, args)),
+  );
+  server.tool(
+    'delete_link_folder',
+    "Delete a link folder. The folder is organizational only — its links are preserved (their folder_id becomes null).",
+    { id: z.string() },
+    async ({ id }) => json(await core.deleteLinkFolder(client, uid, { id })),
+  );
+  server.tool(
+    'create_bio_block',
+    "Add a section header or image card to the public bio page. Sections show as a centered heading + body text between link cards. Image cards show as a full-width clickable hero image with an optional caption. New blocks land at the bottom of the bio order by default.",
+    {
+      type: z.enum(['section', 'image']),
+      title: z.string().optional().describe('Section heading or image caption.'),
+      body: z.string().optional().describe('Body text for a section block. Supports line breaks (rendered with white-space: pre-line).'),
+      image_url: z.string().optional().describe('Public image URL for an image card.'),
+      link_url: z.string().optional().describe('Where an image card clicks through to (a short slug like "/my-vicious-beast" or an absolute URL).'),
+      bio_sort_order: z.number().int().nonnegative().optional(),
+    },
+    async (args) => json(await core.createBioBlock(client, uid, args)),
+  );
+  server.tool(
+    'update_bio_block',
+    "Edit an existing bio-page block (section header or image card). Only pass the fields you want to change; unspecified fields are left alone. Pass null to explicitly clear an optional string field.",
+    {
+      id: z.string(),
+      title: z.string().nullable().optional(),
+      body: z.string().nullable().optional(),
+      image_url: z.string().nullable().optional(),
+      link_url: z.string().nullable().optional(),
+      bio_sort_order: z.number().int().nonnegative().optional(),
+    },
+    async (args) => json(await core.updateBioBlock(client, uid, args)),
+  );
+  server.tool(
+    'delete_bio_block',
+    "Remove a section or image card from the bio page. Bio blocks are display-only config — no click / conversion history is attached, so this is safe.",
+    { id: z.string() },
+    async ({ id }) => json(await core.deleteBioBlock(client, uid, { id })),
+  );
+  server.tool(
+    'upsert_bio_settings',
+    "Update the author's bio-page settings. Currently supports setting or clearing the logo URL (which replaces the gradient initial at the top of the bio page). Pass null to clear.",
+    { logo_url: z.string().nullable().optional() },
+    async (args) => json(await core.upsertBioSettings(client, uid, args)),
   );
 
   return server;
