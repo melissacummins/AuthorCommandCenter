@@ -101,8 +101,8 @@ export default function SettingsView({
           onChange={v => onUpdate({ auto_rollover: v })}
         />
         <Toggle
-          label="Orbit"
-          hint="A staging area for what's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus and are easy to pull into your day. Adds an Orbit view to the rail."
+          label="Focused Sprint"
+          hint="Pull the to-dos you'll focus on into a sprint, set a length, and run a timer while you check them off. Star to-dos into the sprint from any list; they surface first in Focus too. Adds a Focused Sprint view to the rail."
           checked={settings.orbit_enabled}
           onChange={v => onUpdate({ orbit_enabled: v })}
         />
