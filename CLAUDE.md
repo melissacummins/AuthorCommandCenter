@@ -4,6 +4,13 @@
 - Apply it to the production database directly (via the Supabase MCP
   `apply_migration`) as part of merging the PR — do NOT ask Melissa to
   paste-and-run SQL by hand. Confirm afterward that the change is live.
+- IMPORTANT: `apply_migration` records the migration under an auto-generated
+  TIMESTAMP version, which does NOT match this repo's `NNN_name.sql`
+  numbering and makes the Supabase CLI/branching report "Remote migration
+  versions not found in local migrations directory". Right after applying,
+  realign the history so remote matches the file:
+  `UPDATE supabase_migrations.schema_migrations SET version='<NNN>', name='<name>' WHERE version='<timestamp>';`
+  (verify with `select version, name from supabase_migrations.schema_migrations order by version desc limit 5;`).
 - All new migrations must be idempotent (`IF NOT EXISTS`,
   `DROP POLICY/TRIGGER IF EXISTS` before `CREATE`). Supabase Preview
   Branching re-applies migrations against a preview database, and

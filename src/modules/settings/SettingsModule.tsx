@@ -152,7 +152,7 @@ export default function SettingsModule() {
   const isBusy = status.kind === 'busy';
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-content">Settings</h1>
         <p className="text-content-secondary text-sm mt-1">
