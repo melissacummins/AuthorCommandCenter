@@ -173,7 +173,7 @@ function AudiobookInner({ userId }: { userId: string }) {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 lg:p-8">
+    <div className="max-w-7xl mx-auto p-6 lg:p-8">
       <div className="flex items-center gap-3 mb-5">
         <button onClick={backToList} className="text-content-muted hover:text-content"><ArrowLeft className="w-5 h-5" /></button>
         <input

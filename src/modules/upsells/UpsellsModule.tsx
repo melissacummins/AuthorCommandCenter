@@ -158,7 +158,7 @@ export default function UpsellsModule() {
   const needsReauth = /write_products|write_discounts/i.test(error);
 
   return (
-    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <div>
