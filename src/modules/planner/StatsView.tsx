@@ -206,7 +206,6 @@ export default function StatsView({
             label="Net backlog"
             value={net === 0 ? '±0' : net > 0 ? `+${net}` : `${net}`}
             tone={net > 0 ? 'rose' : net < 0 ? 'emerald' : 'slate'}
-            hint={net > 0 ? 'added faster than finished' : net < 0 ? 'finishing faster than adding' : 'keeping pace'}
           />
           <Mini label="Open now" value={totals.openNow} />
           <Mini label="Overdue" value={totals.overdue} tone={totals.overdue > 0 ? 'rose' : 'slate'} />
