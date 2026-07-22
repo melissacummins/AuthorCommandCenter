@@ -132,10 +132,17 @@ export default function PlannerModule() {
   useEffect(() => {
     if (!user) return;
     let active = true;
+    // Load every slice independently: each falls back to an empty/default value
+    // if its own request fails, so one broken piece (a missing table, a hiccup)
+    // leaves the rest of the planner working instead of blanking the whole thing.
     Promise.all([
-      listNotes(user.id, true), listTasks(user.id), listTimeBlocks(user.id),
-      getSettings(user.id), listTimeSessions(user.id),
-      listPenNames(user.id), listTaskDependencies(user.id),
+      listNotes(user.id, true).catch(() => [] as PlannerNote[]),
+      listTasks(user.id).catch(() => [] as PlannerTask[]),
+      listTimeBlocks(user.id).catch(() => [] as PlannerTimeBlock[]),
+      getSettings(user.id).catch(() => null),
+      listTimeSessions(user.id).catch(() => [] as PlannerTimeSession[]),
+      listPenNames(user.id).catch(() => [] as PenName[]),
+      listTaskDependencies(user.id).catch(() => [] as PlannerTaskDependency[]),
     ])
       .then(([n, t, b, s, ts, pn, deps]) => {
         if (!active) return;
@@ -1033,8 +1040,8 @@ export default function PlannerModule() {
       {/* Left rail: smart views + lists. Static from md up; a slide-over on
           mobile so the day/list has full width for adding to-dos. */}
       <aside
-        className={`w-64 shrink-0 border-r border-edge bg-surface-hover flex-col overflow-y-auto nice-scrollbar
-          md:static md:flex md:bg-surface-hover/60
+        className={`w-64 shrink-0 border-r border-edge bg-surface-sunken flex-col overflow-y-auto nice-scrollbar
+          md:static md:flex
           ${railOpen ? 'fixed inset-y-0 left-0 z-50 flex shadow-2xl' : 'hidden md:flex'}`}
       >
         <div className="md:hidden flex justify-end p-2">

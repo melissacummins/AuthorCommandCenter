@@ -693,14 +693,11 @@ function PhaseBanner({ phase, target, planned, daysIn }: { phase: PhaseInfo; tar
         <span className="ml-auto text-xs font-medium text-content-secondary">suggests {formatMinutes(target)} · day {daysIn + 1}</span>
       </div>
       <p className="text-xs text-content-secondary mt-1">{phase.tagline}</p>
-      {over ? (
+      {over && (
         <p className="text-xs text-rose-600 mt-2 font-medium">
           Today's plan is {formatMinutes(planned)} — more than {phase.label} can hold. What can move or wait?
-          {phase.watchFor ? ` ${phase.watchFor}` : ''}
         </p>
-      ) : phase.watchFor ? (
-        <p className="text-xs text-amber-600 mt-2"><span className="font-medium">Watch for:</span> {phase.watchFor}</p>
-      ) : null}
+      )}
     </div>
   );
 }
