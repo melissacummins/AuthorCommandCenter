@@ -16,10 +16,14 @@
 import { supabase } from './supabase';
 import { createBackup } from '../modules/settings/backup';
 import { BACKUP_BUCKETS, BACKUP_SCHEMA_VERSION } from '../modules/settings/tables';
+import { mirrorKeyFor } from './backupPaths';
 import {
   type CloudService,
   openCloudBackup,
   uploadToCloudBackup,
+  openCloudMirror,
+  listCloudMirror,
+  uploadToCloudMirror,
   backupStamp,
   getDriveStatus,
   getDropboxStatus,
@@ -47,9 +51,12 @@ export interface BackupManifest {
   app_origin: string;
   table_row_counts: Record<string, number>;
   total_rows: number;
-  file_counts: Record<string, number>;
-  total_files: number;
-  total_file_bytes: number;
+  // Files live in the shared incremental mirror (Backups/files/…), not in this
+  // dated folder. These count what this run saw and what it actually sent.
+  files_seen: number;
+  files_uploaded: number; // new or size-changed
+  files_unchanged: number; // already in the mirror, skipped
+  uploaded_bytes: number;
   skipped_files: SkippedFile[];
 }
 
@@ -57,8 +64,9 @@ export interface CloudBackupResult {
   service: CloudService;
   stamp: string;
   totalRows: number;
-  totalFiles: number;
-  totalFileBytes: number;
+  filesUploaded: number;
+  filesUnchanged: number;
+  uploadedBytes: number;
   skipped: SkippedFile[];
 }
 
@@ -154,19 +162,35 @@ export async function runCloudBackup(opts: RunCloudBackupOptions): Promise<Cloud
     'data.json',
   );
 
-  // 2) Storage files → files/<bucket>/…
-  const fileCounts: Record<string, number> = {};
+  // 2) Storage files → shared incremental mirror (Backups/files/<bucket>/…).
+  // Diff against what's already there and only upload new / size-changed files,
+  // so media uploads once and an interrupted run resumes cleanly.
   const skipped: SkippedFile[] = [];
-  let totalFiles = 0;
-  let totalFileBytes = 0;
+  let filesSeen = 0;
+  let filesUploaded = 0;
+  let filesUnchanged = 0;
+  let uploadedBytes = 0;
 
   if (includeFiles) {
+    onProgress?.('Checking what\'s already backed up…');
+    const mirror = await openCloudMirror(service);
+    const existing = await listCloudMirror(mirror);
+
     for (const bucket of BACKUP_BUCKETS) {
       onProgress?.(`Scanning ${bucket.label}…`);
       const files = await listBucketFiles(bucket.id, user.id);
-      fileCounts[bucket.id] = 0;
       for (let i = 0; i < files.length; i++) {
         const f = files[i];
+        filesSeen++;
+        // Path inside the mirror: strip the leading `<user_id>/`, keep the
+        // bucket as the top segment → "<bucket>/<path…>".
+        const rel = f.path.startsWith(`${user.id}/`) ? f.path.slice(user.id.length + 1) : f.path;
+        const key = mirrorKeyFor(bucket.id, f.path, user.id);
+        const prior = existing.get(key);
+        if (prior && prior.size === f.size) {
+          filesUnchanged++;
+          continue; // already mirrored, unchanged → skip the download + upload
+        }
         if (f.size > MAX_FILE_BYTES) {
           skipped.push({ bucket: bucket.id, path: f.path, size: f.size, reason: 'exceeds 140 MB single-upload limit' });
           continue;
@@ -176,17 +200,13 @@ export async function runCloudBackup(opts: RunCloudBackupOptions): Promise<Cloud
           skipped.push({ bucket: bucket.id, path: f.path, size: f.size, reason: error?.message || 'download failed' });
           continue;
         }
-        // Path inside the backup: strip the leading `<user_id>/` so the tree
-        // is clean; keep the bucket as the top segment.
-        const rel = f.path.startsWith(`${user.id}/`) ? f.path.slice(user.id.length + 1) : f.path;
         const segments = rel.split('/');
         const filename = segments.pop() as string;
         try {
           onProgress?.(`Uploading ${bucket.label} (${i + 1}/${files.length})…`);
-          await uploadToCloudBackup(dest, blob, ['files', bucket.id, ...segments], filename);
-          fileCounts[bucket.id]++;
-          totalFiles++;
-          totalFileBytes += f.size;
+          await uploadToCloudMirror(mirror, [bucket.id, ...segments], filename, blob, prior?.driveId);
+          filesUploaded++;
+          uploadedBytes += f.size;
         } catch (err) {
           skipped.push({ bucket: bucket.id, path: f.path, size: f.size, reason: (err as Error).message });
         }
@@ -194,7 +214,7 @@ export async function runCloudBackup(opts: RunCloudBackupOptions): Promise<Cloud
     }
   }
 
-  // 3) manifest.json
+  // 3) manifest.json (into the dated folder)
   const manifest: BackupManifest = {
     schema_version: BACKUP_SCHEMA_VERSION,
     exported_at: backup.exported_at,
@@ -204,9 +224,10 @@ export async function runCloudBackup(opts: RunCloudBackupOptions): Promise<Cloud
     app_origin: typeof window !== 'undefined' ? window.location.origin : '',
     table_row_counts: tableRowCounts,
     total_rows: totalRows,
-    file_counts: fileCounts,
-    total_files: totalFiles,
-    total_file_bytes: totalFileBytes,
+    files_seen: filesSeen,
+    files_uploaded: filesUploaded,
+    files_unchanged: filesUnchanged,
+    uploaded_bytes: uploadedBytes,
     skipped_files: skipped,
   };
   onProgress?.('Finishing…');
@@ -219,7 +240,7 @@ export async function runCloudBackup(opts: RunCloudBackupOptions): Promise<Cloud
 
   recordCloudBackup(now);
 
-  return { service, stamp, totalRows, totalFiles, totalFileBytes, skipped };
+  return { service, stamp, totalRows, filesUploaded, filesUnchanged, uploadedBytes, skipped };
 }
 
 // --- Last-cloud-backup tracking (drives the auto-backup cadence) ------------
