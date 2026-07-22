@@ -17,7 +17,7 @@ import {
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
   CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
-  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid, Lock,
+  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid, Lock, CheckSquare,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -302,6 +302,13 @@ export default function PlannerModule() {
   );
 
   const orbitEnabled = !!settings?.orbit_enabled;
+  // Feature toggles default ON when settings haven't loaded / lack the column.
+  const weeklyResetEnabled = settings?.weekly_reset_enabled !== false;
+  // If a feature is turned off while its view is open, fall back to My Day.
+  useEffect(() => {
+    if (selection.kind === 'reset' && !weeklyResetEnabled) setSelection({ kind: 'myday' });
+    if (selection.kind === 'orbit' && !orbitEnabled) setSelection({ kind: 'myday' });
+  }, [selection.kind, weeklyResetEnabled, orbitEnabled]);
   const orbitCount = useMemo(
     () => scopedTasks.filter(t => t.kind === 'task' && !t.done && t.in_orbit).length,
     [scopedTasks],
@@ -1111,15 +1118,17 @@ export default function PlannerModule() {
             <CalendarRange className="w-4 h-4 text-brand-500" />
             <span className="flex-1 text-left">Planning</span>
           </button>
-          <button
-            onClick={() => choose({ kind: 'reset' })}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
-              selection.kind === 'reset' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
-            }`}
-          >
-            <RotateCcw className="w-4 h-4 text-brand-500" />
-            <span className="flex-1 text-left">Weekly Reset</span>
-          </button>
+          {weeklyResetEnabled && (
+            <button
+              onClick={() => choose({ kind: 'reset' })}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
+                selection.kind === 'reset' ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-content-secondary hover:bg-surface-sunken'
+              }`}
+            >
+              <RotateCcw className="w-4 h-4 text-brand-500" />
+              <span className="flex-1 text-left">Weekly Reset</span>
+            </button>
+          )}
           <button
             onClick={() => choose({ kind: 'logbook' })}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-control text-sm transition-colors ${
@@ -1255,7 +1264,7 @@ export default function PlannerModule() {
             tasks={scopedTasks}
             blocks={blocks}
             sessions={sessions}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, weekly_reset_enabled: true, working_phases_enabled: true, created_at: '', updated_at: '' }}
             today={today}
             cal={{ gc, calVersion }}
             handlers={myDayHandlers}
@@ -1268,7 +1277,7 @@ export default function PlannerModule() {
           <PlanView
             tasks={scopedTasks}
             blocks={blocks}
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, weekly_reset_enabled: true, working_phases_enabled: true, created_at: '', updated_at: '' }}
             notesById={notesById}
             today={today}
             onOpenDay={openDay}
@@ -1312,7 +1321,7 @@ export default function PlannerModule() {
           )
         ) : selection.kind === 'settings' ? (
           <SettingsView
-            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, created_at: '', updated_at: '' }}
+            settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, weekly_reset_enabled: true, working_phases_enabled: true, created_at: '', updated_at: '' }}
             today={today}
             onUpdate={updatePlannerSettings}
           />
@@ -2080,7 +2089,7 @@ function ViewPane({
   const aiSettings = settings ?? {
     user_id: '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false,
     auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3,
-    orbit_enabled: true, created_at: '', updated_at: '',
+    orbit_enabled: true, weekly_reset_enabled: true, working_phases_enabled: true, created_at: '', updated_at: '',
   };
   const tasksById = useMemo(() => {
     const m: Record<string, PlannerTask> = {};
@@ -2142,9 +2151,6 @@ function ViewPane({
               <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
             </span>
           )}
-          {items.length > 0 && !selectMode && (
-            <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-1.5">Select</button>
-          )}
         </div>
       </div>
       {orbit && orbitEnabled && (
@@ -2189,22 +2195,30 @@ function ViewPane({
         </div>
       )}
 
-      {selectMode && (
-        <div className="mt-3">
-          <BulkBar
-            count={sel.size}
-            allSelected={visible.length > 0 && visible.every(t => sel.has(t.id))}
-            today={today}
-            lists={lists}
-            onSelectAll={() => selectAll(visible.map(t => t.id))}
-            onExit={exit}
-            onMove={bulkMove}
-            onSchedule={bulkSchedule}
-            onFlag={bulkFlag}
-            onDone={bulkDone}
-            onDelete={bulkDelete}
-          />
-        </div>
+      {items.length > 0 && (
+        selectMode ? (
+          <div className="mt-3">
+            <BulkBar
+              count={sel.size}
+              allSelected={visible.length > 0 && visible.every(t => sel.has(t.id))}
+              today={today}
+              lists={lists}
+              onSelectAll={() => selectAll(visible.map(t => t.id))}
+              onExit={exit}
+              onMove={bulkMove}
+              onSchedule={bulkSchedule}
+              onFlag={bulkFlag}
+              onDone={bulkDone}
+              onDelete={bulkDelete}
+            />
+          </div>
+        ) : (
+          <div className="mt-3">
+            <button onClick={() => setSelectMode(true)} className="inline-flex items-center gap-1.5 text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-1.5">
+              <CheckSquare className="w-3.5 h-3.5" /> Bulk Select
+            </button>
+          </div>
+        )
       )}
 
       {bucket === 'today' && <DayEventsStrip events={eventsByDay[today]} />}
@@ -2730,16 +2744,19 @@ function NotePane({
         >
           <HeadingIcon className="w-3.5 h-3.5" /> Heading
         </button>
-        {selectable.length > 0 && !selectMode && (
+      </div>
+
+      {selectable.length > 0 && !selectMode && (
+        <div className="mt-3">
           <button
             onClick={() => setSelectMode(true)}
-            className="flex items-center gap-1 text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-2"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-1.5"
             title="Select multiple to-dos for bulk actions"
           >
-            <Check className="w-3.5 h-3.5" /> Select
+            <CheckSquare className="w-3.5 h-3.5" /> Bulk Select
           </button>
-        )}
-      </div>
+        </div>
+      )}
 
       {selectMode ? (
         <>

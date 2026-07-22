@@ -103,6 +103,12 @@ export default function SettingsView({
           checked={settings.orbit_enabled}
           onChange={v => onUpdate({ orbit_enabled: v })}
         />
+        <Toggle
+          label="Weekly Reset"
+          hint="A once-a-week reflection + brain-dump that turns into to-dos. Adds a Weekly Reset view to the rail. Turn off to hide it."
+          checked={settings.weekly_reset_enabled}
+          onChange={v => onUpdate({ weekly_reset_enabled: v })}
+        />
       </Section>
 
       {/* Working Phases */}
@@ -110,7 +116,14 @@ export default function SettingsView({
         title={<span className="flex items-center gap-1.5"><Compass className="w-4 h-4 text-content-muted" /> Working Phase</span>}
         hint="Seasons of work, not a ladder — you move between them fluidly. Name the one you're actually in, and My Day sizes the day to match (and nudges you when your plan outruns it)."
       >
-        <div className="space-y-2">
+        <Toggle
+          label="Use Working Phases"
+          hint="When off, My Day just uses your plain daily capacity above — no phase, no sizing, no phase chip."
+          checked={settings.working_phases_enabled}
+          onChange={v => onUpdate(v ? { working_phases_enabled: true } : { working_phases_enabled: false, working_phase: null, phase_started_on: null })}
+        />
+        {settings.working_phases_enabled && (
+        <div className="space-y-2 mt-4">
           {PHASES.map(p => {
             const active = phase === p.id;
             const proposed = p.proposed(baseline, active ? daysIn : 0);
@@ -141,13 +154,6 @@ export default function SettingsView({
             );
           })}
         </div>
-        {phase ? (
-          <button onClick={() => onUpdate({ working_phase: null, phase_started_on: null })}
-            className="mt-3 text-xs font-medium text-content-muted hover:text-content-secondary">
-            Turn off Working Phases
-          </button>
-        ) : (
-          <p className="mt-2 text-xs text-content-muted">Off — My Day uses your plain daily capacity above.</p>
         )}
       </Section>
     </div>
