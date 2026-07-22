@@ -17,7 +17,7 @@ import {
   Heading as HeadingIcon, ChevronRight, ChevronDown, Clock, CalendarDays, Link2Off, Sun, BarChart3,
   Star, Menu, CalendarRange, BookCheck, Settings as SettingsIcon, CornerDownLeft, ArrowDownAZ, Target, Orbit as OrbitIcon, Sparkles,
   CopyPlus, Check, Users as UsersIcon, RotateCcw, Search, GitMerge, ArrowUpDown,
-  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid, Lock, CheckSquare,
+  Loader2, Zap, Heart, Dices, Play, CalendarPlus, LayoutGrid, Lock, CheckSquare, Pause, Square, Timer,
 } from 'lucide-react';
 import MyDayView, { type MyDayHandlers } from './MyDayView';
 import { AiSuggestPanel } from './AiSuggestPanel';
@@ -1077,7 +1077,7 @@ export default function PlannerModule() {
               }`}
             >
               <OrbitIcon className="w-4 h-4 text-brand-500" />
-              <span className="flex-1 text-left">Orbit</span>
+              <span className="flex-1 text-left">Focused Sprint</span>
               {orbitCount > 0 && <span className="text-xs text-content-muted font-medium">{orbitCount}</span>}
             </button>
           )}
@@ -1967,6 +1967,127 @@ function BulkBar({
 // Smart views
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Focused Sprint timer — a Pomodoro-style countdown for the sprint view. Pick a
+// length, start it, and check your sprint to-dos off in the list below while it
+// runs. A to-do leaving the sprint's open set (completed or unstarred) counts
+// toward the recap. Ephemeral: a sprint isn't persisted, it's a work session.
+// ---------------------------------------------------------------------------
+
+const SPRINT_LENGTHS = [15, 25, 30, 45, 60];
+
+function SprintTimer({ openIds }: { openIds: string[] }) {
+  const [mins, setMins] = useState(25);
+  const [custom, setCustom] = useState('');
+  const [totalSec, setTotalSec] = useState(25 * 60);
+  const [endAt, setEndAt] = useState<number | null>(null);   // running deadline (ms)
+  const [pausedSec, setPausedSec] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const [startIds, setStartIds] = useState<string[] | null>(null);
+  const [finished, setFinished] = useState(false);
+
+  const running = endAt != null;
+  useEffect(() => {
+    if (!running) return;
+    const id = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(id);
+  }, [running]);
+
+  const remaining = running ? Math.max(0, Math.round((endAt - now) / 1000)) : (pausedSec ?? totalSec);
+  useEffect(() => {
+    if (running && endAt - now <= 0) { setEndAt(null); setPausedSec(null); setFinished(true); }
+  }, [running, endAt, now]);
+
+  const active = running || pausedSec != null;
+  const doneCount = startIds ? startIds.filter(id => !openIds.includes(id)).length : 0;
+  const chosen = () => { const c = parseInt(custom, 10); return (custom.trim() && c > 0 ? c : mins); };
+
+  function start() {
+    const secs = chosen() * 60;
+    setTotalSec(secs); setEndAt(Date.now() + secs * 1000); setPausedSec(null);
+    setStartIds(openIds); setFinished(false); setNow(Date.now());
+  }
+  function pause() { setPausedSec(remaining); setEndAt(null); }
+  function resume() { setEndAt(Date.now() + (pausedSec ?? totalSec) * 1000); setPausedSec(null); setNow(Date.now()); }
+  function end() { setEndAt(null); setPausedSec(null); setFinished(true); }
+  function newSprint() { setEndAt(null); setPausedSec(null); setStartIds(null); setFinished(false); }
+
+  const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  const r = 66, c = 2 * Math.PI * r;
+  const elapsedFrac = totalSec > 0 ? 1 - remaining / totalSec : 0;
+
+  // Recap after a sprint ends (by hand or by running out).
+  if (finished && startIds) {
+    return (
+      <div className="mb-5 rounded-card border border-brand-200 bg-brand-50/60 p-5 flex items-center gap-4">
+        <Timer className="w-6 h-6 text-brand-600 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-semibold text-brand-800">Sprint done — nice focus.</p>
+          <p className="text-xs text-brand-700">You cleared {doneCount} of {startIds.length} to-do{startIds.length === 1 ? '' : 's'} this sprint.</p>
+        </div>
+        <button onClick={newSprint} className="text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-3 py-1.5">New sprint</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-5 rounded-card border border-edge bg-surface p-5">
+      {active ? (
+        <div className="flex items-center gap-5 flex-wrap">
+          <div className="relative w-[150px] h-[150px] shrink-0 mx-auto">
+            <svg viewBox="0 0 150 150" className="w-full h-full -rotate-90">
+              <circle cx="75" cy="75" r={r} fill="none" stroke="currentColor" strokeWidth="9" className="text-surface-sunken" />
+              <circle cx="75" cy="75" r={r} fill="none" stroke="currentColor" strokeWidth="9" strokeLinecap="round" className="text-brand-500" strokeDasharray={`${elapsedFrac * c} ${c}`} />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="text-3xl font-bold text-content tabular-nums">{mmss(remaining)}</span>
+              <span className="text-[11px] text-content-muted mt-0.5">of {mmss(totalSec)}</span>
+            </div>
+          </div>
+          <div className="flex-1 min-w-[12rem]">
+            <p className="text-sm font-semibold text-content">
+              {running ? 'Sprint in progress' : 'Paused'}
+              {startIds && <span className="ml-2 text-xs font-medium text-content-muted">{doneCount}/{startIds.length} done</span>}
+            </p>
+            <p className="text-xs text-content-muted mt-0.5">Check your to-dos off below as you finish them — run a to-do's timer to log the minutes.</p>
+            <div className="flex items-center gap-2 mt-3">
+              {running
+                ? <button onClick={pause} className="inline-flex items-center gap-1.5 text-sm font-medium text-content-secondary border border-edge hover:bg-surface-sunken rounded-control px-3 py-1.5"><Pause className="w-3.5 h-3.5" /> Pause</button>
+                : <button onClick={resume} className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-3 py-1.5"><Play className="w-3.5 h-3.5" /> Resume</button>}
+              <button onClick={end} className="inline-flex items-center gap-1.5 text-sm font-medium text-content-secondary border border-edge hover:bg-surface-sunken rounded-control px-3 py-1.5"><Square className="w-3.5 h-3.5" /> End sprint</button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-4 flex-wrap">
+          <Timer className="w-6 h-6 text-brand-500 shrink-0" />
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-xs font-semibold uppercase tracking-wide text-content-muted mr-1">Length</span>
+            {SPRINT_LENGTHS.map(m => (
+              <button
+                key={m}
+                onClick={() => { setMins(m); setCustom(''); }}
+                className={`text-xs font-medium rounded-control px-2.5 py-1 transition-colors ${!custom.trim() && mins === m ? 'bg-brand-600 text-brand-fg' : 'text-content-secondary border border-edge hover:bg-surface-sunken'}`}
+              >
+                {m}m
+              </button>
+            ))}
+            <input
+              type="number" min={1} value={custom} placeholder="…"
+              onChange={e => setCustom(e.target.value)}
+              className="w-14 text-xs border border-edge rounded-control px-1.5 py-1 bg-surface text-content"
+              title="Custom minutes"
+            />
+          </div>
+          <button onClick={start} className="ml-auto inline-flex items-center gap-1.5 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-3.5 py-2">
+            <Play className="w-4 h-4" /> Start {chosen()}-min sprint
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ViewPane({
   bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onLogTime, onOpenNote, cal, blockedIds, onEditDependencies, onEstimateDurations, onFindDuplicates,
 }: {
@@ -1991,7 +2112,7 @@ function ViewPane({
   onFindDuplicates: () => void;
 }) {
   const meta = orbit
-    ? { label: 'Orbit', icon: OrbitIcon, color: 'text-brand-500' }
+    ? { label: 'Focused Sprint', icon: OrbitIcon, color: 'text-brand-500' }
     : inbox
       ? { label: 'Inbox', icon: Inbox, color: 'text-content-secondary' }
       : VIEWS.find(v => v.bucket === bucket)!;
@@ -2141,7 +2262,7 @@ function ViewPane({
           <button
             onClick={runOrbitAi}
             className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-control px-2.5 py-1.5"
-            title="Let Claude suggest which to-dos to pull into Orbit"
+            title="Let Claude suggest which to-dos to pull into your sprint"
           >
             <Sparkles className="w-3.5 h-3.5" /> Suggest picks
           </button>
@@ -2157,8 +2278,8 @@ function ViewPane({
       {orbit && orbitEnabled && (
         <AiSuggestPanel
           open={aiOpen}
-          title="Suggest Orbit picks"
-          intro="The 3–7 to-dos most worth pulling into Orbit right now."
+          title="Suggest sprint picks"
+          intro="The 3–7 to-dos most worth pulling into your sprint right now."
           loading={aiLoading}
           error={aiError}
           result={aiResult}
@@ -2169,8 +2290,9 @@ function ViewPane({
         />
       )}
       {orbit && (
-        <p className="text-sm text-content-muted -mt-4 mb-5">What's currently relevant. Star to-dos into Orbit from any list; they surface first in Focus.</p>
+        <p className="text-sm text-content-muted -mt-4 mb-5">Pull the to-dos you'll focus on here (star them into the sprint from any list), set a length, and check them off while the timer runs.</p>
       )}
+      {orbit && <SprintTimer openIds={items.map(t => t.id)} />}
 
       {/* Long lists read best on the same surface card My Day uses — not on
           the sunken page background (theme follow-up). */}

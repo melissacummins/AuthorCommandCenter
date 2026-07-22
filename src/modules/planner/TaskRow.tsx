@@ -435,7 +435,7 @@ function MenuBody({
       {orbitEnabled && (
         <MenuItem
           icon={<OrbitIcon className="w-4 h-4" />}
-          label={task.in_orbit ? 'Remove from Orbit' : 'Add to Orbit'}
+          label={task.in_orbit ? 'Remove from sprint' : 'Add to sprint'}
           onClick={() => { onPatch(task.id, { in_orbit: !task.in_orbit }); close(); }}
         />
       )}
