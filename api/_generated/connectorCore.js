@@ -411,6 +411,76 @@ async function saveCashFlowNote(client, userId, args) {
   if (error) throw error;
   return data;
 }
+var MAX_IMPORT_ROWS = 1e3;
+function transactionDedupKey(t) {
+  const desc = String(t.original_description ?? t.description ?? "").trim().toLowerCase();
+  const amt = Math.abs(Number(t.amount)).toFixed(2);
+  return `${String(t.date).trim()}|${amt}|${t.type}|${desc}`;
+}
+async function importTransactions(client, userId, rows) {
+  if (!Array.isArray(rows)) throw new Error("importTransactions: rows must be an array");
+  if (rows.length === 0) return { inserted: 0, skipped: 0, insertedRows: [] };
+  if (rows.length > MAX_IMPORT_ROWS) {
+    throw new Error(
+      `importTransactions: batch of ${rows.length} exceeds the ${MAX_IMPORT_ROWS}-row limit; split the CSV into smaller batches`
+    );
+  }
+  const normalized = rows.map((r, i) => {
+    if (!r || typeof r !== "object") throw new Error(`importTransactions: row ${i} is not an object`);
+    if (!r.date || typeof r.date !== "string") {
+      throw new Error(`importTransactions: row ${i} is missing a date (YYYY-MM-DD)`);
+    }
+    if (r.type !== "income" && r.type !== "expense") {
+      throw new Error(`importTransactions: row ${i} has invalid type '${r.type}' (expected 'income' | 'expense')`);
+    }
+    const amount = Number(r.amount);
+    if (!Number.isFinite(amount)) {
+      throw new Error(`importTransactions: row ${i} has a non-finite amount`);
+    }
+    if (amount < 0) {
+      throw new Error(`importTransactions: row ${i} has a negative amount; amounts must be >= 0 (store positive, type decides income/expense)`);
+    }
+    const description = r.description ?? "";
+    return {
+      user_id: userId,
+      date: r.date,
+      description,
+      original_description: r.original_description ?? description,
+      amount: Math.abs(amount),
+      category: r.category ?? "Uncategorized",
+      source: r.source ?? "",
+      type: r.type
+    };
+  });
+  let minDate = normalized[0].date;
+  let maxDate = normalized[0].date;
+  for (const n of normalized) {
+    if (n.date < minDate) minDate = n.date;
+    if (n.date > maxDate) maxDate = n.date;
+  }
+  const { data: existing, error: fetchError } = await client.from("transactions").select("date, amount, type, description, original_description").eq("user_id", userId).gte("date", minDate).lte("date", maxDate);
+  if (fetchError) throw fetchError;
+  const seen = /* @__PURE__ */ new Set();
+  for (const e of existing ?? []) seen.add(transactionDedupKey(e));
+  const toInsert = [];
+  let skipped = 0;
+  for (const n of normalized) {
+    const key = transactionDedupKey(n);
+    if (seen.has(key)) {
+      skipped++;
+      continue;
+    }
+    seen.add(key);
+    toInsert.push(n);
+  }
+  if (toInsert.length === 0) {
+    return { inserted: 0, skipped, insertedRows: [] };
+  }
+  const { data, error } = await client.from("transactions").insert(toInsert).select();
+  if (error) throw error;
+  const insertedRows = data ?? [];
+  return { inserted: insertedRows.length, skipped, insertedRows };
+}
 
 // src/lib/connectorCore/inventory.ts
 var PRODUCT_COLUMNS = "id, name, sku, category, base_price, production_cost, shipping_cost, book_inventory, bundles_inventory, six_month_book_sales, six_month_bundle_sales, lead_time, csv_avg_daily, csv_reorder_threshold, do_not_reorder";
@@ -562,22 +632,161 @@ async function addTasks(client, userId, tasks) {
   if (error) throw error;
   return (data ?? []).map(toTaskSummary);
 }
+
+// src/lib/connectorCore/cashflow.ts
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+function orderLines(lines) {
+  return [...lines].sort((a, b) => {
+    const da = a.line_date ?? "";
+    const db = b.line_date ?? "";
+    if (da && db) {
+      if (da !== db) return da < db ? -1 : 1;
+    } else if (da || db) {
+      return da ? -1 : 1;
+    }
+    return String(a.created_at).localeCompare(String(b.created_at));
+  });
+}
+function buildWeek(week, lines) {
+  const income = orderLines(lines.filter((l) => l.kind === "income"));
+  const bills = orderLines(lines.filter((l) => l.kind === "bill"));
+  const incomeSubtotal = income.reduce((s, l) => s + num(l.amount), 0);
+  const billsSubtotal = bills.reduce((s, l) => s + num(l.amount), 0);
+  const hasOpening = week.opening_balance !== null && week.opening_balance !== void 0;
+  const opening = num(week.opening_balance);
+  return {
+    week,
+    income,
+    bills,
+    incomeSubtotal,
+    billsSubtotal,
+    worstCaseEnding: hasOpening ? opening - billsSubtotal : null,
+    projectedEnding: hasOpening ? opening + incomeSubtotal - billsSubtotal : null
+  };
+}
+async function getCashFlow(client, userId, opts) {
+  let weekQuery = client.from("cash_flow_weeks").select("*").eq("user_id", userId).order("week_start", { ascending: true });
+  if (opts?.weekStart) {
+    weekQuery = weekQuery.eq("week_start", opts.weekStart);
+  } else if (opts?.month) {
+    const { start, end } = monthBounds(opts.month);
+    weekQuery = weekQuery.gte("week_start", start).lt("week_start", end);
+  }
+  const { data: weeks, error: weeksErr } = await weekQuery;
+  if (weeksErr) throw weeksErr;
+  const weekRows = weeks ?? [];
+  if (weekRows.length === 0) return [];
+  const weekIds = weekRows.map((w) => w.id);
+  const { data: lines, error: linesErr } = await client.from("cash_flow_lines").select("*").eq("user_id", userId).in("week_id", weekIds);
+  if (linesErr) throw linesErr;
+  const byWeek = /* @__PURE__ */ new Map();
+  for (const line of lines ?? []) {
+    const arr = byWeek.get(line.week_id);
+    if (arr) arr.push(line);
+    else byWeek.set(line.week_id, [line]);
+  }
+  return weekRows.map((w) => buildWeek(w, byWeek.get(w.id) ?? []));
+}
+function monthBounds(month) {
+  const m = /^(\d{4})-(\d{2})$/.exec(month);
+  if (!m) throw new Error(`getCashFlow: invalid month '${month}' (expected YYYY-MM)`);
+  const year = Number(m[1]);
+  const mon = Number(m[2]);
+  const start = `${m[1]}-${m[2]}-01`;
+  const nextYear = mon === 12 ? year + 1 : year;
+  const nextMon = mon === 12 ? 1 : mon + 1;
+  const end = `${String(nextYear).padStart(4, "0")}-${String(nextMon).padStart(2, "0")}-01`;
+  return { start, end };
+}
+async function upsertCashFlowWeek(client, userId, args) {
+  if (!args.weekStart) throw new Error("upsertCashFlowWeek: weekStart is required (YYYY-MM-DD)");
+  if (!args.weekEnd) throw new Error("upsertCashFlowWeek: weekEnd is required (YYYY-MM-DD)");
+  const row = {
+    user_id: userId,
+    week_start: args.weekStart,
+    week_end: args.weekEnd,
+    updated_at: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  if (args.openingBalance !== void 0) row.opening_balance = args.openingBalance;
+  if (args.actualEndingBalance !== void 0) row.actual_ending_balance = args.actualEndingBalance;
+  if (args.note !== void 0) row.note = args.note;
+  const { data, error } = await client.from("cash_flow_weeks").upsert(row, { onConflict: "user_id,week_start" }).select().single();
+  if (error) throw error;
+  return data;
+}
+async function addCashFlowLine(client, userId, args) {
+  if (!args.weekStart) throw new Error("addCashFlowLine: weekStart is required (YYYY-MM-DD)");
+  if (args.kind !== "income" && args.kind !== "bill") {
+    throw new Error(`addCashFlowLine: invalid kind '${args.kind}' (expected 'income' | 'bill')`);
+  }
+  const amount = Number(args.amount);
+  if (!Number.isFinite(amount)) throw new Error("addCashFlowLine: amount must be a finite number");
+  const { data: week, error: weekErr } = await client.from("cash_flow_weeks").select("id").eq("user_id", userId).eq("week_start", args.weekStart).maybeSingle();
+  if (weekErr) throw weekErr;
+  if (!week) {
+    throw new Error(
+      `addCashFlowLine: no cash-flow week exists for week_start ${args.weekStart}. Create it first with upsertCashFlowWeek({ weekStart, weekEnd }).`
+    );
+  }
+  const row = {
+    user_id: userId,
+    week_id: week.id,
+    kind: args.kind,
+    line_date: args.date ?? null,
+    source: args.source ?? "",
+    amount,
+    settled: args.settled ?? false,
+    notes: args.notes ?? null
+  };
+  const { data, error } = await client.from("cash_flow_lines").insert(row).select().single();
+  if (error) throw error;
+  return data;
+}
+async function updateCashFlowLine(client, userId, args) {
+  if (!args.lineId) throw new Error("updateCashFlowLine: lineId is required");
+  const patch = { updated_at: (/* @__PURE__ */ new Date()).toISOString() };
+  if (args.source !== void 0) patch.source = args.source;
+  if (args.amount !== void 0) {
+    const amount = Number(args.amount);
+    if (!Number.isFinite(amount)) throw new Error("updateCashFlowLine: amount must be a finite number");
+    patch.amount = amount;
+  }
+  if (args.settled !== void 0) patch.settled = args.settled;
+  if (args.date !== void 0) patch.line_date = args.date;
+  if (args.notes !== void 0) patch.notes = args.notes;
+  const { data, error } = await client.from("cash_flow_lines").update(patch).eq("user_id", userId).eq("id", args.lineId).select().single();
+  if (error) throw error;
+  return data;
+}
+async function deleteCashFlowLine(client, userId, args) {
+  if (!args.lineId) throw new Error("deleteCashFlowLine: lineId is required");
+  const { error } = await client.from("cash_flow_lines").delete().eq("user_id", userId).eq("id", args.lineId);
+  if (error) throw error;
+  return { deleted: true };
+}
 export {
   ADD_TASKS_MAX,
+  addCashFlowLine,
   addTasks,
   addTransaction,
   appendManuscriptChapter,
   completeTask,
   createManuscript,
   createTask,
+  deleteCashFlowLine,
   getArcStats,
   getBook,
+  getCashFlow,
   getChapter,
   getManuscript,
   getManuscriptPlainText,
   getMonthlyTransactionSummary,
   getPnlSummary,
   getTaskCounts,
+  importTransactions,
   listArcReaders,
   listBooks,
   listCashFlowNotes,
@@ -593,5 +802,7 @@ export {
   listTasks,
   listTransactions,
   saveCashFlowNote,
-  setOpportunityDecision
+  setOpportunityDecision,
+  updateCashFlowLine,
+  upsertCashFlowWeek
 };
