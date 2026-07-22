@@ -59,15 +59,16 @@ export default function AnalyticsTab({
   const maxChapterWords = Math.max(1, ...chapters.map(c => c.word_count ?? 0));
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="bg-surface rounded-card border border-edge p-5">
-        <div className="flex items-baseline justify-between gap-3 mb-1">
-          <p className="text-3xl font-bold text-content">{manuscript.word_count.toLocaleString()}</p>
+    <div className="max-w-5xl mx-auto space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="bg-surface rounded-card border border-edge p-4 flex flex-col justify-center">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-3xl font-bold text-content leading-tight">{manuscript.word_count.toLocaleString()}</p>
           <p className="text-sm text-content-muted">total words · {chapters.length} chapter{chapters.length === 1 ? '' : 's'}</p>
         </div>
       </div>
 
-      <div className="bg-surface rounded-card border border-edge p-5">
+      <div className="bg-surface rounded-card border border-edge p-4">
         <h3 className="text-sm font-semibold text-content flex items-center gap-1.5 mb-3">
           <Target className="w-4 h-4 text-brand-500" /> Goal
         </h3>
@@ -94,8 +95,9 @@ export default function AnalyticsTab({
           <p className="text-xs text-content-muted">Set a target word count to track progress toward it.</p>
         )}
       </div>
+      </div>
 
-      <div className="bg-surface rounded-card border border-edge p-5">
+      <div className="bg-surface rounded-card border border-edge p-4">
         <h3 className="text-sm font-semibold text-content flex items-center gap-1.5 mb-3">
           <BarChart3 className="w-4 h-4 text-brand-500" /> Daily words — last 30 days
         </h3>
@@ -123,7 +125,7 @@ export default function AnalyticsTab({
         )}
       </div>
 
-      <div className="bg-surface rounded-card border border-edge p-5">
+      <div className="bg-surface rounded-card border border-edge p-4">
         <h3 className="text-sm font-semibold text-content mb-3">Per-chapter word counts</h3>
         {chapters.length === 0 ? (
           <p className="text-xs text-content-muted">No chapters yet.</p>
@@ -145,7 +147,7 @@ export default function AnalyticsTab({
         )}
       </div>
 
-      <div className="bg-surface rounded-card border border-edge p-5">
+      <div className="bg-surface rounded-card border border-edge p-4">
         <h3 className="text-sm font-semibold text-content flex items-center gap-1.5 mb-1">
           <Link2 className="w-4 h-4 text-brand-500" /> Connections
         </h3>
