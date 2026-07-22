@@ -163,6 +163,28 @@ export async function listTaskLists(
   return (data ?? []) as TaskList[];
 }
 
+/** Create a new named planner list (a planner_notes row) and return it.
+    Additive — never deletes or overwrites. Column defaults fill body/sort_order. */
+export async function createList(
+  client: SupabaseClient,
+  userId: string,
+  args: { title: string; pinned?: boolean },
+): Promise<TaskList> {
+  const row: Record<string, unknown> = {
+    user_id: userId,
+    title: args.title,
+    archived: false,
+  };
+  if (args.pinned != null) row.pinned = args.pinned;
+  const { data, error } = await client
+    .from('planner_notes')
+    .insert(row)
+    .select('id, title, archived, pinned, sort_order')
+    .single();
+  if (error) throw error;
+  return data as TaskList;
+}
+
 // ---------------------------------------------------------------------------
 // Counts
 

@@ -566,6 +566,17 @@ async function listTaskLists(client, userId) {
   if (error) throw error;
   return data ?? [];
 }
+async function createList(client, userId, args) {
+  const row = {
+    user_id: userId,
+    title: args.title,
+    archived: false
+  };
+  if (args.pinned != null) row.pinned = args.pinned;
+  const { data, error } = await client.from("planner_notes").insert(row).select("id, title, archived, pinned, sort_order").single();
+  if (error) throw error;
+  return data;
+}
 async function getTaskCounts(client, userId, now = /* @__PURE__ */ new Date()) {
   const todayIso = isoDay3(now);
   const { data, error } = await client.from("planner_tasks").select("done, due_date, someday").eq("user_id", userId).eq("kind", "task");
@@ -774,6 +785,7 @@ export {
   addTransaction,
   appendManuscriptChapter,
   completeTask,
+  createList,
   createManuscript,
   createTask,
   deleteCashFlowLine,
