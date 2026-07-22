@@ -1,6 +1,7 @@
 {
   "crons": [
-    { "path": "/api/planner/ai?action=reminders", "schedule": "*/15 * * * *" }
+    { "path": "/api/planner/ai?action=reminders", "schedule": "*/15 * * * *" },
+    { "path": "/api/backup/cron", "schedule": "0 8 * * *" }
   ],
   "rewrites": [
     {

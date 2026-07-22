@@ -354,3 +354,147 @@ export const SERVICE_LABELS: Record<CloudService, string> = {
 export async function uploadToCloud(service: CloudService, blob: Blob, filename: string): Promise<CloudUploadResult> {
   return service === 'drive' ? uploadToDrive(blob, filename) : uploadToDropbox(blob, filename);
 }
+
+// --- Nested-folder backup uploads -------------------------------------------
+//
+// The backup system writes a whole tree per run —
+//   Author Command Center/Backups/backup_<timestamp>/
+//     data.json
+//     manifest.json
+//     files/<bucket>/<path…>
+// — so it needs uploads into arbitrary subfolders, not just the flat app
+// folder the creative export uses. A "destination" is opened once per run
+// (resolving/creating the dated folder) and reused for every file.
+
+const BACKUPS_FOLDER_NAME = 'Backups';
+
+interface DriveBackupDest {
+  service: 'drive';
+  // Cache of "a/b/c" relative path → Drive folder id, seeded with '' → the
+  // run's root folder. Drive folders are id-addressed, so we resolve each
+  // subfolder once and reuse it.
+  folderCache: Map<string, string>;
+}
+
+interface DropboxBackupDest {
+  service: 'dropbox';
+  basePath: string; // e.g. /Author Command Center/Backups/backup_<ts>
+}
+
+export type CloudBackupDest = DriveBackupDest | DropboxBackupDest;
+
+async function ensureDriveSubfolder(token: string, parentId: string, name: string): Promise<string> {
+  const q = encodeURIComponent(
+    `name = '${name.replace(/'/g, "\\'")}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+  );
+  const findRes = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&pageSize=1`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (findRes.ok) {
+    const found = (await findRes.json().catch(() => ({}))) as { files?: Array<{ id: string }> };
+    if (found.files?.[0]?.id) return found.files[0].id;
+  }
+  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder', parents: [parentId] }),
+  });
+  if (!createRes.ok) {
+    const body = await createRes.text().catch(() => '');
+    throw new Error(`Couldn't create Drive folder "${name}" (${createRes.status})${body ? `: ${body.slice(0, 160)}` : ''}`);
+  }
+  const created = (await createRes.json()) as { id: string };
+  return created.id;
+}
+
+// Opens (creating as needed) the dated run folder for this backup and returns
+// a reusable destination handle. `stamp` should be filesystem-safe.
+export async function openCloudBackup(service: CloudService, stamp: string): Promise<CloudBackupDest> {
+  if (service === 'dropbox') {
+    await dropboxToken(); // surface a not-connected error early
+    return { service: 'dropbox', basePath: `/${CLOUD_FOLDER_NAME}/${BACKUPS_FOLDER_NAME}/backup_${stamp}` };
+  }
+  const token = await driveToken();
+  const appFolder = await ensureDriveFolder(token);
+  const backups = await ensureDriveSubfolder(token, appFolder, BACKUPS_FOLDER_NAME);
+  const runFolder = await ensureDriveSubfolder(token, backups, `backup_${stamp}`);
+  const cache = new Map<string, string>();
+  cache.set('', runFolder);
+  return { service: 'drive', folderCache: cache };
+}
+
+async function resolveDriveDir(token: string, dest: DriveBackupDest, segments: string[]): Promise<string> {
+  const key = segments.join('/');
+  const cached = dest.folderCache.get(key);
+  if (cached) return cached;
+  // Walk down from the run root, creating (and caching) each missing segment.
+  let parentId = dest.folderCache.get('')!;
+  const acc: string[] = [];
+  for (const seg of segments) {
+    acc.push(seg);
+    const k = acc.join('/');
+    let id = dest.folderCache.get(k);
+    if (!id) {
+      id = await ensureDriveSubfolder(token, parentId, seg);
+      dest.folderCache.set(k, id);
+    }
+    parentId = id;
+  }
+  return parentId;
+}
+
+// Uploads one file into the run folder at the given relative directory
+// (segments) under `filename`. Reuses the short-lived token cache.
+export async function uploadToCloudBackup(
+  dest: CloudBackupDest,
+  blob: Blob,
+  dirSegments: string[],
+  filename: string,
+): Promise<void> {
+  const dirs = dirSegments.filter(Boolean);
+  if (dest.service === 'dropbox') {
+    const token = await dropboxToken();
+    const path = [dest.basePath, ...dirs, filename].join('/');
+    const apiArg = { path, mode: 'add', autorename: true, mute: true };
+    const res = await fetch('https://content.dropboxapi.com/2/files/upload', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Dropbox-API-Arg': JSON.stringify(apiArg).replace(/[\u007f-\uffff]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`),
+        'Content-Type': 'application/octet-stream',
+      },
+      body: blob,
+    });
+    if (!res.ok) {
+      if (res.status === 401) clearTokenCache('dropbox');
+      const body = await res.text().catch(() => '');
+      throw new Error(`Dropbox upload failed (${res.status})${body ? `: ${body.slice(0, 160)}` : ''}`);
+    }
+    return;
+  }
+
+  const token = await driveToken();
+  const folderId = await resolveDriveDir(token, dest, dirs);
+  const metadata = { name: filename, parents: [folderId] };
+  const form = new FormData();
+  form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+  form.append('file', blob);
+  const res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  if (!res.ok) {
+    if (res.status === 401) clearTokenCache('drive');
+    const body = await res.text().catch(() => '');
+    throw new Error(`Drive upload failed (${res.status})${body ? `: ${body.slice(0, 160)}` : ''}`);
+  }
+}
+
+// A stable, filesystem-safe timestamp for a backup run, e.g.
+// 2026-07-21_1530. Callers pass this to openCloudBackup and reuse it in
+// status messages.
+export function backupStamp(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}`;
+}
