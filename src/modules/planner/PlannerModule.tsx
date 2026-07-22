@@ -1326,6 +1326,8 @@ export default function PlannerModule() {
             cal={cal}
             blockedIds={blockedTaskIds}
             onEditDependencies={setDepEditId}
+            onEstimateDurations={runDurations}
+            onFindDuplicates={runDedup}
           />
         ) : selectedNote ? (
           <NotePane
@@ -1348,6 +1350,8 @@ export default function PlannerModule() {
             onReorder={reorder}
             blockedIds={blockedTaskIds}
             onEditDependencies={setDepEditId}
+            onEstimateDurations={runDurations}
+            onFindDuplicates={runDedup}
           />
         ) : (
           <div className="p-8 text-content-muted">Select a note or view.</div>
@@ -1944,8 +1948,32 @@ function BulkBar({
 // Smart views
 // ---------------------------------------------------------------------------
 
+// Two compact AI actions shown in every list/view header, so "Estimate
+// durations" and "Find duplicates" are reachable anywhere — not only in the
+// Weekly Reset. Both scan across all your open to-dos.
+function AiTools({ onEstimateDurations, onFindDuplicates }: { onEstimateDurations: () => void; onFindDuplicates: () => void }) {
+  return (
+    <>
+      <button
+        onClick={onEstimateDurations}
+        className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
+        title="Let Claude estimate a duration for to-dos that have none"
+      >
+        <Sparkles className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Durations</span>
+      </button>
+      <button
+        onClick={onFindDuplicates}
+        className="inline-flex items-center gap-1 text-xs font-medium text-violet-600 hover:text-violet-700 bg-violet-50 hover:bg-violet-100 rounded-control px-2.5 py-1.5"
+        title="Let Claude find duplicate to-dos across all your lists"
+      >
+        <Sparkles className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Duplicates</span>
+      </button>
+    </>
+  );
+}
+
 function ViewPane({
-  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onLogTime, onOpenNote, cal, blockedIds, onEditDependencies,
+  bucket, inbox = false, orbit = false, orbitEnabled = false, settings = null, tasks, today, notesById, lists, onAdd, onPatch, onDelete, onLogTime, onOpenNote, cal, blockedIds, onEditDependencies, onEstimateDurations, onFindDuplicates,
 }: {
   bucket?: Bucket;
   inbox?: boolean;
@@ -1964,6 +1992,8 @@ function ViewPane({
   cal: CalendarBridge;
   blockedIds: Set<string>;
   onEditDependencies: (id: string) => void;
+  onEstimateDurations: () => void;
+  onFindDuplicates: () => void;
 }) {
   const meta = orbit
     ? { label: 'Orbit', icon: OrbitIcon, color: 'text-brand-500' }
@@ -2127,6 +2157,7 @@ function ViewPane({
               <Clock className="w-4 h-4" /> {formatMinutes(totalMinutes)} planned
             </span>
           )}
+          <AiTools onEstimateDurations={onEstimateDurations} onFindDuplicates={onFindDuplicates} />
           {items.length > 0 && !selectMode && (
             <button onClick={() => setSelectMode(true)} className="text-xs font-medium text-content-secondary hover:text-brand-600 border border-edge rounded-control px-2.5 py-1.5">Select</button>
           )}
@@ -2362,7 +2393,7 @@ function ListMenuItem({ label, onClick }: { label: string; onClick: () => void }
 }
 
 function NotePane({
-  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onMergeInto, onSortTasks, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false, blockedIds, onEditDependencies,
+  note, tasks, today, lists, penNames, onSaveNote, onDeleteNote, onDuplicateNote, onMergeInto, onSortTasks, onAdd, onCreate, onPatch, onDelete, onReorder, orbitEnabled = false, blockedIds, onEditDependencies, onEstimateDurations, onFindDuplicates,
 }: {
   note: PlannerNote;
   tasks: PlannerTask[];
@@ -2382,6 +2413,8 @@ function NotePane({
   orbitEnabled?: boolean;
   blockedIds: Set<string>;
   onEditDependencies: (id: string) => void;
+  onEstimateDurations: () => void;
+  onFindDuplicates: () => void;
 }) {
   const [title, setTitle] = useState(note.title);
   const [body, setBody] = useState(note.body);
@@ -2521,6 +2554,7 @@ function NotePane({
           className="flex-1 text-2xl font-bold text-content bg-transparent outline-none placeholder:text-content-faint"
         />
         <div className="flex items-center gap-1 pt-2">
+          <AiTools onEstimateDurations={onEstimateDurations} onFindDuplicates={onFindDuplicates} />
           {penNames.length > 0 && (
             <NotePenNamePicker
               penNames={penNames}
