@@ -67,16 +67,16 @@ export default function ProjectsView({
     <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-1">
         <LayoutGrid className="w-6 h-6 text-brand-500" />
-        <h2 className="text-2xl font-bold text-content">Projects</h2>
+        <h2 className="text-2xl font-bold text-content">Lists Progress</h2>
       </div>
       <p className="text-sm text-content-muted mb-5">
-        Every list as a project — how far along it is, and what still needs you.
-        {totals.total > 0 && <> · {totals.done}/{totals.total} to-dos done ({totals.pct}%) across {totals.projects} project{totals.projects === 1 ? '' : 's'}</>}
+        Each list's progress — how far along it is, and what still needs you.
+        {totals.total > 0 && <> · {totals.done}/{totals.total} to-dos done ({totals.pct}%) across {totals.projects} list{totals.projects === 1 ? '' : 's'}</>}
       </p>
 
       {rows.length === 0 ? (
         <div className="rounded-card border border-dashed border-edge p-10 text-center text-sm text-content-muted">
-          No lists yet. Create a list and it’ll show up here as a project.
+          No lists yet. Create a list and its progress will show up here.
         </div>
       ) : (
         <>

@@ -138,7 +138,7 @@ export default function WeeklyResetView({
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-1">
         <RotateCcw className="w-6 h-6 text-brand-500" />
         <h2 className="text-2xl font-bold text-content">Weekly Reset</h2>

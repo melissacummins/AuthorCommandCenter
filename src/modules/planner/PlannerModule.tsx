@@ -1136,7 +1136,7 @@ export default function PlannerModule() {
             }`}
           >
             <LayoutGrid className="w-4 h-4 text-brand-500" />
-            <span className="flex-1 text-left">Projects</span>
+            <span className="flex-1 text-left">Lists Progress</span>
           </button>
           <button
             onClick={() => choose({ kind: 'stats' })}
@@ -2123,7 +2123,7 @@ function ViewPane({
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <Icon className={`w-6 h-6 ${meta.color}`} />
         <h2 className="text-2xl font-bold text-content">{meta.label}</h2>
@@ -2527,7 +2527,7 @@ function NotePane({
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-3xl mx-auto">
+    <div className="p-6 lg:p-8 max-w-5xl mx-auto">
       <div className="flex items-start gap-3 mb-2">
         <input
           ref={titleRef}
