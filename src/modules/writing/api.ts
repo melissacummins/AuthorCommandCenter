@@ -67,35 +67,45 @@ export async function listChapters(manuscriptId: string): Promise<ManuscriptChap
   return (data ?? []) as ManuscriptChapter[];
 }
 
-// Replace the manuscript's whole chapter breakdown with an accepted import
-// scan — clears any prior chapters (their revisions cascade), inserts the new
-// ones in order, and rolls the total word count up onto the manuscript row
-// (and the linked Catalog book, if any).
+// Save the manuscript's chapter breakdown atomically and non-destructively.
+//
+// This routes through the `save_manuscript_chapters` Postgres RPC (migration
+// 111) which runs the ENTIRE save in one transaction: it snapshots the current
+// chapters into manuscript_revisions first, then upserts the provided chapters
+// by id, deletes only chapters genuinely removed from the set, and recomputes
+// manuscripts.word_count + today's manuscript_word_logs row — all-or-nothing.
+// This replaces the old client-side delete-all-then-reinsert, which had no
+// client transaction and could lose every chapter if interrupted mid-save.
+//
+// Chapters carry an optional `id`: existing chapters (with an id) are updated
+// in place, id-less drafts (e.g. an import scan) are inserted as new rows. The
+// signature and ManuscriptChapter[] return shape are unchanged for callers.
+//
+// The RPC owns the manuscript-level rollup (manuscripts.word_count +
+// manuscript_word_logs). The linked Catalog book rollup (books.word_count +
+// book_word_logs) stays here in the client so it isn't double-counted.
 export async function saveChapters(
   manuscriptId: string,
   userId: string,
   drafts: ChapterDraft[],
 ): Promise<ManuscriptChapter[]> {
-  await supabase.from('manuscript_chapters').delete().eq('manuscript_id', manuscriptId);
-  let chapters: ManuscriptChapter[] = [];
-  if (drafts.length) {
-    const rows = drafts.map((d, i) => ({
-      manuscript_id: manuscriptId,
-      user_id: userId,
-      idx: i,
-      title: d.title,
-      content_html: d.content_html,
-      word_count: countWords(d.content_html),
-    }));
-    const { data, error } = await supabase
-      .from('manuscript_chapters')
-      .insert(rows)
-      .select('*')
-      .order('idx', { ascending: true });
-    if (error) throw error;
-    chapters = (data ?? []) as ManuscriptChapter[];
-  }
-  await syncWordCount(manuscriptId, userId, chapters);
+  const p_chapters = drafts.map((d, i) => ({
+    // ChapterDraft carries no id today (all inserts); forward-compatible with a
+    // future editor payload that passes existing chapter ids for in-place edits.
+    id: (d as { id?: string }).id ?? undefined,
+    idx: i,
+    title: d.title,
+    content_html: d.content_html,
+    word_count: countWords(d.content_html),
+  }));
+  const { data, error } = await supabase.rpc('save_manuscript_chapters', {
+    p_manuscript_id: manuscriptId,
+    p_chapters,
+    p_day: todayISO(),
+  });
+  if (error) throw error;
+  const chapters = (data ?? []) as ManuscriptChapter[];
+  await syncLinkedBookWordCount(manuscriptId, userId, chapters);
   return chapters;
 }
 
@@ -230,6 +240,20 @@ async function syncWordCount(manuscriptId: string, userId: string, knownChapters
     await updateBook(manuscript.book_id, { word_count: total }).catch(() => undefined);
     await logWordCount(userId, manuscript.book_id, todayISO(), total).catch(() => undefined);
   }
+}
+
+// Roll a manuscript's total word count onto its linked Catalog book only
+// (books.word_count + today's book_word_logs row). Used by saveChapters, where
+// the manuscript-level rollup (manuscripts.word_count + manuscript_word_logs)
+// is already handled atomically inside the save_manuscript_chapters RPC — so
+// this deliberately does NOT re-touch the manuscript row and nothing is
+// double-counted. No-op when the manuscript isn't linked to a book.
+async function syncLinkedBookWordCount(manuscriptId: string, userId: string, chapters: ManuscriptChapter[]): Promise<void> {
+  const manuscript = await getManuscript(manuscriptId);
+  if (!manuscript?.book_id) return;
+  const total = chapters.reduce((sum, c) => sum + (c.word_count ?? 0), 0);
+  await updateBook(manuscript.book_id, { word_count: total }).catch(() => undefined);
+  await logWordCount(userId, manuscript.book_id, todayISO(), total).catch(() => undefined);
 }
 
 // Local (not UTC) YYYY-MM-DD for "today", matching Catalog's own helper so a

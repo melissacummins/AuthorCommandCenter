@@ -22,10 +22,12 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-// Runtime value comes from a self-contained pre-bundle (scripts/bundle-mcp-core.mjs);
+import { z } from 'zod';
+// Runtime values come from self-contained pre-bundles (scripts/bundle-mcp-core.mjs);
 // importing ../src directly threw ERR_MODULE_NOT_FOUND under Node ESM on Vercel.
-// Types resolve via the sibling api/_generated/dashboardCore.d.ts.
+// Types resolve via the sibling api/_generated/*.d.ts files.
 import { getBusinessSnapshot } from './_generated/dashboardCore.js';
+import * as reads from './_generated/connectorCore.js';
 
 export const maxDuration = 30;
 
@@ -128,16 +130,163 @@ async function authenticate(req: VercelRequest): Promise<
   return { ok: true, client, user };
 }
 
+/** Every tool returns its result as a single JSON text block. */
+function json(value: unknown) {
+  return { content: [{ type: 'text' as const, text: JSON.stringify(value) }] };
+}
+
 function buildServer(client: SupabaseClient, user: User): McpServer {
   const server = new McpServer({ name: 'Author Command Center', version: '1.0.0' });
+  const uid = user.id;
 
+  // --- Overview -----------------------------------------------------------
   server.tool(
     'get_business_snapshot',
     "Get today's whole picture for the connected author: open and overdue to-dos, inventory reorder alerts (with suggested quantities and cost), month-to-date revenue / ad spend / net profit, and everything dated in the next 7 days (releases, pre-orders, manuscript deadlines, tasks).",
-    async () => {
-      const snapshot = await getBusinessSnapshot(client, user.id);
-      return { content: [{ type: 'text', text: JSON.stringify(snapshot) }] };
+    async () => json(await getBusinessSnapshot(client, uid)),
+  );
+
+  // --- Writing (manuscripts & chapters) -----------------------------------
+  server.tool(
+    'list_manuscripts',
+    "List all of the author's manuscripts (title, status, word count, linked book), newest first. Use this to discover what drafts exist before drilling into one.",
+    async () => json(await reads.listManuscripts(client, uid)),
+  );
+  server.tool(
+    'get_manuscript',
+    "Get one manuscript's metadata plus its ordered chapter list with per-chapter word counts (without the heavy chapter text). Use this to see a manuscript's structure and pick a chapter.",
+    { manuscript_id: z.string() },
+    async ({ manuscript_id }) => json(await reads.getManuscript(client, uid, manuscript_id)),
+  );
+  server.tool(
+    'get_chapter',
+    "Get a single chapter's full HTML content along with its title, position, and word count. Use this when you need the actual text of one specific chapter.",
+    { chapter_id: z.string() },
+    async ({ chapter_id }) => json(await reads.getChapter(client, uid, chapter_id)),
+  );
+  server.tool(
+    'get_manuscript_plain_text',
+    "Get an entire manuscript as readable plain text (all chapters in order, HTML stripped) with a total word count. Use this to read, summarize, or analyze a whole draft.",
+    { manuscript_id: z.string() },
+    async ({ manuscript_id }) => json(await reads.getManuscriptPlainText(client, uid, manuscript_id)),
+  );
+
+  // --- Catalog ------------------------------------------------------------
+  server.tool(
+    'list_books',
+    "List all of the author's books with key catalog fields (title, series, status, language, release dates, format prices).",
+    async () => json(await reads.listBooks(client, uid)),
+  );
+  server.tool(
+    'get_book',
+    "Get the full record for a single book by its ID, including blurb, tropes, ISBNs, keywords, and metadata.",
+    { book_id: z.string() },
+    async ({ book_id }) => json(await reads.getBook(client, uid, book_id)),
+  );
+  server.tool(
+    'list_pen_names',
+    "List the author's pen names used to attribute books.",
+    async () => json(await reads.listPenNames(client, uid)),
+  );
+
+  // --- ARCs ---------------------------------------------------------------
+  server.tool(
+    'list_arc_readers',
+    "List the author's ARC (advance reader copy) readers with contact info, lifecycle status, and their per-book application/receipt/review history.",
+    async () => json(await reads.listArcReaders(client, uid)),
+  );
+  server.tool(
+    'get_arc_stats',
+    "Get a summary of the ARC program: total reader count and a breakdown of readers by lifecycle status.",
+    async () => json(await reads.getArcStats(client, uid)),
+  );
+
+  // --- Finances (Profit) --------------------------------------------------
+  server.tool(
+    'list_daily_records',
+    "List daily profit/loss records, each with computed revenue, ad spend, and net. Defaults to the last 90 days.",
+    { from_date: z.string().optional() },
+    async ({ from_date }) => json(await reads.listDailyRecords(client, uid, { fromDate: from_date })),
+  );
+  server.tool(
+    'list_profit_categories',
+    "List the author's custom revenue and ad-spend profit categories.",
+    async () => json(await reads.listProfitCategories(client, uid)),
+  );
+  server.tool(
+    'get_pnl_summary',
+    "Summarize revenue, ad spend, and net profit per month plus grand totals over the last N months (default 6).",
+    { months: z.number().int().positive().optional() },
+    async ({ months }) => json(await reads.getPnlSummary(client, uid, { months })),
+  );
+
+  // --- Transactions -------------------------------------------------------
+  server.tool(
+    'list_transactions',
+    "List recent financial transactions, optionally within a date window (default recent, limit 200).",
+    { from_date: z.string().optional(), to_date: z.string().optional(), limit: z.number().int().positive().optional() },
+    async ({ from_date, to_date, limit }) =>
+      json(await reads.listTransactions(client, uid, { fromDate: from_date, toDate: to_date, limit })),
+  );
+  server.tool(
+    'get_monthly_transaction_summary',
+    "Show income vs. expense totals grouped by month for the last N months (default 6).",
+    { months: z.number().int().positive().optional() },
+    async ({ months }) => json(await reads.getMonthlyTransactionSummary(client, uid, { months })),
+  );
+  server.tool(
+    'list_subscriptions',
+    "List the author's tracked recurring subscriptions and expenses (vendor, frequency, amount).",
+    async () => json(await reads.listSubscriptions(client, uid)),
+  );
+  server.tool(
+    'list_cash_flow_notes',
+    "List the author's free-text monthly cash-flow notes.",
+    async () => json(await reads.listCashFlowNotes(client, uid)),
+  );
+
+  // --- Inventory & Orders -------------------------------------------------
+  server.tool(
+    'list_products',
+    "List every product in the author's inventory catalog with stock, cost, reorder point, and sales-history fields.",
+    async () => json(await reads.listProducts(client, uid)),
+  );
+  server.tool(
+    'list_purchase_orders',
+    "List the author's purchase orders (book reorders), newest first, optionally filtered by status.",
+    { status: z.enum(['pending', 'arrived']).optional() },
+    async ({ status }) => json(await reads.listPurchaseOrders(client, uid, { status })),
+  );
+  server.tool(
+    'list_orders',
+    "List recent Shopify orders with totals and a line-item count/quantity summary. Defaults to the last 30 days (max 200).",
+    { from_date: z.string().optional(), limit: z.number().int().positive().optional() },
+    async ({ from_date, limit }) => json(await reads.listOrders(client, uid, { fromDate: from_date, limit })),
+  );
+
+  // --- Planner ------------------------------------------------------------
+  server.tool(
+    'list_tasks',
+    "List the author's planner to-dos, defaulting to open tasks ordered by due date. Filter by completion, list, due-before date, or someday flag.",
+    {
+      done: z.boolean().optional(),
+      list_id: z.string().optional(),
+      due_before: z.string().optional(),
+      someday: z.boolean().optional(),
+      limit: z.number().int().positive().optional(),
     },
+    async ({ done, list_id, due_before, someday, limit }) =>
+      json(await reads.listTasks(client, uid, { done, listId: list_id, dueBefore: due_before, someday, limit })),
+  );
+  server.tool(
+    'list_task_lists',
+    "List the author's planner lists (named to-do lists / brain-dumps), pinned first.",
+    async () => json(await reads.listTaskLists(client, uid)),
+  );
+  server.tool(
+    'get_task_counts',
+    "Get a summary tally of the author's to-dos: open, done, overdue, and someday counts.",
+    async () => json(await reads.getTaskCounts(client, uid)),
   );
 
   return server;
