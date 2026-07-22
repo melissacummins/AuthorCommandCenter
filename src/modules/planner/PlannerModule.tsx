@@ -2228,7 +2228,7 @@ function ViewPane({
         <p className="text-sm text-content-muted mt-4">{search ? 'Nothing matches that search.' : 'Nothing here right now.'}</p>
       ) : bucket === 'upcoming' ? (
         // Group by day, like the Things "Upcoming" list.
-        <div className="mt-4 space-y-5">
+        <div className="mt-4 space-y-8">
           {groupByDay(visible).map(group => (
             <div key={group.date}>
               <DayHeader date={group.date} today={today} totalMinutes={sumEstimate(group.items)} />
@@ -2306,9 +2306,9 @@ function DayHeader({ date, today, totalMinutes }: { date: string; today: string;
   const diff = Math.round((d.getTime() - new Date(today + 'T00:00:00').getTime()) / 86_400_000);
   const rel = diff === 1 ? 'Tomorrow' : weekday;
   return (
-    <div className="flex items-baseline gap-2 mb-1">
-      <span className="text-xl font-bold text-content">{d.getDate()}</span>
-      <span className="text-sm font-medium text-content-secondary">{rel}</span>
+    <div className="flex items-baseline gap-2 mb-2.5 pb-2 border-b border-edge-soft">
+      <span className="text-2xl font-bold text-content">{d.getDate()}</span>
+      <span className="text-base font-semibold text-content-secondary">{rel}</span>
       <span className="text-xs text-content-muted">· {monthDay}</span>
       {totalMinutes > 0 && (
         <span className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-content-muted">
