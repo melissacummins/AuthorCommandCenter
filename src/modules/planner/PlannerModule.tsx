@@ -1324,6 +1324,7 @@ export default function PlannerModule() {
             settings={settings ?? { user_id: user?.id ?? '', daily_capacity_minutes: DEFAULT_DAILY_CAPACITY, carry_over_capacity: false, auto_rollover: false, working_phase: null, phase_started_on: null, daily_goal_count: 3, orbit_enabled: false, weekly_reset_enabled: true, working_phases_enabled: true, created_at: '', updated_at: '' }}
             today={today}
             onUpdate={updatePlannerSettings}
+            gc={gc}
           />
         ) : selection.kind === 'view' || selection.kind === 'inbox' || selection.kind === 'orbit' ? (
           <ViewPane

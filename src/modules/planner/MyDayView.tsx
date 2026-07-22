@@ -319,7 +319,6 @@ export default function MyDayView({
               <span className="block mt-1.5 text-content-muted">Uses your Claude key (Settings → API Keys). You review every suggestion before anything changes.</span>
             </span>
           </span>
-          <ConnectControls gc={gc} />
         </div>
       </div>
 
@@ -344,7 +343,6 @@ export default function MyDayView({
           <button onClick={() => gc.setError(null)}><X className="w-4 h-4" /></button>
         </div>
       )}
-      {gc.available && !gc.configured && <NotConfiguredCard />}
 
       {/* "You had to-dos in a time block that you never checked off — did you
           work on them?" Logging here records the block time without completing
@@ -353,21 +351,6 @@ export default function MyDayView({
         <BlockReview reviewBlocks={reviewBlocks} onResolve={handlers.onResolveBlockReview} />
       )}
 
-      {/* Search any task and jump to the day it's on / was done */}
-      <TaskSearch
-        tasks={tasks}
-        taskDay={taskDay}
-        today={today}
-        lists={lists}
-        onPatch={handlers.onPatchTask}
-        onDelete={handlers.onDeleteTask}
-        onOpen={t => (onOpenTask ? onOpenTask(t) : (taskDay(t) && goToDay(taskDay(t)!)))}
-      />
-
-      {/* Marvin-style day navigator: a big day number with Previous · 📅 · Next.
-          Tapping the date (or the calendar button) drops a compact month picker
-          right below it — dots mark the days you actually worked — and it closes
-          the moment you choose a day, so it never takes over the page. */}
       <DayCommandBar
         sel={sel}
         isToday={selected === today}
@@ -388,6 +371,18 @@ export default function MyDayView({
         phase={phase}
         phaseTarget={phaseTarget}
         daysInPhase={daysInPhase}
+      />
+
+      {/* Search any task and jump to the day it's on / was done — sits right
+          under the date bar so search always lives in the same place. */}
+      <TaskSearch
+        tasks={tasks}
+        taskDay={taskDay}
+        today={today}
+        lists={lists}
+        onPatch={handlers.onPatchTask}
+        onDelete={handlers.onDeleteTask}
+        onOpen={t => (onOpenTask ? onOpenTask(t) : (taskDay(t) && goToDay(taskDay(t)!)))}
       />
 
       {/* Full-width schedule so the day's to-dos have the whole width. */}
@@ -1166,34 +1161,3 @@ function QuickAddTask({ onAdd }: { onAdd: (title: string) => void }) {
   );
 }
 
-function ConnectControls({ gc }: { gc: UseGoogleCalendar }) {
-  if (!gc.configured) return null;
-  if (!gc.connected) {
-    return (
-      <button onClick={gc.connect} disabled={gc.busy} className="inline-flex items-center gap-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-3 py-1.5 disabled:opacity-60">
-        <CalendarDays className="w-4 h-4" /> {gc.busy ? 'Connecting…' : 'Connect Google Calendar'}
-      </button>
-    );
-  }
-  return (
-    <div className="flex items-center gap-2">
-      <select value={gc.calendarId} onChange={e => gc.chooseCalendar(e.target.value)} className="text-sm border border-edge rounded-control px-2 py-1.5 max-w-[12rem]">
-        {gc.calendars.map(c => <option key={c.id} value={c.id}>{c.summary}</option>)}
-      </select>
-      <button onClick={gc.disconnect} className="text-xs text-content-muted hover:text-rose-500">Disconnect</button>
-    </div>
-  );
-}
-
-function NotConfiguredCard() {
-  return (
-    <div className="mb-6 bg-gradient-to-r from-brand-50 to-brand-50 border border-brand-200 rounded-card p-5">
-      <h3 className="font-semibold text-brand-800 mb-1 flex items-center gap-2"><CalendarDays className="w-4 h-4" /> Connect your Google Calendar</h3>
-      <p className="text-sm text-brand-700 leading-relaxed">
-        My Day works fully without it — connecting Google Calendar just layers your existing events
-        alongside your plan and lets you push a time block out as a calendar event (with a reminder).
-        It needs a one-time sign-in key (a free OAuth client ID) as <code className="bg-surface/60 px-1 rounded">VITE_GOOGLE_CLIENT_ID</code>.
-      </p>
-    </div>
-  );
-}

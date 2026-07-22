@@ -1,18 +1,21 @@
 import { useState, type ReactNode } from 'react';
-import { Settings as SettingsIcon, Compass } from 'lucide-react';
+import { Settings as SettingsIcon, Compass, CalendarDays } from 'lucide-react';
 import {
   PHASES, phaseInfo, daysBetweenISO, formatMinutes,
   type PlannerSettings, type WorkingPhase,
 } from './types';
+import type { UseGoogleCalendar } from './useGoogleCalendar';
 
 // One central place for the planner's preferences: daily capacity, the two
-// automations (carry-over + roll-over), and the Working Phases strategy.
+// automations (carry-over + roll-over), the Working Phases strategy, and the
+// Google Calendar connection.
 export default function SettingsView({
-  settings, today, onUpdate,
+  settings, today, onUpdate, gc,
 }: {
   settings: PlannerSettings;
   today: string;
   onUpdate: (patch: Partial<PlannerSettings>) => void;
+  gc: UseGoogleCalendar;
 }) {
   const baseline = settings.daily_capacity_minutes;
   const [hours, setHours] = useState((baseline / 60).toString());
@@ -156,6 +159,32 @@ export default function SettingsView({
         </div>
         )}
       </Section>
+
+      {/* Google Calendar */}
+      {gc.available && (
+        <Section
+          title={<span className="flex items-center gap-1.5"><CalendarDays className="w-4 h-4 text-content-muted" /> Google Calendar</span>}
+          hint="Optional. Connecting layers your existing calendar events alongside My Day, and lets you push a time block out as a calendar event with a reminder. My Day works fully without it."
+        >
+          {!gc.configured ? (
+            <p className="text-xs text-content-muted">
+              Needs a one-time sign-in key (a free OAuth client ID) set as <code className="bg-surface-sunken px-1 rounded">VITE_GOOGLE_CLIENT_ID</code> before it can connect.
+            </p>
+          ) : !gc.connected ? (
+            <button onClick={gc.connect} disabled={gc.busy} className="inline-flex items-center gap-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control px-3 py-1.5 disabled:opacity-60">
+              <CalendarDays className="w-4 h-4" /> {gc.busy ? 'Connecting…' : 'Connect Google Calendar'}
+            </button>
+          ) : (
+            <div className="flex items-center gap-3 flex-wrap">
+              <label className="text-sm text-content-secondary">Calendar</label>
+              <select value={gc.calendarId} onChange={e => gc.chooseCalendar(e.target.value)} className="text-sm border border-edge rounded-control px-2 py-1.5 max-w-[16rem] bg-surface">
+                {gc.calendars.map(c => <option key={c.id} value={c.id}>{c.summary}</option>)}
+              </select>
+              <button onClick={gc.disconnect} className="text-xs font-medium text-content-muted hover:text-rose-500">Disconnect</button>
+            </div>
+          )}
+        </Section>
+      )}
     </div>
   );
 }
