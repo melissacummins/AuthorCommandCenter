@@ -778,18 +778,229 @@ async function deleteCashFlowLine(client, userId, args) {
   if (error) throw error;
   return { deleted: true };
 }
+
+// src/lib/connectorCore/links.ts
+async function listShortLinks(client, userId, filter = {}) {
+  let query = client.from("short_links").select("*").eq("user_id", userId);
+  if (filter.parentId === null) query = query.is("parent_id", null);
+  else if (filter.parentId !== void 0) query = query.eq("parent_id", filter.parentId);
+  if (filter.folderId === null) query = query.is("folder_id", null);
+  else if (filter.folderId !== void 0) query = query.eq("folder_id", filter.folderId);
+  if (typeof filter.isActive === "boolean") query = query.eq("is_active", filter.isActive);
+  if (!filter.includeArchived) query = query.is("archived_at", null);
+  if (filter.showOnBioOnly) query = query.eq("show_on_bio", true);
+  if (filter.search && filter.search.trim()) {
+    const q = filter.search.trim().replace(/[%_,]/g, "\\$&");
+    query = query.or(
+      `slug.ilike.%${q}%,label.ilike.%${q}%,destination_url.ilike.%${q}%,channel.ilike.%${q}%,bio_title.ilike.%${q}%`
+    );
+  }
+  query = query.order("created_at", { ascending: false });
+  query = query.limit(Math.min(Math.max(filter.limit ?? 200, 1), 500));
+  const { data, error } = await query;
+  if (error) throw error;
+  return data ?? [];
+}
+async function getShortLink(client, userId, args) {
+  if (!args.id && !args.slug) {
+    throw new Error("Must provide either id or slug.");
+  }
+  let query = client.from("short_links").select("*").eq("user_id", userId);
+  if (args.id) query = query.eq("id", args.id);
+  else if (args.slug) query = query.eq("slug", args.slug);
+  const { data, error } = await query.maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+async function isSlugTaken(client, userId, slug) {
+  const check = (table) => client.from(table).select("id").eq("slug", slug).eq("user_id", userId).maybeSingle().then((r) => Boolean(r.data), () => false);
+  const [inLinks, inLanding, inSeries] = await Promise.all([
+    check("short_links"),
+    check("landing_pages"),
+    check("series_pages")
+  ]);
+  return inLinks || inLanding || inSeries;
+}
+async function nextBioSortOrder(client, userId) {
+  const linkRes = await client.from("short_links").select("bio_sort_order").eq("user_id", userId).order("bio_sort_order", { ascending: false }).limit(1).maybeSingle();
+  const blockRes = await client.from("bio_blocks").select("bio_sort_order").eq("user_id", userId).order("bio_sort_order", { ascending: false }).limit(1).maybeSingle().then((r) => r, () => ({ data: null }));
+  const maxLink = linkRes.data?.bio_sort_order ?? -1;
+  const maxBlock = blockRes.data?.bio_sort_order ?? -1;
+  return Math.max(maxLink, maxBlock) + 1;
+}
+async function createShortLink(client, userId, args) {
+  if (!args.slug || !args.slug.trim()) throw new Error("slug is required.");
+  if (!args.destination_url || !args.destination_url.trim()) {
+    throw new Error("destination_url is required.");
+  }
+  if (await isSlugTaken(client, userId, args.slug.trim())) {
+    throw new Error(`Slug "${args.slug.trim()}" is already in use for this account.`);
+  }
+  const showOnBio = args.show_on_bio !== false;
+  const isVariant = Boolean(args.parent_id);
+  let bioSortOrder;
+  if (showOnBio && !isVariant) {
+    bioSortOrder = await nextBioSortOrder(client, userId);
+  }
+  const payload = {
+    user_id: userId,
+    slug: args.slug.trim(),
+    destination_url: args.destination_url.trim(),
+    label: args.label ?? "",
+    channel: args.channel ?? "",
+    notes: args.notes ?? "",
+    tags: args.tags ?? [],
+    is_active: args.is_active ?? true,
+    parent_id: args.parent_id ?? null,
+    folder_id: args.folder_id ?? null,
+    starts_at: args.starts_at ?? null,
+    expires_at: args.expires_at ?? null,
+    expired_redirect_url: args.expired_redirect_url ?? null,
+    show_on_bio: showOnBio,
+    bio_title: args.bio_title ?? "",
+    bio_style: args.bio_style ?? "card",
+    thumbnail_url: args.thumbnail_url ?? null
+  };
+  if (bioSortOrder !== void 0) payload.bio_sort_order = bioSortOrder;
+  const { data, error } = await client.from("short_links").insert(payload).select("*").single();
+  if (error) throw error;
+  return data;
+}
+async function updateShortLink(client, userId, args) {
+  const { id, ...raw } = args;
+  if (!id) throw new Error("id is required.");
+  const patch = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v !== void 0) patch[k] = v;
+  }
+  if (Object.keys(patch).length === 0) {
+    throw new Error("At least one field must be provided to update.");
+  }
+  const { data, error } = await client.from("short_links").update(patch).eq("id", id).eq("user_id", userId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+async function archiveShortLink(client, userId, args) {
+  if (!args.id) throw new Error("id is required.");
+  const patch = args.unarchive ? { archived_at: null, is_active: true } : { archived_at: (/* @__PURE__ */ new Date()).toISOString(), is_active: false };
+  const { data, error } = await client.from("short_links").update(patch).eq("id", args.id).eq("user_id", userId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+async function listLinkFolders(client, userId) {
+  const { data, error } = await client.from("link_folders").select("*").eq("user_id", userId);
+  if (error) throw error;
+  return (data ?? []).sort(
+    (a, b) => a.name.localeCompare(b.name, void 0, { sensitivity: "base" })
+  );
+}
+async function createLinkFolder(client, userId, args) {
+  if (!args.name || !args.name.trim()) throw new Error("name is required.");
+  const { data, error } = await client.from("link_folders").insert({
+    user_id: userId,
+    name: args.name.trim(),
+    color: args.color ?? "#6366f1"
+  }).select("*").single();
+  if (error) throw error;
+  return data;
+}
+async function updateLinkFolder(client, userId, args) {
+  const { id, ...raw } = args;
+  if (!id) throw new Error("id is required.");
+  const patch = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v !== void 0) patch[k] = v;
+  }
+  if (Object.keys(patch).length === 0) {
+    throw new Error("At least one field must be provided to update.");
+  }
+  const { data, error } = await client.from("link_folders").update(patch).eq("id", id).eq("user_id", userId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+async function deleteLinkFolder(client, userId, args) {
+  if (!args.id) throw new Error("id is required.");
+  const { error } = await client.from("link_folders").delete().eq("id", args.id).eq("user_id", userId);
+  if (error) throw error;
+  return { deleted: args.id };
+}
+async function listBioBlocks(client, userId) {
+  const { data, error } = await client.from("bio_blocks").select("*").eq("user_id", userId).order("bio_sort_order", { ascending: true });
+  if (error) throw error;
+  return data ?? [];
+}
+async function createBioBlock(client, userId, args) {
+  if (args.type !== "section" && args.type !== "image") {
+    throw new Error("type must be either 'section' or 'image'.");
+  }
+  const sortOrder = args.bio_sort_order ?? await nextBioSortOrder(client, userId);
+  const { data, error } = await client.from("bio_blocks").insert({
+    user_id: userId,
+    type: args.type,
+    title: args.title ?? null,
+    body: args.body ?? null,
+    image_url: args.image_url ?? null,
+    link_url: args.link_url ?? null,
+    bio_sort_order: sortOrder
+  }).select("*").single();
+  if (error) throw error;
+  return data;
+}
+async function updateBioBlock(client, userId, args) {
+  const { id, ...raw } = args;
+  if (!id) throw new Error("id is required.");
+  const patch = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v !== void 0) patch[k] = v;
+  }
+  if (Object.keys(patch).length === 0) {
+    throw new Error("At least one field must be provided to update.");
+  }
+  patch.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+  const { data, error } = await client.from("bio_blocks").update(patch).eq("id", id).eq("user_id", userId).select("*").single();
+  if (error) throw error;
+  return data;
+}
+async function deleteBioBlock(client, userId, args) {
+  if (!args.id) throw new Error("id is required.");
+  const { error } = await client.from("bio_blocks").delete().eq("id", args.id).eq("user_id", userId);
+  if (error) throw error;
+  return { deleted: args.id };
+}
+async function getBioSettings(client, userId) {
+  const { data, error } = await client.from("bio_settings").select("*").eq("user_id", userId).maybeSingle();
+  if (error) throw error;
+  return data ?? null;
+}
+async function upsertBioSettings(client, userId, args) {
+  const patch = { user_id: userId };
+  if (args.logo_url !== void 0) patch.logo_url = args.logo_url;
+  if (Object.keys(patch).length === 1) {
+    throw new Error("At least one settings field must be provided.");
+  }
+  const { data, error } = await client.from("bio_settings").upsert(patch, { onConflict: "user_id" }).select("*").single();
+  if (error) throw error;
+  return data;
+}
 export {
   ADD_TASKS_MAX,
   addCashFlowLine,
   addTasks,
   addTransaction,
   appendManuscriptChapter,
+  archiveShortLink,
   completeTask,
+  createBioBlock,
+  createLinkFolder,
   createList,
   createManuscript,
+  createShortLink,
   createTask,
+  deleteBioBlock,
   deleteCashFlowLine,
+  deleteLinkFolder,
   getArcStats,
+  getBioSettings,
   getBook,
   getCashFlow,
   getChapter,
@@ -797,24 +1008,32 @@ export {
   getManuscriptPlainText,
   getMonthlyTransactionSummary,
   getPnlSummary,
+  getShortLink,
   getTaskCounts,
   importTransactions,
   listArcReaders,
+  listBioBlocks,
   listBooks,
   listCashFlowNotes,
   listDailyRecords,
+  listLinkFolders,
   listManuscripts,
   listOrders,
   listPenNames,
   listProducts,
   listProfitCategories,
   listPurchaseOrders,
+  listShortLinks,
   listSubscriptions,
   listTaskLists,
   listTasks,
   listTransactions,
   saveCashFlowNote,
   setOpportunityDecision,
+  updateBioBlock,
   updateCashFlowLine,
+  updateLinkFolder,
+  updateShortLink,
+  upsertBioSettings,
   upsertCashFlowWeek
 };

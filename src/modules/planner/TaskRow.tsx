@@ -934,6 +934,32 @@ export function TaskDetail({
             Flag
           </button>
         )}
+
+        {canFlag && (
+          <button
+            onClick={() => onPatch(task.id, { estimate_minutes: task.estimate_minutes === QUICK_TASK_MINUTES ? null : QUICK_TASK_MINUTES })}
+            className={`inline-flex items-center gap-1 text-xs font-medium rounded-control border px-2 py-1 transition-colors ${
+              task.estimate_minutes === QUICK_TASK_MINUTES ? 'border-teal-200 bg-teal-50 text-teal-600' : 'border-edge text-content-secondary hover:text-teal-500 hover:border-teal-200'
+            }`}
+            title={task.estimate_minutes === QUICK_TASK_MINUTES ? 'Not a quick task' : 'Quick task (15 min)'}
+          >
+            <Zap className="w-3.5 h-3.5" fill={task.estimate_minutes === QUICK_TASK_MINUTES ? 'currentColor' : 'none'} />
+            Quick
+          </button>
+        )}
+
+        {canFlag && (
+          <button
+            onClick={() => onPatch(task.id, { feel_good: !task.feel_good })}
+            className={`inline-flex items-center gap-1 text-xs font-medium rounded-control border px-2 py-1 transition-colors ${
+              task.feel_good ? 'border-emerald-200 bg-emerald-50 text-emerald-600' : 'border-edge text-content-secondary hover:text-emerald-500 hover:border-emerald-200'
+            }`}
+            title={task.feel_good ? 'Remove feel-good' : 'Feel-good'}
+          >
+            <Heart className="w-3.5 h-3.5" fill={task.feel_good ? 'currentColor' : 'none'} />
+            Feel-good
+          </button>
+        )}
       </div>
 
       {/* Checklist editor (where enabled). */}
