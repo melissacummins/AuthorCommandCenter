@@ -335,6 +335,40 @@ function buildServer(client: SupabaseClient, user: User): McpServer {
     async () => json(await core.getBioSettings(client, uid)),
   );
 
+  // --- Landing Pages & Series Pages reads ---------------------------------
+  server.tool(
+    'list_landing_pages',
+    "List the author's book landing pages — branded /slug pages with a cover image, description, retailer buy buttons, reviews, optional sample-chapter link, and cross-sell row to other books in the same series. Optionally filter with a search that matches slug/title/headline/description.",
+    {
+      search: z.string().optional(),
+      limit: z.number().int().positive().max(500).optional(),
+    },
+    async ({ search, limit }) =>
+      json(await core.listLandingPages(client, uid, { search, limit })),
+  );
+  server.tool(
+    'get_landing_page',
+    "Get a single landing page by its id or slug — returns every field including buttons, reviews, cover_image_url, sample URL, series/cross-sell settings, theme, and accent color.",
+    { id: z.string().optional(), slug: z.string().optional() },
+    async ({ id, slug }) => json(await core.getLandingPage(client, uid, { id, slug })),
+  );
+  server.tool(
+    'list_series_pages',
+    "List the author's series pages — branded collection pages that group multiple book landing pages under a single /slug URL. Optionally search across slug/title/description.",
+    {
+      search: z.string().optional(),
+      limit: z.number().int().positive().max(500).optional(),
+    },
+    async ({ search, limit }) =>
+      json(await core.listSeriesPages(client, uid, { search, limit })),
+  );
+  server.tool(
+    'get_series_page',
+    "Get a single series page by its id or slug. page_ids is the ordered array of landing_pages.id values shown on the rendered series page.",
+    { id: z.string().optional(), slug: z.string().optional() },
+    async ({ id, slug }) => json(await core.getSeriesPage(client, uid, { id, slug })),
+  );
+
   // =========================================================================
   // WRITE tools — insert/append/upsert only, under the caller's RLS. No tool
   // deletes user content or does a destructive overwrite.
@@ -615,6 +649,108 @@ function buildServer(client: SupabaseClient, user: User): McpServer {
     "Update the author's bio-page settings. Currently supports setting or clearing the logo URL (which replaces the gradient initial at the top of the bio page). Pass null to clear.",
     { logo_url: z.string().nullable().optional() },
     async (args) => json(await core.upsertBioSettings(client, uid, args)),
+  );
+
+  // --- Landing Pages writes -----------------------------------------------
+  server.tool(
+    'create_landing_page',
+    "Create a new book landing page. The slug becomes read.<domain>/<slug> and must be unique across this account's short_links, landing_pages, and series_pages. Every field except slug is optional — buttons, reviews, cover, sample link, cross-sell, and theme can all be added later via update_landing_page.",
+    {
+      slug: z.string().describe('URL slug, 3-40 chars, [A-Za-z0-9_-].'),
+      title: z.string().optional(),
+      headline: z.string().optional().describe('One-line hook, shown large above description when page_text_mode = "headline".'),
+      description: z.string().optional(),
+      page_text_mode: z.enum(['headline', 'description', 'custom', 'none']).optional().describe(
+        "'description' (default): show description. 'headline': show headline instead. 'custom': show page_text_custom. 'none': hide all book text.",
+      ),
+      page_text_custom: z.string().optional(),
+      cover_image_url: z.string().nullable().optional().describe('Public image URL. Uploads happen in-app; this field accepts any absolute URL.'),
+      source_url: z.string().optional().describe("Private note — usually the retailer URL you originally scraped fields from. Not rendered publicly."),
+      buttons: z.array(z.object({ label: z.string(), url: z.string() })).optional().describe('Retailer buy buttons, e.g. [{ label: "Amazon", url: "https://..." }].'),
+      reviews: z.array(z.object({
+        stars: z.number().int().min(1).max(5),
+        quote: z.string(),
+        attribution: z.string(),
+      })).optional(),
+      series_page_id: z.string().nullable().optional().describe("If set, this book belongs to that series and shows a cross-sell row of its siblings."),
+      cross_sell_label: z.enum(['series', 'world', 'more', 'none']).optional().describe("Section heading for the cross-sell row. Default 'series'. 'none' hides the row entirely."),
+      sample_url: z.string().nullable().optional(),
+      sample_label: z.string().optional().describe("Default: 'Read a sample'."),
+      theme: z.string().optional().describe("One of: 'classic', 'midnight', 'blush', 'cream', 'forest', 'noir'."),
+      accent_color: z.string().nullable().optional().describe('Hex color to override the theme accent, or null to use the theme default.'),
+    },
+    async (args) => json(await core.createLandingPage(client, uid, args)),
+  );
+  server.tool(
+    'update_landing_page',
+    "Edit an existing landing page. Any field left undefined is not touched. Common uses: swap retailer buy-button URLs when links change, add or remove reviews, replace the cover image, attach to a series, change the theme.",
+    {
+      id: z.string(),
+      slug: z.string().optional(),
+      title: z.string().optional(),
+      headline: z.string().optional(),
+      description: z.string().optional(),
+      page_text_mode: z.enum(['headline', 'description', 'custom', 'none']).optional(),
+      page_text_custom: z.string().optional(),
+      cover_image_url: z.string().nullable().optional(),
+      source_url: z.string().optional(),
+      buttons: z.array(z.object({ label: z.string(), url: z.string() })).optional(),
+      reviews: z.array(z.object({
+        stars: z.number().int().min(1).max(5),
+        quote: z.string(),
+        attribution: z.string(),
+      })).optional(),
+      series_page_id: z.string().nullable().optional(),
+      cross_sell_label: z.enum(['series', 'world', 'more', 'none']).optional(),
+      sample_url: z.string().nullable().optional(),
+      sample_label: z.string().optional(),
+      theme: z.string().optional(),
+      accent_color: z.string().nullable().optional(),
+    },
+    async (args) => json(await core.updateLandingPage(client, uid, args)),
+  );
+  server.tool(
+    'delete_landing_page',
+    "Permanently delete a book landing page (matches the Delete button in the Command Center UI — landing pages have no archive state). Cascade: bio_blocks that referenced this page (book blocks on the bio page) are ALSO removed. Series pages that included it keep the id in their page_ids array; the resolved book card just disappears. Not reversible.",
+    { id: z.string() },
+    async ({ id }) => json(await core.deleteLandingPage(client, uid, { id })),
+  );
+
+  // --- Series Pages writes ------------------------------------------------
+  server.tool(
+    'create_series_page',
+    "Create a new series page — an ordered collection of book landing pages under a single branded /slug URL. page_ids must all reference landing_pages that belong to this account; the array order IS the display order on the rendered page.",
+    {
+      slug: z.string(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      page_ids: z.array(z.string()).optional().describe('Ordered array of landing_pages.id values. Show the books in this order on the series page.'),
+      theme: z.string().optional(),
+      accent_color: z.string().nullable().optional(),
+      card_text_mode: z.enum(['headline', 'description', 'none']).optional().describe("Which text field to show under each book card in the series. Default 'description'."),
+    },
+    async (args) => json(await core.createSeriesPage(client, uid, args)),
+  );
+  server.tool(
+    'update_series_page',
+    "Edit a series page. To reorder books, pass a full new page_ids array in the desired order. To add or remove books, mutate page_ids accordingly (pass the complete new list). Every id in page_ids is verified to belong to this account before saving.",
+    {
+      id: z.string(),
+      slug: z.string().optional(),
+      title: z.string().optional(),
+      description: z.string().optional(),
+      page_ids: z.array(z.string()).optional(),
+      theme: z.string().optional(),
+      accent_color: z.string().nullable().optional(),
+      card_text_mode: z.enum(['headline', 'description', 'none']).optional(),
+    },
+    async (args) => json(await core.updateSeriesPage(client, uid, args)),
+  );
+  server.tool(
+    'delete_series_page',
+    "Permanently delete a series page. Any landing_pages that referenced this series (via series_page_id) have that field cleared — their cross-sell row goes empty but the landing pages themselves are untouched. Not reversible.",
+    { id: z.string() },
+    async ({ id }) => json(await core.deleteSeriesPage(client, uid, { id })),
   );
 
   return server;
