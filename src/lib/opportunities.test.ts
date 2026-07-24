@@ -3,9 +3,16 @@
 // Pure functions, no Supabase involved.
 
 import assert from 'node:assert';
-import { deriveOpportunities, pipelinePercent, type OpportunityDecision } from './opportunities';
+import { deriveOpportunities, pipelinePercent, DEFAULT_PIPELINE_PREFS, type OpportunityDecision } from './opportunities';
 import type { Book } from '../modules/catalog/types';
+import { TRANSLATION_LANGUAGES } from '../modules/catalog/types';
 import type { Manuscript } from '../modules/writing/types';
+
+// Opts that re-enable every translation language, for tests written against the
+// old "suggest all 16" behavior (the default now ships with just five on).
+const ALL_LANGS = {
+  prefs: { ...DEFAULT_PIPELINE_PREFS, translationLanguages: TRANSLATION_LANGUAGES.map(l => l.code) },
+};
 
 let bookSeq = 0;
 function makeBook(over: Partial<Book>): Book {
@@ -105,7 +112,7 @@ console.log('Test 4: languages the catalog uses outrank never-used ones');
   const b1 = makeBook({ id: 'b1' });
   const de = makeBook({ id: 'b2', language: 'de', parent_book_id: 'b1' });
   const b3 = makeBook({ id: 'b3' });
-  const ops = deriveOpportunities([b1, de, b3], [], [], NOW);
+  const ops = deriveOpportunities([b1, de, b3], [], [], NOW, ALL_LANGS);
   const deOp = ops.find(o => o.bookId === 'b3' && o.key === 'translation:de')!;
   const jaOp = ops.find(o => o.bookId === 'b3' && o.key === 'translation:ja')!;
   assert(deOp.score > jaOp.score, 'German (used) scores above Japanese (never used)');
@@ -204,6 +211,52 @@ console.log('Test 12: word target met counts as draft complete without a manuscr
     paperback_price: null, hardcover_price: null, isbn_audiobook: null,
   });
   assert(pipelinePercent(book, null, []) === 25, 'target met without manuscript = 25');
+}
+
+console.log('Test 13: default prefs only propose the five popular languages');
+{
+  const book = makeBook({ id: 'b1' });
+  const ops = deriveOpportunities([book], [], [], NOW);
+  for (const code of ['de', 'fr', 'es', 'it', 'pt']) {
+    assert(ops.some(o => o.key === `translation:${code}`), `${code} suggested by default`);
+  }
+  assert(!ops.some(o => o.key === 'translation:zh'), 'Chinese not suggested by default');
+  assert(!ops.some(o => o.key === 'translation:ja'), 'Japanese not suggested by default');
+}
+
+console.log('Test 14: translationLanguages pref filters which languages appear');
+{
+  const book = makeBook({ id: 'b1' });
+  const ops = deriveOpportunities([book], [], [], NOW, {
+    prefs: { ...DEFAULT_PIPELINE_PREFS, translationLanguages: ['fr'] },
+  });
+  assert(ops.some(o => o.key === 'translation:fr'), 'French suggested');
+  assert(!ops.some(o => o.key === 'translation:de'), 'German filtered out');
+  assert(ops.filter(o => o.kind === 'translation').length === 1, 'only one language proposed');
+}
+
+console.log('Test 15: type toggles suppress whole suggestion kinds');
+{
+  const book = makeBook({ id: 'b1', paperback_price: null, hardcover_price: null, amazon_keywords: [], isbn_audiobook: null });
+  const prefs = {
+    ...DEFAULT_PIPELINE_PREFS,
+    types: { translation: false, audiobook: false, paperback: true, hardcover: false, kdp: true, arc: false },
+  };
+  const ops = deriveOpportunities([book], [], [], NOW, { prefs });
+  assert(!ops.some(o => o.kind === 'translation'), 'translations off');
+  assert(!ops.some(o => o.key === 'audiobook'), 'audiobook off');
+  assert(!ops.some(o => o.key === 'format:hardcover'), 'hardcover off');
+  assert(ops.some(o => o.key === 'format:paperback'), 'paperback still on');
+  assert(ops.some(o => o.key === 'kdp'), 'kdp still on');
+}
+
+console.log('Test 16: KDP Optimizer keywords satisfy the Amazon-keywords check');
+{
+  const book = makeBook({ id: 'b1', amazon_keywords: [] });
+  const withCounts = deriveOpportunities([book], [], [], NOW, { kdpKeywordCounts: { b1: 5 } });
+  assert(!withCounts.some(o => o.key === 'kdp'), 'no keyword gap when KDP has selections');
+  const withoutCounts = deriveOpportunities([book], [], [], NOW);
+  assert(withoutCounts.some(o => o.key === 'kdp'), 'keyword gap when neither source has any');
 }
 
 console.log('\nAll opportunity engine tests passed.');

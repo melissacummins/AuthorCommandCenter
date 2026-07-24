@@ -54,6 +54,71 @@ const NEVER_USED_LANGUAGE_PENALTY = 25;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+// ---------------------------------------------------------------------------
+// Pipeline preferences (user-configurable). Control which suggestions the
+// engine surfaces at all — which translation languages to propose, and which
+// whole suggestion types are on. Persisted per-user in
+// user_ui_preferences.pipeline_prefs; edited from the Catalog pipeline's
+// "Options" panel. Defaults keep the five popular languages on and every
+// type on, so an un-configured account still gets useful (but not noisy)
+// suggestions.
+
+export interface PipelineTypeToggles {
+  translation: boolean;
+  audiobook: boolean;
+  paperback: boolean;
+  hardcover: boolean;
+  kdp: boolean;
+  arc: boolean;
+}
+
+export interface PipelinePrefs {
+  /** Language codes to propose translations into. Others are never suggested. */
+  translationLanguages: string[];
+  /** Whole-type on/off switches. */
+  types: PipelineTypeToggles;
+}
+
+// The five languages Melissa translates into first; the rest stay available
+// but off until explicitly enabled.
+export const DEFAULT_TRANSLATION_LANGUAGES = ['de', 'fr', 'es', 'it', 'pt'];
+
+export const DEFAULT_PIPELINE_PREFS: PipelinePrefs = {
+  translationLanguages: DEFAULT_TRANSLATION_LANGUAGES,
+  types: { translation: true, audiobook: true, paperback: true, hardcover: true, kdp: true, arc: true },
+};
+
+// Coerce whatever is stored (or nothing) into a complete, valid PipelinePrefs.
+// Missing pieces fall back to the defaults, so old/partial rows stay safe.
+export function normalizePipelinePrefs(raw: unknown): PipelinePrefs {
+  const r = (raw ?? {}) as Partial<PipelinePrefs> & { types?: Partial<PipelineTypeToggles> };
+  const langs = Array.isArray(r.translationLanguages)
+    ? r.translationLanguages.filter((x): x is string => typeof x === 'string')
+    : DEFAULT_TRANSLATION_LANGUAGES;
+  const t = r.types ?? {};
+  const d = DEFAULT_PIPELINE_PREFS.types;
+  return {
+    translationLanguages: langs,
+    types: {
+      translation: t.translation ?? d.translation,
+      audiobook: t.audiobook ?? d.audiobook,
+      paperback: t.paperback ?? d.paperback,
+      hardcover: t.hardcover ?? d.hardcover,
+      kdp: t.kdp ?? d.kdp,
+      arc: t.arc ?? d.arc,
+    },
+  };
+}
+
+export interface DeriveOptions {
+  /** User's pipeline preferences; defaults applied when omitted. */
+  prefs?: PipelinePrefs;
+  /** book.id -> count of keywords selected in the KDP Optimizer for that book.
+      Counts toward the "has Amazon keywords" check so a KDP-linked book isn't
+      flagged as missing keywords. */
+  kdpKeywordCounts?: Record<string, number>;
+}
+
 function seriesBoost(book: Book, books: Book[]): number {
   if (!book.series) return 0;
   const size = books.filter(b => b.series === book.series && !b.parent_book_id).length;
@@ -65,7 +130,11 @@ export function deriveOpportunities(
   audiobookProjects: AudiobookProjectLite[],
   decisions: OpportunityDecision[],
   now: Date = new Date(),
+  opts: DeriveOptions = {},
 ): Opportunity[] {
+  const prefs = normalizePipelinePrefs(opts.prefs);
+  const langSet = new Set(prefs.translationLanguages);
+  const kdpCounts = opts.kdpKeywordCounts ?? {};
   const decisionByKey = new Map(decisions.map(d => [`${d.book_id}|${d.opportunity_key}`, d.decision]));
   const projectsByBook = new Map<string, AudiobookProjectLite[]>();
   for (const p of audiobookProjects) {
@@ -105,40 +174,51 @@ export function deriveOpportunities(
     const children = childrenByParent.get(book.id) ?? [];
     const childLanguages = new Set(children.map(c => c.language).filter(Boolean));
 
-    // Translation gaps — one per candidate language.
-    for (const { code } of TRANSLATION_LANGUAGES) {
-      if (childLanguages.has(code)) continue;
-      push(
-        book,
-        `translation:${code}`,
-        'translation',
-        `Translate “${book.title}” into ${languageLabel(code)}`,
-        '/catalog',
-        usedLanguages.has(code) ? 0 : -NEVER_USED_LANGUAGE_PENALTY,
-      );
+    // Translation gaps — one per candidate language the user still wants
+    // suggested (others are filtered out entirely).
+    if (prefs.types.translation) {
+      for (const { code } of TRANSLATION_LANGUAGES) {
+        if (!langSet.has(code)) continue;
+        if (childLanguages.has(code)) continue;
+        push(
+          book,
+          `translation:${code}`,
+          'translation',
+          `Translate “${book.title}” into ${languageLabel(code)}`,
+          '/catalog',
+          usedLanguages.has(code) ? 0 : -NEVER_USED_LANGUAGE_PENALTY,
+        );
+      }
     }
 
     // Audiobook gap: no audiobook ISBN and no project for the book.
-    const hasAudiobookProject = (projectsByBook.get(book.id) ?? []).length > 0;
-    if (!book.isbn_audiobook && !hasAudiobookProject) {
-      push(book, 'audiobook', 'audiobook', `Make the audiobook for “${book.title}”`, '/audiobook');
+    if (prefs.types.audiobook) {
+      const hasAudiobookProject = (projectsByBook.get(book.id) ?? []).length > 0;
+      if (!book.isbn_audiobook && !hasAudiobookProject) {
+        push(book, 'audiobook', 'audiobook', `Make the audiobook for “${book.title}”`, '/audiobook');
+      }
     }
 
     // Format gaps: published but a print format has no price set.
-    if (book.paperback_price == null) {
+    if (prefs.types.paperback && book.paperback_price == null) {
       push(book, 'format:paperback', 'format', `“${book.title}” has no paperback price`, '/catalog');
     }
-    if (book.hardcover_price == null) {
+    if (prefs.types.hardcover && book.hardcover_price == null) {
       push(book, 'format:hardcover', 'format', `“${book.title}” has no hardcover price`, '/catalog');
     }
 
-    // KDP gap: published with an empty Amazon keyword box.
-    if (!book.amazon_keywords || book.amazon_keywords.length === 0) {
-      push(book, 'kdp', 'kdp', `“${book.title}” has no Amazon keywords`, '/kdp-optimizer');
+    // KDP gap: published with no Amazon keywords — counting both the book's own
+    // keyword box and any keywords selected in the linked KDP Optimizer book.
+    if (prefs.types.kdp) {
+      const hasKeywords =
+        (book.amazon_keywords?.length ?? 0) > 0 || (kdpCounts[book.id] ?? 0) > 0;
+      if (!hasKeywords) {
+        push(book, 'kdp', 'kdp', `“${book.title}” has no Amazon keywords`, '/kdp-optimizer');
+      }
     }
 
     // ARC gap: recently published but excluded from ARC applications.
-    if (!book.include_in_arcs && book.publish_date) {
+    if (prefs.types.arc && !book.include_in_arcs && book.publish_date) {
       const published = new Date(book.publish_date + 'T00:00:00');
       const ageDays = (now.getTime() - published.getTime()) / DAY_MS;
       if (ageDays >= 0 && ageDays <= 60) {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Check, CircleDashed, Loader2, RotateCcw, X } from 'lucide-react';
+import { Check, CircleDashed, Loader2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { Book } from '../types';
 import { languageLabel } from '../types';
@@ -11,6 +11,7 @@ import {
   type BookChecklist as ChecklistData,
 } from '../../../lib/dashboard';
 import type { Opportunity, OpportunityDecisionValue } from '../../../lib/opportunities';
+import PipelineOptions from './PipelineOptions';
 
 // Per-book opportunity checklist (redesign directive §6): the FULL engine
 // output for one book — formats, translations, audiobook, keywords, ARC —
@@ -33,6 +34,7 @@ export default function BookChecklist({ book }: { book: Book }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [showOptions, setShowOptions] = useState(false);
 
   const load = useCallback(() => {
     if (!user) return;
@@ -54,13 +56,15 @@ export default function BookChecklist({ book }: { book: Book }) {
     if (book.paperback_price != null) rows.push({ key: 'format:paperback', label: 'Paperback priced' });
     if (book.hardcover_price != null) rows.push({ key: 'format:hardcover', label: 'Hardcover priced' });
     if (book.isbn_audiobook) rows.push({ key: 'audiobook', label: 'Audiobook published' });
-    if (book.amazon_keywords.length > 0) rows.push({ key: 'kdp', label: `Amazon keywords (${book.amazon_keywords.length})` });
+    // Keywords count whether typed here or selected in the KDP Optimizer.
+    const keywordCount = book.amazon_keywords.length || (data?.kdpKeywordCount ?? 0);
+    if (keywordCount > 0) rows.push({ key: 'kdp', label: `Amazon keywords (${keywordCount})` });
     if (book.include_in_arcs) rows.push({ key: 'arc', label: 'Taking ARC applications' });
     for (const code of data?.translationsDone ?? []) {
       rows.push({ key: `translation:${code}`, label: `${languageLabel(code)} translation` });
     }
     return rows;
-  }, [book, data?.translationsDone]);
+  }, [book, data?.translationsDone, data?.kdpKeywordCount]);
 
   async function decide(o: Opportunity, decision: OpportunityDecisionValue) {
     if (!user || busyKey) return;
@@ -104,16 +108,25 @@ export default function BookChecklist({ book }: { book: Book }) {
 
   return (
     <div className="space-y-4">
-      {/* Pipeline ring */}
+      {/* Pipeline ring + options */}
       <div className="flex items-center gap-4">
         <PipelineRing percent={data.pipelinePercent} />
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-medium text-content">{data.pipelinePercent}% through the pipeline</p>
           <p className="text-xs text-content-secondary">
             Manuscript → editing → release → formats → audiobook. Dismissed items count as done.
           </p>
         </div>
+        <button
+          onClick={() => setShowOptions(true)}
+          className="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-control text-xs font-medium text-content-secondary hover:text-content hover:bg-surface-hover"
+          title="Choose which suggestions the pipeline shows"
+        >
+          <SlidersHorizontal className="w-3.5 h-3.5" /> Options
+        </button>
       </div>
+
+      <PipelineOptions open={showOptions} onClose={() => setShowOptions(false)} onSaved={load} />
 
       {doneRows.length > 0 && (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
