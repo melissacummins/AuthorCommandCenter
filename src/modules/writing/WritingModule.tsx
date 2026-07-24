@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { PenTool, Plus, BookOpen, ArrowLeft } from 'lucide-react';
+import { PenTool, Plus, BookOpen, ArrowLeft, ArrowUpDown } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePenNames } from '../../contexts/PenNameContext';
 import { listManuscripts } from './api';
 import { listBooks } from '../catalog/api';
-import { STATUS_LABELS, STATUS_COLORS } from './types';
+import { STATUS_LABELS, STATUS_COLORS, STATUS_ORDER } from './types';
 import type { Manuscript } from './types';
 import type { Book } from '../catalog/types';
 import ImportWizard from './components/ImportWizard';
@@ -16,6 +16,45 @@ type View =
   | { mode: 'import' }
   | { mode: 'read'; manuscriptId: string };
 
+// How the manuscript list is ordered. 'status' additionally groups the cards
+// under Draft / Revising / Final headers; the rest render as one flat grid.
+type SortMode = 'updated' | 'title' | 'words' | 'status';
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'updated', label: 'Recently updated' },
+  { value: 'title', label: 'Title (A–Z)' },
+  { value: 'words', label: 'Word count' },
+  { value: 'status', label: 'Group by status' },
+];
+
+const SORT_STORAGE_KEY = 'writing-list-sort';
+
+function loadSort(): SortMode {
+  const v = localStorage.getItem(SORT_STORAGE_KEY);
+  return SORT_OPTIONS.some(o => o.value === v) ? (v as SortMode) : 'updated';
+}
+
+// Order a list of manuscripts by the chosen mode. Title/status use a
+// secondary alphabetical sort so ties are stable and readable.
+function sortManuscripts(list: Manuscript[], mode: SortMode): Manuscript[] {
+  const byTitle = (a: Manuscript, b: Manuscript) =>
+    a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+  const copy = [...list];
+  switch (mode) {
+    case 'title':
+      return copy.sort(byTitle);
+    case 'words':
+      return copy.sort((a, b) => b.word_count - a.word_count || byTitle(a, b));
+    case 'status':
+      return copy.sort(
+        (a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status) || byTitle(a, b),
+      );
+    case 'updated':
+    default:
+      return copy.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  }
+}
+
 export default function WritingModule() {
   const { user } = useAuth();
   const { selectedPenNameId } = usePenNames();
@@ -24,6 +63,12 @@ export default function WritingModule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<View>({ mode: 'list' });
+  const [sort, setSort] = useState<SortMode>(loadSort);
+
+  function changeSort(next: SortMode) {
+    setSort(next);
+    localStorage.setItem(SORT_STORAGE_KEY, next);
+  }
 
   // Home's "Continue" deep link (/writing?manuscript=<id>) opens the reader
   // directly; the param is cleared so refresh/back behaves normally.
@@ -56,14 +101,32 @@ export default function WritingModule() {
 
   const bookById = useMemo(() => new Map(books.map(b => [b.id, b])), [books]);
 
+  // Books already linked to a manuscript — hidden from the import picker so a
+  // book can't be linked to two manuscripts.
+  const linkedBookIds = useMemo(
+    () => manuscripts.map(m => m.book_id).filter((id): id is string => !!id),
+    [manuscripts],
+  );
+
   const filtered = useMemo(() => {
-    if (!selectedPenNameId) return manuscripts;
-    return manuscripts.filter(m => {
-      if (!m.book_id) return false;
-      const book = bookById.get(m.book_id);
-      return book?.pen_name_id === selectedPenNameId;
-    });
-  }, [manuscripts, bookById, selectedPenNameId]);
+    const byPen = !selectedPenNameId
+      ? manuscripts
+      : manuscripts.filter(m => {
+          if (!m.book_id) return false;
+          const book = bookById.get(m.book_id);
+          return book?.pen_name_id === selectedPenNameId;
+        });
+    return sortManuscripts(byPen, sort);
+  }, [manuscripts, bookById, selectedPenNameId, sort]);
+
+  // When grouping by status, split the (already status-sorted) list into
+  // per-status buckets so the render can drop a header before each group.
+  const statusGroups = useMemo(() => {
+    if (sort !== 'status') return null;
+    return STATUS_ORDER
+      .map(status => ({ status, items: filtered.filter(m => m.status === status) }))
+      .filter(g => g.items.length > 0);
+  }, [filtered, sort]);
 
   if (view.mode === 'import') {
     return (
@@ -78,6 +141,7 @@ export default function WritingModule() {
         <ImportWizard
           onCancel={() => setView({ mode: 'list' })}
           onCreated={m => { reload(); setView({ mode: 'read', manuscriptId: m.id }); }}
+          excludeBookIds={linkedBookIds}
         />
       </div>
     );
@@ -107,12 +171,29 @@ export default function WritingModule() {
             Import a manuscript, chapter by chapter, so the rest of the Command Center can use it.
           </p>
         </div>
-        <button
-          onClick={() => setView({ mode: 'import' })}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control shadow-sm shrink-0"
-        >
-          <Plus className="w-4 h-4" /> New manuscript
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {manuscripts.length > 1 && (
+            <label className="inline-flex items-center gap-1.5 text-sm text-content-secondary">
+              <ArrowUpDown className="w-4 h-4 shrink-0" />
+              <span className="sr-only">Sort manuscripts</span>
+              <select
+                value={sort}
+                onChange={e => changeSort(e.target.value as SortMode)}
+                className="px-2 py-2 text-sm border border-edge rounded-control bg-surface text-content"
+              >
+                {SORT_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          <button
+            onClick={() => setView({ mode: 'import' })}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-brand-fg bg-brand-600 hover:bg-brand-700 rounded-control shadow-sm"
+          >
+            <Plus className="w-4 h-4" /> New manuscript
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -123,6 +204,29 @@ export default function WritingModule() {
         <div className="text-center py-16 text-content-secondary text-sm">Loading manuscripts…</div>
       ) : filtered.length === 0 ? (
         <EmptyState onAdd={() => setView({ mode: 'import' })} hasAny={manuscripts.length > 0} />
+      ) : statusGroups ? (
+        <div className="space-y-8">
+          {statusGroups.map(group => (
+            <section key={group.status}>
+              <div className="flex items-center gap-2 mb-3">
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLORS[group.status]}`}>
+                  {STATUS_LABELS[group.status]}
+                </span>
+                <span className="text-xs text-content-muted">{group.items.length}</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {group.items.map(m => (
+                  <ManuscriptCard
+                    key={m.id}
+                    manuscript={m}
+                    book={m.book_id ? bookById.get(m.book_id) ?? null : null}
+                    onClick={() => setView({ mode: 'read', manuscriptId: m.id })}
+                  />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map(m => (
