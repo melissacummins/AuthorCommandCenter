@@ -32,6 +32,17 @@ const STATUS_TONES: Record<string, string> = {
   archived: 'bg-surface-sunken text-content-secondary border-edge',
 };
 
+// Picks the strongest human-readable title for a link's primary row:
+// the internal label first (it's specifically what the author names it in
+// the dashboard), then the public bio title, then the slug as a last resort.
+function primaryTitle(link: ShortLink): string {
+  const label = link.label?.trim();
+  if (label) return label;
+  const bio = link.bio_title?.trim();
+  if (bio) return bio;
+  return `/${link.slug}`;
+}
+
 export default function LinkCard({
   link, variants, folders, expanded, onToggleExpand,
   onSelect, onCopy, onAddVariant, onShowQr, onToggleActive, onDelete,
@@ -41,6 +52,8 @@ export default function LinkCard({
   const favicon = getFaviconUrl(link.destination_url);
   const host = destinationHostname(link.destination_url);
   const hasVariants = variants.length > 0;
+  const title = primaryTitle(link);
+  const shortHost = buildShortUrl(link.slug).replace(/^https?:\/\//, '');
 
   // Roll up clicks and conversion value across the parent + all its variants
   // so the parent row shows the whole campaign's footprint, not just the
@@ -80,18 +93,11 @@ export default function LinkCard({
         <Avatar src={favicon} alt={host} />
 
         <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onSelect(link)}>
+          {/* Row 1: primary title (label > bio_title > slug), bold */}
           <div className="flex items-center gap-2 flex-wrap">
-            <button
-              className="text-content font-medium hover:text-brand-600 truncate"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCopy(link.slug);
-              }}
-              title="Click to copy"
-            >
-              {buildShortUrl(link.slug).replace(/^https?:\/\//, '')}
-            </button>
-            <CopyButton slug={link.slug} onCopy={onCopy} />
+            <span className="text-content font-semibold truncate" title={title}>
+              {title}
+            </span>
             <span className={`text-[11px] px-1.5 py-0.5 rounded-full border ${STATUS_TONES[status.tone]}`}>
               {status.label}
             </span>
@@ -101,12 +107,33 @@ export default function LinkCard({
               </span>
             )}
           </div>
-          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-content-secondary truncate">
-            <span className="text-content-muted">↳</span>
-            <Globe className="w-3 h-3 shrink-0 text-content-faint" />
-            <span className="truncate">{link.destination_url.replace(/^https?:\/\//, '')}</span>
+
+          {/* Row 2: the short link itself, monospace + click-to-copy */}
+          <div className="mt-1 flex items-center gap-1 text-xs">
+            <button
+              className="text-brand-600 hover:text-brand-700 truncate font-mono"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopy(link.slug);
+              }}
+              title="Click to copy short URL"
+            >
+              {shortHost}
+            </button>
+            <CopyButton slug={link.slug} onCopy={onCopy} />
           </div>
-          {(link.label || folder || link.channel) && (
+
+          {/* Row 3: where it points */}
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-content-secondary truncate">
+            <span className="text-content-muted" aria-hidden="true">↳</span>
+            <Globe className="w-3 h-3 shrink-0 text-content-faint" />
+            <span className="truncate" title={link.destination_url}>
+              {link.destination_url.replace(/^https?:\/\//, '')}
+            </span>
+          </div>
+
+          {/* Row 4 (optional): folder + channel chips */}
+          {(folder || link.channel) && (
             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
               {folder && (
                 <span className="inline-flex items-center gap-1 text-[11px] px-1.5 py-0.5 rounded-control bg-surface-hover text-content-secondary border border-edge">
@@ -120,7 +147,6 @@ export default function LinkCard({
                   {link.channel}
                 </span>
               )}
-              {link.label && <span className="text-xs text-content-secondary truncate">{link.label}</span>}
             </div>
           )}
         </div>
@@ -165,6 +191,8 @@ export default function LinkCard({
           {variants.map((v) => {
             const variantNonBot = v.non_bot_click_count ?? 0;
             const variantBots = v.click_count - variantNonBot;
+            const vTitle = primaryTitle(v);
+            const vShortHost = buildShortUrl(v.slug).replace(/^https?:\/\//, '');
             return (
               <div
                 key={v.id}
@@ -174,8 +202,8 @@ export default function LinkCard({
                 <Avatar src={getFaviconUrl(v.destination_url)} alt={destinationHostname(v.destination_url)} small />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm text-content font-medium truncate">
-                      {buildShortUrl(v.slug).replace(/^https?:\/\//, '')}
+                    <span className="text-sm text-content font-semibold truncate" title={vTitle}>
+                      {vTitle}
                     </span>
                     {v.channel && (
                       <span className="text-[11px] px-1.5 py-0.5 rounded-control bg-brand-50 text-brand-700 border border-brand-100">
@@ -183,7 +211,10 @@ export default function LinkCard({
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-content-secondary truncate">{v.destination_url.replace(/^https?:\/\//, '')}</div>
+                  <div className="text-xs text-brand-600 font-mono truncate">{vShortHost}</div>
+                  <div className="text-xs text-content-secondary truncate">
+                    ↳ {v.destination_url.replace(/^https?:\/\//, '')}
+                  </div>
                 </div>
                 <div
                   className="flex items-center gap-2 text-xs text-content-secondary tabular-nums shrink-0"
