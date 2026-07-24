@@ -19,6 +19,10 @@ interface Props {
   // When true, hide books that aren't in the currently-selected pen name.
   // Defaults to true since the header picker is the user's filter.
   filterByPenName?: boolean;
+  // Book ids to hide from the list — e.g. books that already have a
+  // manuscript, so they can't be linked twice. The currently-selected
+  // `value` is never hidden, so an existing selection stays visible.
+  excludeBookIds?: string[];
   placeholder?: string;
   required?: boolean;
 }
@@ -27,6 +31,7 @@ export default function CatalogBookPicker({
   value,
   onChange,
   filterByPenName = true,
+  excludeBookIds,
   placeholder = 'Pick a book from Catalog…',
   required: _required,
 }: Props) {
@@ -71,6 +76,12 @@ export default function CatalogBookPicker({
     if (filterByPenName && selectedPenNameId) {
       list = list.filter(b => b.pen_name_id === selectedPenNameId);
     }
+    if (excludeBookIds?.length) {
+      // Never hide the current selection — otherwise switching away and back
+      // would make the picked book vanish.
+      const excluded = new Set(excludeBookIds.filter(id => id !== value));
+      list = list.filter(b => !excluded.has(b.id));
+    }
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter(b =>
@@ -79,7 +90,7 @@ export default function CatalogBookPicker({
       );
     }
     return list;
-  }, [books, selectedPenNameId, filterByPenName, query]);
+  }, [books, selectedPenNameId, filterByPenName, excludeBookIds, value, query]);
 
   const selected = value ? books.find(b => b.id === value) : null;
   const selectedPen = selected?.pen_name_id ? penNames.find(p => p.id === selected.pen_name_id) : null;

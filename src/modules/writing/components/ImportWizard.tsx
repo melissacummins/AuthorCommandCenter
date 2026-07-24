@@ -16,9 +16,13 @@ import type { ChapterDraft, Manuscript } from '../types';
 export default function ImportWizard({
   onCancel,
   onCreated,
+  excludeBookIds,
 }: {
   onCancel: () => void;
   onCreated: (manuscript: Manuscript) => void;
+  // Books that already have a manuscript — hidden from the link picker so a
+  // book can't be linked to two manuscripts.
+  excludeBookIds?: string[];
 }) {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
@@ -105,7 +109,7 @@ export default function ImportWizard({
 
       <div>
         <label className="block text-xs font-medium text-content-secondary mb-1">Link to a book (optional)</label>
-        <CatalogBookPicker value={bookId} onChange={(id: string, _book: Book) => setBookId(id)} />
+        <CatalogBookPicker value={bookId} onChange={(id: string, _book: Book) => setBookId(id)} excludeBookIds={excludeBookIds} />
       </div>
 
       {drafts === null && (

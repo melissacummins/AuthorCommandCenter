@@ -86,6 +86,10 @@ export const STATUS_LABELS: Record<ManuscriptStatus, string> = {
   final: 'Final',
 };
 
+// Canonical workflow order — used to group/sort the manuscript list so
+// statuses always appear in progress order (Draft → Revising → Final).
+export const STATUS_ORDER: ManuscriptStatus[] = ['draft', 'revising', 'final'];
+
 export const STATUS_COLORS: Record<ManuscriptStatus, string> = {
   draft: 'bg-slate-100 text-slate-700',
   revising: 'bg-amber-100 text-amber-800',
