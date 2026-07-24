@@ -16,12 +16,39 @@ import { STATUS_LABELS } from '../modules/catalog/types';
 import type { Manuscript } from '../modules/writing/types';
 import {
   deriveOpportunities,
+  normalizePipelinePrefs,
   pipelinePercent,
   type AudiobookProjectLite,
   type Opportunity,
   type OpportunityDecision,
   type OpportunityDecisionValue,
+  type PipelinePrefs,
 } from './opportunities';
+import { fetchSelectedKeywordCountsByBook } from '../modules/kdp-optimizer/api';
+
+// ---------------------------------------------------------------------------
+// Pipeline preferences — one JSONB blob per user in user_ui_preferences.
+// Read by the opportunity engine to decide which suggestions to surface.
+
+export async function getPipelinePrefs(userId: string): Promise<PipelinePrefs> {
+  const { data, error } = await supabase
+    .from('user_ui_preferences')
+    .select('pipeline_prefs')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error) return normalizePipelinePrefs(null);
+  return normalizePipelinePrefs(data?.pipeline_prefs ?? null);
+}
+
+export async function savePipelinePrefs(userId: string, prefs: PipelinePrefs): Promise<void> {
+  const { error } = await supabase
+    .from('user_ui_preferences')
+    .upsert(
+      { user_id: userId, pipeline_prefs: prefs, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id' },
+    );
+  if (error) throw error;
+}
 
 // ---------------------------------------------------------------------------
 // Inventory alerts / Month P&L / Upcoming — implemented in dashboardCore.ts
@@ -219,10 +246,12 @@ export async function getRecentActivity(userId: string, limit = 8): Promise<Acti
 // Opportunities
 
 export async function getOpportunities(userId: string, limit = 5): Promise<Opportunity[]> {
-  const [booksRes, projectsRes, decisionsRes] = await Promise.all([
+  const [booksRes, projectsRes, decisionsRes, prefs, kdpKeywordCounts] = await Promise.all([
     supabase.from('books').select('*').eq('user_id', userId),
     supabase.from('audiobook_projects').select('book_id, status').eq('user_id', userId),
     supabase.from('book_opportunity_decisions').select('book_id, opportunity_key, decision').eq('user_id', userId),
+    getPipelinePrefs(userId),
+    fetchSelectedKeywordCountsByBook(userId).catch(() => ({} as Record<string, number>)),
   ]);
   if (booksRes.error) throw booksRes.error;
   if (projectsRes.error) throw projectsRes.error;
@@ -231,6 +260,8 @@ export async function getOpportunities(userId: string, limit = 5): Promise<Oppor
     (booksRes.data ?? []) as Book[],
     (projectsRes.data ?? []) as AudiobookProjectLite[],
     decisionsRes.error ? [] : ((decisionsRes.data ?? []) as OpportunityDecision[]),
+    new Date(),
+    { prefs, kdpKeywordCounts },
   )
     .filter(o => o.decision !== 'dismissed')
     .slice(0, limit);
@@ -238,10 +269,12 @@ export async function getOpportunities(userId: string, limit = 5): Promise<Oppor
 
 /** Full, ungated engine output for one book — the Catalog checklist tab. */
 export async function getBookOpportunities(userId: string, bookId: string): Promise<Opportunity[]> {
-  const [booksRes, projectsRes, decisionsRes] = await Promise.all([
+  const [booksRes, projectsRes, decisionsRes, prefs, kdpKeywordCounts] = await Promise.all([
     supabase.from('books').select('*').eq('user_id', userId),
     supabase.from('audiobook_projects').select('book_id, status').eq('user_id', userId),
     supabase.from('book_opportunity_decisions').select('book_id, opportunity_key, decision').eq('user_id', userId).eq('book_id', bookId),
+    getPipelinePrefs(userId),
+    fetchSelectedKeywordCountsByBook(userId).catch(() => ({} as Record<string, number>)),
   ]);
   if (booksRes.error) throw booksRes.error;
   if (projectsRes.error) throw projectsRes.error;
@@ -250,6 +283,8 @@ export async function getBookOpportunities(userId: string, bookId: string): Prom
     (booksRes.data ?? []) as Book[],
     (projectsRes.data ?? []) as AudiobookProjectLite[],
     decisionsRes.error ? [] : ((decisionsRes.data ?? []) as OpportunityDecision[]),
+    new Date(),
+    { prefs, kdpKeywordCounts },
   ).filter(o => o.bookId === bookId);
 }
 
@@ -259,6 +294,8 @@ export interface BookChecklist {
   decisions: OpportunityDecision[];
   /** Language codes of this book's existing translation children. */
   translationsDone: string[];
+  /** Keywords selected for this book in the KDP Optimizer (0 when none/unlinked). */
+  kdpKeywordCount: number;
   /** Set when the book itself is a translation — its checklist lives on the parent. */
   parentTitle: string | null;
 }
@@ -266,11 +303,13 @@ export interface BookChecklist {
 /** Everything the Catalog checklist needs for one book in one call:
     the full engine output plus the pipeline percent. */
 export async function getBookChecklist(userId: string, bookId: string): Promise<BookChecklist> {
-  const [booksRes, manuscriptRes, projectsRes, decisionsRes] = await Promise.all([
+  const [booksRes, manuscriptRes, projectsRes, decisionsRes, prefs, kdpKeywordCounts] = await Promise.all([
     supabase.from('books').select('*').eq('user_id', userId),
     supabase.from('manuscripts').select('*').eq('user_id', userId).eq('book_id', bookId).limit(1).maybeSingle(),
     supabase.from('audiobook_projects').select('book_id, status').eq('user_id', userId),
     supabase.from('book_opportunity_decisions').select('book_id, opportunity_key, decision').eq('user_id', userId).eq('book_id', bookId),
+    getPipelinePrefs(userId),
+    fetchSelectedKeywordCountsByBook(userId).catch(() => ({} as Record<string, number>)),
   ]);
   if (booksRes.error) throw booksRes.error;
   if (projectsRes.error) throw projectsRes.error;
@@ -283,12 +322,14 @@ export async function getBookChecklist(userId: string, bookId: string): Promise<
   const manuscript = (manuscriptRes.error ? null : manuscriptRes.data) as Manuscript | null;
 
   return {
-    opportunities: deriveOpportunities(books, projects, decisions).filter(o => o.bookId === bookId),
+    opportunities: deriveOpportunities(books, projects, decisions, new Date(), { prefs, kdpKeywordCounts })
+      .filter(o => o.bookId === bookId),
     pipelinePercent: pipelinePercent(book, manuscript, projects, decisions),
     decisions,
     translationsDone: books
       .filter(b => b.parent_book_id === bookId && b.language)
       .map(b => b.language as string),
+    kdpKeywordCount: kdpKeywordCounts[bookId] ?? 0,
     parentTitle: book.parent_book_id
       ? books.find(b => b.id === book.parent_book_id)?.title ?? null
       : null,
