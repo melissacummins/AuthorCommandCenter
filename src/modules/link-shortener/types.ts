@@ -1,3 +1,43 @@
+// Meta (Facebook) Pixel Standard Events that can fire on a bio-page link
+// click. Kept in sync with the CHECK constraint on short_links.meta_event
+// (migration 115_link_meta_event.sql).
+export type MetaStandardEvent =
+  | 'ViewContent'
+  | 'Lead'
+  | 'Purchase'
+  | 'Subscribe'
+  | 'CompleteRegistration'
+  | 'AddToCart'
+  | 'InitiateCheckout'
+  | 'AddPaymentInfo'
+  | 'Contact'
+  | 'Search'
+  | 'Schedule'
+  | 'StartTrial'
+  | 'SubmitApplication'
+  | 'CustomizeProduct'
+  | 'FindLocation'
+  | 'Donate';
+
+export const META_STANDARD_EVENTS: readonly MetaStandardEvent[] = [
+  'ViewContent',
+  'Lead',
+  'Purchase',
+  'Subscribe',
+  'CompleteRegistration',
+  'AddToCart',
+  'InitiateCheckout',
+  'AddPaymentInfo',
+  'Contact',
+  'Search',
+  'Schedule',
+  'StartTrial',
+  'SubmitApplication',
+  'CustomizeProduct',
+  'FindLocation',
+  'Donate',
+] as const;
+
 export interface ShortLink {
   id: string;
   user_id: string;
@@ -20,6 +60,7 @@ export interface ShortLink {
   bio_style: 'card' | 'icon';
   bio_featured: boolean;
   thumbnail_url: string | null;
+  meta_event: MetaStandardEvent | null;
   click_count: number;
   non_bot_click_count: number;
   conversion_count: number;
@@ -265,6 +306,7 @@ export type ShortLinkUpdate = Partial<
     'label' | 'destination_url' | 'channel' | 'notes' | 'tags' | 'is_active' | 'archived_at'
     | 'folder_id' | 'starts_at' | 'expires_at' | 'expired_redirect_url'
     | 'show_on_bio' | 'bio_title' | 'bio_style' | 'bio_featured' | 'bio_sort_order' | 'thumbnail_url'
+    | 'meta_event'
   >
 >;
 

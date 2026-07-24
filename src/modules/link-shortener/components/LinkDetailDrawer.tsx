@@ -11,7 +11,7 @@ import {
   normalizeUrl, timeAgo,
 } from '../utils';
 import { detectSocialPlatform, SOCIAL_NAMES } from '../socialIcons';
-import type { LinkClick, LinkFolder, ShortLink } from '../types';
+import { META_STANDARD_EVENTS, type LinkClick, type LinkFolder, type MetaStandardEvent, type ShortLink } from '../types';
 import QRCodeBlock from './QRCodeBlock';
 import ConversionsList from './ConversionsList';
 
@@ -48,6 +48,7 @@ export default function LinkDetailDrawer({
   const [bioTitle, setBioTitle] = useState<string>(link.bio_title ?? '');
   const [bioStyle, setBioStyle] = useState<'card' | 'icon'>(link.bio_style ?? 'card');
   const [bioFeatured, setBioFeatured] = useState<boolean>(link.bio_featured ?? false);
+  const [metaEvent, setMetaEvent] = useState<MetaStandardEvent | ''>(link.meta_event ?? '');
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -79,6 +80,7 @@ export default function LinkDetailDrawer({
     setBioTitle(link.bio_title ?? '');
     setBioStyle(link.bio_style ?? 'card');
     setBioFeatured(link.bio_featured ?? false);
+    setMetaEvent(link.meta_event ?? '');
     setError(null);
     setShowBots(false);
     setNonBotClicks([]);
@@ -202,7 +204,8 @@ export default function LinkDetailDrawer({
     showOnBio !== (link.show_on_bio ?? true) ||
     bioTitle !== (link.bio_title ?? '') ||
     bioStyle !== (link.bio_style ?? 'card') ||
-    bioFeatured !== (link.bio_featured ?? false);
+    bioFeatured !== (link.bio_featured ?? false) ||
+    metaEvent !== (link.meta_event ?? '');
 
   async function copyUrl() {
     try {
@@ -251,6 +254,7 @@ export default function LinkDetailDrawer({
         bio_title: bioTitle.trim(),
         bio_style: bioStyle,
         bio_featured: bioStyle === 'card' ? bioFeatured : false,
+        meta_event: metaEvent || null,
       });
       onUpdated(updated);
     } catch (e) {
@@ -510,6 +514,22 @@ export default function LinkDetailDrawer({
                         </span>
                       </button>
                     )}
+
+                    <Field
+                      label="Meta Pixel event on click"
+                      hint="Fires this Meta Standard Event when a visitor clicks this card from your bio page. Requires a Pixel ID on the Bio page settings."
+                    >
+                      <select
+                        value={metaEvent}
+                        onChange={(e) => setMetaEvent(e.target.value as MetaStandardEvent | '')}
+                        className="w-full px-3 py-2 rounded-control border border-edge-strong bg-surface text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+                      >
+                        <option value="">— None (page-load PageView only) —</option>
+                        {META_STANDARD_EVENTS.map((ev) => (
+                          <option key={ev} value={ev}>{ev}</option>
+                        ))}
+                      </select>
+                    </Field>
                   </div>
                 )}
               </div>

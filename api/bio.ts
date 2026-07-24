@@ -40,6 +40,7 @@ interface BioLink {
   bio_featured: boolean;
   bio_sort_order: number;
   thumbnail_url: string | null;
+  meta_event: string | null;
   created_at: string;
 }
 
@@ -217,7 +218,8 @@ function renderIconLink(link: BioLink): string {
     : platform === 'email'
       ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>`
       : `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>`;
-  return `<a class="icon" href="/${escapeHtml(link.slug)}" aria-label="${escapeHtml(name)}" style="background:#${color}">${inner}</a>`;
+  const evAttr = link.meta_event ? ` data-fbe="${escapeHtml(link.meta_event)}"` : '';
+  return `<a class="icon" href="/${escapeHtml(link.slug)}" aria-label="${escapeHtml(name)}" style="background:#${color}"${evAttr}>${inner}</a>`;
 }
 
 function renderCardLink(link: BioLink, ogImageByDest: Map<string, string | null>, featured = false): string {
@@ -229,7 +231,8 @@ function renderCardLink(link: BioLink, ogImageByDest: Map<string, string | null>
     ? `<img class="link-thumb" src="${escapeHtml(thumb)}" alt="" loading="lazy" />`
     : '';
   const tag = featured ? `<span class="featured-tag">Featured</span>` : '';
-  return `<a class="link${thumb ? ' link-with-thumb' : ''}${featured ? ' link-featured' : ''}" href="/${escapeHtml(link.slug)}">
+  const evAttr = link.meta_event ? ` data-fbe="${escapeHtml(link.meta_event)}"` : '';
+  return `<a class="link${thumb ? ' link-with-thumb' : ''}${featured ? ' link-featured' : ''}" href="/${escapeHtml(link.slug)}"${evAttr}>
     ${tag}
     ${thumbHtml}
     <span class="link-label">${escapeHtml(display)}</span>
@@ -344,12 +347,15 @@ function renderCardItem(item: CardItem, ogImageByDest: Map<string, string | null
 
 // Meta (Facebook) Pixel base code. Pixel IDs are numeric, so we sanitize
 // to digits before interpolating — no user text reaches the inline script.
+// The click tracker binds after DOMContentLoaded and fires the per-link
+// Standard Event just before the browser starts the navigation.
 function metaPixelScript(rawId: string | null | undefined): string {
   const id = (rawId ?? '').replace(/[^0-9]/g, '');
   if (!id) return '';
   return `<script>
 !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
 fbq('init','${id}');fbq('track','PageView');
+(function(){var ALLOWED={ViewContent:1,Lead:1,Purchase:1,Subscribe:1,CompleteRegistration:1,AddToCart:1,InitiateCheckout:1,AddPaymentInfo:1,Contact:1,Search:1,Schedule:1,StartTrial:1,SubmitApplication:1,CustomizeProduct:1,FindLocation:1,Donate:1};function h(e){var a=e.target&&e.target.closest?e.target.closest('a[data-fbe]'):null;if(!a)return;var ev=a.getAttribute('data-fbe');if(!ev||!ALLOWED[ev]||!window.fbq)return;try{window.fbq('track',ev);}catch(_){/* ignore */}}document.addEventListener('click',h,true);})();
 </script>
 <noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=${id}&ev=PageView&noscript=1" alt="" /></noscript>`;
 }
@@ -634,7 +640,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Fetch links + blocks + settings in parallel.
     const linksPromise = supabase
       .from('short_links')
-      .select('slug, label, destination_url, starts_at, expires_at, bio_title, bio_style, bio_featured, bio_sort_order, thumbnail_url, created_at')
+      .select('slug, label, destination_url, starts_at, expires_at, bio_title, bio_style, bio_featured, bio_sort_order, thumbnail_url, meta_event, created_at')
       .eq('user_id', userId)
       .eq('is_active', true)
       .eq('show_on_bio', true)
