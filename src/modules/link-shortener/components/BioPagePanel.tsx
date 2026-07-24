@@ -37,6 +37,36 @@ function absoluteUrl(raw: string): string {
   return raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
 }
 
+// Move a section header + every following non-section item (its group) as
+// one atomic bundle. The drop target snaps to the nearest section boundary
+// so we never leave orphaned children mid-group.
+function moveSectionBundle<T extends { isSection?: boolean }>(
+  list: T[],
+  oldIdx: number,
+  newIdx: number,
+): T[] {
+  let bundleSize = 1;
+  while (
+    oldIdx + bundleSize < list.length &&
+    !list[oldIdx + bundleSize].isSection
+  ) {
+    bundleSize++;
+  }
+  const bundle = list.slice(oldIdx, oldIdx + bundleSize);
+  const remaining = [
+    ...list.slice(0, oldIdx),
+    ...list.slice(oldIdx + bundleSize),
+  ];
+  let target = newIdx > oldIdx ? newIdx - bundleSize + 1 : newIdx;
+  // Snap forward until we're at a section boundary (right before a section
+  // header, or past the end). This prevents dropping a section into the
+  // middle of another section's children.
+  while (target < remaining.length && !remaining[target].isSection) {
+    target++;
+  }
+  return [...remaining.slice(0, target), ...bundle, ...remaining.slice(target)];
+}
+
 export default function BioPagePanel({ links, onUpdated }: Props) {
   const { user } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -146,14 +176,16 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
 
   async function handleDragEnd(
     event: DragEndEvent,
-    list: { id: string; kind: 'link' | 'block'; rawId: string }[],
+    list: { id: string; kind: 'link' | 'block'; rawId: string; isSection?: boolean }[],
   ) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIdx = list.findIndex((l) => l.id === active.id);
     const newIdx = list.findIndex((l) => l.id === over.id);
     if (oldIdx < 0 || newIdx < 0) return;
-    const reordered = arrayMove(list, oldIdx, newIdx);
+    const reordered = list[oldIdx].isSection
+      ? moveSectionBundle(list, oldIdx, newIdx)
+      : arrayMove(list, oldIdx, newIdx);
     try {
       await reorderBioItems(reordered.map((r) => ({ kind: r.kind, id: r.rawId })));
       // Refresh blocks so their sort orders are picked up; links update via
@@ -266,15 +298,33 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
     }
   }
 
-  // Mirror cardItems but with raw ids for reorder API calls.
+  // Mirror cardItems but with raw ids for reorder API calls, plus
+  // an isSection flag so section-header drags can bundle-move.
   const cardItemsForReorder = useMemo(
     () => cardItems.map((i) => ({
       id: i.id,
       kind: i.kind,
       rawId: i.kind === 'link' ? i.link.id : i.block.id,
+      isSection: i.kind === 'block' && i.block.type === 'section',
     })),
     [cardItems],
   );
+
+  // Map each cardItem to the section header it visually belongs under
+  // (null = ungrouped, above the first section header). Used for indent.
+  const itemSectionOwner = useMemo(() => {
+    const owner = new Map<string, string | null>();
+    let current: string | null = null;
+    for (const item of cardItems) {
+      if (item.kind === 'block' && item.block.type === 'section') {
+        current = item.id;
+        owner.set(item.id, null); // the header itself is not indented
+      } else {
+        owner.set(item.id, current);
+      }
+    }
+    return owner;
+  }, [cardItems]);
 
   return (
     <div className="space-y-6">
@@ -509,12 +559,14 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
             <SortableContext items={cardItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {cardItems.map((item) => {
+                  const inSection = !!itemSectionOwner.get(item.id);
                   if (item.kind === 'link') {
                     return (
                       <SortableLinkRow
                         key={item.id}
                         sortableId={item.id}
                         link={item.link}
+                        indent={inSection}
                         onSaveTitle={saveBioTitle}
                         onToggleStyle={toggleStyle}
                         onHide={hideFromBio}
@@ -538,6 +590,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                         key={item.id}
                         sortableId={item.id}
                         block={item.block}
+                        indent={inSection}
                         onSave={(patch) => handleSaveBlock(item.block.id, patch)}
                         onDelete={() => handleDeleteBlock(item.block.id)}
                       />
@@ -550,6 +603,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                         sortableId={item.id}
                         block={item.block}
                         landingPages={landingPages}
+                        indent={inSection}
                         onSave={(patch) => handleSaveBlock(item.block.id, patch)}
                         onDelete={() => handleDeleteBlock(item.block.id)}
                       />
@@ -560,6 +614,7 @@ export default function BioPagePanel({ links, onUpdated }: Props) {
                       key={item.id}
                       sortableId={item.id}
                       block={item.block}
+                      indent={inSection}
                       onSave={(patch) => handleSaveBlock(item.block.id, patch)}
                       onDelete={() => handleDeleteBlock(item.block.id)}
                       onUploadImage={(file) => handleUploadBlockImage(item.block, file)}
@@ -624,12 +679,13 @@ function DragHandle({ attributes, listeners }: { attributes: DraggableAttributes
 interface LinkRowProps {
   sortableId: string;
   link: ShortLink;
+  indent?: boolean;
   onSaveTitle: (link: ShortLink, title: string) => void;
   onToggleStyle: (link: ShortLink) => void;
   onHide: (link: ShortLink) => void;
 }
 
-function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide }: LinkRowProps) {
+function SortableLinkRow({ sortableId, link, indent, onSaveTitle, onToggleStyle, onHide }: LinkRowProps) {
   const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
   const platform = useMemo(() => detectSocialPlatform(link.destination_url), [link.destination_url]);
   const platformColor = '#' + SOCIAL_HEX[platform];
@@ -646,7 +702,7 @@ function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide 
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-3 px-3 py-3 rounded-card bg-surface border border-edge hover:border-edge-strong transition"
+      className={`flex items-center gap-3 px-3 py-3 rounded-card bg-surface border border-edge hover:border-edge-strong transition ${indent ? 'ml-6 border-l-2 border-l-amber-200/60' : ''}`}
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       <div
@@ -704,6 +760,7 @@ function SortableLinkRow({ sortableId, link, onSaveTitle, onToggleStyle, onHide 
 interface SectionRowProps {
   sortableId: string;
   block: BioBlock;
+  indent?: boolean;
   onSave: (patch: Partial<BioBlock>) => void;
   onDelete: () => void;
 }
@@ -753,7 +810,7 @@ function SortableSectionRow({ sortableId, block, onSave, onDelete }: SectionRowP
   );
 }
 
-function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowProps) {
+function SortableButtonsRow({ sortableId, block, indent, onSave, onDelete }: SectionRowProps) {
   const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
   const [title, setTitle] = useState(block.title ?? '');
   const [buttons, setButtons] = useState<BioButton[]>(block.buttons ?? []);
@@ -774,7 +831,7 @@ function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowP
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-card bg-emerald-50/40 border border-emerald-200/60"
+      className={`flex items-start gap-3 px-3 py-3 rounded-card bg-emerald-50/40 border border-emerald-200/60 ${indent ? 'ml-6 border-l-2 border-l-amber-200/60' : ''}`}
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       <div className="w-9 h-9 rounded-control flex-shrink-0 grid place-items-center bg-emerald-100 text-emerald-700">
@@ -834,7 +891,7 @@ function SortableButtonsRow({ sortableId, block, onSave, onDelete }: SectionRowP
   );
 }
 
-function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: SectionRowProps & { landingPages: LandingPage[] }) {
+function SortableBookRow({ sortableId, block, landingPages, indent, onSave, onDelete }: SectionRowProps & { landingPages: LandingPage[] }) {
   const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
   const selected = landingPages.find((p) => p.id === block.landing_page_id) ?? null;
   const mode = block.text_mode ?? 'description';
@@ -844,7 +901,7 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-card bg-amber-50/40 border border-amber-200/60"
+      className={`flex items-start gap-3 px-3 py-3 rounded-card bg-amber-50/40 border border-amber-200/60 ${indent ? 'ml-6 border-l-2 border-l-amber-200/60' : ''}`}
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       {selected?.cover_image_url ? (
@@ -907,12 +964,13 @@ function SortableBookRow({ sortableId, block, landingPages, onSave, onDelete }: 
 interface ImageRowProps {
   sortableId: string;
   block: BioBlock;
+  indent?: boolean;
   onSave: (patch: Partial<BioBlock>) => void;
   onDelete: () => void;
   onUploadImage: (file: File) => Promise<void> | void;
 }
 
-function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }: ImageRowProps) {
+function SortableImageRow({ sortableId, block, indent, onSave, onDelete, onUploadImage }: ImageRowProps) {
   const { attributes, listeners, setNodeRef, style } = useSortableStyle(sortableId);
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(block.title ?? '');
@@ -939,7 +997,7 @@ function SortableImageRow({ sortableId, block, onSave, onDelete, onUploadImage }
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-start gap-3 px-3 py-3 rounded-card bg-brand-50/40 border border-brand-200/60"
+      className={`flex items-start gap-3 px-3 py-3 rounded-card bg-brand-50/40 border border-brand-200/60 ${indent ? 'ml-6 border-l-2 border-l-amber-200/60' : ''}`}
     >
       <DragHandle attributes={attributes} listeners={listeners} />
       <div className="w-16 h-16 rounded-control flex-shrink-0 overflow-hidden bg-surface border border-edge grid place-items-center">
