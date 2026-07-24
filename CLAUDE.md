@@ -1,14 +1,24 @@
 # Author Command Center — Claude notes
 
 ## When adding a Supabase migration
-- Apply it to the production database directly (via the Supabase MCP
-  `apply_migration`) as part of merging the PR — do NOT ask Melissa to
-  paste-and-run SQL by hand. Confirm afterward that the change is live.
-- IMPORTANT: `apply_migration` records the migration under an auto-generated
-  TIMESTAMP version, which does NOT match this repo's `NNN_name.sql`
-  numbering and makes the Supabase CLI/branching report "Remote migration
-  versions not found in local migrations directory". Right after applying,
-  realign the history so remote matches the file:
+- Migrations apply AUTOMATICALLY when the PR merges, via the Supabase ↔
+  GitHub branching integration. **NEVER ask Melissa to paste-and-run SQL by
+  hand** — that is the whole point of the integration. Just ship the
+  `NNN_name.sql` file in the PR.
+- ALWAYS VERIFY it actually landed. Auto-apply has silently no-op'd before,
+  and the missing column/table then breaks the app. After the PR merges,
+  confirm against production (project `vinnvzmuuwmssijwdomt`) with the
+  Supabase MCP — do NOT assume:
+  - `list_migrations` includes the new `NNN` version, AND
+  - the change is really there, e.g.
+    `select column_name from information_schema.columns where table_name='<table>' and column_name='<col>';`
+    (or an equivalent check for the table/policy the migration adds).
+- If verification shows it did NOT apply, fall back to applying it yourself
+  via the Supabase MCP `apply_migration`, then realign the version number:
+  `apply_migration` records it under an auto-generated TIMESTAMP that does
+  NOT match this repo's `NNN_name.sql` numbering (which makes branching
+  report "Remote migration versions not found in local migrations
+  directory"). Fix it right after:
   `UPDATE supabase_migrations.schema_migrations SET version='<NNN>', name='<name>' WHERE version='<timestamp>';`
   (verify with `select version, name from supabase_migrations.schema_migrations order by version desc limit 5;`).
 - All new migrations must be idempotent (`IF NOT EXISTS`,
