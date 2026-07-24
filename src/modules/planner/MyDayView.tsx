@@ -104,8 +104,16 @@ export default function MyDayView({
       .sort((a, b) => (a.start_minute ?? 1e9) - (b.start_minute ?? 1e9) || a.sort_order - b.sort_order),
     [blocks, selected],
   );
+  // The day's to-dos: everything scheduled for this day, plus anything you
+  // *completed* on this day even if it was never scheduled for it — so work you
+  // did off-plan still shows up (and gets counted) here instead of only in the
+  // Logbook. A completed off-plan to-do has no valid block for today, so it lands
+  // in the loose list's Done group below.
   const dayTasks = useMemo(
-    () => tasks.filter(t => t.kind === 'task' && t.due_date === selected),
+    () => tasks.filter(t => t.kind === 'task' && (
+      t.due_date === selected
+      || (t.done && !!t.done_at && localDay(t.done_at) === selected)
+    )),
     [tasks, selected],
   );
   // Blocks that actually live on this day — a to-do is only "in a block" if its
@@ -179,11 +187,12 @@ export default function MyDayView({
 
   const plannedMinutes = useMemo(() => plannedFor(selected, events), [plannedFor, selected, events]);
 
-  // Daily goal: how many of the day's *scheduled* to-dos you've completed —
-  // matches what My Day shows, rather than counting completions from any list.
+  // Daily goal: how many to-dos you *completed* on this day — counted by when
+  // they were finished, not when they were scheduled, so anything you check off
+  // today counts even if you never put it on today's list (matches the Logbook).
   const goal = settings.daily_goal_count;
   const completedCount = useMemo(
-    () => tasks.filter(t => t.kind === 'task' && t.done && t.due_date === selected).length,
+    () => tasks.filter(t => t.kind === 'task' && t.done && !!t.done_at && localDay(t.done_at) === selected).length,
     [tasks, selected],
   );
   // Real time tracked on the viewed day (from the timer session log), so the
