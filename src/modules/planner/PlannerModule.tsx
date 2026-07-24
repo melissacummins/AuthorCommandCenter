@@ -686,22 +686,35 @@ export default function PlannerModule() {
       effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + elapsedMinutes(task.timer_started_at), timer_started_at: null };
     }
 
-    // Timed-block time: checking a to-do off inside a timed block records its
-    // share of the block as worked time (no timer needed); un-checking gives that
-    // time back. Recurring to-dos and ones with real tracked time are left alone.
+    // Checking a to-do off records worked time even without a running timer, so
+    // completing counted work shows up in My Day / Stats:
+    //   • inside a timed block  → its even share of the block ('block'),
+    //   • otherwise, if it has an estimate → that estimate ('estimate').
+    // Un-checking gives that time back. Recurring to-dos and ones that already
+    // have real tracked time are left alone.
     let blockLogRow: { task_id: string; started_at: string; ended_at: string; minutes: number } | null = null;
+    let estimateLogRow: { task_id: string; started_at: string; ended_at: string; minutes: number } | null = null;
     let removeBlockSessions: PlannerTimeSession[] = [];
     if (task) {
       const completing = patch.done === true && !task.done && !task.recurrence
         && !task.timer_started_at && (task.actual_minutes ?? 0) === 0;
-      if (completing && !sessions.some(s => s.task_id === id && s.source === 'block')) {
+      const alreadyDerived = sessions.some(s => s.task_id === id && (s.source === 'block' || s.source === 'estimate'));
+      if (completing && !alreadyDerived) {
         const share = blockShareSession(task);
         if (share) {
           blockLogRow = { task_id: id, ...share };
           effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + share.minutes };
+        } else if ((task.estimate_minutes ?? 0) > 0) {
+          // No timer, no block, but it's sized — bank the estimate as worked time,
+          // ending "now" so it lands on the day you checked it off.
+          const minutes = task.estimate_minutes!;
+          const ended = new Date();
+          const started = new Date(ended.getTime() - minutes * 60_000);
+          estimateLogRow = { task_id: id, started_at: started.toISOString(), ended_at: ended.toISOString(), minutes };
+          effective = { ...effective, actual_minutes: (task.actual_minutes ?? 0) + minutes };
         }
       } else if (patch.done === false && task.done) {
-        removeBlockSessions = sessions.filter(s => s.task_id === id && s.source === 'block');
+        removeBlockSessions = sessions.filter(s => s.task_id === id && (s.source === 'block' || s.source === 'estimate'));
         if (removeBlockSessions.length) {
           const mins = removeBlockSessions.reduce((m, s) => m + s.minutes, 0);
           effective = { ...effective, actual_minutes: Math.max(0, (task.actual_minutes ?? 0) - mins) };
@@ -768,6 +781,10 @@ export default function PlannerModule() {
       }
       if (blockLogRow && user) {
         const created = await createTimeSessions(user.id, [blockLogRow], 'block');
+        setSessions(prev => [...prev, ...created]);
+      }
+      if (estimateLogRow && user) {
+        const created = await createTimeSessions(user.id, [estimateLogRow], 'estimate');
         setSessions(prev => [...prev, ...created]);
       }
       if (removeBlockSessions.length) {
